@@ -1,15 +1,16 @@
 {
   "name": "@module-federation/aegis",
-  "version": "0.0.1",
-  "main": "index.js",
+  "version": "0.0.1-alpha.1",
+  "main": "lib/",
+  "module": "esm/",
   "repository": "git@github.com:module-federation/aegis.git",
   "author": "Zack Jackson <zackary.l.jackson@gmail.com>",
   "license": "MIT",
   "scripts": {
     "format": "yarn pretty -- --write",
     "build": "npm run build:esm && npm run build:cjs",
-    "build:esm": "babel --delete-dir-on-start -d esm/ src/ && cp -r ./src ./esm",
-    "build:cjs": "babel --delete-dir-on-start --env-name cjs -d lib/ src/ && cp -r ./webpack ./lib/webpack",
+    "build:esm": "babel --delete-dir-on-start -d esm/ src/",
+    "build:cjs": "babel --delete-dir-on-start --env-name cjs -d lib/ src/",
     "prepublish": "yarn build"
   },
   "peerDependencies": {
@@ -30,5 +31,8 @@
     "eslint-plugin-promise": "^4.2.1",
     "eslint-plugin-standard": "^4.0.2",
     "prettier": "^2.1.2"
+  },
+  "dependencies": {
+    "core-js": "^3.9.1"
   }
 }
