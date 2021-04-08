@@ -1,7 +1,7 @@
 "use strict";
 
 /**
- * @typedef {import('../models/index').serializer} serializerType
+ * @typedef {import('../../../MicroLib/src/models').serializer} serializerType
  */
 
 /**

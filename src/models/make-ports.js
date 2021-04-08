@@ -1,7 +1,7 @@
 "use strict";
 
 import portHandler from "./port-handler";
-import async from "../lib/async-error";
+import async from "@module-federation/aegis/esm/lib/async-error";
 import domainEvents from "./domain-events";
 
 const TIMEOUT_SECONDS = 60;
@@ -14,8 +14,7 @@ function getTimerArgs(args) {
 }
 
 /**
- * We keep track of recursive retries by passing a new argument each time
- * @param {*} args
+ * Add member to tracking array
  */
 function getRetries(args) {
   const timerArgs = getTimerArgs(args);
@@ -27,7 +26,7 @@ function getRetries(args) {
 }
 
 /**
- * Implements recursive retry if port times out.
+ * Implement recursive retry if port times out.
  * @param {{
  *  portName: string,
  *  portConf: import('../models').ports,
@@ -43,7 +42,7 @@ function setPortTimeout(options) {
 
   const noOp = {
     stopTimer: () => void 0,
-    done: () => true,
+    expired: () => true,
   };
 
   if (noTimer) {
@@ -63,7 +62,7 @@ function setPortTimeout(options) {
     // Invoke optional custom handler
     if (handler) handler(options);
 
-    // Keep track of retry attempts by expanding the array arg
+    // Count retries by adding to an array passed on the stack 
     await model[portName](...timerArgs.nextArg);
 
     // Retry worked
@@ -72,7 +71,7 @@ function setPortTimeout(options) {
 
   return {
     stopTimer: () => clearTimeout(timerId),
-    done: () => timerArgs.count > maxRetry,
+    expired: () => timerArgs.count > maxRetry,
   };
 }
 
@@ -89,7 +88,7 @@ function getPortCallback(cb) {
 /**
  * Are we compensating for a failed or canceled transaction?
  * @param {import(".").Model} model
- * @returns
+ * @returns {boolean}
  */
 async function isUndoRunning(model) {
   const latest = await model.find(model.getId());
@@ -115,14 +114,12 @@ function addPortListener(portName, portConf, observer, disabled) {
     observer.on(
       portConf.consumesEvent,
       async function ({ eventName, model }) {
-        // Don't call any more ports if we are backing out a transaction.
+        // Don't call any more ports if we are reversing a transaction.
         if (await isUndoRunning(model)) {
-          console.warn("undo running, canceling port opertion");
+          console.warn("undo running, canceling port operation");
           return;
         }
-
         console.info(`event ${eventName} fired: calling port ${portName}`);
-
         // invoke this port
         await async(model[portName](callback));
       },
@@ -221,7 +218,7 @@ export default function makePorts(ports, adapters, observer) {
             console.error({ file: __filename, func: port, args, error });
 
             // Is the timer still running?
-            if (timer.done()) {
+            if (timer.expired()) {
               // Try to back out previous transactions.
               const result = await async(this.undo());
             }

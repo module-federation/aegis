@@ -1,4 +1,4 @@
-import async from "../lib/async-error";
+import async from "@module-federation/aegis/esm/lib/async-error";
 import domainEvents from "./domain-events";
 
 /**
@@ -26,7 +26,7 @@ export default async function compensate(model) {
           }
           throw new Error("undo failed on port: ", port, result.error);
         }
-        return arr.splice(0, index);
+        return Promise.resolve(arr.splice(0, index));
       }
     );
 
