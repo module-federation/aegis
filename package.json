@@ -41,6 +41,7 @@
     "import-fresh": "^3.3.0",
     "jwks-rsa": "^2.0.1",
     "mongodb": "^3.6.3",
+    "mongodb-client-encryption": "^1.2.3",
     "regenerator-runtime": "^0.13.7"
   }
 }
