@@ -1,8 +1,8 @@
 'use strict'
 
 import { withId, withTimestamp } from './mixins';
-import asyncPipe from '@module-federation/aegis/esm/lib/async-pipe';
-import uuid from '@module-federation/aegis/esm/lib/uuid';
+import asyncPipe from '../lib/async-pipe';
+import uuid from '../lib/uuid';
 
 /**
  * @typedef {import('../models/model-factory').EventType} EventType

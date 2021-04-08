@@ -1,6 +1,6 @@
 "use strict";
 
-import pipe from "@module-federation/aegis/esm/lib/pipe";
+import pipe from "../lib/pipe";
 
 /**
  * @callback functionalMixin

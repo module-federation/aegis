@@ -1,4 +1,4 @@
-import async from "@module-federation/aegis/esm/lib/async-error";
+import async from "../lib/async-error";
 import domainEvents from "./domain-events";
 
 /**

@@ -1,8 +1,8 @@
 "use strict";
 
-import checkAcl from "@module-federation/aegis/esm/lib/check-acl";
-import async from "@module-federation/aegis/esm/lib/async-error";
-import domainEvents from "@module-federation/aegis/esm/models/domain-events";
+import checkAcl from "../lib/check-acl";
+import async from "../lib/async-error";
+import domainEvents from "../models/domain-events";
 
 const commandType = {
   /**

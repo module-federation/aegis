@@ -1,6 +1,6 @@
 "use strict";
 
-import async from "@module-federation/aegis/esm/lib/async-error";
+import async from "../lib/async-error";
 
 export function save(service) {
   return async function ({ model }) {

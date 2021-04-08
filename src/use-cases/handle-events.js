@@ -1,6 +1,6 @@
 import DataSourceFactory from "../datasources";
-import ModelFactory from "@module-federation/aegis/esm/models";
-import publishEvent from "@module-federation/aegis/esm/services/publish-event";
+import ModelFactory from "../models";
+import publishEvent from "../services/publish-event";
 
 /**
  *
