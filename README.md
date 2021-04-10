@@ -16,3 +16,7 @@ Youll also need: https://github.com/module-federation/MicroLib-Example (the remo
 8) `yarn start-all` or if Kafka is running already, `yarn start`
 
 
+#Contributing
+1) Git clone Aegis and run `yarn link`
+2) Git clone Microlib and run `yarn link "@module-federation/aegis"`
+3) Then follow the steps mentioned above under the Using Aegis section
