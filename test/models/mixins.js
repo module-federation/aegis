@@ -7,7 +7,7 @@ const {
   fromTimestamp,
   withSerializers,
   withDeserializers,
-} = require("../../src/models/mixins");
+} = require("../../lib/models/mixins");
 
 describe("Mixins", function () {
   it("should return strings in place of symbols", function () {

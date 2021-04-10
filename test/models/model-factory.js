@@ -2,7 +2,7 @@
 
 var assert = require('assert');
 
-import ModelFactory from '../../src/models';
+import ModelFactory from '../../lib/models';
 
 
 describe('ModelFactory', function () {

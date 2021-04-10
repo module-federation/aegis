@@ -4,7 +4,7 @@ var assert = require('assert');
 
 import addModelFactory from '../../lib/use-cases/add-model'
 import DataSourceFactory from '../../lib/datasources'
-import ModelFactory from '../../lib/lib/models';
+import ModelFactory from '../../lib/models';
 import ObserverFactory from '../../lib/models/observer';
 
 describe('Use-Cases', function () {

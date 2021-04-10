@@ -2,7 +2,7 @@
 
 var assert = require('assert');
 
-import Model from '../models/model'
+import Model from '../../lib/models/model'
 
 
 describe('Model', function () {

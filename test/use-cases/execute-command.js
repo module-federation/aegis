@@ -1,8 +1,8 @@
 var assert = require("assert");
 import DataSourceFactory from "../../lib/datasources";
-import ObserverFactory from "../../src/models/observer";
-import ModelFactory from "../../src/models/model-factory";
-import checkAcl from "../../src/esm/lib/check-acl";
+import ObserverFactory from "../../lib/models/observer";
+import ModelFactory from "../../lib/models/model-factory";
+import checkAcl from "../../lib/lib/check-acl";
 
 const {
   default: executeCommand,
