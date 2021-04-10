@@ -10,7 +10,7 @@ Youll also need: https://github.com/module-federation/MicroLib-Example (the remo
 2) `cd Microlib-Example`
 3) `yarn install && yarn build`
 4) `yarn start`
-5) clone Microlib
+5) clone Microlib checkout this branch: `aegis-migration`
 6) `cd Microlib`
 7) `yarn install`
 8) `yarn start-all` or if Kafka is running already, `yarn start`
