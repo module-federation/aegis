@@ -8,13 +8,13 @@ import {
   deleteModels,
   initCache,
   getConfig,
-} from "@module-federation/aegis/esm/controllers";
+} from "./controllers";
 
-import { Persistence } from "@module-federation/aegis/esm/services/persistence-service";
-import { save, find, close } from "@module-federation/aegis/esm//adapters/persistence-adapter";
-import http from "@module-federation/aegis/esm/adapters/http-adapter";
+import { Persistence } from "./services/persistence-service";
+import { save, find, close } from "./adapters/persistence-adapter";
+import http from "./adapters/http-adapter";
 
-const Server = (() => {
+const Server = () => {
   const port = process.env.PORT || "8070";
   const sslPort = process.env.SSL_PORT || "8707";
   const apiRoot = process.env.API_ROOT || "/microlib/api";
@@ -27,15 +27,15 @@ const Server = (() => {
   const remoteEntry = __non_webpack_require__("./remoteEntry");
 
   const getRemoteModules = remoteEntry.microlib
-    .get("./models")
-    .then(factory => {
-      const Module = factory();
-      return Module.initRemotes;
-    });
+      .get("./models")
+      .then(factory => {
+        const Module = factory();
+        return Module.initRemotes;
+      });
 
   const getRemoteEntries = remoteEntry.microlib
-    .get("./remoteEntries")
-    .then(factory => factory());
+      .get("./remoteEntries")
+      .then(factory => factory());
 
   function makeAdmin(app, adapter) {
     app.get(`${apiRoot}/config`, adapter(getConfig()));
@@ -93,6 +93,6 @@ const Server = (() => {
     clear,
     start,
   };
-})();
+}
 
 export default Server;
