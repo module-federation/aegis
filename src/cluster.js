@@ -1,11 +1,10 @@
 "use strict";
 
 const cluster = require("cluster");
-const numCores = require("os").cpus().length;
+const numCores = process.env.CPU_CORES || require("os").cpus().length;
 let reloading = false;
 let reloadList = [];
 let workerList = [];
-
 /**
  * Start a new worker,
  * listen for a reload request from it,
@@ -117,7 +116,6 @@ module.exports.startCluster = function (startService, waitms = 2000) {
     });
 
     setInterval(continueReload, 60000, startWorker);
-
     console.log(`master starting ${numCores} workers 🌎`);
     // Run a copy of this program on each core
     for (let i = 0; i < numCores; i++) {
