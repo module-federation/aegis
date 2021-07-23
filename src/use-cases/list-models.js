@@ -1,24 +1,21 @@
 "use strict";
 
-function parseDate(dateStr) {
-  return new Date(Date.parse(dateStr)).getDate();
-}
-
-function parseMonth(dateStr) {
-  return new Date(Date.parse(dateStr)).getMonth();
-}
-
 const DateFunctions = {
   today: list =>
-    list.filter(m => parseDate(m.createTime) == new Date().getDate()).length,
+    list.filter(m => new Date(m.createTime).getDate() === new Date().getDate())
+      .length,
   yesterday: list =>
-    list.filter(m => parseDate(m.createTime) == new Date().getDate() - 1)
-      .length,
+    list.filter(
+      m => new Date(m.createTime).getDate() === new Date().getDate() - 1
+    ).length,
   thisMonth: list =>
-    list.filter(m => parseMonth(m.createTime) == new Date().getMonth()).length,
+    list.filter(
+      m => new Date(m.createTime).getMonth() === new Date().getMonth()
+    ).length,
   lastMonth: list =>
-    list.filter(m => parseMonth(m.createTime) == new Date().getMonth() - 1)
-      .length,
+    list.filter(
+      m => new Date(m.createTime).getMonth() === new Date().getMonth() - 1
+    ).length,
 };
 
 /**
@@ -29,6 +26,9 @@ const DateFunctions = {
  */
 async function parseQuery(query, repository) {
   if (query?.count) {
+    if (typeof query.count === "number") {
+      return repository.list(query);
+    }
     const dateFunc = DateFunctions[query.count];
 
     if (dateFunc) {
@@ -62,12 +62,12 @@ async function parseQuery(query, repository) {
 /**
  * @callback listModels
  * @param {{key1:string, keyN:string}} query
- * @returns {Promise<Array<import("../models/model").Model)>>}
+ * @returns {Promise<Array<import("../domain/model").Model)>>}
  *
  * @param {{repository:import('../datasources/datasource').default}}
  * @returns {listModels}
  */
-export default function listModelsFactory({ repository } = {}) {
+export default function makeListModels({ repository } = {}) {
   return async function listModels(query) {
     return parseQuery(query, repository);
   };

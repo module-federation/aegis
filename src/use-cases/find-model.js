@@ -7,8 +7,8 @@ import fetchRelatedModels from "./fetch-related-models";
  * @typedef {Object} ModelParam
  * @property {String} modelName
  * @property {import('../datasources/datasource').default} repository
- * @property {import('../models/observer').Observer} observer
- * @property {import('../models/index').ModelFactory} models
+ * @property {import('../domain/observer').Observer} observer
+ * @property {import('../domain/index').ModelFactory} models
  * @property {...Function} handlers
  */
 
@@ -16,12 +16,12 @@ import fetchRelatedModels from "./fetch-related-models";
  * @callback findModel
  * @param {string} id
  * @param {{key1:string,keyN:string}} query
- * @returns {Promise<import("../models/model").Model>}
+ * @returns {Promise<import("../domain/model").Model>}
  *
  * @param {ModelParam} param0
  * @returns {findModel}
  */
-export default function findModelFactory({ repository } = {}) {
+export default function makeFindModel({ repository } = {}) {
   return async function findModel(id, query) {
     const model = await repository.find(id);
 

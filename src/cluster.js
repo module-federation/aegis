@@ -1,11 +1,13 @@
 "use strict";
 
 const cluster = require("cluster");
-const numCores = process.env.CPU_CORES || require("os").cpus().length;
+const numCores = require("os").cpus().length;
 let reloading = false;
 let reloadList = [];
 let workerList = [];
+
 /**
+ * @typedef {function()} startWorker
  * Start a new worker,
  * listen for a reload request from it,
  * add it to `workerList` which is used during the rolling restart.
@@ -36,9 +38,9 @@ function startWorker() {
   });
 
   worker.on("message", function (message) {
-    // console.log({ ...message, data: "..." });
     if (message.pid === process.pid) return;
-    if (["saveBroadcast", "deleteBroadcast"].includes(message.cmd)) {
+
+    if (/.*Broadcast$/.test(message.cmd)) {
       for (const id in cluster.workers) {
         if (cluster.workers[id].process.pid !== message.pid) {
           cluster.workers[id].send({
@@ -55,6 +57,7 @@ function startWorker() {
 }
 
 /**
+ * @typedef {function()} stopWorker
  * Gracefully stop a worker on the reload list.
  */
 function stopWorker() {
@@ -68,7 +71,7 @@ function stopWorker() {
 
 /**
  * Control execution of stop/start request
- * @param {function()} callback - a callback that starts your app
+ * @param {stopWorker|startWorker} callback
  * @param {number} waitms - Delay execution by `waitms`
  * milliseconds so your app has time to start
  */
@@ -101,7 +104,7 @@ function continueReload(callback, waitms) {
  * @param {number} [waitms] - Wait `waitms` milliseconds between start
  * and stop to allow time for your app to come up. Default is 2000 ms.
  */
-module.exports.startCluster = function (startService, waitms = 2000) {
+exports.startCluster = function (startService, waitms = 2000) {
   if (cluster.isMaster) {
     // Worker stopped. If reloading, start a new one.
     cluster.on("exit", function (worker) {
@@ -115,7 +118,8 @@ module.exports.startCluster = function (startService, waitms = 2000) {
       continueReload(stopWorker, waitms);
     });
 
-    setInterval(continueReload, 60000, startWorker);
+    setInterval(continueReload, 60000, startWorker, waitms);
+
     console.log(`master starting ${numCores} workers 🌎`);
     // Run a copy of this program on each core
     for (let i = 0; i < numCores; i++) {

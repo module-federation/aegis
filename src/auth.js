@@ -1,12 +1,9 @@
 "use strict";
-console.log(process.cwd())
-
+const path = require('path')
 const jwt = require("express-jwt");
 const jwks = require("jwks-rsa");
-
-//TODO: This needs to be dynamic
-const keySet = require(process.cwd() + "/auth/key-set.json");
-
+console.log('zackwashere',path.resolve(process.cwd(),"./auth/key-set.json"))
+const keySet = require(path.resolve(process.cwd(),"./auth/key-set.json"));
 const authEnabled = /true/i.test(process.env.AUTH_ENABLED);
 
 module.exports = function (app, path) {

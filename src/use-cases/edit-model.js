@@ -2,24 +2,24 @@
 
 import executeCommand from "./execute-command";
 import invokePort from "./invoke-port";
-import async from "../lib/async-error";
-import domainEvents from "../models/domain-events";
+import async from "../domain/util/async-error";
+import domainEvents from "../domain/domain-events";
 
 /**
  * @typedef {Object} ModelParam
  * @property {String} modelName
- * @property {import('../models/model-factory').ModelFactory} models
+ * @property {import('../domain/model-factory').ModelFactory} models
  * @property {import('../datasources/datasource').default} repository
- * @property {import('../models/observer').Observer} observer
+ * @property {import('../domain/observer').Observer} observer
  * @property {Function[]} handlers
  */
 
 /**
- * @typedef {function(ModelParam):Promise<import("../models").Model>} editModel
+ * @typedef {function(ModelParam):Promise<import("../domain").Model>} editModel
  * @param {ModelParam} param0
- * @returns {function():Promise<import("../models/model").Model>}
+ * @returns {function():Promise<import("../domain/model").Model>}
  */
-export default function editModelFactory({
+export default function makeEditModel({
   modelName,
   models,
   repository,
@@ -31,17 +31,7 @@ export default function editModelFactory({
   handlers.forEach(handler => observer.on(eventName, handler));
 
   // Add an event that can be used to edit this model
-  observer.on(domainEvents.editModel(eventName), editModelHandler);
-  // Add listener that broadcasts this edit to the master if running in cluster mode.
-  observer.on(eventName, eventData =>
-    process.send({
-      cmd: "saveBroadcast",
-      pid: process.pid,
-      id: eventData.model.getId(),
-      data: eventData.model,
-      name: modelName,
-    })
-  );
+  observer.on(domainEvents.editModel(modelName), editModelHandler);
 
   async function editModel(id, changes, command) {
     const model = await repository.find(id);
@@ -60,7 +50,6 @@ export default function editModelFactory({
       await repository.save(id, updated);
       await observer.notify(event.eventName, event);
     } catch (error) {
-      await repository.save(id, model);
       throw new Error(error);
     }
 

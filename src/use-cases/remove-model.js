@@ -3,16 +3,16 @@
 /**
  * @typedef {Object} ModelParam
  * @property {String} modelName
- * @property {import('../models').ModelFactory} models
+ * @property {import('../domain').ModelFactory} models
  * @property {import('../datasources/datasource').default} repository
- * @property {import('../models/observer').Observer} observer
+ * @property {import('../domain/observer').Observer} observer
  * @property {...Function} handlers
  */
 
 /**
  * @callback removeModel
  * @param {string} id
- * @returns {Promise<import("../models").Model>}
+ * @returns {Promise<import("../domain").Model>}
  */
 
 /**
@@ -29,16 +29,6 @@ export default function removeModelFactory({
   const eventType = models.EventTypes.DELETE;
   const eventName = models.getEventName(eventType, modelName);
   handlers.forEach(handler => observer.on(eventName, handler));
-
-  // Add listener that broadcasts the delete to the cluster
-  observer.on(eventName, eventData =>
-    process.send({
-      cmd: "deleteBroadcast",
-      pid: process.pid,
-      id: eventData.modelId,
-      name: modelName,
-    })
-  );
 
   return async function removeModel(id) {
     const model = await repository.find(id);

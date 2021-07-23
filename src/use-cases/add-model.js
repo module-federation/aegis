@@ -1,22 +1,22 @@
 "use strict";
 
-import domainEvents from "../models/domain-events";
+import domainEvents from "../domain/domain-events";
 
 /**
  * @typedef {Object} dependencies injected dependencies
  * @property {String} modelName - name of the domain model
- * @property {import('../models/model-factory').ModelFactory} models - model factory
- * @property {import('../datasources/datasource').default} repository - persistence service
- * @property {import('../models/observer').Observer} observer - application events, propagated to domain
+ * @property {import('../domain/model-factory').ModelFactory} models - model factory
+ * @property {import('../domain/datasource').default
+ * @property {import('../domain/observer').Observer} observer - application events, propagated to domain
  * @property {...Function} handlers - event handlers can be registered by the domain
  */
 
 /**
- * @typedef {function(ModelParam):Promise<import("../models").Model>} addModel
+ * @typedef {function(ModelParam):Promise<import("../domain").Model>} addModel
  * @param {dependencies} param0
- * @returns {function():Promise<import('../models').Model>}
+ * @returns {function():Promise<import('../domain').Model>}
  */
-export default function addModelFactory({
+export default function makeAddModel({
   modelName,
   models,
   repository,
@@ -28,17 +28,7 @@ export default function addModelFactory({
   handlers.forEach(handler => observer.on(eventName, handler));
 
   // Add an event whose callback invokes this factory.
-  observer.on(domainEvents.addModel(eventName), addModel, false);
-  // Add listener that broadcasts the save to the cluster
-  observer.on(eventName, eventData =>
-    process.send({
-      cmd: "saveBroadcast",
-      pid: process.pid,
-      id: eventData.model.getId(),
-      data: eventData.model,
-      name: modelName,
-    })
-  );
+  observer.on(domainEvents.addModel(modelName), addModel, false);
 
   async function addModel(input) {
     const model = await models.createModel(
@@ -53,7 +43,6 @@ export default function addModelFactory({
       await repository.save(model.getId(), model);
       await observer.notify(event.eventName, event);
     } catch (error) {
-      await repository.delete(model.getId());
       throw new Error(error);
     }
 
