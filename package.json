@@ -1,6 +1,6 @@
 {
   "name": "@module-federation/aegis",
-  "version": "0.0.1-alpha.17",
+  "version": "0.0.1-alpha.18",
   "main": "lib/",
   "module": "esm/",
   "repository": "git@github.com:module-federation/aegis.git",
@@ -12,7 +12,7 @@
     "build:esm": "babel --delete-dir-on-start -d esm/ src/ && cp src/index.js esm && cp src/cluster.js esm && cp src/auth.js esm",
     "build:cjs": "babel --delete-dir-on-start --env-name cjs -d lib/ src/ && cp src/index.js lib && cp src/cluster.js lib && cp src/auth.js esm",
     "prepublish": "yarn build",
-    "test": "mocha --recursive -r esm"
+    "test": "jest"
   },
   "peerDependencies": {
     "core-js": "^3"
