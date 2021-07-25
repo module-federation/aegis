@@ -2,7 +2,7 @@
 
 var assert = require("assert");
 
-import ModelFactory from "@module-federation/aegis/lib/domain";
+import ModelFactory from "../../src/domain";
 
 describe("ModelFactory", function () {
   describe("#createModel()", function () {
