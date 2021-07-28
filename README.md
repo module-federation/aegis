@@ -1,13 +1,18 @@
 # aegis
 
-See https://github.com/module-federation/MicroLib for a working example of the federation server.
+See https://github.com/module-federation/MicroLib for a working example of the federation server and all documentation.
 
 ## Using Aegis
 
-1) clone Microlib
-2) `cd Microlib`
-3) `yarn install && yarn build`
-4) `yarn start`
+```shell
+git clone https://github.com/module-federation/MicroLib
+cd MicroLib
+cp dotenv.example .env
+yarn install --frozen-lockfile
+yarn build
+yarn start
+yarn demo
+```
 
 ## Contributing
 1) Git clone Aegis and run `yarn link`
