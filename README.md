@@ -2,6 +2,9 @@
 
 See https://github.com/module-federation/MicroLib for a working example of the federation server and all documentation. Check back for additional examples and server templates soon.
 
+[![Open in Visual Studio Code](https://open.vscode.dev/badges/open-in-vscode.svg)](https://open.vscode.dev/module-federation/microlib)
+
+
 ## Using Aegis
 
 ```shell
