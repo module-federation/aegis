@@ -148,7 +148,7 @@
  */
 
 import ModelFactory from "./model-factory";
-import makeAdapters from "./make-adapters";
+import bindAdapters from "./bind-adapters";
 
 import {
   importRemoteModels,
@@ -184,7 +184,7 @@ const deleteEvent = model => ({
 
 function register(model, services, adapters, isCached = false) {
   if (model.modelName && model.endpoint && model.factory) {
-    const serviceAdapters = makeAdapters(model.ports, adapters, services);
+    const serviceAdapters = bindAdapters(model.ports, adapters, services);
 
     const dependencies = {
       ...model.dependencies,
