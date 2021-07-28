@@ -34,7 +34,7 @@ async function lookup(hostname) {
 
 async function getHostName() {
   const hostname = await lookup(FQDN);
-  return hostname ? hostname : "localhost";
+  return hostname || "localhost";
 }
 
 /**@type import("ws/lib/websocket") */
@@ -45,7 +45,13 @@ export default async function publishEvent(event, observer) {
   if (!event) return;
 
   if (!hostname) hostname = await getHostName();
-  const serializedEvent = JSON.stringify(event);
+
+  try {
+    const serializedEvent = JSON.stringify(event);
+  } catch (error) {
+    console.error("unable to serialize event", event, error);
+    return;
+  }
 
   function webswitch() {
     console.debug("webswitch sending", event);
@@ -55,9 +61,11 @@ export default async function publishEvent(event, observer) {
 
       ws.on("message", function (message) {
         const event = JSON.parse(message);
-        if (event.eventName) {
+        if (event.eventName && observer) {
           observer.notify(event.eventName, event);
+          return;
         }
+        console.warn("eventName or observer missing", message);
       });
 
       ws.on("open", function () {
