@@ -1,20 +1,15 @@
 # aegis
 
-To Read More about Aegis, see it in action inside of the Microlib example: https://github.com/module-federation/MicroLib (the host/orchestrator)
+See https://github.com/module-federation/MicroLib for a working example of the federation server.
 
 ## Using Aegis
 
-1) clone Microlib-Example
-2) `cd Microlib-Example`
+1) clone Microlib
+2) `cd Microlib`
 3) `yarn install && yarn build`
 4) `yarn start`
-5) clone Microlib checkout this branch: `aegis-migration`
-6) `cd Microlib`
-7) `yarn install`
-8) `yarn start-all` or if Kafka is running already, `yarn start`
 
-
-#Contributing
+## Contributing
 1) Git clone Aegis and run `yarn link`
 2) Git clone Microlib and run `yarn link "@module-federation/aegis"`
 3) Then follow the steps mentioned above under the Using Aegis section
