@@ -2,7 +2,7 @@
 
 export function importWasm() {
   console.log("importing wasm <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<,");
-  var factory = import("microservices/wasm/demo");
+  const factory = await import("microservices/wasm/demo");
 
   factory().then(instance => {
     instance._sayHi(); // direct calling works
