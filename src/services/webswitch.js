@@ -42,15 +42,13 @@ export default async function publishEvent(event, observer) {
   if (!hostAddress) hostAddress = await getHostAddress(FQDN);
 
   function webswitch() {
-    console.debug("webswitch sending", event);
-
     if (!ws) {
       ws = new WebSocket(`ws://${hostAddress}:${PORT}${PATH}`);
 
-      ws.on("message", function (message) {
-        const event = JSON.parse(message);
-        if (event.eventName && observer) {
-          observer.notify(event.eventName, event);
+      ws.on("message", async function (message) {
+        const eventData = JSON.parse(message);
+        if (eventData.eventName && observer) {
+          await observer.notify(eventData.eventName, eventData);
           return;
         }
         console.warn("eventName or observer missing", message);
