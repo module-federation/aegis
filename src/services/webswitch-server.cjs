@@ -2,9 +2,9 @@
 const WebSocketServer = require("ws").Server;
 const nanoid = require("nanoid").nanoid;
 const server = new WebSocketServer({ clientTracking: true, port: 8062 });
-let messagesSent = 0;
 const startTime = Date.now();
 const uptime = () => Math.round(Math.abs((Date.now() - startTime) / 1000 / 60));
+let messagesSent = 0;
 
 server.broadcast = function (data, sender) {
   server.clients.forEach(function (client) {

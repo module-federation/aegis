@@ -1,5 +1,12 @@
 import domainEvents from "./domain-events";
 
+async function reportStatus(status, eventFn, model) {
+  const result = { compensateResult: status };
+  await model.emit(eventFn(model), result);
+  await model.update(result);
+  return;
+}
+
 /**
  * Steps through the sequence of port calls
  * in LIFO order executing their undo functions.
@@ -8,19 +15,15 @@ import domainEvents from "./domain-events";
  */
 export default async function compensate(model) {
   try {
-    const updatedModel = await model.update({ compensate: true });
     const portFlow = model.getPortFlow();
     const ports = model.getPorts();
 
-    await updatedModel.emit(
-      domainEvents.undoStarted(updatedModel),
-      "undo starting"
-    );
+    await model.emit(domainEvents.undoStarted(model), "undo starting");
 
     const undoModel = await Promise.resolve(
       portFlow.reduceRight(async function (model, port, index, arr) {
         if (ports[port].undo) {
-          console.log("calling undo on port: ", port);
+          console.info("calling undo on port: ", port);
 
           try {
             return model.then(async function (model) {
@@ -31,25 +34,21 @@ export default async function compensate(model) {
               });
             });
           } catch (error) {
-            console.error(error);
+            console.error(compensate.name, error.message);
           }
         }
         return model;
-      }, Promise.resolve(updatedModel))
+      }, model.update({ compensate: true }))
     );
 
     if (undoModel.getPortFlow().length > 0) {
-      await model.emit(domainEvents.undoFailed(model), msg);
-      const model = await undoModel.update({
-        compensateResult: "INCOMPLETE",
-      });
+      await reportStatus("INCOMPLETE", domainEvents.undoFailed, undoModel);
       return;
     }
 
-    await undoModel.update({ compensateResult: "COMPLETE" });
-    await undoModel.emit(domainEvents.undoWorked(model), compensateResult);
+    await reportStatus("COMPLETE", domainEvents.undoWorked, undoModel);
   } catch (error) {
     await model.emit(domainEvents.undoFailed(model), error.message);
-    console.error(error);
+    console.error(compensate.name, error.message);
   }
 }
