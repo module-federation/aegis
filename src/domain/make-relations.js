@@ -126,7 +126,7 @@ export default function makeRelations(relations, datasource, observer) {
                 ...args
               );
 
-              if (event?.args.length > 0) {
+              if (event && event.args.length > 0) {
                 await updateForeignKeys(this, event, rel, ds);
               }
 
