@@ -157,6 +157,7 @@ import {
   importModelCache,
   importAdapterCache,
   importServiceCache,
+  importWasm,
 } from "./import-remotes";
 
 /**
@@ -307,5 +308,7 @@ export async function importRemoteCache(name) {
   }
   register(model, serviceCache, adapterCache, true);
 }
+
+importWasm();
 
 export default ModelFactory;

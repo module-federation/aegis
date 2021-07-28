@@ -1,5 +1,14 @@
 "use strict";
 
+export function importWasm() {
+  var factory = import("microservices/wasm");
+
+  factory().then(instance => {
+    instance._sayHi(); // direct calling works
+    instance.ccall("sayHi"); // using ccall etc. also work
+  });
+}
+
 /**
  * @returns {Promise<import('.').ModelSpecification[]>}
  */

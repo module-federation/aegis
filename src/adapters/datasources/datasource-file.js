@@ -2,8 +2,8 @@ import fs from "fs";
 import path from "path";
 import { DataSourceMemory } from "./datasource-memory";
 
-const directoryName = process.env.DATASOURCE_FILE_DIRECTORY || __dirname;
-const directoryPath = path.resolve(__dirname, directoryName) || __dirname;
+const directoryName = process.env.DATASOURCE_FILE_DIRECTORY || "/tmp";
+const directoryPath = path.resolve(process.cwd(), directoryName) || "/tmp";
 
 /**
  * Persistent storage on filesystem
