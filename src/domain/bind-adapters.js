@@ -11,7 +11,7 @@
  * @param {{[x:string]:function(*):function(*):any}} adapters - service adapters
  * @param {*} [services] - (micro-)services
  */
-export default function makeAdapters(ports, adapters, services = {}) {
+export default function bindAdapters(ports, adapters, services = {}) {
   if (!ports || !adapters) {
     return;
   }
