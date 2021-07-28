@@ -21,7 +21,7 @@ const FQDN = process.env.WEBSWITCH_HOST || "webswitch.aegis.dev";
 const PORT = 8062;
 const PATH = "/webswitch/broadcast";
 
-async function getHostName(hostname) {
+async function getHostAddress(hostname) {
   try {
     const result = await dns.lookup(hostname);
     console.debug("server address", result, result.address);
@@ -34,18 +34,18 @@ async function getHostName(hostname) {
 
 /**@type import("ws/lib/websocket") */
 let ws;
-let hostname;
+let hostAddress;
 
 export default async function publishEvent(event, observer) {
   if (!event) return;
 
-  if (!hostname) hostname = await getHostName(FQDN);
+  if (!hostAddress) hostAddress = await getHostAddress(FQDN);
 
   function webswitch() {
     console.debug("webswitch sending", event);
 
     if (!ws) {
-      ws = new WebSocket(`ws://${hostname}:${PORT}${PATH}`);
+      ws = new WebSocket(`ws://${hostAddress}:${PORT}${PATH}`);
 
       ws.on("message", function (message) {
         const event = JSON.parse(message);
