@@ -21,7 +21,7 @@ const FQDN = process.env.WEBSWITCH_HOST || "webswitch.aegis.dev";
 const PORT = 8062;
 const PATH = "/webswitch/broadcast";
 
-async function lookup(hostname) {
+async function getHostName(hostname) {
   try {
     const result = await dns.lookup(hostname);
     console.debug("server address", result, result.address);
@@ -32,11 +32,6 @@ async function lookup(hostname) {
   return "localhost";
 }
 
-async function getHostName() {
-  const hostname = await lookup(FQDN);
-  return hostname || "localhost";
-}
-
 /**@type import("ws/lib/websocket") */
 let ws;
 let hostname;
@@ -44,14 +39,7 @@ let hostname;
 export default async function publishEvent(event, observer) {
   if (!event) return;
 
-  if (!hostname) hostname = await getHostName();
-
-  try {
-    const serializedEvent = JSON.stringify(event);
-  } catch (error) {
-    console.error("unable to serialize event", event, error);
-    return;
-  }
+  if (!hostname) hostname = await getHostName(FQDN);
 
   function webswitch() {
     console.debug("webswitch sending", event);
@@ -79,6 +67,7 @@ export default async function publishEvent(event, observer) {
     }
 
     function send() {
+      const serializedEvent = JSON.stringify(event);
       if (ws.readyState) {
         ws.send(serializedEvent);
         return;
