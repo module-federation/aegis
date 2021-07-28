@@ -1,7 +1,8 @@
 "use strict";
 
 export function importWasm() {
-  var factory = import("microservices/wasm");
+  console.log("importing wasm <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<,");
+  var factory = import("microservices/wasm/demo");
 
   factory().then(instance => {
     instance._sayHi(); // direct calling works
