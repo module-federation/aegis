@@ -309,6 +309,6 @@ export async function importRemoteCache(name) {
   register(model, serviceCache, adapterCache, true);
 }
 
-importWasm();
+importWasm().then(()=> console.log("imported wasm compiled from c");
 
 export default ModelFactory;
