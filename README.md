@@ -7,8 +7,6 @@ See https://github.com/module-federation/MicroLib for a working example of the f
 
 [![Open in Visual Studio Code](https://open.vscode.dev/badges/open-in-vscode.svg)](https://open.vscode.dev/module-federation/microlib)
 
-or
-
 ```shell
 git clone https://github.com/module-federation/MicroLib
 cd MicroLib
