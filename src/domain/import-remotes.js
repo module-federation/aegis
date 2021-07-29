@@ -1,12 +1,5 @@
 "use strict";
 
-export async function importWasm() {
-  console.log("importing wasm <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<,");
-  require("./demo")
-    .factory()
-    .then(inst => inst._sayHi());
-}
-
 /**
  * @returns {Promise<import('.').ModelSpecification[]>}
  */
