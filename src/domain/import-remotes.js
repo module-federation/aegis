@@ -1,13 +1,10 @@
 "use strict";
 
-export function importWasm() {
+export async function importWasm() {
   console.log("importing wasm <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<,");
-  const factory = await import("microservices/wasm/demo");
-
-  factory().then(instance => {
-    instance._sayHi(); // direct calling works
-    instance.ccall("sayHi"); // using ccall etc. also work
-  });
+  require("./demo")
+    .factory()
+    .then(inst => inst._sayHi());
 }
 
 /**
