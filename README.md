@@ -8,13 +8,13 @@ See the [MicroLib](https://github.com/module-federation/MicroLib) repo for a wor
 [![Open in Visual Studio Code](https://open.vscode.dev/badges/open-in-vscode.svg)](https://open.vscode.dev/module-federation/microlib)
 
 ```shell
-> git clone https://github.com/module-federation/MicroLib
-> cd MicroLib
-> cp dotenv.example .env
-> yarn
-> yarn build
-> yarn start
-> yarn demo
+git clone https://github.com/module-federation/MicroLib
+cd MicroLib
+cp dotenv.example .env
+yarn
+yarn build
+yarn start
+yarn demo
 ```
 
 ## Contributing
