@@ -1,7 +1,7 @@
 "use strict";
 
 import executeCommand from "./execute-command";
-import fetchRelatedModels from "./fetch-related-models";
+import fetchRelatedModels from "./find-related-models";
 
 /**
  * @typedef {Object} ModelParam
