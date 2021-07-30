@@ -4,7 +4,6 @@ async function reportStatus(status, eventFn, model) {
   const result = { compensateResult: status };
   await model.emit(eventFn(model), result);
   await model.update(result);
-  return;
 }
 
 /**
