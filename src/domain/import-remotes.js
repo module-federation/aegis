@@ -1,6 +1,6 @@
 "use strict";
 
-/**
+/**m
  * @returns {Promise<import('.').ModelSpecification[]>}
  */
 export async function importRemoteModels(remoteEntries) {

@@ -228,7 +228,8 @@ function register(model, services, adapters, isCached = false) {
 async function importModels(remoteEntries, services, adapters) {
   const models = await importRemoteModels(remoteEntries);
 
-  console.info(models.models);
+console.debug("++++++++++++++",models);
+  //console.info(domain.models);
 
   Object.values(models.models).forEach(model =>
     register(model, services, adapters)
