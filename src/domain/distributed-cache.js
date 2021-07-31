@@ -323,17 +323,11 @@ export default function DistributedCacheManager({
    * @param {*} eventName
    */
   function handleRequest(requestName, eventName) {
-    if (useWebSwitch) {
-      observer.on(
-        requestName,
-        searchCache(async event => webswitch({ ...event, eventName }))
-      );
-    } else {
-      listen(
-        requestName,
-        searchCache(async event => notify({ ...event, eventName }))
-      );
-    }
+    const subscribe = useWebSwitch ? webswitch : listen;
+    subscribe(
+      requestName,
+      searchCache(async event => publish({ ...event, eventName }))
+    );
   }
 
   /**
@@ -391,7 +385,7 @@ export default function DistributedCacheManager({
       ),
     ];
 
-    console.debug("local models", localModels, "remote models", remoteModels);
+    console.info("local models", localModels, "remote models", remoteModels);
 
     // Forward requests to, handle responses from, remote models
     remoteModels.forEach(function (modelName) {
