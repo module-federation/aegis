@@ -35,7 +35,7 @@ export const relationType = {
 };
 
 async function updateForeignKeys(model, event, relation, ds) {
-  console.log(updateForeignKeys.name, event);
+  console.debug(updateForeignKeys.name, event);
 
   if (
     [relationType.manyToOne.name, relationType.oneToOne.name].includes(
@@ -58,32 +58,33 @@ async function updateForeignKeys(model, event, relation, ds) {
 }
 
 /**
- * Fetch or create a remote object from the distributed
- * cache and store it in the local cache.
+ * Fetch an existing, or create a new, remote object from
+ * the distributed cache and store it in the local cache.
  *
- * Sends a request message and receives a response from
- * the cache manager.
+ * Sends a request message, and receives a response, from the cache manager.
  *
  * @param {import(".").relations[x]} relation
  * @param {import("./observer").Observer} observer
  * @returns {Promise<import(".").Model>} source model
  */
 export function requireRemoteObject(model, relation, observer, ...args) {
-  const eventName = domainEvents.internalCacheRequest(relation.modelName);
-  const results = domainEvents.internalCacheResponse(relation.modelName);
+  const request = domainEvents.internalCacheRequest(relation.modelName);
+  const response = domainEvents.internalCacheResponse(relation.modelName);
   const execute = resolve => event => resolve(event);
+
+  const requestData = {
+    relation,
+    eventName: request,
+    modelName: model.getName(),
+    modelId: model.getId(),
+    model,
+    args,
+  };
 
   return new Promise(async function (resolve) {
     setTimeout(resolve, maxwait);
-    observer.on(results, execute(resolve));
-    await observer.notify(eventName, {
-      eventName,
-      modelName: model.getName(),
-      modelId: model.getId(),
-      relation,
-      model,
-      args,
-    });
+    observer.on(response, execute(resolve));
+    await observer.notify(request, requestData);
   });
 }
 
