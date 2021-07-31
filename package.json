@@ -26,7 +26,7 @@
     "express-jwt": "^6.0.0",
     "import-fresh": "^3.3.0",
     "jwks-rsa": "^2.0.1",
-    "mongodb": "^3.6.6",
+    "mongodb": "^4.0.0",
     "mongodb-client-encryption": "^1.2.3",
     "nanoid": "^3.1.20",
     "regenerator-runtime": "^0.13.7",
