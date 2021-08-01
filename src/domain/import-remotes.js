@@ -2,7 +2,7 @@
 
 (async () => {
   console.logI("importing.........................");
-  const { add } = await import("microservices/wasm");
+  const { add } = await import("wasm/wasm");
   console.log("addddddddding", add(1, 2));
 })();
 
