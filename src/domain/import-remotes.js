@@ -1,7 +1,7 @@
 "use strict";
 
 (async () => {
-  console.logI("importing.........................");
+  console.log("importing.........................");
   const { add } = await import("wasm/wasm");
   console.log("addddddddding", add(1, 2));
 })();
