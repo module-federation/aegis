@@ -1,4 +1,8 @@
 "use strict";
+(async () => {
+  const add = (await import("microservices/wasm")).add;
+  console.log("addddddddding", add(1, 2));
+})();
 
 /**m
  * @returns {Promise<import('.').ModelSpecification[]>}
