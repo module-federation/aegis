@@ -1,6 +1,8 @@
 "use strict";
+
 (async () => {
-  const add = (await import("microservices/wasm")).add;
+  console.logI("importing.........................");
+  const { add } = await import("microservices/wasm");
   console.log("addddddddding", add(1, 2));
 })();
 
