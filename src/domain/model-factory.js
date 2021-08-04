@@ -9,7 +9,8 @@ import Event from "./event";
 /** @typedef {import('./datasource').default} Datasource */
 
 /**
- * @typedef {Object} ModelFactory
+ * @typedef {Object} ModelFactory Low-level port functions for creating, updating, deleting domain models. To be called by
+ * application use-case functions, which in turn are called by driving/primary adapters.
  * @property {function(Observer,Datasource,string,...args):Promise<Readonly<Model>>} createModel Create a new model instance
  * @property {function(string,string,*):Promise<Readonly<Event>>} createEvent
  * @property {function(Model,object):Model} updateModel

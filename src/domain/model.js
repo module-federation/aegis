@@ -189,7 +189,7 @@ const Model = (() => {
        * Back out port transactions
        */
       async undo() {
-        compensate(this);
+        return compensate(this);
       },
 
       /**
