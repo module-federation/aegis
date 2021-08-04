@@ -2,8 +2,8 @@
 
 (async () => {
   console.log("importing.........................");
-  const { add } = await import("wasm/wasm");
-  console.log("addddddddding", add(1, 2));
+  const { myModule } = await import("wasm/index");
+  console.log("addddddddding", myModue.add(1, 2));
 })();
 
 /**m
