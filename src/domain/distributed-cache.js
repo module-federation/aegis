@@ -267,7 +267,6 @@ export default function DistributedCacheManager({
         const event = parse(message);
 
         if (event.args.length > 0) {
-          console.log("creating new related object");
           const newModel = await createRelatedObject(event);
           await route(formatResponse(event, newModel));
           return;

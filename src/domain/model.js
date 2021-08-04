@@ -213,7 +213,7 @@ const Model = (() => {
 
         const final = datasource.save(model[ID], {
           ...merge,
-          [UPDATETIME]: new Date().getTime(),
+          [UPDATETIME]: Date.now(),
         });
 
         await observer.notify("UPDATE" + model.modelName, {
@@ -428,7 +428,7 @@ const Model = (() => {
       const valid = model[VALIDATE](changes, eventMask.update);
       return {
         ...valid,
-        [UPDATETIME]: new Date().getTime(),
+        [UPDATETIME]: Date.now(),
       };
     },
 

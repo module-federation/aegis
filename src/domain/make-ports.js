@@ -105,7 +105,7 @@ async function isUndoRunning(model) {
 }
 
 /**
- * Register an event handler that invokes this `port`.
+ * Register an event handler to invoke this `port`.
  * @param {string} portName
  * @param {import('.').ports[portName]} portConf
  * @param {import("./observer").Observer} observer
@@ -212,6 +212,7 @@ export default function makePorts(ports, adapters, observer) {
 
         if (timer.enabled && timer.expired()) {
           // This means we hit max retries
+          console.error("max retries exceeded", port, this);
           return this;
         }
 
