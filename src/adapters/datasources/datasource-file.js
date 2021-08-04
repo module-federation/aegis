@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import { DataSourceMemory } from "./datasource-memory";
 
-const directoryName = process.env.DATASOURCE_FILE_DIRECTORY || "/tmp";
+const directoryName = process.env.DATASOURCE_FILE_DIRECTORY || "public";
 const directoryPath = path.resolve(process.cwd(), directoryName) || "/tmp";
 
 /**

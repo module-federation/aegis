@@ -1,10 +1,10 @@
 "use strict";
 
-(async () => {
-  console.log("importing.........................");
-  const { myModule } = await import("wasm/index");
-  console.log("addddddddding", myModue.add(1, 2));
-})();
+// (async () => {
+//   console.log("importing.........................");
+//   const { myModule } = await import("wasm/index");
+//   console.log("addddddddding", myModue.add(1, 2));
+// })();
 
 /**m
  * @returns {Promise<import('.').ModelSpecification[]>}

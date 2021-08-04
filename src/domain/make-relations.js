@@ -34,17 +34,20 @@ export const relationType = {
   },
 };
 
+/**
+ * If we create a new object, foreign keys need to reference it
+ * @param {*} model
+ * @param {*} event
+ * @param {*} relation
+ * @param {*} ds
+ */
 async function updateForeignKeys(model, event, relation, ds) {
-  console.debug(updateForeignKeys.name, event);
-
   if (
     [relationType.manyToOne.name, relationType.oneToOne.name].includes(
       relation.type
     )
   ) {
     await model.update({ [relation.foreignKey]: event.modelId }, false);
-    // set current
-    model[relation.foreignKey] = event.modelId;
   } else if (
     relation.type === relationType.oneToMany.name &&
     model instanceof Array
@@ -58,10 +61,10 @@ async function updateForeignKeys(model, event, relation, ds) {
 }
 
 /**
- * Fetch an existing, or create a new, remote object from
+ * Find an existing, or create a new, remote object from
  * the distributed cache and store it in the local cache.
  *
- * Sends a request message, and receives a response, from the cache manager.
+ * Sends a request message to, and receives a response from, the cache manager.
  *
  * @param {import(".").relations[x]} relation
  * @param {import("./observer").Observer} observer
@@ -119,7 +122,7 @@ export default function makeRelations(relations, datasource, observer) {
             const model = await relationType[rel.type](this, ds, rel);
 
             if (!model || model.length < 1) {
-              // couldn't find the object - try remotes
+              // couldn't find the object locally - try remote instances
               const event = await requireRemoteObject(
                 this,
                 rel,
@@ -127,6 +130,7 @@ export default function makeRelations(relations, datasource, observer) {
                 ...args
               );
 
+              // each arg contains input to create a new object
               if (event && event.args.length > 0) {
                 await updateForeignKeys(this, event, rel, ds);
               }

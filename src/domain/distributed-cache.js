@@ -323,11 +323,17 @@ export default function DistributedCacheManager({
    * @param {*} eventName
    */
   function handleRequest(requestName, eventName) {
-    const subscribe = useWebSwitch ? webswitch : listen;
-    subscribe(
-      requestName,
-      searchCache(async event => publish({ ...event, eventName }))
-    );
+    if (useWebSwitch) {
+      observer.on(
+        requestName,
+        searchCache(async event => webswitch({ ...event, eventName }))
+      );
+    } else {
+      listen(
+        requestName,
+        searchCache(async event => notify({ ...event, eventName }))
+      );
+    }
   }
 
   /**
