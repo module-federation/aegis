@@ -2,8 +2,8 @@ import fs from "fs";
 import path from "path";
 import { DataSourceMemory } from "./datasource-memory";
 
-const directoryName = process.env.DATASOURCE_FILE_DIRECTORY || "public";
-const directoryPath = path.resolve(process.cwd(), directoryName) || "/tmp";
+const directoryName = process.env.DATASOURCE_FILE_DIRECTORY || process.cwd();
+const directoryPath = path.resolve(process.cwd(), directoryName) || process.cwd();
 
 /**
  * Persistent storage on filesystem
@@ -25,7 +25,7 @@ export class DataSourceFile extends DataSourceMemory {
    */
   async load({ hydrate, serializer }) {
     const file = this.name.concat(".json");
-    this.file = path.join(directoryPath, file) || file;
+    this.file = path.join(directoryPath, file) || "/tmp/"+file;
     this.serializer = serializer;
     this.dataSource = this.readFile(hydrate);
   }
