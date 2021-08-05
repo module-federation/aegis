@@ -1,12 +1,6 @@
 "use strict";
 
-// (async () => {
-//   console.log("importing.........................");
-//   const { myModule } = await import("wasm/index");
-//   console.log("addddddddding", myModue.add(1, 2));
-// })();
-
-/**m
+/**
  * @returns {Promise<import('.').ModelSpecification[]>}
  */
 export async function importRemoteModels(remoteEntries) {
@@ -135,4 +129,14 @@ export async function importAdapterCache(remoteEntries) {
   if (adapters.length === 0) return;
 
   return adapters.reduce((p, c) => ({ ...p, ...c }));
+}
+
+export async function importWebAssembly(remoteEntries) {
+  const wasm = await Promise.all(remoteEntries
+    .filter(e => e.type === "wasm")
+    .map(e => e.importRemote())
+    );
+    console.log("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
+  console.log(wasm);
+
 }
