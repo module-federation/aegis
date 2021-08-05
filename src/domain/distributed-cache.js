@@ -123,6 +123,7 @@ export default function DistributedCacheManager({
    * @param {function(m)=>m.id} return id to save
    */
   async function saveModel(model, datasource, id = m => m.id) {
+    console.debug("saving model(s)");
     if (Array.isArray(model))
       await Promise.all(model.map(async m => datasource.save(id(m), m)));
     await datasource.save(id(model), model);
@@ -169,7 +170,6 @@ export default function DistributedCacheManager({
         const datasource = datasources.getDataSource(modelName);
         const hydratedModel = hydrateModel(model, datasource, modelName);
 
-        console.debug("save model(s)");
         await saveModel(hydratedModel, datasource, m => m.getId());
 
         if (route) await route({ ...event, model: hydratedModel });
