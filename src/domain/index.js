@@ -157,6 +157,7 @@ import {
   importModelCache,
   importAdapterCache,
   importServiceCache,
+  importWebAssembly,
 } from "./import-remotes";
 
 /**
@@ -264,6 +265,10 @@ export async function importRemotes(remoteEntries, overrides = {}) {
       ...overrides,
     }
   );
+
+  const wasm = await importWebAssembly(remoteEntries);
+  console.debug(wasm);
+
 }
 
 let modelCache;
