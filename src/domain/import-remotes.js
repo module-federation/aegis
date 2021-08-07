@@ -58,8 +58,10 @@ export async function importAdapterCache(remoteEntries) {
 }
 
 export async function importWebAssembly(remoteEntries) {
-  const wasm = await Promise.all(
-    remoteEntries.filter(e => e.type === "wasm").map(e => e.importRemote())
-  );
-  console.log(wasm);
+  __webpack_require__.p = "https://api.github.com/";
+  // const wasm = await Promise.all(
+  //   remoteEntries.filter(e => e.type === "wasm").map(e => e.importRemote())
+  // );
+  // console.log(wasm);
+  //fetch(url, imports)
 }

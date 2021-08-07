@@ -24,13 +24,14 @@ import makeArray from "./util/make-array";
  *  webswitch:function(...args)
  * }} param0
  */
-export default function DistributedCacheManager({
+export default function ObjectMesh({
   models,
   observer,
   datasources,
   listen,
   notify,
   webswitch,
+  
 }) {
   let useWebSwitch = false;
 
@@ -48,7 +49,7 @@ export default function DistributedCacheManager({
    * }} Event the unit of data for tramsmission of cached data
    */
 
-  /** @typedef {import("./").ModelSpecification} ModelSpecification*/
+  /** @typedef {import(".").ModelSpecification} ModelSpecification*/
 
   /**
    * parse input into {@link Event}
