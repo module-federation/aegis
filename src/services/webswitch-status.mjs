@@ -82,3 +82,5 @@ export default async function publishEvent(event, observer) {
     console.warn(publishEvent.name, e.message);
   }
 }
+
+publishEvent("status");
