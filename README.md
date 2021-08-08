@@ -30,11 +30,10 @@ New features:
 
 ## Deployment Orchestration
 Private overlay network for Aegis nodes
-Supports:
+###Supports:
 - Object mesh / distributed object cache
 - Operations Automation (e.g. think Kubernetes, but understands the app)
-Based on:
+###Based on:
 - Web3 (blockchain)
 - Software defined network
 - Mesh-link
-- 
