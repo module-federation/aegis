@@ -21,3 +21,20 @@ yarn demo
 1) Git clone Aegis and run `yarn link`
 2) Git clone Microlib and run `yarn link "@module-federation/aegis"`
 3) Then follow the steps mentioned above under the Using Aegis section
+
+
+## WebAssembly
+New features: 
+- Polyglot support (Models can be written in any lang)
+- Port to AssemblyScript: Aegis runs on anything WASM does
+
+## Deployment Orchestration
+Private overlay network for Aegis nodes
+Supports:
+- Object mesh / distributed object cache
+- Operations Automation (e.g. think Kubernetes, but understands the app)
+Based on:
+- Web3 (blockchain)
+- Software defined network
+- Mesh-link
+- 
