@@ -28,12 +28,15 @@ New features:
 - Polyglot support (Models can be written in any lang)
 - Port to AssemblyScript: Aegis runs on anything WASM does
 
-## Deployment Orchestration
-Private overlay network for Aegis nodes
+## AppMesh 
+Deecentralized network for Aegis nodes
 ### Supports:
 - Object mesh / distributed object cache
-- Operations Automation (e.g. think Kubernetes, but understands the app)
+- Operations Analytics (understand performance, recommend changes)
+- Opertions Automation (e.g. think Kubernetes, but understands the app)
+- DecentraalizeDataMesh, ServiceMesh
 ### Based on:
 - Web3 (blockchain)
-- Software defined network
-- Mesh-link
+- Software defined network / Overlay network
+- Mesh-link p2p
+- Existng MLops models
