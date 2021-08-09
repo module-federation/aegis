@@ -37,7 +37,7 @@ Deecentralized network for Aegis nodes
 - DataMesh
 - Federated Learning
 ### Based on:
-- Web3 (blockchain)
-- Software defined network / Overlay network
+- Web3 / blockchain / Solid
+- Software defined / overlay network
 - Mesh-link p2p
 - Existng MLops models
