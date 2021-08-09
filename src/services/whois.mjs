@@ -1,6 +1,5 @@
 "use strict";
 
-//const pkg = require("./package.json");
 import service from "whois";
 
 export default async function whois(domain) {

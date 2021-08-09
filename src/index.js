@@ -6,10 +6,10 @@ const importFresh = require("import-fresh");
 const fs = require("fs");
 const http = require("http");
 const https = require("https");
+const secure = require("../src/services/auth");
 const express = require("express");
 const cluster = require("./cluster");
 const graceful = require("express-graceful-shutdown");
-const authorization = require("../src/services/");
 const messageParser = require("../src/services/message").parsers;
 const { ServerlessAdapter } = require("./server-less");
 const StaticFileHandler = require("serverless-aws-static-file-handler");
@@ -23,7 +23,9 @@ const cloudProvider = process.env.CLOUD_PROVIDER;
 const clusterEnabled = /true/i.test(process.env.CLUSTER_ENABLED);
 
 // enable authorization
-const app = authorization(express(), "/microlib");
+const app = secure(express(), "/microlib");
+
+/** @todo provision CA certs if SSL is enabled */
 
 function isServerless() {
   return (
@@ -98,11 +100,11 @@ function reloadCallback() {
 function checkPublicIpAddress() {
   const bytes = [];
   const proto = sslEnabled ? "https" : "http";
-  const p = sslEnabled ? sslPort : port;
+  const prt = sslEnabled ? sslPort : port;
 
   if (/local/i.test(process.env.NODE_ENV)) {
     const ipAddr = "localhost";
-    console.log(`\n 🌎 ÆGIS listening on ${proto}://${ipAddr}:${p} \n`);
+    console.log(`\n 🌎 ÆGIS listening on ${proto}://${ipAddr}:${prt} \n`);
     return;
   }
   http.get(
@@ -110,11 +112,11 @@ function checkPublicIpAddress() {
       hostname: "checkip.amazonaws.com",
       method: "get",
     },
-    function (response) {
-      response.on("data", chunk => bytes.push(chunk));
-      response.on("end", function () {
+    function (res) {
+      res.on("data", chunk => bytes.push(chunk));
+      res.on("end", function () {
         const ipAddr = bytes.join("").trim();
-        console.log(`\n 🌎 ÆGIS listening on ${proto}://${ipAddr}:${p} \n`);
+        console.log(`\n 🌎 ÆGIS listening on ${proto}://${ipAddr}:${prt} \n`);
       });
     }
   );
