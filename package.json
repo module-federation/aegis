@@ -1,6 +1,6 @@
 {
   "name": "@module-federation/aegis",
-  "version": "0.0.1-alpha.75",
+  "version": "0.0.1-alpha.76",
   "main": "lib/",
   "module": "esm/",
   "repository": "git@github.com:module-federation/aegis.git",
@@ -30,7 +30,8 @@
     "mongodb-client-encryption": "^1.2.3",
     "nanoid": "^3.1.20",
     "regenerator-runtime": "^0.13.7",
-    "serverless-aws-static-file-handler": "^3.0.0"
+    "serverless-aws-static-file-handler": "^3.0.0",
+    "whois": "^2.13.5"
   },
   "devDependencies": {
     "@babel/cli": "7.14.8",

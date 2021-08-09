@@ -1,11 +1,11 @@
-import ObjectMesh from "../domain/object-mesh";
+import ObjectCache from "../domain/object-cache";
 import uuid from "../domain/util/uuid";
 import EventBus from "../services/event-bus";
-import webswitch from "../services/webswitch";
+import webswitch from "../services/app-mesh-node";
 
 const BROADCAST = process.env.TOPIC_BROADCAST || "broadcastChannel";
-const useDistCache = /true/i.test(process.env.DISTRIBUTED_CACHE_ENABLED);
-const useWebSwitch = /true/i.test(process.env.WEBSWITCH_ENABLED);
+const useObjectCache = /true/i.test(process.env.DISTRIBUTED_CACHE_ENABLED);
+const useAppMesh = /true/i.test(process.env.WEBSWITCH_ENABLED);
 
 /** @typedef {import("../domain/datasource").default} DataSource */
 /** @typedef {import('../domain/observer').Observer} Observer */
@@ -19,7 +19,7 @@ export default function brokerEvents(observer, datasources, models) {
   //observer.on(/.*/, async event => webswitch(event, observer));
 
   // Distributed object cache - must be explicitly enabled
-  if (useDistCache) {
+  if (useObjectCache) {
     const socket = event => webswitch(event, observer);
     const notify = event => EventBus.notify(BROADCAST, JSON.stringify(event));
     const listen = (eventName, callback) =>
@@ -31,17 +31,17 @@ export default function brokerEvents(observer, datasources, models) {
         callback,
       });
 
-    const broker = ObjectMesh({
+    const broker = ObjectCache({
       observer,
       datasources,
       models,
       notify,
       listen,
-      webswitch: socket,
+      appMesh: socket,
     });
 
-    if (useWebSwitch) {
-      broker.initWebSwitch();
+    if (useAppMesh) {
+      broker.initMeshNode();
     }
 
     broker.start();
