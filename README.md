@@ -34,8 +34,7 @@ Deecentralized network for Aegis nodes
 - Object mesh / distributed object cache
 - Operations Analytics (understand performance, recommend changes)
 - Opertions Automation (e.g. think Kubernetes, but understands the app)
-- DataMesh
-- Federated Learning
+- DataMesh / Federated Learning
 ### Based on:
 - Web3 / blockchain / Solid
 - Software defined / overlay network
