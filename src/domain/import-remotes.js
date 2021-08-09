@@ -64,4 +64,6 @@ export async function importWebAssembly(remoteEntries) {
   // );
   // console.log(wasm);
   //fetch(url, imports)
+  const wasmModule = await import("microservices/wasm");
+  wasmModule.expots.add(2, 3);
 }
