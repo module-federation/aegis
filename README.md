@@ -9,7 +9,7 @@ See the [MicroLib](https://github.com/module-federation/MicroLib) repo for a wor
 
 ```shell
 git clone https://github.com/module-federation/MicroLib
-cd MicroLib
+cd microlib
 cp dotenv.example .env
 yarn
 yarn build
@@ -21,3 +21,22 @@ yarn demo
 1) Git clone Aegis and run `yarn link`
 2) Git clone Microlib and run `yarn link "@module-federation/aegis"`
 3) Then follow the steps mentioned above under the Using Aegis section
+
+
+## WebAssembly
+New features: 
+- Polyglot support (Models can be written in any lang)
+- Port to AssemblyScript: Aegis runs on anything WASM does
+
+## AppMesh 
+Deecentralized network for Aegis nodes
+### Supports:
+- Object mesh / distributed object cache
+- Operations Analytics (understand performance, recommend changes)
+- Opertions Automation (e.g. think Kubernetes, but understands the app)
+- DataMesh / Federated Learning
+### Based on:
+- Web3 / blockchain / Solid
+- Software defined / overlay network
+- Mesh-link p2p
+- Existng MLops models
