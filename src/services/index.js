@@ -6,12 +6,14 @@ const importFresh = require("import-fresh");
 const fs = require("fs");
 const http = require("http");
 const https = require("https");
-const secure = require("../src/services/auth");
 const express = require("express");
-const cluster = require("./cluster");
+const cluster = require("@module-federation/aegis/lib/cluster");
 const graceful = require("express-graceful-shutdown");
-const messageParser = require("../src/services/message").parsers;
-const { ServerlessAdapter } = require("./server-less");
+const authorization = require("@module-federation/aegis/lib/services/auth");
+const messageParser = require("@module-federation/aegis/lib/message").parsers;
+const {
+  ServerlessAdapter,
+} = require("@module-federation/aegis/lib/server-less");
 const StaticFileHandler = require("serverless-aws-static-file-handler");
 
 const port = process.argv[2] ? process.argv[2] : process.env.PORT || 8070;
@@ -23,9 +25,7 @@ const cloudProvider = process.env.CLOUD_PROVIDER;
 const clusterEnabled = /true/i.test(process.env.CLUSTER_ENABLED);
 
 // enable authorization
-const app = secure(express(), "/microlib");
-
-/** @todo provision CA certs if SSL is enabled */
+const app = authorization(express(), "/microlib");
 
 function isServerless() {
   return (
@@ -100,11 +100,11 @@ function reloadCallback() {
 function checkPublicIpAddress() {
   const bytes = [];
   const proto = sslEnabled ? "https" : "http";
-  const prt = sslEnabled ? sslPort : port;
+  const p = sslEnabled ? sslPort : port;
 
   if (/local/i.test(process.env.NODE_ENV)) {
     const ipAddr = "localhost";
-    console.log(`\n 🌎 ÆGIS listening on ${proto}://${ipAddr}:${prt} \n`);
+    console.log(`\n 🌎 ÆGIS listening on ${proto}://${ipAddr}:${p} \n`);
     return;
   }
   http.get(
@@ -112,11 +112,11 @@ function checkPublicIpAddress() {
       hostname: "checkip.amazonaws.com",
       method: "get",
     },
-    function (res) {
-      res.on("data", chunk => bytes.push(chunk));
-      res.on("end", function () {
+    function (response) {
+      response.on("data", chunk => bytes.push(chunk));
+      response.on("end", function () {
         const ipAddr = bytes.join("").trim();
-        console.log(`\n 🌎 ÆGIS listening on ${proto}://${ipAddr}:${prt} \n`);
+        console.log(`\n 🌎 ÆGIS listening on ${proto}://${ipAddr}:${p} \n`);
       });
     }
   );

@@ -21,19 +21,18 @@ import makeArray from "./util/make-array";
  *  models:import("./model-factory").ModelFactory,
  *  listen:function(...args),
  *  notify:function(...args),
- *  webswitch:function(...args)
+ *  appMesh:function(...args)
  * }} param0
  */
-export default function ObjectMesh({
+export default function ObjectCache({
   models,
   observer,
   datasources,
   listen,
   notify,
-  webswitch,
-  
+  appMesh: webswitch,
 }) {
-  let useWebSwitch = false;
+  let useAppMesh = false;
 
   /**
    * @typedef {{
@@ -58,7 +57,7 @@ export default function ObjectMesh({
    */
   function parse(payload) {
     try {
-      const event = useWebSwitch ? payload : JSON.parse(payload.message);
+      const event = useAppMesh ? payload : JSON.parse(payload.message);
       const eventName = event.eventName;
       const modelName = event.modelName.toLowerCase();
       const model = event.model;
@@ -292,7 +291,7 @@ export default function ObjectMesh({
    * @returns {Promise<void>}
    */
   async function publish(event) {
-    if (useWebSwitch) {
+    if (useAppMesh) {
       await webswitch(event);
     } else {
       await notify(event);
@@ -309,7 +308,7 @@ export default function ObjectMesh({
       observer.notify(internalName, event)
     );
 
-    if (useWebSwitch) {
+    if (useAppMesh) {
       observer.on(responseName, callback);
     } else {
       listen(responseName, callback);
@@ -323,7 +322,7 @@ export default function ObjectMesh({
    * @param {*} eventName
    */
   function handleRequest(requestName, eventName) {
-    if (useWebSwitch) {
+    if (useAppMesh) {
       observer.on(
         requestName,
         searchCache(async event => webswitch({ ...event, eventName }))
@@ -354,15 +353,15 @@ export default function ObjectMesh({
    * @returns
    */
   const handleCrudEvent = eventName =>
-    useWebSwitch
+    useAppMesh
       ? observer.on(eventName, updateCache())
       : listen(eventName, updateCache());
 
   /**
    * authenticate to webswitch server so we are connected and listening
    */
-  function initWebSwitch() {
-    useWebSwitch = true;
+  function initMeshNode() {
+    useAppMesh = true;
     webswitch("webswitch");
     observer.on("webswitch-reconnect", () => webswitch("webswitch"));
   }
@@ -434,7 +433,7 @@ export default function ObjectMesh({
 
   return {
     /** Connect to the webswitch server*/
-    initWebSwitch,
+    initMeshNode,
     start,
   };
 }

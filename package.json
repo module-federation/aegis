@@ -30,7 +30,8 @@
     "mongodb-client-encryption": "^1.2.3",
     "nanoid": "^3.1.20",
     "regenerator-runtime": "^0.13.7",
-    "serverless-aws-static-file-handler": "^3.0.0"
+    "serverless-aws-static-file-handler": "^3.0.0",
+    "whois": "^2.13.5"
   },
   "devDependencies": {
     "@babel/cli": "7.14.8",
