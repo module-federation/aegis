@@ -1,5 +1,6 @@
 "use strict";
 
+import { argv } from "node:process";
 import service from "whois";
 
 export default async function whois(domain) {
@@ -14,4 +15,4 @@ export default async function whois(domain) {
   });
 }
 
-whois("module-federation.org").then(data => console.log(data.getEmail()));
+whois(argv[2]).then(data => console.log(data));

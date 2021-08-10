@@ -1,7 +1,7 @@
 "use strict";
 
 //const pkg = require("./package.json");
-import whois from "./whois.js";
+import whois from "../../src/services/whois.js";
 
 export default async function provisonCACerts(domain) {
   const Greenlock = require("greenlock");

@@ -1,11 +1,15 @@
 "use strict";
 
-//const pkg = require("./package.json");
-import service from "whois";
+import { lookup } from "whois";
 
+/**
+ * Lookup domain info needed for certificate request.
+ * @param {string} domain
+ * @returns {Promise<{data:string,getEmail:function():string}>}
+ */
 export default async function whois(domain) {
   return new Promise(async function (resolve) {
-    service.lookup(domain, function (_err, data) {
+    lookup(domain, function (_err, data) {
       resolve({
         data,
         getEmail: () =>
@@ -14,5 +18,3 @@ export default async function whois(domain) {
     });
   });
 }
-
-// whois("module-federation.org").then(data => console.log(data.getEmail()));

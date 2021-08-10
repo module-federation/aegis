@@ -57,13 +57,4 @@ export async function importAdapterCache(remoteEntries) {
   return adapters.reduce((p, c) => ({ ...p, ...c }));
 }
 
-export async function importWebAssembly(remoteEntries) {
-  //__webpack_require__.p = "https://api.github.com/";
-  // const wasm = await Promise.all(
-  //   remoteEntries.filter(e => e.type === "wasm").map(e => e.importRemote())
-  // );
-  // console.log(wasm);
-  //fetch(url, imports)
-  const wasmModule = await import("microservices/wasm");
-  wasmModule.expots.add(2, 3);
-}
+export async function importWebAssembly(remoteEntries) {}
