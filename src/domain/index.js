@@ -265,6 +265,8 @@ export async function importRemotes(remoteEntries, overrides = {}) {
       ...overrides,
     }
   );
+
+  importWebAssembly(remoteEntries);
 }
 
 let modelCache;

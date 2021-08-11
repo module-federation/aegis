@@ -5,7 +5,7 @@ async function importFederatedModules(remoteEntries, type, wasm = false) {
   const startTime = Date.now();
   const modules = await Promise.all(
     remoteEntries
-      .filter(entry => entry.type === type && !wasm)
+      .filter(entry => entry.type === type && !entry.wasm)
       .map(entry => entry.importRemote())
   );
   console.info(`${type} import took %d ms`, Date.now() - startTime);
@@ -58,38 +58,36 @@ export async function importAdapterCache(remoteEntries) {
 }
 
 export async function importWebAssembly(remoteEntries, importObject) {
-  let response = undefined;
+  const startTime = Date.now();
 
-  remoteEntries
-    .filter(e => e.wasm)
-    .forEach(async function (entry) {
-      if (!importObject) {
-        importObject = {
-          env: {
-            log: () => console.log("wasm module imported"),
-          },
-        };
-      }
+  const wasmModules = await Promise.all(
+    remoteEntries
+      .filter(entry => entry.wasm)
+      .map(async function (entry) {
+        if (!importObject) {
+          importObject = {
+            env: {
+              log: () => console.log("wasm module imported"),
+            },
+          };
+        }
 
-      // Check if the browser supports streaming instantiation
-      if (WebAssembly.instantiateStreaming) {
-        // Fetch the module, and instantiate it as it is downloading
-        response = await WebAssembly.instantiateStreaming(
-          fetchWasm(url),
-          importObject
-        );
-      } else {
+        // Check if the browser supports streaming instantiation
+        if (WebAssembly.instantiateStreaming) {
+          console.info("stream-compiling wasm module", entry.url);
+          // Fetch the module, and instantiate it as it is downloading
+          return WebAssembly.instantiateStreaming(
+            fetchWasm(entry.url),
+            importObject
+          );
+        }
         // Fallback to using fetch to download the entire module
         // And then instantiate the module
-        const fetchAndInstantiateTask = async () => {
-          const wasmArrayBuffer = await fetchWasm(entry.url).then(response =>
-            response.arrayBuffer()
-          );
-          return WebAssembly.instantiate(wasmArrayBuffer, importObject);
-        };
-        response = await fetchAndInstantiateTask();
-      }
+        const response = await fetchWasm(entry.url);
+        return WebAssembly.instantiate(response.arrayBuffer(), importObject);
+      })
+  );
 
-      return response;
-    });
+  console.info("wasm modules took %dms", Date.now() - startTime);
+  wasmModules.forEach(m => m.log());
 }
