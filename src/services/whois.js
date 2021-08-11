@@ -3,7 +3,7 @@
 import { lookup } from "whois";
 
 /**
- * Lookup domain info needed for certificate request.
+ * Lookup domain info needed for certificate requests.
  * @param {string} domain
  * @returns {Promise<{data:string,getEmail:function():string}>}
  */

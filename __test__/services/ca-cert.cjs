@@ -6,7 +6,8 @@ const whois = require("./whois.cjs");
 export default async function provisonCACerts(domain) {
   const Greenlock = require("greenlock");
   const greenlock = Greenlock.create({
-    // used for the ACME client User-Agent string as per RFC 8555 and RFC 7231
+    // used for the ACME client User-Age\\
+  nt string as per RFC 8555 and RFC 7231
     packageAgent: "someinfo", //pkg.name + "/" + pkg.version,
 
     // used as the contact for critical bug and security notices

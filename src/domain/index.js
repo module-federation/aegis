@@ -265,10 +265,6 @@ export async function importRemotes(remoteEntries, overrides = {}) {
       ...overrides,
     }
   );
-
-  const wasm = await importWebAssembly(remoteEntries);
-  console.debug(wasm);
-
 }
 
 let modelCache;
@@ -313,6 +309,5 @@ export async function importRemoteCache(name) {
   }
   register(model, serviceCache, adapterCache, true);
 }
-
 
 export default ModelFactory;

@@ -1,10 +1,11 @@
 "use strict";
+import { fetchWasm } from "./util/fetch-wasm";
 
-async function importFederatedModules(remoteEntries, type) {
+async function importFederatedModules(remoteEntries, type, wasm = false) {
   const startTime = Date.now();
   const modules = await Promise.all(
     remoteEntries
-      .filter(entry => entry.type === type)
+      .filter(entry => entry.type === type && !wasm)
       .map(entry => entry.importRemote())
   );
   console.info(`${type} import took %d ms`, Date.now() - startTime);
@@ -51,10 +52,44 @@ export async function importServiceCache(remoteEntries) {
 }
 
 export async function importAdapterCache(remoteEntries) {
-  const startTime = Date.now();
   const adapters = importFederatedModules(remoteEntries, "adapter-cache");
   if (adapters.length === 0) return;
   return adapters.reduce((p, c) => ({ ...p, ...c }));
 }
 
-export async function importWebAssembly(remoteEntries) {}
+export async function importWebAssembly(remoteEntries, importObject) {
+  let response = undefined;
+
+  remoteEntries.forEach(async function (entry) {
+    if (entry.type !== "wasm") return;
+
+    if (!importObject) {
+      importObject = {
+        env: {
+          log: () => console.log("wasm module imported"),
+        },
+      };
+    }
+
+    // Check if the browser supports streaming instantiation
+    if (WebAssembly.instantiateStreaming) {
+      // Fetch the module, and instantiate it as it is downloading
+      response = await WebAssembly.instantiateStreaming(
+        fetchWasm(url),
+        importObject
+      );
+    } else {
+      // Fallback to using fetch to download the entire module
+      // And then instantiate the module
+      const fetchAndInstantiateTask = async () => {
+        const wasmArrayBuffer = await fetchWasm(entry.url).then(response =>
+          response.arrayBuffer()
+        );
+        return WebAssembly.instantiate(wasmArrayBuffer, importObject);
+      };
+      response = await fetchAndInstantiateTask();
+    }
+
+    return response;
+  });
+}

@@ -253,14 +253,9 @@ const Switch = function (id, thresholds) {
  * @returns {breaker}
  */
 const CircuitBreaker = function (id, protectedCall, thresholds) {
-  const events = [];
   return {
     // wrap client call
     async invoke(...args) {
-      events.forEach(e =>
-        this.addListener(e, () => logError(id, e, thresholds))
-      );
-
       const breaker = Switch(id, thresholds);
       breaker.appendLog();
 
@@ -283,6 +278,7 @@ const CircuitBreaker = function (id, protectedCall, thresholds) {
           breaker.test();
         } else {
           console.warn("circuit open, call aborted", protectedCall.name);
+          breaker.fallbackFn(id);
           return this;
         }
       }
@@ -300,11 +296,14 @@ const CircuitBreaker = function (id, protectedCall, thresholds) {
     },
 
     /**
-     * Listen for async / unthrown errors
+     * Listen for events that count as errors against a threashold.
+     *
      * @param {Error} event
      */
-    errorListener(event) {
-      events.push(event);
+    errorListener(eventName) {
+      this.addListener(eventName, eventData =>
+        logError(id, eventData.eventName, thresholds)
+      );
     },
   };
 };

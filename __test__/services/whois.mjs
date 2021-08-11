@@ -1,7 +1,7 @@
 "use strict";
 
-import { argv } from "node:process";
-import service from "whois";
+const argv = require("node:process");
+const service = require("whois");
 
 export default async function whois(domain) {
   return new Promise(async function (resolve) {
