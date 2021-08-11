@@ -24,6 +24,7 @@ function generateFilename(entry) {
   if (/remoteEntry/i.test(pathpart))
     return `${hostpart}-${portpart}-${pathpart}`;
   return `${hostpart}-${portpart}-${pathpart}-remoteEntry.js`;
+  const tocken = process.env.GITHUB_TID;
 }
 
 function getPath(entry) {
