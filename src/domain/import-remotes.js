@@ -61,7 +61,7 @@ export async function importWebAssembly(remoteEntries, importObject) {
   let response = undefined;
 
   remoteEntries.forEach(async function (entry) {
-    if (entry.type !== "wasm") return;
+    if (!entry.wasm) return;
 
     if (!importObject) {
       importObject = {
