@@ -60,36 +60,36 @@ export async function importAdapterCache(remoteEntries) {
 export async function importWebAssembly(remoteEntries, importObject) {
   let response = undefined;
 
-  remoteEntries.forEach(async function (entry) {
-    if (!entry.wasm) return;
+  remoteEntries
+    .filter(e => e.wasm)
+    .forEach(async function (entry) {
+      if (!importObject) {
+        importObject = {
+          env: {
+            log: () => console.log("wasm module imported"),
+          },
+        };
+      }
 
-    if (!importObject) {
-      importObject = {
-        env: {
-          log: () => console.log("wasm module imported"),
-        },
-      };
-    }
-
-    // Check if the browser supports streaming instantiation
-    if (WebAssembly.instantiateStreaming) {
-      // Fetch the module, and instantiate it as it is downloading
-      response = await WebAssembly.instantiateStreaming(
-        await fetchWasm(url),
-        importObject
-      );
-    } else {
-      // Fallback to using fetch to download the entire module
-      // And then instantiate the module
-      const fetchAndInstantiateTask = async () => {
-        const wasmArrayBuffer = await fetchWasm(entry.url).then(response =>
-          response.arrayBuffer()
+      // Check if the browser supports streaming instantiation
+      if (WebAssembly.instantiateStreaming) {
+        // Fetch the module, and instantiate it as it is downloading
+        response = await WebAssembly.instantiateStreaming(
+          fetchWasm(url),
+          importObject
         );
-        return WebAssembly.instantiate(wasmArrayBuffer, importObject);
-      };
-      response = await fetchAndInstantiateTask();
-    }
+      } else {
+        // Fallback to using fetch to download the entire module
+        // And then instantiate the module
+        const fetchAndInstantiateTask = async () => {
+          const wasmArrayBuffer = await fetchWasm(entry.url).then(response =>
+            response.arrayBuffer()
+          );
+          return WebAssembly.instantiate(wasmArrayBuffer, importObject);
+        };
+        response = await fetchAndInstantiateTask();
+      }
 
-    return response;
-  });
+      return response;
+    });
 }
