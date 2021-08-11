@@ -130,6 +130,7 @@ module.exports = async remoteEntry => {
 
   const remotes = await Promise.all(
     Object.values(deduplicate(entries)).map(function (entry) {
+      if (entry.wasm) return;
       const path = getPath(entry);
       console.log("downloading file to", path);
 
@@ -138,7 +139,7 @@ module.exports = async remoteEntry => {
 
         if (/^https:\/\/api.github.com.*/i.test(entry.url)) {
           // Download from github.
-          await githubFetch(entry, path);
+          githubFetch(entry, path);
           resolvePath();
         } else {
           httpGet(entry, path, resolvePath);

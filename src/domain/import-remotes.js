@@ -75,7 +75,7 @@ export async function importWebAssembly(remoteEntries, importObject) {
     if (WebAssembly.instantiateStreaming) {
       // Fetch the module, and instantiate it as it is downloading
       response = await WebAssembly.instantiateStreaming(
-        fetchWasm(url),
+        await fetchWasm(url),
         importObject
       );
     } else {

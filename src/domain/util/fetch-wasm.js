@@ -2,7 +2,7 @@ const { Octokit } = require("@octokit/rest");
 const token = process.env.GITHUB_TOKEN;
 const octokit = new Octokit({ auth: token });
 
-async function octoGet(url) {
+function octoGet(url) {
   console.info("github url", url);
   const owner = url.searchParams.get("owner");
   const repo = url.searchParams.get("repo");
@@ -34,7 +34,7 @@ async function octoGet(url) {
   });
 }
 
-async function httpGet(params) {
+function httpGet(params) {
   return new Promise(function (resolve, reject) {
     var req = require(params.protocol.slice(
       0,
@@ -63,7 +63,7 @@ async function httpGet(params) {
   });
 }
 
-export async function fetchWasm(url) {
+export function fetchWasm(url) {
   if (/github/i.test(url.hostname)) return octoGet(url);
   return httpGet(url);
 }
