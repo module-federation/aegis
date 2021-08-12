@@ -1,4 +1,4 @@
-import ObjectCache from "../domain/object-cache";
+import DistributedCache from "../domain/distributed-cache";
 import uuid from "../domain/util/uuid";
 import EventBus from "../services/event-bus";
 import webswitch from "../services/app-mesh-node";
@@ -31,7 +31,7 @@ export default function brokerEvents(observer, datasources, models) {
         callback,
       });
 
-    const broker = ObjectCache({
+    const broker = DistributedCache({
       observer,
       datasources,
       models,

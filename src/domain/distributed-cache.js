@@ -24,7 +24,7 @@ import makeArray from "./util/make-array";
  *  appMesh:function(...args)
  * }} param0
  */
-export default function ObjectCache({
+export default function DistributedCache({
   models,
   observer,
   datasources,
