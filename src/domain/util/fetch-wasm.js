@@ -2,13 +2,13 @@ const { Octokit } = require("@octokit/rest");
 const token = process.env.GITHUB_TOKEN;
 const octokit = new Octokit({ auth: token });
 
-function octoGet(url) {
-  console.info("github url", url);
-  const owner = url.searchParams.get("owner");
-  const repo = url.searchParams.get("repo");
-  const filedir = url.searchParams.get("filedir");
-  const branch = url.searchParams.get("branch");
-  return new Promise(function (resolve, reject) {
+function octoGet(entry) {
+  console.info("github url", entry.url);
+  const owner = entry.owner;
+  const repo = entry.repo;
+  const filedir = entry.filedir;
+  const branch = entry.branch;
+  return new Promise(function (resolve, _reject) {
     octokit
       .request("GET /repos/{owner}/{repo}/contents/{filedir}?ref={branch}", {
         owner,
@@ -17,7 +17,7 @@ function octoGet(url) {
         branch,
       })
       .then(function (rest) {
-        const file = rest.data.find(d => d.endsWidth(".wasm"));
+        const file = rest.data.find(d => /\.wasm$/.test(d.name));
         return file.sha;
       })
       .then(function (sha) {
@@ -63,7 +63,7 @@ function httpGet(params) {
   });
 }
 
-export function fetchWasm(url) {
-  if (/github/i.test(url.hostname)) return octoGet(url);
-  return httpGet(url);
+export function fetchWasm(entry) {
+  if (/github/i.test(entry.url)) return octoGet(entry);
+  return httpGet(entry.url);
 }

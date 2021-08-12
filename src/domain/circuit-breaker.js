@@ -262,7 +262,7 @@ const CircuitBreaker = function (id, protectedCall, thresholds) {
       breaker.appendLog();
 
       const countError = function (eventName) {
-        if (typeof this.addListener !== "function") return;
+        if (typeof this["addListener"] !== "function") return;
         this.addListener(eventName, eventData =>
           logError(id, eventData.eventName, thresholds)
         );

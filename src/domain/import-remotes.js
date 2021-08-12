@@ -71,20 +71,25 @@ export async function importWebAssembly(remoteEntries, importObject) {
             },
           };
         }
-
-        // Check if the browser supports streaming instantiation
-        if (WebAssembly.instantiateStreaming) {
-          console.info("stream-compiling wasm module", entry.url);
-          // Fetch the module, and instantiate it as it is downloading
-          return WebAssembly.instantiateStreaming(
-            fetchWasm(entry.url),
-            importObject
-          );
-        }
+        // Check if we support streaming instantiation
+        // if (WebAssembly.instantiateStreaming) {
+        //   console.info("stream-compiling wasm module", entry.url);
+        //   // Fetch the module, and instantiate it as it is downloading
+        //   return WebAssembly.instantiateStreaming(
+        //     fetchWasm(entry.url),
+        //     importObject
+        //   );
+        // }
         // Fallback to using fetch to download the entire module
         // And then instantiate the module
-        const response = await fetchWasm(entry.url);
-        return WebAssembly.instantiate(response.arrayBuffer(), importObject);
+        const response = await fetchWasm(entry);
+        /**@todo remove this debug  */
+        console.debug(
+          (
+            await WebAssembly.instantiate(response, importObject)
+          ).instance.exports.modelFactory("input")
+        );
+        return response;
       })
   );
 
