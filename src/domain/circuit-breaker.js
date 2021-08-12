@@ -253,11 +253,22 @@ const Switch = function (id, thresholds) {
  * @returns {breaker}
  */
 const CircuitBreaker = function (id, protectedCall, thresholds) {
+  const errorEvents = [];
+
   return {
     // wrap client call
     async invoke(...args) {
       const breaker = Switch(id, thresholds);
       breaker.appendLog();
+
+      const countError = function (eventName) {
+        if (typeof this.addListener !== "function") return;
+        this.addListener(eventName, eventData =>
+          logError(id, eventData.eventName, thresholds)
+        );
+      }.bind(this);
+
+      errorEvents.forEach(countError);
 
       // check breaker status
       if (breaker.closed()) {
@@ -301,9 +312,7 @@ const CircuitBreaker = function (id, protectedCall, thresholds) {
      * @param {Error} event
      */
     errorListener(eventName) {
-      this.addListener(eventName, eventData =>
-        logError(id, eventData.eventName, thresholds)
-      );
+      errorEvents.push(eventName);
     },
   };
 };
