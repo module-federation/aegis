@@ -1,7 +1,7 @@
 import DistributedCache from "../domain/distributed-cache";
 import uuid from "../domain/util/uuid";
 import EventBus from "../services/event-bus";
-import webswitch from "../services/app-mesh-node";
+import webswitch from "../services/app-node";
 
 const BROADCAST = process.env.TOPIC_BROADCAST || "broadcastChannel";
 const useObjectCache = /true/i.test(process.env.DISTRIBUTED_CACHE_ENABLED);
