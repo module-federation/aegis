@@ -24,6 +24,7 @@ yarn demo
 
 
 ## Work in Progress
+
 ### WebAssembly
 New features: 
 - Polyglot support (Models can be written in any lang)
@@ -31,11 +32,13 @@ New features:
 
 ### AppMesh 
 Deecentralized network for Aegis nodes
+
 Supports:
 - Object mesh / distributed object cache
 - Operations Analytics (understand performance, recommend changes)
 - Opertions Automation (e.g. think Kubernetes, but understands the app)
 - DataMesh / Federated Learning
+
 Based on:
 - Web3 / blockchain / Solid
 - Software defined / overlay network
