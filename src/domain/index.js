@@ -243,9 +243,10 @@ function wrapWasm(wasmModules) {
     modelName: module.exports.getModelName(),
     endpoint: module.exports.getEndpoint(),
     factory: dependencies => input => {
-      module.exports.makeModel();
       return {
         dependencies,
+        args: input,
+        ...module.exports.makeModel(),
         wasm: true,
       };
     },
