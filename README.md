@@ -23,19 +23,23 @@ yarn demo
 3) Then follow the steps mentioned above under the Using Aegis section
 
 
-## WebAssembly
+## Work in Progress
+
+### WebAssembly
 New features: 
 - Polyglot support (Models can be written in any lang)
 - Port to AssemblyScript: Aegis runs on anything WASM does
 
-## AppMesh 
+### AppMesh 
 Deecentralized network for Aegis nodes
-### Supports:
+
+Supports:
 - Object mesh / distributed object cache
 - Operations Analytics (understand performance, recommend changes)
 - Opertions Automation (e.g. think Kubernetes, but understands the app)
 - DataMesh / Federated Learning
-### Based on:
+
+Based on:
 - Web3 / blockchain / Solid
 - Software defined / overlay network
 - Mesh-link p2p
