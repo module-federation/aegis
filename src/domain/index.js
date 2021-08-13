@@ -184,39 +184,40 @@ const deleteEvent = model => ({
 });
 
 function register(model, services, adapters, isCached = false) {
-  if (model.modelName && model.endpoint && model.factory) {
-    const serviceAdapters = bindAdapters(model.ports, adapters, services);
+  // if (model.modelName && model.endpoint && model.factory) {
+  const serviceAdapters = bindAdapters(model.ports, adapters, services);
 
-    const dependencies = {
-      ...model.dependencies,
-      ...serviceAdapters,
-    };
+  const dependencies = {
+    ...model.dependencies,
+    ...serviceAdapters,
+  };
 
-    ModelFactory.registerModel({
-      ...model,
-      dependencies,
-      factory: model.factory(dependencies),
-      isCached,
-    });
+  ModelFactory.registerModel({
+    ...model,
+    dependencies,
+    factory: model.factory(dependencies),
+    isCached,
+  });
 
-    ModelFactory.registerEvent(
-      ModelFactory.EventTypes.CREATE,
-      model.modelName,
-      createEvent
-    );
+  ModelFactory.registerEvent(
+    ModelFactory.EventTypes.CREATE,
+    model.modelName,
+    createEvent
+  );
 
-    ModelFactory.registerEvent(
-      ModelFactory.EventTypes.UPDATE,
-      model.modelName,
-      updateEvent
-    );
+  ModelFactory.registerEvent(
+    ModelFactory.EventTypes.UPDATE,
+    model.modelName,
+    updateEvent
+  );
 
-    ModelFactory.registerEvent(
-      ModelFactory.EventTypes.DELETE,
-      model.modelName,
-      deleteEvent
-    );
-  }
+  ModelFactory.registerEvent(
+    ModelFactory.EventTypes.DELETE,
+    model.modelName,
+    deleteEvent
+  );
+  // }
+  // console.warn("invalid module spec", model);
 }
 
 /**
@@ -235,6 +236,25 @@ async function importModels(remoteEntries, services, adapters) {
   Object.values(models.models).forEach(model =>
     register(model, services, adapters)
   );
+}
+
+function wrapWasm(wasmModules) {
+  return wasmModules.map(module => ({
+    modelName: module.exports.getModelName(),
+    endpoint: module.exports.getEndpoint(),
+    factory: dependencies => input => {
+      module.exports.makeModel();
+      return {
+        dependencies,
+        wasm: true,
+      };
+    },
+  }));
+}
+
+async function importWasmModules(remoteEntries) {
+  const wasmModules = await importWebAssembly(remoteEntries);
+  wrapWasm(wasmModules).forEach(module => register(module));
 }
 
 let remotesConfig;
@@ -266,7 +286,7 @@ export async function importRemotes(remoteEntries, overrides = {}) {
     }
   );
 
-  importWebAssembly(remoteEntries);
+  await importWasmModules(remoteEntries);
 }
 
 let modelCache;

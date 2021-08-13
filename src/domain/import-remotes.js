@@ -1,5 +1,6 @@
 "use strict";
 import { fetchWasm } from "./util/fetch-wasm";
+const AsBind = require("as-bind/dist/as-bind.cjs.js");
 
 async function importFederatedModules(remoteEntries, type, wasm = false) {
   const startTime = Date.now();
@@ -71,28 +72,25 @@ export async function importWebAssembly(remoteEntries, importObject) {
             },
           };
         }
+
         // Check if we support streaming instantiation
-        // if (WebAssembly.instantiateStreaming) {
-        //   console.info("stream-compiling wasm module", entry.url);
-        //   // Fetch the module, and instantiate it as it is downloading
-        //   return WebAssembly.instantiateStreaming(
-        //     fetchWasm(entry.url),
-        //     importObject
-        //   );
-        // }
-        // Fallback to using fetch to download the entire module
-        // And then instantiate the module
+        if (!WebAssembly.instantiateStreaming)
+          console.log("we can't stream-compile wasm");
+
         const response = await fetchWasm(entry);
-        /**@todo remove this debug  */
-        console.debug(
-          (
-            await WebAssembly.instantiate(response, importObject)
-          ).instance.exports.modelFactory("input")
-        );
-        return response;
+
+        const wasm = await AsBind.instantiate(response.asBase64Buffer(), {
+          env: {
+            log: value => console.log("from wasm", value),
+          },
+        });
+        console.log("modelName:", wasm.exports.getModelName());
+
+        return wasm;
       })
   );
 
   console.info("wasm modules took %dms", Date.now() - startTime);
-  wasmModules.forEach(m => m.log());
+
+  return wasmModules;
 }

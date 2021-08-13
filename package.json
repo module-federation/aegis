@@ -20,6 +20,7 @@
   "dependencies": {
     "@octokit/core": "^3.4.0",
     "@octokit/rest": "^18.5.2",
+    "as-bind": "^0.8.0",
     "dotenv": "^10.0.0",
     "express": "^4.17.1",
     "express-graceful-shutdown": "^1.1.3",

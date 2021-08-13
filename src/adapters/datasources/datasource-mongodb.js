@@ -43,7 +43,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
       });
 
       if (!this.client || !this.client.isConnected) {
-        console.error("can't connect to db - using memory", error);
+        console.error("can't connect to db - using memory");
       }
     }
   }

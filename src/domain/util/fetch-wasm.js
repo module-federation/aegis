@@ -29,7 +29,17 @@ function octoGet(entry) {
         });
       })
       .then(function (rest) {
-        resolve(Buffer.from(rest.data.content, "base64").toString("utf-8"));
+        const buf = Buffer.from(rest.data.content, "base64");
+        resolve({
+          toString: () => buf.toString("utf-8"),
+          asBase64Buffer: () => buf,
+          toUint16Array: () =>
+            new Uint16Array(
+              buf.buffer,
+              buf.byteOffset,
+              buf.length / Uint16Array.BYTES_PER_ELEMENT
+            ),
+        });
       });
   });
 }
