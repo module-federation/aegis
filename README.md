@@ -26,9 +26,11 @@ yarn demo
 ## Work in Progress
 
 ### WebAssembly
-New features: 
-- Polyglot support (Models can be written in any lang)
-- Port to AssemblyScript: Aegis runs on anything WASM does
+Enable polyglot and WASM-powered compute 
+
+Overview:
+- Support WASM domain, adapter, and services components
+- Port Aegis to AssemblyScript for WASM standalone runtimes
 
 ### AppMesh 
 Deecentralized network for transparent integration and dynamic redistribution of federated software
