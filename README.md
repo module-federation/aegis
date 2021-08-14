@@ -31,16 +31,15 @@ New features:
 - Port to AssemblyScript: Aegis runs on anything WASM does
 
 ### AppMesh 
-Deecentralized network for Aegis nodes
+Deecentralized network for transparent integration and dynamic redistribution of federated software
 
-Supports:
-- Object mesh / distributed object cache
-- Operations Analytics (understand performance, recommend changes)
-- Opertions Automation (e.g. think Kubernetes, but understands the app)
-- DataMesh / Federated Learning
+Overview:
+- Distributed object cache over switched mesh network 
+- Operations analytics (capture performance at switch nodes, recommend deployment changes)
+- Opertions automation (implement recommended changes, including basic orchestration)
+- Dynamic redeployment (e.g. of two chatty components into same instance or to bring a component closer to data or users)
+- Use Cases: DataMesh / Federated Learning
 
 Based on:
 - Web3 / blockchain / Solid
-- Software defined / overlay network
-- Mesh-link p2p
-- Existng MLops models
+- Software defined overlay network
