@@ -75,6 +75,6 @@ if (uplink) {
   server.uplink = require("./app-node");
   server.uplink.setUplinkHost(uplink);
   server.uplink.onMessage(message =>
-    server.broadcast(JSON.parse(message.toString(), server.uplink))
+    server.broadcast(JSON.parse(message.toString()), server.uplink)
   );
 }
