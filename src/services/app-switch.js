@@ -2,8 +2,9 @@
 const WebSocketServer = require("ws").Server;
 const nanoid = require("nanoid").nanoid;
 const server = new WebSocketServer({ clientTracking: true, port: 8062 });
-const startTime = Date.now();
-const uptime = () => Math.round(Math.abs((Date.now() - startTime) / 1000 / 60));
+const uplink = process.env.WEBSWITCH_UPLINK_IP;
+const starts = Date.now();
+const uptime = () => Math.round(Math.abs((Date.now() - starts) / 1000 / 60));
 let messagesSent = 0;
 
 server.broadcast = function (data, sender) {
@@ -14,6 +15,11 @@ server.broadcast = function (data, sender) {
       messagesSent++;
     }
   });
+
+  if (server.uplink && server.webswitchId !== sender.webswitchId) {
+    server.uplink.publishEvent(data);
+    messagesSent++;
+  }
 };
 
 server.sendStatus = function (client) {
@@ -22,6 +28,7 @@ server.sendStatus = function (client) {
       uptimeMinutes: uptime(),
       messagesSent,
       clientsConnected: server.clients.size,
+      uplink: server.uplink,
     })
   );
 };
@@ -62,3 +69,12 @@ server.on("connection", function (client) {
     console.log("terminated client", client.webswitchId);
   });
 });
+
+if (uplink) {
+  server.webswitchId = nanoid();
+  server.uplink = require("./app-node");
+  server.uplink.setUplinkHost(uplink);
+  server.uplink.onMessage(message =>
+    server.broadcast(JSON.parse(message.toString(), server.uplink))
+  );
+}

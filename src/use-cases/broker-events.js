@@ -20,7 +20,7 @@ export default function brokerEvents(observer, datasources, models) {
 
   // Distributed object cache - must be explicitly enabled
   if (useObjectCache) {
-    const socket = event => webswitch(event, observer);
+    const socket = event => webswitch.publishEvent(event, observer);
     const notify = event => EventBus.notify(BROADCAST, JSON.stringify(event));
     const listen = (eventName, callback) =>
       EventBus.listen({

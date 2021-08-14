@@ -5,12 +5,17 @@
  */
 "use strict";
 
-import WebSocket from "ws";
-import dns from "dns/promises";
+const WebSocket = require("ws");
+const dns = require("dns/promises");
 
-const FQDN = process.env.WEBSWITCH_HOST || "webswitch.aegis.dev";
-const PORT = 8062;
-const PATH = "/webswitch/broadcast";
+let fqdn = process.env.WEBSWITCH_HOST || "webswitch.aegis.dev";
+let port = 8062;
+let path = "/webswitch/broadcast";
+
+/**@type import("ws/lib/websocket") */
+let ws;
+let hostAddress;
+let uplinkCallback;
 
 async function getHostAddress(hostname) {
   try {
@@ -20,28 +25,39 @@ async function getHostAddress(hostname) {
   } catch (error) {
     console.warn("dns lookup", error);
   }
-  return "localhost";
 }
 
-/**@type import("ws/lib/websocket") */
-let ws;
-let hostAddress;
+/**
+ * Callback invoked when , invoke server callback.
+ * @param {*} callback
+ */
+exports.onMessage = function (callback) {
+  uplinkCallback = callback;
+};
 
-export default async function publishEvent(event, observer) {
+/** server sets uplink host */
+exports.setUplinkHost = function (host, servicePort = port) {
+  hostAddress = null;
+  fqdn = host;
+  port = servicePort;
+};
+
+exports.publishEvent = async function (event, observer) {
   if (!event) return;
 
-  if (!hostAddress) hostAddress = await getHostAddress(FQDN);
+  if (!hostAddress) hostAddress = await getHostAddress(fqdn);
 
   function webswitch() {
     if (!ws) {
-      ws = new WebSocket(`ws://${hostAddress}:${PORT}${PATH}`);
+      ws = new WebSocket(`ws://${hostAddress}:${port}${path}`);
 
       ws.on("message", async function (message) {
         const eventData = JSON.parse(message);
-        if (eventData.eventName && observer) {
+        if (eventData.eventName) {
           await observer.notify(eventData.eventName, eventData);
           return;
         }
+        if (uplinkCallback) uplinkCallback(message);
         console.warn("eventName or observer missing", message);
       });
 
@@ -56,12 +72,11 @@ export default async function publishEvent(event, observer) {
     }
 
     function send() {
-      const serializedEvent = JSON.stringify(event);
       if (ws.readyState) {
-        ws.send(serializedEvent);
+        ws.send(JSON.stringify(event));
         return;
       }
-      setTimeout(() => send(), 1000);
+      setTimeout(send, 1000);
     }
 
     send();
@@ -72,4 +87,4 @@ export default async function publishEvent(event, observer) {
   } catch (e) {
     console.warn(publishEvent.name, e.message);
   }
-}
+};
