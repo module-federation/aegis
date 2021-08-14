@@ -55,10 +55,8 @@ exports.publishEvent = async function (event, observer) {
         const eventData = JSON.parse(message);
         if (eventData.eventName) {
           await observer.notify(eventData.eventName, eventData);
-          return;
         }
         if (uplinkCallback) uplinkCallback(message);
-        console.warn("eventName or observer missing", message);
       });
 
       ws.on("open", function () {
