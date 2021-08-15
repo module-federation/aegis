@@ -31,6 +31,7 @@ Enable polyglot and WASM-powered compute
 Overview:
 - Support WASM domain, adapter, and services components
 - Port Aegis to AssemblyScript for WASM standalone runtimes
+- User option to attempt to run their existing TypeScript components in WASM stack machine
 
 ### AppMesh 
 Deecentralized network for transparent integration and dynamic redistribution of federated software
