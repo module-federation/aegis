@@ -1,7 +1,7 @@
 import DistributedCache from "../domain/distributed-cache";
 import uuid from "../domain/util/uuid";
 import EventBus from "../services/event-bus";
-import webswitch from "../services/app-node";
+import appMesh from "../services/mesh-node";
 
 const BROADCAST = process.env.TOPIC_BROADCAST || "broadcastChannel";
 const useObjectCache = /true/i.test(process.env.DISTRIBUTED_CACHE_ENABLED);
@@ -20,7 +20,7 @@ export default function brokerEvents(observer, datasources, models) {
 
   // Distributed object cache - must be explicitly enabled
   if (useObjectCache) {
-    const socket = event => webswitch.publishEvent(event, observer);
+    const socket = event => appMesh.publishEvent(event, observer);
     const notify = event => EventBus.notify(BROADCAST, JSON.stringify(event));
     const listen = (eventName, callback) =>
       EventBus.listen({

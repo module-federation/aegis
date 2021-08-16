@@ -1,9 +1,9 @@
-"use strict";
+'use strict'
 
-import { relationType } from "./make-relations";
-import { importRemoteCache } from ".";
-import domainEvents from "./domain-events";
-import makeArray from "./util/make-array";
+import { relationType } from './make-relations'
+import { importRemoteCache } from '.'
+import domainEvents from './domain-events'
+import makeArray from './util/make-array'
 
 /**
  * Implements distributed object cache. Find any model
@@ -24,15 +24,15 @@ import makeArray from "./util/make-array";
  *  appMesh:function(...args)
  * }} param0
  */
-export default function DistributedCache({
+export default function DistributedCache ({
   models,
   observer,
   datasources,
   listen,
   notify,
-  appMesh: webswitch,
+  appMesh: webswitch
 }) {
-  let useAppMesh = false;
+  let useAppMesh = false
 
   /**
    * @typedef {{
@@ -55,17 +55,18 @@ export default function DistributedCache({
    * @param {Event|string} payload
    * @returns {Event}
    */
-  function parse(payload) {
+  function parse (payload) {
     try {
-      const event = useAppMesh ? payload : JSON.parse(payload.message);
-      const eventName = event.eventName;
-      const modelName = event.modelName.toLowerCase();
-      const model = event.model;
-      const modelId = event.id || event.modelId;
-      const relation = event.relation; // optional
-      const args = event.args; // optional;
+      const event = useAppMesh ? payload : JSON.parse(payload.message)
+      const eventName = event.eventName
+      const modelName = event.modelName.toLowerCase()
+      const model = event.model
+      const modelId = event.id || event.modelId
+      const relation = event.relation // optional
+      const args = event.args // optional;
+
       if (!eventName || !modelName || !modelId)
-        throw new Error("invalid message format");
+        throw new Error('invalid message format')
 
       return {
         eventName,
@@ -73,10 +74,10 @@ export default function DistributedCache({
         model,
         modelId,
         relation,
-        args,
-      };
+        args
+      }
     } catch (e) {
-      console.error("could not parse message", e.message, payload);
+      console.error('could not parse message', e.message, payload)
     }
   }
 
@@ -87,15 +88,15 @@ export default function DistributedCache({
    * @param {Event} event
    * @returns
    */
-  async function handleDelete(eventName, modelName, event) {
+  async function handleDelete (eventName, modelName, event) {
     if (
       eventName === models.getEventName(models.EventTypes.DELETE, modelName)
     ) {
-      console.debug("deleting from cache", modelName, event.modelId);
-      await datasources.getDataSource(modelName).delete(event.modelId);
-      return true;
+      console.debug('deleting from cache', modelName, event.modelId)
+      await datasources.getDataSource(modelName).delete(event.modelId)
+      return true
     }
-    return false;
+    return false
   }
 
   /**
@@ -106,13 +107,13 @@ export default function DistributedCache({
    * @param {string} modelName
    * @returns {import("./model").Model|import("./model").Model[]>}
    */
-  function hydrateModel(model, datasource, modelName) {
+  function hydrateModel (model, datasource, modelName) {
     if (Array.isArray(model)) {
       return model.map(m =>
         models.loadModel(observer, datasource, m, modelName)
-      );
+      )
     }
-    return models.loadModel(observer, datasource, model, modelName);
+    return models.loadModel(observer, datasource, model, modelName)
   }
 
   /**
@@ -122,22 +123,22 @@ export default function DistributedCache({
    * @param {import("./datasource").default} datasource
    * @param {function(m)=>m.id} return id to save
    */
-  async function saveModel(model, datasource, id = m => m.id) {
-    console.debug("saving model(s)");
+  async function saveModel (model, datasource, id = m => m.id) {
+    console.debug('saving model(s)')
     if (Array.isArray(model))
-      await Promise.all(model.map(async m => datasource.save(id(m), m)));
-    await datasource.save(id(model), model);
+      await Promise.all(model.map(async m => datasource.save(id(m), m)))
+    await datasource.save(id(model), model)
   }
 
   /**
    * Fetch {@link ModelSpecification} modules for `modelName` from repo.
    * @param {string} modelName
    */
-  async function streamRemoteModules(modelName) {
+  async function streamRemoteModules (modelName) {
     if (!models.getModelSpec(modelName)) {
-      console.debug("we don't, import it...");
+      console.debug("we don't, import it...")
       // Stream the code for the model
-      await importRemoteCache(modelName);
+      await importRemoteCache(modelName)
     }
   }
   /**
@@ -147,36 +148,36 @@ export default function DistributedCache({
    * @param {function(object)} route what to do after updating
    * @returns {function(message):Promise<void>}
    */
-  function updateCache(route) {
+  function updateCache (route) {
     return async function (message) {
       try {
-        const event = parse(message);
-        const { eventName, modelName, model, modelId } = event;
+        const event = parse(message)
+        const { eventName, modelName, model, modelId } = event
 
-        console.debug("handle cache event", eventName);
+        console.debug('handle cache event', eventName)
 
         if (!model) {
           // no model found
-          if (route) await route(event);
-          return;
+          if (route) await route(event)
+          return
         }
 
-        if (await handleDelete(eventName, modelName, event)) return;
+        if (await handleDelete(eventName, modelName, event)) return
 
-        console.debug("check if we have the code for this object...");
-        await streamRemoteModules(modelName);
+        console.debug('check if we have the code for this object...')
+        await streamRemoteModules(modelName)
 
-        console.debug("unmarshal deserialized model(s)", modelName, modelId);
-        const datasource = datasources.getDataSource(modelName);
-        const hydratedModel = hydrateModel(model, datasource, modelName);
+        console.debug('unmarshal deserialized model(s)', modelName, modelId)
+        const datasource = datasources.getDataSource(modelName)
+        const hydratedModel = hydrateModel(model, datasource, modelName)
 
-        await saveModel(hydratedModel, datasource, m => m.getId());
+        await saveModel(hydratedModel, datasource, m => m.getId())
 
-        if (route) await route({ ...event, model: hydratedModel });
+        if (route) await route({ ...event, model: hydratedModel })
       } catch (error) {
-        console.error(updateCache.name, error.message);
+        console.error(updateCache.name, error.message)
       }
-    };
+    }
   }
 
   /**
@@ -185,7 +186,7 @@ export default function DistributedCache({
    * @returns {Promise<import(".").Model[]>}
    * @throws
    */
-  async function createRelated(event) {
+  async function createRelated (event) {
     return Promise.all(
       event.args.map(async arg => {
         try {
@@ -194,12 +195,12 @@ export default function DistributedCache({
             datasources.getDataSource(event.relation.modelName),
             event.relation.modelName,
             arg
-          );
+          )
         } catch (error) {
-          throw new Error(createRelated.name, error.message);
+          throw new Error(createRelated.name, error.message)
         }
       })
-    );
+    )
   }
 
   /**
@@ -215,19 +216,19 @@ export default function DistributedCache({
    * (model that defines the relation)
    * @throws
    */
-  async function createRelatedObject(event) {
+  async function createRelatedObject (event) {
     if (event.args.length < 1 || !event.relation || !event.modelName) {
-      console.log("missing required params", event);
-      return event;
+      console.log('missing required params', event)
+      return event
     }
     try {
-      const related = await createRelated(event);
-      const datasource = datasources.getDataSource(related[0].getName());
-      await Promise.all(related.map(async m => datasource.save(m.getId(), m)));
-      return related;
+      const related = await createRelated(event)
+      const datasource = datasources.getDataSource(related[0].getName())
+      await Promise.all(related.map(async m => datasource.save(m.getId(), m)))
+      return related
     } catch (error) {
-      console.error(error);
-      throw new Error(createRelatedObject.name, error);
+      console.error(error)
+      throw new Error(createRelatedObject.name, error)
     }
   }
 
@@ -237,22 +238,22 @@ export default function DistributedCache({
    * @param {import(".").Model|import(".").Model[]} related
    * @returns {Event} w/ updated model, modelId, modelName
    */
-  function formatResponse(event, related) {
+  function formatResponse (event, related) {
     if (!related || related.length < 1) {
-      console.debug("related is null");
+      console.debug('related is null')
       return {
         ...event,
-        model: null,
-      };
+        model: null
+      }
     }
-    const rel = makeArray(related);
+    const rel = makeArray(related)
 
     return {
       ...event,
       model: rel.length < 2 ? rel[0] : rel,
       modelName: event.relation.modelName,
-      modelId: rel[0].id || rel[0].getId(),
-    };
+      modelId: rel[0].id || rel[0].getId()
+    }
   }
 
   /**
@@ -261,15 +262,15 @@ export default function DistributedCache({
    * @param {function(object)} route
    * @returns {function(message):Promise<void>} function that searches the cache
    */
-  function searchCache(route) {
+  function searchCache (route) {
     return async function (message) {
       try {
-        const event = parse(message);
+        const event = parse(message)
 
         if (event.args.length > 0) {
-          const newModel = await createRelatedObject(event);
-          await route(formatResponse(event, newModel));
-          return;
+          const newModel = await createRelatedObject(event)
+          await route(formatResponse(event, newModel))
+          return
         }
 
         // find the requested object(s)
@@ -277,12 +278,12 @@ export default function DistributedCache({
           event.model,
           datasources.getDataSource(event.relation.modelName),
           event.relation
-        );
-        await route(formatResponse(event, related));
+        )
+        await route(formatResponse(event, related))
       } catch (error) {
-        console.error(searchCache.name, error.message);
+        console.error(searchCache.name, error.message)
       }
-    };
+    }
   }
 
   /**
@@ -290,11 +291,11 @@ export default function DistributedCache({
    * @param {Event} event
    * @returns {Promise<void>}
    */
-  async function publish(event) {
+  async function publish (event) {
     if (useAppMesh) {
-      await webswitch(event);
+      await webswitch(event)
     } else {
-      await notify(event);
+      await notify(event)
     }
   }
 
@@ -303,15 +304,15 @@ export default function DistributedCache({
    * @param {*} responseName
    * @param {*} internalName
    */
-  function handleResponse(responseName, internalName) {
+  function handleResponse (responseName, internalName) {
     const callback = updateCache(async event =>
       observer.notify(internalName, event)
-    );
+    )
 
     if (useAppMesh) {
-      observer.on(responseName, callback);
+      observer.on(responseName, callback)
     } else {
-      listen(responseName, callback);
+      listen(responseName, callback)
     }
   }
 
@@ -321,17 +322,17 @@ export default function DistributedCache({
    * @param {*} requestName
    * @param {*} eventName
    */
-  function handleRequest(requestName, eventName) {
+  function handleRequest (requestName, eventName) {
     if (useAppMesh) {
       observer.on(
         requestName,
         searchCache(async event => webswitch({ ...event, eventName }))
-      );
+      )
     } else {
       listen(
         requestName,
         searchCache(async event => notify({ ...event, eventName }))
-      );
+      )
     }
   }
 
@@ -340,10 +341,10 @@ export default function DistributedCache({
    * @param {*} internalEvent
    * @param {*} externalEvent
    */
-  function forwardRequest(internalEvent, externalEvent) {
+  function forwardRequest (internalEvent, externalEvent) {
     observer.on(internalEvent, async event =>
       publish({ ...event, eventName: externalEvent })
-    );
+    )
   }
 
   /**
@@ -355,15 +356,15 @@ export default function DistributedCache({
   const handleCrudEvent = eventName =>
     useAppMesh
       ? observer.on(eventName, updateCache())
-      : listen(eventName, updateCache());
+      : listen(eventName, updateCache())
 
   /**
    * authenticate to webswitch server so we are connected and listening
    */
-  function initMeshNode() {
-    useAppMesh = true;
-    webswitch("webswitch");
-    observer.on("webswitch-reconnect", () => webswitch("webswitch"));
+  function initMeshNode () {
+    useAppMesh = true
+    webswitch('webswitch')
+    observer.on('webswitch-reconnect', () => webswitch('webswitch'))
   }
 
   /**
@@ -371,9 +372,9 @@ export default function DistributedCache({
    * Also listen for request and response events for locally
    * and remotely cached data.
    */
-  function start() {
-    const modelSpecs = models.getModelSpecs();
-    const localModels = modelSpecs.map(m => m.modelName);
+  function start () {
+    const modelSpecs = models.getModelSpecs()
+    const localModels = modelSpecs.map(m => m.modelName)
     const remoteModels = [
       ...new Set( // deduplicate
         modelSpecs
@@ -387,10 +388,10 @@ export default function DistributedCache({
               .map(k => m.relations[k].modelName)
           )
           .reduce((a, b) => a.concat(b))
-      ),
-    ];
+      )
+    ]
 
-    console.info("local models", localModels, "remote models", remoteModels);
+    console.info('local models', localModels, 'remote models', remoteModels)
 
     // Forward requests to, handle responses from, remote models
     remoteModels.forEach(function (modelName) {
@@ -398,42 +399,42 @@ export default function DistributedCache({
       forwardRequest(
         domainEvents.internalCacheRequest(modelName),
         domainEvents.externalCacheRequest(modelName)
-      );
+      )
 
       handleResponse(
         domainEvents.externalCacheResponse(modelName),
         domainEvents.internalCacheResponse(modelName)
-      );
+      )
 
-      [
+      ;[
         // Subscribe to CRUD broadcasts from related, external models
         models.getEventName(models.EventTypes.UPDATE, modelName),
         models.getEventName(models.EventTypes.CREATE, modelName),
-        models.getEventName(models.EventTypes.DELETE, modelName),
-      ].forEach(handleCrudEvent);
-    });
+        models.getEventName(models.EventTypes.DELETE, modelName)
+      ].forEach(handleCrudEvent)
+    })
 
     // Listen for cache search requests from external models.
     localModels.forEach(function (modelName) {
       handleRequest(
         domainEvents.externalCacheRequest(modelName),
         domainEvents.externalCacheResponse(modelName)
-      );
+      )
 
-      [
+      ;[
         // Subcribe to local CRUD events and broadcast externally
         models.getEventName(models.EventTypes.UPDATE, modelName),
         models.getEventName(models.EventTypes.CREATE, modelName),
-        models.getEventName(models.EventTypes.DELETE, modelName),
+        models.getEventName(models.EventTypes.DELETE, modelName)
       ].forEach(eventName =>
         observer.on(eventName, async event => publish(event))
-      );
-    });
+      )
+    })
   }
 
   return {
     /** Connect to the webswitch server*/
     initMeshNode,
-    start,
-  };
+    start
+  }
 }

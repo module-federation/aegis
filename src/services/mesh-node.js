@@ -8,11 +8,11 @@
 const WebSocket = require("ws");
 const dns = require("dns/promises");
 
-let fqdn = process.env.WEBSWITCH_HOST || "webswitch.aegis.dev";
+let fqdn = process.env.WEBSWITCH_SERVER || "server.webswitch.dev";
 let port = 8062;
 let path = "/webswitch/broadcast";
 
-/**@type import("ws/lib/websocket") */
+/** @type import("ws/lib/websocket") */
 let ws;
 let hostAddress;
 let uplinkCallback;
@@ -28,7 +28,7 @@ async function getHostAddress(hostname) {
 }
 
 /**
- * Callback invoked when , invoke server callback.
+ * Set callback for uplink.
  * @param {*} callback
  */
 exports.onMessage = function (callback) {
@@ -42,6 +42,10 @@ exports.setUplinkHost = function (host, servicePort = port) {
   port = servicePort;
 };
 
+exports.resetHost = function () {
+  hostAddress = null;
+}
+
 exports.publishEvent = async function (event, observer) {
   if (!event) return;
 
@@ -53,9 +57,11 @@ exports.publishEvent = async function (event, observer) {
 
       ws.on("message", async function (message) {
         const eventData = JSON.parse(message);
+
         if (eventData.eventName) {
           await observer.notify(eventData.eventName, eventData);
         }
+
         if (uplinkCallback) uplinkCallback(message);
       });
 
@@ -64,7 +70,7 @@ exports.publishEvent = async function (event, observer) {
       });
 
       ws.on("error", function (error) {
-        console.error("webswitchClient.on(error)", error);
+        console.error(ws.on, error);
       });
       return;
     }
@@ -83,6 +89,6 @@ exports.publishEvent = async function (event, observer) {
   try {
     webswitch();
   } catch (e) {
-    console.warn(publishEvent.name, e.message);
+    console.warn("publishEvent", e);
   }
 };

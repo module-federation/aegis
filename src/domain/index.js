@@ -1,4 +1,4 @@
-"use strict";
+'use strict'
 
 /** @typedef {import("./model").Model} Model */
 /** @typedef {import('./event').Event} Event */
@@ -147,8 +147,8 @@
  * @property {accessControlList} [accessControlList] - configure authorization
  */
 
-import ModelFactory from "./model-factory";
-import bindAdapters from "./bind-adapters";
+import ModelFactory from './model-factory'
+import bindAdapters from './bind-adapters'
 
 import {
   importRemoteModels,
@@ -157,16 +157,16 @@ import {
   importModelCache,
   importAdapterCache,
   importServiceCache,
-  importWebAssembly,
-} from "./import-remotes";
+  importWebAssembly
+} from './import-remotes'
 
 /**
  *
  * @param {Model} model
  */
 const createEvent = model => ({
-  model: model,
-});
+  model: model
+})
 
 /**
  * @param {{updated:Model,changes:Object}} param0
@@ -174,48 +174,48 @@ const createEvent = model => ({
 const updateEvent = ({ updated, changes }) => ({
   model: updated,
   changes: {
-    ...changes,
-  },
-});
+    ...changes
+  }
+})
 
 const deleteEvent = model => ({
   modelId: ModelFactory.getModelId(model),
-  model: model,
-});
+  model: model
+})
 
 function register(model, services, adapters, isCached = false) {
   // if (model.modelName && model.endpoint && model.factory) {
-  const serviceAdapters = bindAdapters(model.ports, adapters, services);
+  const serviceAdapters = bindAdapters(model.ports, adapters, services)
 
   const dependencies = {
     ...model.dependencies,
-    ...serviceAdapters,
-  };
+    ...serviceAdapters
+  }
 
   ModelFactory.registerModel({
     ...model,
     dependencies,
     factory: model.factory(dependencies),
-    isCached,
-  });
+    isCached
+  })
 
   ModelFactory.registerEvent(
     ModelFactory.EventTypes.CREATE,
     model.modelName,
     createEvent
-  );
+  )
 
   ModelFactory.registerEvent(
     ModelFactory.EventTypes.UPDATE,
     model.modelName,
     updateEvent
-  );
+  )
 
   ModelFactory.registerEvent(
     ModelFactory.EventTypes.DELETE,
     model.modelName,
     deleteEvent
-  );
+  )
   // }
   // console.warn("invalid module spec", model);
 }
@@ -228,38 +228,36 @@ function register(model, services, adapters, isCached = false) {
  * @param {*} adapters - adapters for talking to the services
  */
 async function importModels(remoteEntries, services, adapters) {
-  const models = await importRemoteModels(remoteEntries);
+  const models = await importRemoteModels(remoteEntries)
 
   //console.info(domain.models);
-  if (!models || !models.models) return;
+  if (!models || !models.models) return
 
   Object.values(models.models).forEach(model =>
     register(model, services, adapters)
-  );
+  )
 }
 
 function wrapWasm(wasmModules) {
   return wasmModules.map(module => ({
     modelName: module.exports.getModelName(),
     endpoint: module.exports.getEndpoint(),
-    factory: dependencies => input => {
-      return {
-        dependencies,
-        args: input,
-        ...module.exports.makeModel(),
-        wasm: true,
-      };
-    },
-  }));
+    factory: dependencies => {
+      return function factory(input) {
+        const i = new module.exports.ModuleInput(...input)
+        return new module.exports.Model(i)
+      }
+    }
+  }))
 }
 
 async function importWasmModules(remoteEntries) {
-  const wasmModules = await importWebAssembly(remoteEntries);
-  wrapWasm(wasmModules).forEach(module => register(module));
+  const wasmModules = await importWebAssembly(remoteEntries)
+  wrapWasm(wasmModules).forEach(module => register(module))
 }
 
-let remotesConfig;
-let localOverrides = {};
+let remotesConfig
+let localOverrides = {}
 
 /**
  * Import remote models, services, and adapters.
@@ -267,70 +265,70 @@ let localOverrides = {};
  * @param {*} overrides - override or add services and adapters
  */
 export async function importRemotes(remoteEntries, overrides = {}) {
-  remotesConfig = remoteEntries;
-  localOverrides = overrides;
+  remotesConfig = remoteEntries
+  localOverrides = overrides
 
-  const services = await importRemoteServices(remoteEntries);
-  const adapters = await importRemoteAdapters(remoteEntries);
+  const services = await importRemoteServices(remoteEntries)
+  const adapters = await importRemoteAdapters(remoteEntries)
 
-  console.info({ services, adapters, overrides });
+  console.info({ services, adapters, overrides })
 
   await importModels(
     remoteEntries,
     {
       ...services,
-      ...overrides,
+      ...overrides
     },
     {
       ...adapters,
-      ...overrides,
+      ...overrides
     }
-  );
+  )
 
-  await importWasmModules(remoteEntries);
+  await importWasmModules(remoteEntries)
 }
 
-let modelCache;
-let adapterCache;
-let serviceCache;
+let modelCache
+let adapterCache
+let serviceCache
 
 export async function importRemoteCache(name) {
   if (!remotesConfig) {
-    console.warn("distributed cache cannot be initialized");
-    return;
+    console.warn('distributed cache cannot be initialized')
+    return
   }
 
-  if (ModelFactory.getModelSpec(name)) return;
+  if (ModelFactory.getModelSpec(name)) return
 
   if (!modelCache) {
-    modelCache = await importModelCache(remotesConfig);
+    modelCache = await importModelCache(remotesConfig)
     // Check if we have since loaded the model
     adapterCache = {
       ...(await importAdapterCache(remotesConfig)),
-      ...localOverrides,
-    };
+      ...localOverrides
+    }
     serviceCache = {
       ...(await importServiceCache(remotesConfig)),
-      ...localOverrides,
-    };
+      ...localOverrides
+    }
   }
 
-  if (ModelFactory.getModelSpec(name)) return;
+  if (ModelFactory.getModelSpec(name)) return
 
   if (!modelCache || !modelCache.models) {
-    console.error("no models found in cache");
-    return;
+    console.error('no models found in cache')
+    return
   }
 
   const model = Object.values(modelCache.models).find(
     model => model.modelName.toUpperCase() === name.toUpperCase()
-  );
+  )
 
   if (!model) {
-    console.error("could not find model in cache", name);
-    return;
+    console.error('could not find model in cache', name)
+    return
   }
-  register(model, serviceCache, adapterCache, true);
+  register(model, serviceCache, adapterCache, true)
 }
 
-export default ModelFactory;
+export default ModelFactory

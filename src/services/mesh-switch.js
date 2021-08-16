@@ -1,12 +1,22 @@
 "use strict";
 const WebSocketServer = require("ws").Server;
 const nanoid = require("nanoid").nanoid;
-const server = new WebSocketServer({ clientTracking: true, port: 8062 });
-const uplink = process.env.WEBSWITCH_UPLINK_IP;
+const uplink = process.env.WEBSWITCH_UPLINK;
 const starts = Date.now();
 const uptime = () => Math.round(Math.abs((Date.now() - starts) / 1000 / 60));
 let messagesSent = 0;
 
+/** 
+ * Start listening.
+ * @type {import("ws/lib/websocket-server")} 
+ */
+const server = new WebSocketServer({ clientTracking: true, port: 8062 });
+
+/**
+ * Send to everyone connected but the sender.
+ * @param {*} data 
+ * @param {*} sender 
+ */
 server.broadcast = function (data, sender) {
   server.clients.forEach(function (client) {
     if (client.OPEN && client.webswitchId !== sender.webswitchId) {
@@ -28,7 +38,7 @@ server.sendStatus = function (client) {
       uptimeMinutes: uptime(),
       messagesSent,
       clientsConnected: server.clients.size,
-      uplink: server.uplink,
+      uplink: server.uplink ? server.uplink.webswitchId : "no uplink",
     })
   );
 };
@@ -71,10 +81,11 @@ server.on("connection", function (client) {
 });
 
 if (uplink) {
-  server.webswitchId = nanoid();
-  server.uplink = require("./app-node");
+  server.uplink = require("./mesh-node");
+  server.uplink.webswitchId = nanoid();
   server.uplink.setUplinkHost(uplink);
   server.uplink.onMessage(message =>
     server.broadcast(JSON.parse(message.toString()), server.uplink)
   );
+  server.uplink.publishEvent("webswitch");
 }
