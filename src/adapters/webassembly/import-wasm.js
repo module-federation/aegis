@@ -4,6 +4,7 @@ import { fetchWasm } from './fetch-wasm'
 import loader from "@assemblyscript/loader"
 
 export async function importWebAssembly(remoteEntry, importObject) {
+    if (remoteEntry.skip) return;
     const startTime = Date.now()
 
     if (!importObject) {
@@ -19,15 +20,12 @@ export async function importWebAssembly(remoteEntry, importObject) {
         console.log("we can't stream-compile wasm")
 
     const response = await fetchWasm(remoteEntry)
-
     const wasm = await loader.instantiate(response.asBase64Buffer(), {
         env: {
             log: value => console.log('from wasm' + value)
         }
     })
     console.log('modelName:', wasm.exports.getModelName())
-
     console.info('wasm modules took %dms', Date.now() - startTime)
-
-    return wasm
+    return wrapWasmDomainModules(wasm);
 }
