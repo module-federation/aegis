@@ -1,3 +1,5 @@
+"use strict";
+
 const { Octokit } = require("@octokit/rest");
 const token = process.env.GITHUB_TOKEN;
 const octokit = new Octokit({ auth: token });

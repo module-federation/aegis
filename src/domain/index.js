@@ -157,7 +157,6 @@ import {
   importModelCache,
   importAdapterCache,
   importServiceCache,
-  importWebAssembly
 } from './import-remotes'
 
 /**
@@ -238,24 +237,6 @@ async function importModels(remoteEntries, services, adapters) {
   )
 }
 
-function wrapWasm(wasmModules) {
-  return wasmModules.map(module => ({
-    modelName: module.exports.getModelName(),
-    endpoint: module.exports.getEndpoint(),
-    factory: dependencies => {
-      return function factory(input) {
-        const i = new module.exports.ModuleInput(...input)
-        return new module.exports.Model(i)
-      }
-    }
-  }))
-}
-
-async function importWasmModules(remoteEntries) {
-  const wasmModules = await importWebAssembly(remoteEntries)
-  wrapWasm(wasmModules).forEach(module => register(module))
-}
-
 let remotesConfig
 let localOverrides = {}
 
@@ -284,8 +265,6 @@ export async function importRemotes(remoteEntries, overrides = {}) {
       ...overrides
     }
   )
-
-  await importWasmModules(remoteEntries)
 }
 
 let modelCache

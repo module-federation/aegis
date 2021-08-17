@@ -1,12 +1,12 @@
 "use strict";
-import { fetchWasm } from "./util/fetch-wasm";
-const AsBind = require("as-bind/dist/as-bind.cjs.js");
+// import { fetchWasm } from "../adapters/wasm/fetch-wasm";
+// const AsBind = require("as-bind/dist/as-bind.cjs.js");
 
-async function importFederatedModules(remoteEntries, type, wasm = false) {
+async function importFederatedModules(remoteEntries, type) {
   const startTime = Date.now();
   const modules = await Promise.all(
     remoteEntries
-      .filter(entry => entry.type === type && !entry.wasm)
+      .filter(entry => entry.type === type)
       .map(entry => entry.importRemote())
   );
   console.info(`${type} import took %d ms`, Date.now() - startTime);
@@ -58,39 +58,39 @@ export async function importAdapterCache(remoteEntries) {
   return adapters.reduce((p, c) => ({ ...p, ...c }));
 }
 
-export async function importWebAssembly(remoteEntries, importObject) {
-  const startTime = Date.now();
+// export async function importWebAssembly(remoteEntries, importObject) {
+//   const startTime = Date.now();
 
-  const wasmModules = await Promise.all(
-    remoteEntries
-      .filter(entry => entry.wasm)
-      .map(async function (entry) {
-        if (!importObject) {
-          importObject = {
-            env: {
-              log: () => console.log("wasm module imported"),
-            },
-          };
-        }
+//   const wasmModules = await Promise.all(
+//     remoteEntries
+//       .filter(entry => entry.wasm)
+//       .map(async function (entry) {
+//         if (!importObject) {
+//           importObject = {
+//             env: {
+//               log: () => console.log("wasm module imported"),
+//             },
+//           };
+//         }
 
-        // Check if we support streaming instantiation
-        if (!WebAssembly.instantiateStreaming)
-          console.log("we can't stream-compile wasm");
+//         // Check if we support streaming instantiation
+//         if (!WebAssembly.instantiateStreaming)
+//           console.log("we can't stream-compile wasm");
 
-        const response = await fetchWasm(entry);
+//         const response = await fetchWasm(entry);
 
-        const wasm = await AsBind.instantiate(response.asBase64Buffer(), {
-          env: {
-            log: value => console.log("from wasm", value),
-          },
-        });
-        console.log("modelName:", wasm.exports.getModelName());
+//         const wasm = await AsBind.instantiate(response.asBase64Buffer(), {
+//           env: {
+//             log: value => console.log("from wasm" + value),
+//           },
+//         });
+//         console.log("modelName:", wasm.exports.getModelName());
 
-        return wasm;
-      })
-  );
+//         return wasm;
+//       })
+//   );
 
-  console.info("wasm modules took %dms", Date.now() - startTime);
+//   console.info("wasm modules took %dms", Date.now() - startTime);
 
-  return wasmModules;
-}
+//   return wasmModules;
+// }
