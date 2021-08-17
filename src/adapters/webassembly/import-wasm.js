@@ -2,6 +2,7 @@
 
 import { fetchWasm } from './fetch-wasm'
 import loader from '@assemblyscript/loader'
+import { wrapWasmDomainModules } from "./wasm-interop"
 
 export async function importWebAssembly(remoteEntry, importObject) {
     const startTime = Date.now()
