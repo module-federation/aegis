@@ -1,10 +1,9 @@
 'use strict'
 
 import { fetchWasm } from './fetch-wasm'
-import loader from "@assemblyscript/loader"
+import loader from '@assemblyscript/loader'
 
 export async function importWebAssembly(remoteEntry, importObject) {
-    if (remoteEntry.skip) return;
     const startTime = Date.now()
 
     if (!importObject) {
@@ -16,8 +15,7 @@ export async function importWebAssembly(remoteEntry, importObject) {
     }
 
     // Check if we support streaming instantiation
-    if (!loader.instantiateStreaming)
-        console.log("we can't stream-compile wasm")
+    if (!loader.instantiateStreaming) console.log("we can't stream-compile wasm")
 
     const response = await fetchWasm(remoteEntry)
     const wasm = await loader.instantiate(response.asBase64Buffer(), {
@@ -27,5 +25,5 @@ export async function importWebAssembly(remoteEntry, importObject) {
     })
     console.log('modelName:', wasm.exports.getModelName())
     console.info('wasm modules took %dms', Date.now() - startTime)
-    return wrapWasmDomainModules(wasm);
+    return wrapWasmDomainModules(wasm)
 }

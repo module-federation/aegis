@@ -19,7 +19,7 @@ function octoGet(entry) {
         branch,
       })
       .then(function (rest) {
-        const file = rest.data.find(d => /\.wasm$/.test(d.name));
+        const file = rest.data.find(datum => /\.wasm$/.test(datum.name));
         return file.sha;
       })
       .then(function (sha) {

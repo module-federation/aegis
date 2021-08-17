@@ -128,9 +128,10 @@ function deduplicate(entries) {
 module.exports = async remoteEntry => {
   console.info(remoteEntry);
   const entries = Array.isArray(remoteEntry) ? remoteEntry : [remoteEntry];
+  const nonWasmEntries = entries.filter(entry => !entry.wasm)
 
   const remotes = await Promise.all(
-    Object.values(deduplicate(entries)).map(function (entry) {
+    Object.values(deduplicate(nonWasmEntries)).map(function (entry) {
       if (entry.wasm) return;
       const path = getPath(entry);
       console.log("downloading file to", path);
