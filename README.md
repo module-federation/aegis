@@ -26,7 +26,7 @@ yarn demo
 ## Work in Progress
 
 ### WebAssembly
-Enable polyglot and WASM-powered compute 
+Enable polyglot, WASM-powered compute 
 
 Overview:
 - Support WASM domain, adapter, and services components
@@ -34,13 +34,13 @@ Overview:
 - User option to attempt to run their existing TypeScript components in WASM stack machine
 
 ### AppMesh 
-Deecentralized network for transparent integration and dynamic redistribution of federated software
+Decentralized network for transparent integration and dynamic redistribution of federated software
 
 Overview:
 - Distributed object cache over switched mesh network 
-- Operations analytics (capture performance at switch nodes, recommend deployment changes)
-- Opertions automation (implement recommended changes, including basic orchestration)
-- Dynamic redeployment (e.g. of two chatty components into same instance or to bring a component closer to data or users)
+- Operations analytics / MLops (capture performance at switch nodes, recommend deployment changes)
+- Operations automation (implement recommended changes, including basic orchestration)
+- Dynamic redeployment (e.g. of 2 chatty services to same instance, run closer to users and data )
 - Use Cases: DataMesh / Federated Learning
 
 Based on:
