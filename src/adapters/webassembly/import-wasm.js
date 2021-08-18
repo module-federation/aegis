@@ -2,7 +2,7 @@
 
 import { fetchWasm } from './fetch-wasm'
 import loader from '@assemblyscript/loader'
-import { wrapWasmDomainModules } from "./wasm-interop"
+import { wrapWasmDomainModule } from "./wasm-interop"
 
 export async function importWebAssembly(remoteEntry, importObject) {
     const startTime = Date.now()
@@ -24,7 +24,6 @@ export async function importWebAssembly(remoteEntry, importObject) {
             log: value => console.log('from wasm' + value)
         }
     })
-    console.log('modelName:', wasm.exports.getModelName())
     console.info('wasm modules took %dms', Date.now() - startTime)
-    return wrapWasmDomainModules(wasm)
+    return wrapWasmDomainModule(wasm)
 }
