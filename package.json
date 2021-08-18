@@ -1,6 +1,6 @@
 {
   "name": "@module-federation/aegis",
-  "version": "0.0.0-beta.2",
+  "version": "0.0.0-beta.3",
   "main": "lib/",
   "module": "esm/",
   "repository": "git@github.com:module-federation/aegis.git",
