@@ -1,4 +1,4 @@
-'use strict'
+"use strict";
 
 export async function wrapWasmDomainModule(module) {
     const {
@@ -9,20 +9,19 @@ export async function wrapWasmDomainModule(module) {
         __newArray,
         ArrayOfStrings_ID,
         ModelSpec,
+        Model,
         getModelSpec,
-        modelFactory
-    } = module.exports
+        modelFactory,
+    } = module.exports;
 
-    const specPtr = __pin(getModelSpec())
-    const modelSpec = ModelSpec.wrap(specPtr)
-    console.info("modelSpec.modelName", __getString(modelSpec.modelName))
+    const specPtr = __pin(getModelSpec());
+    const modelSpec = ModelSpec.wrap(specPtr);
 
     const wrappedSpec = {
         modelName: __getString(modelSpec.modelName),
         endpoint: __getString(modelSpec.endpoint),
 
         factory: dependencies => async input => {
-
             // Allocate a new array, but this time its elements are pointers to strings.
             const keyPtrs = Object.keys(input).map(k => __pin(__newString(k)));
             const valPtrs = Object.values(input).map(v => __pin(__newString(v)));
@@ -40,14 +39,13 @@ export async function wrapWasmDomainModule(module) {
             valPtrs.forEach(__unpin);
 
             return {
-                wasmId: dependencies.uuid(),
-                ...model
-            }
-        }
-    }
+                ...model,
+            };
+        },
+    };
     console.info(wrappedSpec);
     modelSpec.dispose = () => __unpin(specPtr);
-    return Object.freeze(wrappedSpec)
+    return Object.freeze(wrappedSpec);
 }
 
 export function wrapWasmAdapterModule(modules) { }

@@ -227,11 +227,7 @@ function register(model, services, adapters, isCached = false) {
  * @param {*} adapters - adapters for talking to the services
  */
 async function importModels(remoteEntries, services, adapters) {
-  const models = await importRemoteModels(remoteEntries)
-
-  console.log("MODELS", models)
-  //console.info(domain.models);
-
+  const models = await importRemoteModels(remoteEntries);
   models.forEach(model => register(model));
 }
 
