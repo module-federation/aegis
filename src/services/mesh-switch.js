@@ -26,7 +26,7 @@ server.broadcast = function (data, sender) {
     }
   });
 
-  if (server.uplink && server.webswitchId !== sender.webswitchId) {
+  if (server.uplink && server.uplink.webswitchId !== sender.webswitchId) {
     server.uplink.publishEvent(data);
     messagesSent++;
   }

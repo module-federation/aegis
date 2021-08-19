@@ -94,14 +94,6 @@ export async function importWebAssembly(
 ) {
   const startTime = Date.now();
 
-  if (!importObject) {
-    importObject = {
-      env: {
-        log: () => console.log("wasm module imported"),
-      },
-    };
-  }
-
   // Check if we support streaming instantiation
   if (!loader.instantiateStreaming) console.log("we can't stream-compile wasm");
 
