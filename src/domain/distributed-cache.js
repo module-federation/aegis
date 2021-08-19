@@ -171,7 +171,7 @@ export default function DistributedCache({
 
         if (route) await route({ ...event, model: hydratedModel });
       } catch (error) {
-        console.error(updateCache.name, error.message);
+        console.error(updateCache.name, error);
       }
     };
   }

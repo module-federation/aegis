@@ -32,8 +32,7 @@ export async function importRemoteAdapters(remoteEntries) {
 }
 
 export async function importModelCache(remoteEntries, name) {
-  const remoteModels = importFederatedModules(remoteEntries, "model-cache");
-  return remoteModels.reduce((p, c) => ({ ...p, ...c }));
+  return importFederatedModules(remoteEntries, "model-cache");
 }
 
 export async function importServiceCache(remoteEntries) {
