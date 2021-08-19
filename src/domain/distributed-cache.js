@@ -1,9 +1,9 @@
-'use strict'
+"use strict";
 
-import { relationType } from './make-relations'
-import { importRemoteCache } from '.'
-import domainEvents from './domain-events'
-import makeArray from './util/make-array'
+import { relationType } from "./make-relations";
+import { importRemoteCache } from ".";
+import domainEvents from "./domain-events";
+import makeArray from "./util/make-array";
 
 /**
  * Implements distributed object cache. Find any model
@@ -28,7 +28,7 @@ export default function DistributedCache({
   observer,
   datasources,
   publish,
-  subscribe
+  subscribe,
 }) {
   /**
    * @typedef {{
@@ -54,15 +54,15 @@ export default function DistributedCache({
   function parse(payload) {
     try {
       const event = payload;
-      const eventName = event.eventName
-      const modelName = event.modelName.toLowerCase()
-      const model = event.model
-      const modelId = event.id || event.modelId
-      const relation = event.relation // optional
-      const args = event.args // optional;
+      const eventName = event.eventName;
+      const modelName = event.modelName.toLowerCase();
+      const model = event.model;
+      const modelId = event.id || event.modelId;
+      const relation = event.relation; // optional
+      const args = event.args; // optional;
 
       if (!eventName || !modelName || !modelId)
-        throw new Error('invalid message format')
+        throw new Error("invalid message format");
 
       return {
         eventName,
@@ -70,10 +70,10 @@ export default function DistributedCache({
         model,
         modelId,
         relation,
-        args
-      }
+        args,
+      };
     } catch (e) {
-      console.error('could not parse message', e, payload)
+      console.error("could not parse message", e, payload);
     }
   }
 
@@ -88,11 +88,11 @@ export default function DistributedCache({
     if (
       eventName === models.getEventName(models.EventTypes.DELETE, modelName)
     ) {
-      console.debug('deleting from cache', modelName, event.modelId)
-      await datasources.getDataSource(modelName).delete(event.modelId)
-      return true
+      console.debug("deleting from cache", modelName, event.modelId);
+      await datasources.getDataSource(modelName).delete(event.modelId);
+      return true;
     }
-    return false
+    return false;
   }
 
   /**
@@ -107,9 +107,9 @@ export default function DistributedCache({
     if (Array.isArray(model)) {
       return model.map(m =>
         models.loadModel(observer, datasource, m, modelName)
-      )
+      );
     }
-    return models.loadModel(observer, datasource, model, modelName)
+    return models.loadModel(observer, datasource, model, modelName);
   }
 
   /**
@@ -120,10 +120,10 @@ export default function DistributedCache({
    * @param {function(m)=>m.id} return id to save
    */
   async function saveModel(model, datasource, id = m => m.id) {
-    console.debug('saving model(s)')
+    console.debug("saving model(s)");
     if (Array.isArray(model))
-      await Promise.all(model.map(async m => datasource.save(id(m), m)))
-    await datasource.save(id(model), model)
+      await Promise.all(model.map(async m => datasource.save(id(m), m)));
+    await datasource.save(id(model), model);
   }
 
   /**
@@ -132,9 +132,9 @@ export default function DistributedCache({
    */
   async function streamRemoteModules(modelName) {
     if (!models.getModelSpec(modelName)) {
-      console.debug("we don't, import it...")
+      console.debug("we don't, import it...");
       // Stream the code for the model
-      await importRemoteCache(modelName)
+      await importRemoteCache(modelName);
     }
   }
   /**
@@ -147,33 +147,33 @@ export default function DistributedCache({
   function updateCache(route) {
     return async function (message) {
       try {
-        const event = parse(message)
-        const { eventName, modelName, model, modelId } = event
+        const event = parse(message);
+        const { eventName, modelName, model, modelId } = event;
 
-        console.debug('handle cache event', eventName)
+        console.debug("handle cache event", eventName);
 
         if (!model) {
           // no model found
-          if (route) await route(event)
-          return
+          if (route) await route(event);
+          return;
         }
 
-        if (await handleDelete(eventName, modelName, event)) return
+        if (await handleDelete(eventName, modelName, event)) return;
 
-        console.debug('check if we have the code for this object...')
-        await streamRemoteModules(modelName)
+        console.debug("check if we have the code for this object...");
+        await streamRemoteModules(modelName);
 
-        console.debug('unmarshal deserialized model(s)', modelName, modelId)
-        const datasource = datasources.getDataSource(modelName)
-        const hydratedModel = hydrateModel(model, datasource, modelName)
+        console.debug("unmarshal deserialized model(s)", modelName, modelId);
+        const datasource = datasources.getDataSource(modelName);
+        const hydratedModel = hydrateModel(model, datasource, modelName);
 
-        await saveModel(hydratedModel, datasource, m => m.getId())
+        await saveModel(hydratedModel, datasource, m => m.getId());
 
-        if (route) await route({ ...event, model: hydratedModel })
+        if (route) await route({ ...event, model: hydratedModel });
       } catch (error) {
-        console.error(updateCache.name, error.message)
+        console.error(updateCache.name, error.message);
       }
-    }
+    };
   }
 
   /**
@@ -191,12 +191,12 @@ export default function DistributedCache({
             datasources.getDataSource(event.relation.modelName),
             event.relation.modelName,
             arg
-          )
+          );
         } catch (error) {
-          throw new Error(createRelated.name, error.message)
+          throw new Error(createRelated.name, error.message);
         }
       })
-    )
+    );
   }
 
   /**
@@ -214,17 +214,17 @@ export default function DistributedCache({
    */
   async function createRelatedObject(event) {
     if (event.args.length < 1 || !event.relation || !event.modelName) {
-      console.log('missing required params', event)
-      return event
+      console.log("missing required params", event);
+      return event;
     }
     try {
-      const related = await createRelated(event)
-      const datasource = datasources.getDataSource(related[0].getName())
-      await Promise.all(related.map(async m => datasource.save(m.getId(), m)))
-      return related
+      const related = await createRelated(event);
+      const datasource = datasources.getDataSource(related[0].getName());
+      await Promise.all(related.map(async m => datasource.save(m.getId(), m)));
+      return related;
     } catch (error) {
-      console.error(error)
-      throw new Error(createRelatedObject.name, error)
+      console.error(error);
+      throw new Error(createRelatedObject.name, error);
     }
   }
 
@@ -236,20 +236,20 @@ export default function DistributedCache({
    */
   function formatResponse(event, related) {
     if (!related || related.length < 1) {
-      console.debug('related is null')
+      console.debug("related is null");
       return {
         ...event,
-        model: null
-      }
+        model: null,
+      };
     }
-    const rel = makeArray(related)
+    const rel = makeArray(related);
 
     return {
       ...event,
       model: rel.length < 2 ? rel[0] : rel,
       modelName: event.relation.modelName,
-      modelId: rel[0].id || rel[0].getId()
-    }
+      modelId: rel[0].id || rel[0].getId(),
+    };
   }
 
   /**
@@ -261,12 +261,12 @@ export default function DistributedCache({
   function searchCache(route) {
     return async function (message) {
       try {
-        const event = parse(message)
+        const event = parse(message);
 
         if (event.args.length > 0) {
-          const newModel = await createRelatedObject(event)
-          await route(formatResponse(event, newModel))
-          return
+          const newModel = await createRelatedObject(event);
+          await route(formatResponse(event, newModel));
+          return;
         }
 
         // find the requested object(s)
@@ -274,12 +274,12 @@ export default function DistributedCache({
           event.model,
           datasources.getDataSource(event.relation.modelName),
           event.relation
-        )
-        await route(formatResponse(event, related))
+        );
+        await route(formatResponse(event, related));
       } catch (error) {
-        console.error(searchCache.name, error.message)
+        console.error(searchCache.name, error.message);
       }
-    }
+    };
   }
 
   /**
@@ -290,7 +290,7 @@ export default function DistributedCache({
   function receiveResponse(responseName, internalName) {
     const callback = updateCache(async event =>
       observer.notify(internalName, event)
-    )
+    );
     subscribe(responseName, callback);
   }
 
@@ -304,7 +304,7 @@ export default function DistributedCache({
     subscribe(
       requestName,
       searchCache(async event => publish({ ...event, eventName }))
-    )
+    );
   }
 
   /**
@@ -315,7 +315,7 @@ export default function DistributedCache({
   function forwardRequest(internalEvent, externalEvent) {
     observer.on(internalEvent, async event =>
       publish({ ...event, eventName: externalEvent })
-    )
+    );
   }
 
   /**
@@ -335,8 +335,8 @@ export default function DistributedCache({
    * and remotely cached data.
    */
   function start() {
-    const modelSpecs = models.getModelSpecs()
-    const localModels = modelSpecs.map(m => m.modelName)
+    const modelSpecs = models.getModelSpecs();
+    const localModels = modelSpecs.map(m => m.modelName);
     const remoteModels = [
       ...new Set( // deduplicate
         modelSpecs
@@ -350,10 +350,10 @@ export default function DistributedCache({
               .map(k => m.relations[k].modelName)
           )
           .reduce((a, b) => a.concat(b))
-      )
-    ]
+      ),
+    ];
 
-    console.info('local models', localModels, 'remote models', remoteModels)
+    console.info("local models", localModels, "remote models", remoteModels);
 
     // Forward requests to, handle responses from, remote models
     remoteModels.forEach(function (modelName) {
@@ -361,38 +361,34 @@ export default function DistributedCache({
       forwardRequest(
         domainEvents.internalCacheRequest(modelName),
         domainEvents.externalCacheRequest(modelName)
-      )
+      );
 
       receiveResponse(
         domainEvents.externalCacheResponse(modelName),
         domainEvents.internalCacheResponse(modelName)
-      )
-
-      [
+      )[
         // Subscribe to CRUD broadcasts from related, external models
-        models.getEventName(models.EventTypes.UPDATE, modelName),
-        models.getEventName(models.EventTypes.CREATE, modelName),
-        models.getEventName(models.EventTypes.DELETE, modelName)
-      ].forEach(receiveCrudEvent)
-    })
+        (models.getEventName(models.EventTypes.UPDATE, modelName),
+          models.getEventName(models.EventTypes.CREATE, modelName),
+          models.getEventName(models.EventTypes.DELETE, modelName))
+      ].forEach(receiveCrudEvent);
+    });
 
     // Listen for cache search requests from external models.
     localModels.forEach(function (modelName) {
       answerRequest(
         domainEvents.externalCacheRequest(modelName),
         domainEvents.externalCacheResponse(modelName)
-      )
-
-      [
+      )[
         // Subcribe to local CRUD events and broadcast externally
-        models.getEventName(models.EventTypes.UPDATE, modelName),
-        models.getEventName(models.EventTypes.CREATE, modelName),
-        models.getEventName(models.EventTypes.DELETE, modelName)
+        (models.getEventName(models.EventTypes.UPDATE, modelName),
+          models.getEventName(models.EventTypes.CREATE, modelName),
+          models.getEventName(models.EventTypes.DELETE, modelName))
       ].forEach(broadcastCrudEvent);
-    })
+    });
   }
 
   return {
-    start
-  }
+    start,
+  };
 }
