@@ -1,6 +1,6 @@
 # aegis
 
-See the [MicroLib](https://github.com/module-federation/MicroLib) repo for a working example of a federation server using Aegis and all documentation. Check back for additional examples and server templates soon.
+See the [MicroLib](https://github.com/module-federation/MicroLib) repo for documentation and a working example of a federation server.
 
 
 ## Using Aegis
