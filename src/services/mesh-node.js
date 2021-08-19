@@ -10,7 +10,7 @@ const dns = require("dns/promises");
 
 let fqdn = process.env.WEBSWITCH_SERVER || "switch.app-mesh.net";
 let port =
-  process.env.WEBSWITCH_PORT || process.env.SSL_ENABLED
+  process.env.WEBSWITCH_PORT || /true/i.test(process.env.SSL_ENABLED)
     ? process.env.SSL_PORT
     : process.env.PORT;
 let path = "/webswitch/broadcast";

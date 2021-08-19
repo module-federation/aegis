@@ -34,6 +34,11 @@ export default function brokerEvents(observer, datasources, models) {
     const publish = useAppMesh ? meshPublish : busPublish;
     const subscribe = useAppMesh ? meshSubscribe : busSubcribe;
 
+    if (useAppMesh) {
+      // connect
+      publish("webswitch");
+    }
+
     const broker = DistributedCache({
       observer,
       datasources,
