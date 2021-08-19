@@ -8,8 +8,11 @@
 const WebSocket = require("ws");
 const dns = require("dns/promises");
 
-let fqdn = process.env.WEBSWITCH_SERVER || "server.webswitch.dev";
-let port = 8062;
+let fqdn = process.env.WEBSWITCH_SERVER || "switch.app-mesh.net ";
+let port =
+  process.env.WEBSWITCH_PORT || process.env.SSL_ENABLED
+    ? process.env.SSL_PORT
+    : process.env.PORT;
 let path = "/webswitch/broadcast";
 
 /** @type import("ws/lib/websocket") */
@@ -44,7 +47,7 @@ exports.setUplinkHost = function (host, servicePort = port) {
 
 exports.resetHost = function () {
   hostAddress = null;
-}
+};
 
 exports.publishEvent = async function (event, observer) {
   if (!event) return;

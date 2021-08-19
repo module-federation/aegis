@@ -366,12 +366,15 @@ export default function DistributedCache({
       receiveResponse(
         domainEvents.externalCacheResponse(modelName),
         domainEvents.internalCacheResponse(modelName)
-      )[
+      );
+
+      [
         // Subscribe to CRUD broadcasts from related, external models
-        (models.getEventName(models.EventTypes.UPDATE, modelName),
-          models.getEventName(models.EventTypes.CREATE, modelName),
-          models.getEventName(models.EventTypes.DELETE, modelName))
+        models.getEventName(models.EventTypes.UPDATE, modelName),
+        models.getEventName(models.EventTypes.CREATE, modelName),
+        models.getEventName(models.EventTypes.DELETE, modelName)
       ].forEach(receiveCrudEvent);
+
     });
 
     // Listen for cache search requests from external models.
@@ -379,11 +382,13 @@ export default function DistributedCache({
       answerRequest(
         domainEvents.externalCacheRequest(modelName),
         domainEvents.externalCacheResponse(modelName)
-      )[
+      );
+
+      [
         // Subcribe to local CRUD events and broadcast externally
-        (models.getEventName(models.EventTypes.UPDATE, modelName),
-          models.getEventName(models.EventTypes.CREATE, modelName),
-          models.getEventName(models.EventTypes.DELETE, modelName))
+        models.getEventName(models.EventTypes.UPDATE, modelName),
+        models.getEventName(models.EventTypes.CREATE, modelName),
+        models.getEventName(models.EventTypes.DELETE, modelName),
       ].forEach(broadcastCrudEvent);
     });
   }
