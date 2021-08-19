@@ -56,7 +56,7 @@ export async function wrapWasmModelSpec(module) {
       return immutableClone;
     },
     // call to dispose of spec memory
-    dispose = () => __unpin(specPtr)
+    dispose: () => __unpin(specPtr)
   });
 }
 
