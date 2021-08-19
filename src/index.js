@@ -10,8 +10,8 @@ const secure = require("../src/services/auth");
 const express = require("express");
 const cluster = require("./cluster");
 const graceful = require("express-graceful-shutdown");
-const messageParser = require("../src/services/message").parsers;
-const { ServerlessAdapter } = require("./server-less");
+const messageParser = require("../src/adpaters/serverless/message-parsers").parsers;
+const { ServerlessAdapter } = require("../src/adapters/serverless/serverless-adapter");
 const StaticFileHandler = require("serverless-aws-static-file-handler");
 
 const port = process.argv[2] ? process.argv[2] : process.env.PORT || 8070;

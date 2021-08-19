@@ -1,6 +1,10 @@
 "use strict";
-
-export async function wrapWasmDomainModule(module) {
+/**
+ * Wrap wasm factory function, etc in `ModelSpecification`
+ * @param {WebAssembly} module WebAssembly
+ * @returns {import("../../domain").ModelSpecification}
+ */
+export async function wrapWasmModelSpec(module) {
     const {
         ModelSpec,
         getModelSpec,
@@ -17,7 +21,8 @@ export async function wrapWasmDomainModule(module) {
     const specPtr = __pin(getModelSpec());
     const modelSpec = ModelSpec.wrap(specPtr);
 
-    const wrappedSpec = {
+    // wrapped model spec
+    return Object.freeze({
         modelName: __getString(modelSpec.modelName),
         endpoint: __getString(modelSpec.endpoint),
         /**
@@ -47,16 +52,14 @@ export async function wrapWasmDomainModule(module) {
 
             const immutableClone = Object.freeze({ ...model });
             __unpin(modelPtr);
+
             return immutableClone;
         },
-    };
-
-    const dispose = () => __unpin(specPtr);
-    // Call dispose to all this to be GC'ed
-    modelSpec.dispose = dispose.bind(this);
-    return Object.freeze(wrappedSpec);
+        // call to dispose of spec memory
+        dispose = () => __unpin(specPtr)
+    });
 }
 
-export function wrapWasmAdapterModule(modules) { }
+export function wrapWasmAdapter(module) { }
 
-export function wrapWasmServiceModule(modules) { }
+export function wrapWasmService(module) { }

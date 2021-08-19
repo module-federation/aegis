@@ -1,7 +1,7 @@
 import DistributedCache from "../domain/distributed-cache";
-import uuid from "../domain/util/uuid";
 import EventBus from "../services/event-bus";
-import appMesh from "../services/mesh-node";
+import AppMesh from "../services/mesh-node";
+import uuid from "../domain/util/uuid";
 
 const BROADCAST = process.env.TOPIC_BROADCAST || "broadcastChannel";
 const useObjectCache = /true/i.test(process.env.DISTRIBUTED_CACHE_ENABLED);
@@ -20,29 +20,27 @@ export default function brokerEvents(observer, datasources, models) {
 
   // Distributed object cache - must be explicitly enabled
   if (useObjectCache) {
-    const socket = event => appMesh.publishEvent(event, observer);
-    const notify = event => EventBus.notify(BROADCAST, JSON.stringify(event));
-    const listen = (eventName, callback) =>
+    const meshPublish = event => AppMesh.publishEvent(event, observer);
+    const meshSubscribe = (eventName, callback) => observer.on(eventName, callback);
+    const busPublish = event => EventBus.notify(BROADCAST, JSON.stringify(event));
+    const busSubcribe = (eventName, cb) =>
       EventBus.listen({
         topic: BROADCAST,
         id: uuid(),
         once: false,
         filters: [eventName],
-        callback,
+        callback: (msg) => cb(JSON.parse(msg))
       });
+    const publish = useAppMesh ? meshPublish : busPublish;
+    const subscribe = useAppMesh ? meshSubscribe : busSubcribe;
 
     const broker = DistributedCache({
       observer,
       datasources,
       models,
-      notify,
-      listen,
-      appMesh: socket,
+      publish,
+      subscribe,
     });
-
-    if (useAppMesh) {
-      broker.initMeshNode();
-    }
 
     broker.start();
   }
