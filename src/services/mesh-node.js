@@ -8,7 +8,7 @@
 const WebSocket = require("ws");
 const dns = require("dns/promises");
 
-let fqdn = process.env.WEBSWITCH_SERVER || "switch.app-mesh.net ";
+let fqdn = process.env.WEBSWITCH_SERVER || "switch.app-mesh.net";
 let port =
   process.env.WEBSWITCH_PORT || process.env.SSL_ENABLED
     ? process.env.SSL_PORT
