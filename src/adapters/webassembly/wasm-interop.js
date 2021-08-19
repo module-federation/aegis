@@ -2,16 +2,16 @@
 
 export async function wrapWasmDomainModule(module) {
     const {
+        ModelSpec,
+        getModelSpec,
+        modelFactory,
+        ArrayOfStrings_ID,
         __pin,
         __unpin,
         __getString,
         __newString,
         __newArray,
-        ArrayOfStrings_ID,
-        ModelSpec,
-        Model,
-        getModelSpec,
-        modelFactory,
+        __getArray,
     } = module.exports;
 
     const specPtr = __pin(getModelSpec());
@@ -20,31 +20,40 @@ export async function wrapWasmDomainModule(module) {
     const wrappedSpec = {
         modelName: __getString(modelSpec.modelName),
         endpoint: __getString(modelSpec.endpoint),
-
+        /**
+         * Generates factory function
+         * @param {*} dependencies
+         * @returns {({...arg}=>Model)} factory function to generate model
+         */
         factory: dependencies => async input => {
-            // Allocate a new array, but this time its elements are pointers to strings.
+            // Allocate new arrays pointers to strings.
             const keyPtrs = Object.keys(input).map(k => __pin(__newString(k)));
             const valPtrs = Object.values(input).map(v => __pin(__newString(v)));
             const keyPtr = __pin(__newArray(ArrayOfStrings_ID, keyPtrs));
             const valPtr = __pin(__newArray(ArrayOfStrings_ID, valPtrs));
 
-            // Provide our array of lowercase strings to WebAssembly, and obtain the new
-            // array of uppercase strings before printing it.
+            // Provide the input as two arrays of strings, one for keys, the other for values
             const modelPtr = __pin(modelFactory(keyPtr, valPtr));
-            const model = Model.wrap(modelPtr);
-            model.dispose = () => __unpin(modelPtr); // it is ok if the arrays becomes garbage collected now
+            //const model = Model.wrap(modelPtr);
 
-            // The array keeps its values alive from now on
+            // The arrays keeps values alive from now on
             keyPtrs.forEach(__unpin);
             valPtrs.forEach(__unpin);
 
-            return {
-                ...model,
-            };
+            const model = __getArray(modelPtr)
+                .map(multi => __getArray(multi))
+                .map(tuple => ({ [__getString(tuple[0])]: __getString(tuple[1]) }))
+                .reduce((prop1, prop2) => ({ ...prop1, ...prop2 }));
+
+            const immutableClone = Object.freeze({ ...model });
+            __unpin(modelPtr);
+            return immutableClone;
         },
     };
-    console.info(wrappedSpec);
-    modelSpec.dispose = () => __unpin(specPtr);
+
+    const dispose = () => __unpin(specPtr);
+    // Call dispose to all this to be GC'ed
+    modelSpec.dispose = dispose.bind(this);
     return Object.freeze(wrappedSpec);
 }
 
