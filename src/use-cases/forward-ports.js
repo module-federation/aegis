@@ -15,16 +15,20 @@
 export function externalizePortEvents(observer, models, publish, subscribe) {
   const specs = models.getModelSpecs();
 
-  specs.forEach(spec => spec.getPorts().forEach(port => {
-    const consumer = spec.getPorts[port].consumesEvent
-    const producer = spec.getPorts[port].producesEvent
+  specs.forEach(spec => {
+    if (!spec.ports) return;
 
-    if (consumer) {
-      subscribe(consumer, (eventData) => observer.notify(eventData.eventName, eventData))
-    }
+    Object.keys(spec.ports).forEach(port => {
+      const consumer = spec.ports[port].consumesEvent
+      const producer = spec.ports[port].producesEvent
 
-    if (producer) {
-      observer.on(producer, (eventData) => publish(eventData.eventName, eventData));
-    }
-  }))
+      if (consumer) {
+        subscribe(consumer, (eventData) => observer.notify(eventData.eventName, eventData))
+      }
+
+      if (producer) {
+        observer.on(producer, (eventData) => publish(eventData.eventName, eventData));
+      }
+    });
+  });
 }
