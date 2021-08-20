@@ -1,6 +1,9 @@
 "use strict";
 
 import loader from "@assemblyscript/loader";
+import { Observer } from "../../domain/observer";
+const observer = Observer.getInstance();
+
 import {
   wrapWasmAdapter,
   wrapWasmModelSpec,
@@ -75,7 +78,7 @@ export function fetchWasm(entry) {
 
 export async function importWebAssembly(
   remoteEntry,
-  importObject = { env: dispose = (free) => free() },
+  importObject = { env: { abort: (err) => observer.notify("wasmAbort", err) } },
   type = "model"
 ) {
   const startTime = Date.now();
