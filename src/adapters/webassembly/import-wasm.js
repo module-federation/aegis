@@ -68,7 +68,7 @@ function httpGet(entry) {
         response.on("error", (err) => reject(err));
       }
     );
-  }
+  });
 }
 
 export function fetchWasm(entry) {
