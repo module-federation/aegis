@@ -224,7 +224,14 @@ const ModelFactory = {
    */
   deleteModel: model => Model.delete(model),
 
-  clearModels: () => modelFactories.clear(),
+  /**
+   * Call `dispose()` on each factory to release resources, 
+   * then delete them.
+   */
+  clearModels: () => {
+    modelFactories.forEach(mf => { if (mf.dispose) mf.dispose(); });
+    modelFactories.clear();
+  },
 
   /**
    * Get ID of model

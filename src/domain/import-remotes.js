@@ -12,7 +12,6 @@ async function importFederatedModules(remoteEntries, type) {
       .filter(entry => entry.type === type)
       .map(entry => entry.importRemote())
   );
-  console.info(modules.flat());
   console.info(`${type} import took %d ms`, Date.now() - startTime);
   return modules.flat();
 }
