@@ -1,6 +1,9 @@
+"use strict"
+
 import DistributedCache from "../domain/distributed-cache";
 import EventBus from "../services/event-bus";
 import AppMesh from "../services/mesh-node";
+import { externalizePortEvents } from "./forward-ports";
 import uuid from "../domain/util/uuid";
 
 const BROADCAST = process.env.TOPIC_BROADCAST || "broadcastChannel";
@@ -17,23 +20,21 @@ const useAppMesh = /true/i.test(process.env.WEBSWITCH_ENABLED);
  */
 export default function brokerEvents(observer, datasources, models) {
   //observer.on(/.*/, async event => webswitch(event, observer));
+  const meshPublish = event => AppMesh.publishEvent(event, observer);
+  const meshSubscribe = (eventName, callback) => observer.on(eventName, callback);
+  const busPublish = event => EventBus.notify(BROADCAST, JSON.stringify(event));
+  const busSubcribe = (eventName, cb) =>
+    EventBus.listen({
+      topic: BROADCAST,
+      id: uuid(),
+      once: false,
+      filters: [eventName],
+      callback: (msg) => cb(JSON.parse(msg))
+    });
+  const publish = useAppMesh ? meshPublish : busPublish;
+  const subscribe = useAppMesh ? meshSubscribe : busSubcribe;
 
-  // Distributed object cache - must be explicitly enabled
   if (useObjectCache) {
-    const meshPublish = event => AppMesh.publishEvent(event, observer);
-    const meshSubscribe = (eventName, callback) => observer.on(eventName, callback);
-    const busPublish = event => EventBus.notify(BROADCAST, JSON.stringify(event));
-    const busSubcribe = (eventName, cb) =>
-      EventBus.listen({
-        topic: BROADCAST,
-        id: uuid(),
-        once: false,
-        filters: [eventName],
-        callback: (msg) => cb(JSON.parse(msg))
-      });
-    const publish = useAppMesh ? meshPublish : busPublish;
-    const subscribe = useAppMesh ? meshSubscribe : busSubcribe;
-
     if (useAppMesh) {
       // connect
       publish("webswitch");
@@ -49,6 +50,8 @@ export default function brokerEvents(observer, datasources, models) {
 
     broker.start();
   }
+
+  externalizePortEvents({ observer, models, publish, subscribe });
 
   /**
    * This is the cluster cache sync listener - when data is
