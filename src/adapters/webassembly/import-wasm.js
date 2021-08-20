@@ -17,7 +17,7 @@ function octoGet(entry) {
   const repo = entry.repo;
   const filedir = entry.filedir;
   const branch = entry.branch;
-  return new Promise(function (resolve, _reject) {
+  return new Promise(function (resolve, reject) {
     octokit
       .request("GET /repos/{owner}/{repo}/contents/{filedir}?ref={branch}", {
         owner,
@@ -49,37 +49,23 @@ function octoGet(entry) {
               buf.length / Uint16Array.BYTES_PER_ELEMENT
             ),
         });
-      });
+      }).catch(err => reject(err));
   });
 }
 
-function httpGet(params) {
-  return new Promise(function (resolve, reject) {
-    var req = require(params.protocol.slice(
-      0,
-      params.protocol.length - 1
-    )).request(params, function (res) {
-      if (res.statusCode < 200 || res.statusCode >= 300) {
-        return reject(new Error("statusCode=" + res.statusCode));
+function httpGet(entry) {
+  return new Promise((resolve, reject) => {
+    const url = new URL(entry.url);
+    require(url.protocol.replace(":", "")).get(
+      entry.url,
+      { rejectUnauthorized: false },
+      function (response) {
+        response.pipe(fs.createWriteStream(entry.path));
+        response.on("end", resolve);
+        response.on("error", (err) => reject(err));
       }
-      var body = [];
-      res.on("data", function (chunk) {
-        body.push(chunk);
-      });
-      res.on("end", function () {
-        try {
-          body = Buffer.concat(body).toString();
-        } catch (e) {
-          reject(e);
-        }
-        resolve(body);
-      });
-    });
-    req.on("error", function (err) {
-      reject(err);
-    });
-    req.end();
-  });
+    );
+  }
 }
 
 export function fetchWasm(entry) {
@@ -89,21 +75,18 @@ export function fetchWasm(entry) {
 
 export async function importWebAssembly(
   remoteEntry,
-  importObject,
+  importObject = { env: dispose = (free) => free() },
   type = "model"
 ) {
   const startTime = Date.now();
 
   // Check if we support streaming instantiation
-  if (!loader.instantiateStreaming) console.log("we can't stream-compile wasm");
+  if (!WebAssembly.instantiateStreaming) console.log("we can't stream-compile wasm");
 
   const response = await fetchWasm(remoteEntry);
-  const wasm = await loader.instantiate(response.asBase64Buffer(), {
-    env: {
-      log: value => console.log("from wasm" + value),
-    },
-  });
+  const wasm = await loader.instantiate(response.asBase64Buffer(), importObject);
   console.info("wasm modules took %dms", Date.now() - startTime);
+
   if (type === "model") return wrapWasmModelSpec(wasm);
   if (type === "adapter") return wrapWasmAdapter(wasm);
   if (type === "service") return wrapWasmService(wasm);

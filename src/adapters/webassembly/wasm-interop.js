@@ -1,8 +1,14 @@
 "use strict";
+
+/**@typedef {import("../../domain").ModelSpecification} ModelSpecification */
+/**@typedef {import("../../domain").Model} Model */
+/**@typedef {{[x:string]:()=>void}} Service */
+/**@typedef {(service: Service)=>({model:Model,callback:function())=>Model} Adapter */
+
 /**
- * Wrap wasm factory function, etc in `ModelSpecification`
+ * Wrap wasm factory function, etc in {@link ModelSpecification}
  * @param {WebAssembly} module WebAssembly
- * @returns {import("../../domain").ModelSpecification}
+ * @returns {ModelSpecification}
  */
 export async function wrapWasmModelSpec(module) {
   const {
@@ -51,6 +57,7 @@ export async function wrapWasmModelSpec(module) {
         .reduce((prop1, prop2) => ({ ...prop1, ...prop2 }));
 
       const immutableClone = Object.freeze({ ...model });
+
       __unpin(modelPtr);
 
       return immutableClone;
@@ -60,6 +67,16 @@ export async function wrapWasmModelSpec(module) {
   });
 }
 
+/**
+ * 
+ * @param {WebAssembly} module 
+ * @returns {Adapter}
+ */
 export function wrapWasmAdapter(module) { }
 
+/**
+ * 
+ * @param {WebAssembly} module 
+ * @returns {Service}
+ */
 export function wrapWasmService(module) { }

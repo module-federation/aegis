@@ -23,12 +23,10 @@ export async function importRemoteModels(remoteEntries) {
 
 export async function importRemoteServices(remoteEntries) {
   const services = await importFederatedModules(remoteEntries, "service");
-  return services.reduce((p, c) => ({ ...p, ...c }));
 }
 
 export async function importRemoteAdapters(remoteEntries) {
   const adapters = await importFederatedModules(remoteEntries, "adapter");
-  return adapters.reduce((p, c) => ({ ...p, ...c }));
 }
 
 export async function importModelCache(remoteEntries, name) {
@@ -37,10 +35,8 @@ export async function importModelCache(remoteEntries, name) {
 
 export async function importServiceCache(remoteEntries) {
   const services = importFederatedModules(remoteEntries, "service-cache");
-  return services.reduce((p, c) => ({ ...p, ...c }));
 }
 
 export async function importAdapterCache(remoteEntries) {
   const adapters = importFederatedModules(remoteEntries, "adapter-cache");
-  return adapters.reduce((p, c) => ({ ...p, ...c }));
 }
