@@ -12,6 +12,7 @@ async function importFederatedModules(remoteEntries, type) {
       .filter(entry => entry.type === type)
       .map(entry => entry.importRemote())
   );
+  console.log(modules)
   console.info(`${type} import took %d ms`, Date.now() - startTime);
   return modules.flat();
 }
@@ -28,7 +29,7 @@ export async function importRemoteAdapters(remoteEntries) {
   const adapters = await importFederatedModules(remoteEntries, "adapter");
 }
 
-export async function importModelCache(remoteEntries, name) {
+export async function importModelCache(remoteEntries) {
   return importFederatedModules(remoteEntries, "model-cache");
 }
 
