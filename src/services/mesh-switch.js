@@ -10,8 +10,6 @@ let messagesSent = 0;
  * Start listening.
  * @type {import("ws/lib/websocket-server")} 
  */
-//const server = new WebSocketServer({ clientTracking: true, port: 8062 });
-
 export function attachServer(server) {
 
   /**

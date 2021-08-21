@@ -1,6 +1,6 @@
 "use strict";
 
-let controller = null;
+let controller;
 
 /**
  * Start `startService` if it hasn't been started
@@ -9,13 +9,13 @@ let controller = null;
  * in the service. Save a reference to it so we can use
  * it agan on the next call and avoid starting the service again,
  * which is what would happen if we were warm-started.
- * @param {function():Promise<{function(...args):Promise<string>}>} startService - callback starts service (MicroLib)
+ * @param {function():Promise<{function(...args):Promise<string>}>} service - callback starts service (MicroLib)
  * @param {"aws"|"google"|"azure"|"ibm"} provider - the name of the serverless provider
  * @param {{req:{send:function(),status:function()},res:{}}} parsers - messsage parsers
  * @returns {Promise<{invoke:function(...args)}>}
  * call `invokeController` to parse the input and call the controller
  */
-exports.ServerlessAdapter = async function (startService, provider, parsers) {
+exports.ServerlessAdapter = async function (service, provider, parsers) {
   /**
    *
    * @param {"request"|"response"} type
@@ -45,7 +45,7 @@ exports.ServerlessAdapter = async function (startService, provider, parsers) {
 
   if (!controller) {
     // Call MicroLib and wait for controller
-    controller = await startService();
+    controller = await service();
   }
 
   return {

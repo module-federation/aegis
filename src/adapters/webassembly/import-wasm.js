@@ -56,18 +56,32 @@ function octoGet(entry) {
   });
 }
 
-function httpGet(entry) {
-  return new Promise((resolve, reject) => {
-    const url = new URL(entry.url);
-    require(url.protocol.replace(":", "")).get(
-      entry.url,
-      { rejectUnauthorized: false },
-      function (response) {
-        response.pipe(fs.createWriteStream(entry.path));
-        response.on("end", resolve);
-        response.on("error", (err) => reject(err));
+function httpGet(params) {
+  return new Promise(function (resolve, reject) {
+    var req = require(params.protocol.slice(
+      0,
+      params.protocol.length - 1
+    )).request(params, function (res) {
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        return reject(new Error("statusCode=" + res.statusCode));
       }
-    );
+      var body = [];
+      res.on("data", function (chunk) {
+        body.push(chunk);
+      });
+      res.on("end", function () {
+        try {
+          body = Buffer.concat(body).toString();
+        } catch (e) {
+          reject(e);
+        }
+        resolve(body);
+      });
+    });
+    req.on("error", function (err) {
+      reject(err);
+    });
+    req.end();
   });
 }
 
