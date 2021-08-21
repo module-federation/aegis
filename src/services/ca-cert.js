@@ -1,13 +1,13 @@
 "use strict";
 
-//const pkg = require("./package.json");
+const pkg = require("../../package.json");
 import whois from "./whois.js";
 
-export default async function provisonCACerts(domain) {
+export default async function provisonCACert(domain) {
   const Greenlock = require("greenlock");
   const greenlock = Greenlock.create({
     // used for the ACME client User-Agent string as per RFC 8555 and RFC 7231
-    packageAgent: "someinfo", //pkg.name + "/" + pkg.version,
+    packageAgent: pkg.name + "/" + pkg.version,
 
     // used as the contact for critical bug and security notices
     // you need to have purchased the domain before this point
