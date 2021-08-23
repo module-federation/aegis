@@ -9,8 +9,8 @@
   "scripts": {
     "format": "yarn pretty -- --write",
     "build": "npm run build:esm && npm run build:cjs",
-    "build:esm": "babel --delete-dir-on-start -d esm/ src/ && cp src/index.js esm && cp src/cluster.js esm",
-    "build:cjs": "babel --delete-dir-on-start --env-name cjs -d lib/ src/ && cp src/index.js lib && cp src/cluster.js lib",
+    "build:esm": "babel --delete-dir-on-start -d esm/ src/ && cp src/index.js esm",
+    "build:cjs": "babel --delete-dir-on-start --env-name cjs -d lib/ src/ && cp src/index.js lib",
     "prepublish": "yarn build",
     "test": "jest"
   },

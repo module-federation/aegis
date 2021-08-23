@@ -1,6 +1,43 @@
 "use strict";
 
 import async from "./util/async-error";
+import ModelFactory from "../domain";
+import DataSourceFactory from "../domain/datasource-factory";
+import ObserverFactory from "../domain/observer";
+import EventEmitter from "events";
+
+export async function generateWorkflow(options) {
+  const { wfName, wfInput, wfTasks } = options;
+
+  if (ModelFactory.getModelSpec(wfName)) {
+    console.warn(wfName, "already registered");
+    return;
+  }
+
+  /**
+   * General workflow
+   * @type {import("../domain").ModelSpecification}
+   */
+  const workflow = {
+    modelName: wfName,
+    endpoint: "workflows",
+    factory: () => (dependencies) =>
+      new Object.freeze({ ...dependencies, ...wfInput }),
+    ports: wfTasks,
+  };
+
+  ModelFactory.registerModel(workflow);
+}
+
+export async function runWorkflow({ wfName }) {
+  const model = await ModelFactory.createModel(
+    ObserverFactory.getInstance(),
+    DataSourceFactory.getDataSource(wfName),
+    wfName
+  );
+  await model.emit(wfName);
+  console.info(wfName, "workflow started");
+}
 
 /**
  * Check `portFlow` history and resume any workflow
@@ -24,6 +61,13 @@ export async function resumeWorkflow(list) {
           }
         }
       })
-    ).catch(error => console.error(error));
+    ).catch((error) => console.error(error));
   }
 }
+
+export class WorkflowEmitter extends EventEmitter { }
+const wfEvents = new WorkflowEmitter();
+
+wfEvents.on('generateWorkflow', (payload) => {
+  generateWorkflow(payload);
+});

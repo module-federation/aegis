@@ -147,6 +147,17 @@
  * @property {accessControlList} [accessControlList] - configure authorization
  */
 
+/**
+ * @callback command
+ * @param {object} request
+ * @returns {void}
+ */
+
+/**
+ * @typedef {object} system
+ * @property {command} addCommand
+ */
+
 import ModelFactory from './model-factory'
 import bindAdapters from './bind-adapters'
 
@@ -181,6 +192,24 @@ const deleteEvent = model => ({
   modelId: ModelFactory.getModelId(model),
   model: model
 })
+
+// /** @type {import("../domain").ModelSpecification} */
+// const System = {
+//   modelName: "system",
+//   endpoint: "system",
+//   factory: function () {
+//     const eventEmitter = new EventEmitter();
+//     return async function (payload) {
+//       const input = payload;
+//       return {
+//         addCommand(eventName, callback) {
+//           eventEmitter.addListener(eventName, () => callback(payload));
+//         }
+//       }
+//     }
+//   },
+//   eventHandlers: [({eventName, model:system})+>]
+// }
 
 function register(model, services, adapters, isCached = false) {
   // if (model.modelName && model.endpoint && model.factory) {

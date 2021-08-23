@@ -12,7 +12,7 @@
  * @param {function(event,data)} publish 
  * @param {function(event,function())} subscribe 
  */
-export function externalizePortEvents(observer, models, publish, subscribe) {
+export function externalizePortEvents({ observer, models, publish, subscribe }) {
   const specs = models.getModelSpecs();
 
   specs.forEach(spec => {
@@ -23,11 +23,11 @@ export function externalizePortEvents(observer, models, publish, subscribe) {
       const producer = spec.ports[port].producesEvent
 
       if (consumer) {
-        subscribe(consumer, (eventData) => observer.notify(eventData.eventName, eventData))
+        subscribe(consumer, eventData => observer.notify(eventData.eventName, eventData))
       }
 
       if (producer) {
-        observer.on(producer, (eventData) => publish(eventData.eventName, eventData));
+        observer.on(producer, eventData => publish(eventData.eventName, eventData));
       }
     });
   });

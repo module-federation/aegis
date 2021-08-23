@@ -3,7 +3,7 @@
 const pkg = require("../../package.json");
 import whois from "./whois.js";
 
-export default async function provisonCACert(domain) {
+export default async function provisonCert(domain) {
   const Greenlock = require("greenlock");
   const greenlock = Greenlock.create({
     // used for the ACME client User-Agent string as per RFC 8555 and RFC 7231
