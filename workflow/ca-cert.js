@@ -24,6 +24,7 @@ const CACert = {
     },
     restartWebserver: {
       service: "RestartWebserver",
+      type: "inbound",
       consumesEvent: "certFilesWritten",
       producesEvent: "workflowComplete",
     }
