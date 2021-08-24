@@ -2,7 +2,7 @@
 
 import DistributedCache from "../domain/distributed-cache";
 import EventBus from "../services/event-bus";
-import AppMesh from "../services/mesh-node";
+import AppMesh from "../services/app-mesh/web-node";
 import { externalizePortEvents } from "./forward-ports";
 import uuid from "../domain/util/uuid";
 

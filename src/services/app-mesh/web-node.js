@@ -7,8 +7,9 @@
 
 const WebSocket = require("ws");
 const dns = require("dns/promises");
+const { EventEmitter } = require("stream");
 
-let fqdn = process.env.WEBSWITCH_SERVER || "switch.app-mesh.net";
+let host = process.env.WEBSWITCH_SERVER || "switch.app-mesh.net";
 let port =
   process.env.WEBSWITCH_PORT = /true/i.test(process.env.SSL_ENABLED)
     ? process.env.SSL_PORT
@@ -16,18 +17,17 @@ let port =
 
 /** @type {import("ws/lib/websocket")} */
 let ws;
-let hostAddress;
-let uplinkCallback;
+// let hostAddress;
 
-async function getHostAddress(hostname) {
-  try {
-    const result = await dns.lookup(hostname);
-    console.debug("server address", result, result.address);
-    return result.address;
-  } catch (error) {
-    console.warn("dns lookup", error);
-  }
-}
+// async function getHostAddress(hostname) {
+//   try {
+//     const result = await dns.lookup(hostname);
+//     console.debug("server address", result, result.address);
+//     return result.address;
+//   } catch (error) {
+//     console.warn("dns lookup", error);
+//   }
+// }
 
 /**
  * @extends {import("ws/lib/websocket")}
@@ -60,14 +60,15 @@ class WebNode extends WebSocket {
    * from the uplink switch node.
    * @param {(msg)=>void} uplinkCallback 
    */
-  onMessage(uplinkCallback) {
-    this.addEventListener("message", uplinkCallback);
+  onMessage(message, uplinkCallback) {
+    EventEmitter().addEventListener()
+    this.addEventListener(message, uplinkCallback);
   }
 
   /** server sets uplink host */
   setDestinationHost(host, servicePort = port) {
     hostAddress = null;
-    fqdn = host;
+    host = host;
     port = servicePort;
   }
 
@@ -110,9 +111,8 @@ class WebNode extends WebSocket {
 }
 
 module.exports.getWebNode = async function () {
-  if (!hostAddress) hostAddress = await getHostAddress(fqdn);
   if (!ws) {
-    ws = new WebNode(`ws://${hostAddress}:${port}`);
+    ws = new WebNode(`ws://${host}:${port}`);
   }
   return ws;
 }
