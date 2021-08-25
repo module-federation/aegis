@@ -56,9 +56,14 @@ exports.resetHost = function () {
   hostAddress = null;
 };
 
+/**
+ * Call this method to broadcast a message on the appmesh network
+ * @param {*} event 
+ * @param {import('../../domain/observer').Observer} observer 
+ * @returns 
+ */
 exports.publishEvent = async function (event, observer) {
   if (!event) return;
-
   if (!hostAddress) hostAddress = await getHostAddress(fqdn);
 
   function publish() {

@@ -32,6 +32,12 @@ exports.attachServer = function (server) {
     }
   };
 
+  /**
+   * @todo
+   * @param {*} client 
+   */
+  server.setRateLimit = function (client) { }
+
   server.sendStatus = function (client) {
     client.send(JSON.stringify({
       uptimeMinutes: uptime(),
