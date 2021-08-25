@@ -19,11 +19,19 @@ let ws;
 let hostAddress;
 let uplinkCallback;
 
+async function dnsResolve(hostname) {
+  const rrtype = await dns.resolveCname(hostname);
+  const address = rrtype.find(record => record.address);
+  if (address) return address;
+  // try local override /etc/hosts
+  return dns.lookup(hostame);
+}
+
 async function getHostAddress(hostname) {
   try {
-    const result = await dns.resolve(hostname);
-    console.debug("server address", result, result.address);
-    return result.address;
+    const address = await dnsResolve(hostname);
+    console.info("host address", address);
+    return address;
   } catch (error) {
     console.warn("dns lookup", error);
   }
@@ -38,7 +46,7 @@ exports.onMessage = function (callback) {
 };
 
 /** server sets uplink host */
-exports.setDesinationHost = function (host, servicePort = port) {
+exports.setDestinationHost = function (host, servicePort = port) {
   hostAddress = null;
   fqdn = host;
   port = servicePort;
