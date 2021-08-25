@@ -24,7 +24,7 @@ async function dnsResolve(hostname) {
   const address = rrtype.find(record => record.address);
   if (address) return address;
   // try local override /etc/hosts
-  return dns.lookup(hostame);
+  return dns.lookup(hostname);
 }
 
 async function getHostAddress(hostname) {

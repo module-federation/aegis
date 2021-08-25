@@ -2,7 +2,7 @@
 
 import DistributedCache from "../domain/distributed-cache";
 import EventBus from "../services/event-bus";
-import AppMesh from "../services/mesh-node";
+import AppMesh from "../services/app-mesh/web-node";
 import { externalizePortEvents } from "./forward-ports";
 import uuid from "../domain/util/uuid";
 
@@ -20,10 +20,10 @@ const useAppMesh = /true/i.test(process.env.WEBSWITCH_ENABLED);
  */
 export default function brokerEvents(observer, datasources, models) {
   //observer.on(/.*/, async event => webswitch(event, observer));
-  const meshPublish = event => AppMesh.publishEvent(event, observer);
-  const meshSubscribe = (eventName, callback) => observer.on(eventName, callback);
-  const busPublish = event => EventBus.notify(BROADCAST, JSON.stringify(event));
-  const busSubcribe = (eventName, cb) =>
+  const appPub = event => AppMesh.publishEvent(event, observer);
+  const busPub = event => EventBus.notify(BROADCAST, JSON.stringify(event));
+  const appSub = (eventName, callback) => observer.on(eventName, callback);
+  const busSub = (eventName, cb) =>
     EventBus.listen({
       topic: BROADCAST,
       id: uuid(),
@@ -31,15 +31,12 @@ export default function brokerEvents(observer, datasources, models) {
       filters: [eventName],
       callback: (msg) => cb(JSON.parse(msg))
     });
-  const publish = useAppMesh ? meshPublish : busPublish;
-  const subscribe = useAppMesh ? meshSubscribe : busSubcribe;
+  const publish = useAppMesh ? appPub : busPub;
+  const subscribe = useAppMesh ? appSub : busSub;
 
   if (useObjectCache) {
-    // l;dsdddddddddld
-    if (useAppMesh) {
-      // connect
-      publish("webswitch");
-    }
+    // use appmesh network
+    !useAppMesh || publish("webswitch");
 
     const broker = DistributedCache({
       observer,

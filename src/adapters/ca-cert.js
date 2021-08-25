@@ -17,7 +17,7 @@ export function provisonCert(_service) {
 
       // used as the contact for critical bug and security notices
       // you need to have purchased the domain before this point
-      maintainerEmail: (await whois(domain)).getEmail(),
+      maintainerEmail: (await whois(model.domain)).getEmail(),
 
       // used for logging background events and errors
       notify: function (ev, args) {
