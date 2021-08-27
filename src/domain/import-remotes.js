@@ -21,7 +21,7 @@ async function importFederatedModules(remoteEntries, type) {
 
 function parseModules(modules, key) {
   return modules.map(m => {
-    if (m[key] && m[key] instanceof Array) return m.models;
+    if (m[key] && m[key] instanceof Array) return m[key];
     if (m instanceof Module) return Object.values(m);
     if (m instanceof Array) return m;
     return m;
