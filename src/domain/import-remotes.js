@@ -45,7 +45,7 @@ export async function importRemoteAdapters(remoteEntries) {
 
 export async function importModelCache(remoteEntries) {
   const specs = await importFederatedModules(remoteEntries, "model-cache");
-  const parsed = parseModules(modules, "models");
+  const parsed = parseModules(specs, "models");
   console.log(parsed);
   return parsed;
 }
