@@ -8,23 +8,27 @@
 const WebSocket = require("ws");
 const dns = require("dns/promises");
 
-let fqdn = process.env.WEBSWITCH_SERVER || "switch.app-mesh.net";
-let port =
-  process.env.WEBSWITCH_PORT = /true/i.test(process.env.SSL_ENABLED)
-    ? process.env.SSL_PORT
-    : process.env.PORT;
+const SERVICE_NAME = "appmesh";
+const SERVICE_HOST = "switch.app-mesh.net";
 
+let fqdn = process.env.WEBSWITCH_SERVER || SERVICE_HOST;
+let port = process.env.WEBSWITCH_PORT || SERVICE_NAME;
+let hostAddress;
+let servicePort;
+let uplinkCallback;
 /** @type import("ws/lib/websocket") */
 let ws;
-let hostAddress;
-let uplinkCallback;
 
 async function dnsResolve(hostname) {
-  const rrtype = await dns.resolveCname(hostname);
-  const address = rrtype.find(record => record.address);
-  if (address) return address;
+  try {
+    const addresses = await dns.resolve(hostname, "CNAME");
+    if (addresses.length > 0) return addresses[0];
+  } catch (e) {
+    console.warn(dnsResolve.name, e);
+  }
   // try local override /etc/hosts
-  return dns.lookup(hostname);
+  const record = await dns.lookup(hostname);
+  return record.address;
 }
 
 async function getHostAddress(hostname) {
@@ -33,8 +37,28 @@ async function getHostAddress(hostname) {
     console.info("host address", address);
     return address;
   } catch (error) {
-    console.warn("dns lookup", error);
+    console.warn(getHostAddress.name, error);
   }
+}
+
+async function getServicePort(hostname) {
+  try {
+    if (port === SERVICE_NAME) {
+      const services = await dns.resolveSrv(hostname);
+      return services
+        .filter((s) => s.name === SERVICE_NAME)
+        .reduce((s) => s.port);
+    }
+  } catch (error) {
+    console.error(getServicePort.name, error);
+    // should default to 80
+    port = /true/.test(process.env.SSL_ENABLED)
+      ? process.env.SSL_PORT
+      : process.env.PORT;
+    if (!port) return 443;
+    return port;
+  }
+  return port;
 }
 
 /**
@@ -58,17 +82,18 @@ exports.resetHost = function () {
 
 /**
  * Call this method to broadcast a message on the appmesh network
- * @param {*} event 
- * @param {import('../../domain/observer').Observer} observer 
- * @returns 
+ * @param {*} event
+ * @param {import('../../domain/observer').Observer} observer
+ * @returns
  */
 exports.publishEvent = async function (event, observer) {
   if (!event) return;
   if (!hostAddress) hostAddress = await getHostAddress(fqdn);
+  if (!servicePort) servicePort = await getServicePort(fqdn);
 
   function publish() {
     if (!ws) {
-      ws = new WebSocket(`ws://${hostAddress}:${port}`);
+      ws = new WebSocket(`ws://${hostAddress}:${servicePort}`);
 
       ws.on("message", async function (message) {
         const eventData = JSON.parse(message);

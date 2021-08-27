@@ -106,7 +106,7 @@ class ObserverImpl extends Observer {
 /**
  * @todo handle all state same way
  */
-const ObserverFactory = (() => {
+export const ObserverFactory = (() => {
   let instance;
 
   function createInstance() {

@@ -1,8 +1,8 @@
 "use strict";
 
 import loader from "@assemblyscript/loader";
-import { Observer } from "../../domain/observer";
-const observer = Observer.getInstance();
+import { ObserverFactory } from "../../domain/observer"
+const observer = ObserverFactory.getInstance();
 
 import {
   wrapWasmAdapter,
@@ -92,15 +92,23 @@ export function fetchWasm(entry) {
 
 export async function importWebAssembly(
   remoteEntry,
-  importObject = { env: { abort: (err) => observer.notify("wasmAbort", err) } },
   type = "model"
 ) {
   const startTime = Date.now();
+
+  var importObject = {
+    env: {
+      abort: function (arg) {
+        console.log(arg);
+      }
+    }
+  };
 
   // Check if we support streaming instantiation
   if (!WebAssembly.instantiateStreaming) console.log("we can't stream-compile wasm");
 
   const response = await fetchWasm(remoteEntry);
+  console.log(response)
   const wasm = await loader.instantiate(response.asBase64Buffer(), importObject);
   console.info("wasm modules took %dms", Date.now() - startTime);
 

@@ -1,5 +1,7 @@
 "use strict";
 
+import { Module } from 'module';
+
 /**`
  * @param {Promise<import('.').ModelSpecification[]>} remoteEntries
  * @param {"model"|"adapter"|"service"} type
@@ -17,26 +19,41 @@ async function importFederatedModules(remoteEntries, type) {
   return modules.flat();
 }
 
+function parseModules(modules, key) {
+  return modules.map(m => {
+    if (m[key] && m[key] instanceof Array) return m.models;
+    if (m instanceof Module) return Object.values(m);
+    if (m instanceof Array) return m;
+    return m;
+  }).flat();
+}
+
 export async function importRemoteModels(remoteEntries) {
-  return importFederatedModules(remoteEntries, "model");
+  const modelSpecs = await importFederatedModules(remoteEntries, "model");
+  const parsed = parseModules(modelSpecs, "models");
+  console.log(parsed);
+  return parsed;
 }
 
 export async function importRemoteServices(remoteEntries) {
-  const services = await importFederatedModules(remoteEntries, "service");
+  return importFederatedModules(remoteEntries, "service");
 }
 
 export async function importRemoteAdapters(remoteEntries) {
-  const adapters = await importFederatedModules(remoteEntries, "adapter");
+  return importFederatedModules(remoteEntries, "adapter");
 }
 
 export async function importModelCache(remoteEntries) {
-  return importFederatedModules(remoteEntries, "model-cache");
+  const specs = await importFederatedModules(remoteEntries, "model-cache");
+  const parsed = parseModules(modules);
+  console.log(parsed);
+  return parsed;
 }
 
 export async function importServiceCache(remoteEntries) {
-  const services = importFederatedModules(remoteEntries, "service-cache");
+  return importFederatedModules(remoteEntries, "service-cache");
 }
 
 export async function importAdapterCache(remoteEntries) {
-  const adapters = importFederatedModules(remoteEntries, "adapter-cache");
+  return importFederatedModules(remoteEntries, "adapter-cache");
 }

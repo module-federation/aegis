@@ -212,7 +212,6 @@ const deleteEvent = model => ({
 // }
 
 function register(model, services, adapters, isCached = false) {
-  // if (model.modelName && model.endpoint && model.factory) {
   const serviceAdapters = bindAdapters(model.ports, adapters, services)
 
   const dependencies = {
@@ -244,8 +243,6 @@ function register(model, services, adapters, isCached = false) {
     model.modelName,
     deleteEvent
   )
-  // }
-  // console.warn("invalid module spec", model);
 }
 
 /**
@@ -257,7 +254,7 @@ function register(model, services, adapters, isCached = false) {
  */
 async function importModels(remoteEntries, services, adapters) {
   const models = await importRemoteModels(remoteEntries);
-  models.forEach(model => register(model));
+  models.forEach(model => register(model, services, adapters));
 }
 
 let remotesConfig
@@ -269,9 +266,6 @@ let localOverrides = {}
  * @param {*} overrides - override or add services and adapters
  */
 export async function importRemotes(remoteEntries, overrides = {}) {
-  remotesConfig = remoteEntries
-  localOverrides = overrides
-
   const services = await importRemoteServices(remoteEntries)
   const adapters = await importRemoteAdapters(remoteEntries)
 
@@ -288,6 +282,9 @@ export async function importRemotes(remoteEntries, overrides = {}) {
       ...overrides
     }
   )
+
+  remotesConfig = remoteEntries
+  localOverrides = overrides
 }
 
 let modelCache
@@ -322,7 +319,7 @@ export async function importRemoteCache(name) {
     return
   }
 
-  const model = Object.values(modelCache.models).find(
+  const model = modelCache.find(
     model => model.modelName.toUpperCase() === name.toUpperCase()
   )
 
