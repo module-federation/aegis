@@ -19,41 +19,58 @@ async function importFederatedModules(remoteEntries, type) {
   return modules.flat();
 }
 
-function parseModules(modules, key) {
-  return modules.map(m => {
-    if (m[key] && m[key] instanceof Array) return m[key];
-    if (m instanceof Module) return Object.values(m);
-    if (m instanceof Array) return m;
-    return [m];
+function parseModules(modules, key, type) {
+  const result = modules.flat().map(m => {
+    if (!m) return;
+    if (key & m[key] && m[key] instanceof Array) return m[key];
+    if (m instanceof Array) {
+      if (m.length > 0) return m;
+    } else {
+      if (m instanceof Module) console.log(m, "is a Module");
+      return m;
+    }
   }).flat();
+
+  return {
+    toObject: () => result.reduce((p, c) => ({ ...p, ...c })),
+    toArray: () => result
+  }
 }
 
 export async function importRemoteModels(remoteEntries) {
   const modelSpecs = await importFederatedModules(remoteEntries, "model");
-  const parsed = parseModules(modelSpecs, "models");
-  console.log(parsed);
+  const parsed = parseModules(modelSpecs, "models").toArray();
+  console.log("parsed", parsed);
   return parsed;
 }
 
 export async function importRemoteServices(remoteEntries) {
-  return importFederatedModules(remoteEntries, "service");
+  const services = await importFederatedModules(remoteEntries, "service")
+  const parsed = parseModule(services).toObject();
+  console.log(parsed)
+  return parsed;
 }
 
 export async function importRemoteAdapters(remoteEntries) {
-  return importFederatedModules(remoteEntries, "adapter");
+  const adapters = await importFederatedModules(remoteEntries, "adapter");
+  const parsed = parseModules(adapters).toObject();
+  return parsed;
 }
 
 export async function importModelCache(remoteEntries) {
   const specs = await importFederatedModules(remoteEntries, "model-cache");
-  const parsed = parseModules(specs, "models");
+  const parsed = parseModules(specs, "models").toArray();
   console.log(parsed);
   return parsed;
 }
 
 export async function importServiceCache(remoteEntries) {
-  return importFederatedModules(remoteEntries, "service-cache");
+  const sc = await importFederatedModules(remoteEntries, "service-cache");
+  const parsed = parseModules(sc).toObject();
+  console.log(parsed);
 }
 
 export async function importAdapterCache(remoteEntries) {
-  return importFederatedModules(remoteEntries, "adapter-cache");
+  const ac = await importFederatedModules(remoteEntries, "adapter-cache");
+  return parseModules(ac).toObject();
 }
