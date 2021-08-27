@@ -24,7 +24,7 @@ function parseModules(modules, key) {
     if (m[key] && m[key] instanceof Array) return m[key];
     if (m instanceof Module) return Object.values(m);
     if (m instanceof Array) return m;
-    return m;
+    return [m];
   }).flat();
 }
 
