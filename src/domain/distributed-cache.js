@@ -349,7 +349,7 @@ export default function DistributedCache({
               )
               .map(k => m.relations[k].modelName)
           )
-          .reduce((a, b) => a.concat(b))
+          .reduce((a, b) => a.concat(b), [])
       ),
     ];
 
