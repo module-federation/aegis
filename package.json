@@ -4,7 +4,7 @@
   "main": "lib/",
   "module": "esm/",
   "repository": "git@github.com:module-federation/aegis.git",
-  "author": "Zack Jackson <zackary.l.jackson@gmail.com>",
+  "author": "Tyson Midboe <tyson.midboe@gmail.com>",
   "license": "MIT",
   "scripts": {
     "format": "yarn pretty -- --write",

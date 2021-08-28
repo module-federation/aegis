@@ -26,7 +26,7 @@ export class DataSourceIpfs extends DataSourceFile {
 
   startIpfs() {
     try {
-      IPFS.create().then(guru => this.ipfs = guru)
+      IPFS.create().then(fs => this.ipfs = fs)
     } catch (err) {
       console.error(err)
     }
@@ -34,11 +34,14 @@ export class DataSourceIpfs extends DataSourceFile {
 
   load(hydrate) {
     this.startIpfs();
-    const lockfile = require('proper-lockfile');
-    lockfile.unlock()
     if (fs.existsSync(this.file)) {
-      this.cid = fs.readFileSync(this.file, "utf-8");
-      this.readFile(hydrate);
+      try {
+        this.cid = fs.readFileSync(this.file, "utf-8");
+        this.readFile(hydrate);
+      } catch (error) {
+        console.error(this.load.name, error.message);
+        lockfile.unlockSync(this.file);
+      }
     } else {
       return new Map();
     }
@@ -47,7 +50,7 @@ export class DataSourceIpfs extends DataSourceFile {
   async readFile(hydrate) {
     try {
       let data;
-      const stream = ipfs.cat(this.cid);
+      const stream = this.ipfs.cat(this.cid);
       for await (const chunk of stream) {
         // chunks of data are returned as a Buffer, convert it back to a string
         data += chunk.toString();
@@ -61,7 +64,7 @@ export class DataSourceIpfs extends DataSourceFile {
   async writeFile() {
     // add your data to to IPFS - this can be a string, a Buffer,
     // a stream of Buffers, etc
-    const { cid } = ipfs.add(JSON.stringify([...this.dataSource]))
+    const { cid } = this.ipfs.add(JSON.stringify([...this.dataSource]))
 
     fs.writeFileSync(this.file, cid.toString())
     this.cid = cid
