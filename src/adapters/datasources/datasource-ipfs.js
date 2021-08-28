@@ -1,7 +1,8 @@
 import fs from "fs";
 import { DataSourceFile } from ".";
 import IPFS from "ipfs-core";
-const ipfs = IPFS.create();
+const lockfile = require('proper-lockfile');
+
 
 /**
  * Storage on the distributed web {@link https://ipfs.io}
@@ -9,7 +10,8 @@ const ipfs = IPFS.create();
 export class DataSourceIpfs extends DataSourceFile {
   constructor(dataSource, factory, name) {
     super(dataSource, factory, name);
-    const self = this;
+
+
   }
 
   async save(id, data) {
@@ -22,7 +24,18 @@ export class DataSourceIpfs extends DataSourceFile {
     return super.find(id);
   }
 
+  startIpfs() {
+    try {
+      IPFS.create().then(guru => this.ipfs = guru)
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
   load(hydrate) {
+    this.startIpfs();
+    const lockfile = require('proper-lockfile');
+    lockfile.unlock()
     if (fs.existsSync(this.file)) {
       this.cid = fs.readFileSync(this.file, "utf-8");
       this.readFile(hydrate);
