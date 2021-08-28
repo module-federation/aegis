@@ -314,7 +314,7 @@ export async function importRemoteCache(name) {
 
   if (ModelFactory.getModelSpec(name)) return
 
-  if (!modelCache || !modelCache.models) {
+  if (!modelCache) {
     console.error('no models found in cache')
     return
   }

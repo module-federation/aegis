@@ -5,6 +5,7 @@ const domainEvents = {
   externalCacheRequest: modelName => `externalCacheRequest_${modelName}`,
   internalCacheResponse: modelName => `internalCacheResponse_${modelName}`,
   externalCacheResponse: modelName => `externalCacheResponse_${modelName}`,
+  cacheCreationEvent: modelName => `cacheCreationEvent_${modelName}`,
   portTimeout: (model, port) => `portTimeout_${port}_${model.getName()}`,
   portRetryFailed: (model, port) =>
     `portRetryFailed_${port}_${model.getName()}`,

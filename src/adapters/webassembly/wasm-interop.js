@@ -12,8 +12,8 @@
  */
 export async function wrapWasmModelSpec(module) {
   const {
-    ModelSpec,
     getModelSpec,
+    ModelSpec,
     modelFactory,
     ArrayOfStrings_ID,
     __pin,

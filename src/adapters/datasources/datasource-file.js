@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import { DataSourceMemory } from "./datasource-memory";
 
-const dirPath = path.resolve(process.cwd(), "public") || process.env.DATASOURCE_FILE_DIRECTORY;
+const dirPath = process.env.DATASOURCE_FILE_DIRECTORY;
 
 /**
  * Persistent storage on filesystem
@@ -15,6 +15,11 @@ export class DataSourceFile extends DataSourceMemory {
     super(dataSource, factory, name);
   }
 
+  getFilePath() {
+    return dirPath
+      ? path.resolve(dirPath, `${this.name}.json`)
+      : path.resolve(process.cwd(), `./public/${this.name}.json`);
+  }
   /**
    *
    * @param {{
@@ -23,8 +28,8 @@ export class DataSourceFile extends DataSourceMemory {
    * }} param0
    */
   async load({ hydrate, serializer }) {
-    const file = this.name.concat(".json");
-    this.file = path.join(dirPath, file) || "/tmp/" + file;
+    this.file = this.getFilePath();
+    console.log("path to filesystem storage:", this.file);
     this.serializer = serializer;
     this.dataSource = this.readFile(hydrate);
   }
@@ -44,8 +49,12 @@ export class DataSourceFile extends DataSourceMemory {
   }
 
   writeFile() {
-    const dataStr = JSON.stringify([...this.dataSource], this.replace);
-    fs.writeFileSync(this.file, dataStr);
+    try {
+      const dataStr = JSON.stringify([...this.dataSource], this.replace);
+      fs.writeFileSync(this.file, dataStr);
+    } catch (error) {
+      console.error(this.writeFile.name, error.message);
+    }
   }
 
   /**
