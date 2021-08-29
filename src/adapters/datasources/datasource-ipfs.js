@@ -1,8 +1,7 @@
 import fs from "fs";
 import { DataSourceFile } from ".";
 import IPFS from "ipfs-core";
-const lockfile = require('proper-lockfile');
-
+const lockfile = require("proper-lockfile");
 
 /**
  * Storage on the distributed web {@link https://ipfs.io}
@@ -10,8 +9,6 @@ const lockfile = require('proper-lockfile');
 export class DataSourceIpfs extends DataSourceFile {
   constructor(dataSource, factory, name) {
     super(dataSource, factory, name);
-
-
   }
 
   async save(id, data) {
@@ -26,9 +23,11 @@ export class DataSourceIpfs extends DataSourceFile {
 
   startIpfs() {
     try {
-      IPFS.create().then(fs => this.ipfs = fs)
+      IPFS.create({
+        repo: 'microlib-' + Math.random(),
+      }).then((fs) => (this.ipfs = fs));
     } catch (err) {
-      console.error(err)
+      console.error(err);
     }
   }
 
@@ -40,7 +39,6 @@ export class DataSourceIpfs extends DataSourceFile {
         this.readFile(hydrate);
       } catch (error) {
         console.error(this.load.name, error.message);
-        lockfile.unlockSync(this.file);
       }
     } else {
       return new Map();
@@ -57,16 +55,16 @@ export class DataSourceIpfs extends DataSourceFile {
       }
       return hydrate(new Map(JSON.parse(data), this.revive));
     } catch (e) {
-      console.error(e)
+      console.error(e);
     }
   }
 
   async writeFile() {
     // add your data to to IPFS - this can be a string, a Buffer,
     // a stream of Buffers, etc
-    const { cid } = this.ipfs.add(JSON.stringify([...this.dataSource]))
+    const { cid } = this.ipfs.add(JSON.stringify([...this.dataSource]));
 
-    fs.writeFileSync(this.file, cid.toString())
-    this.cid = cid
+    fs.writeFileSync(this.file, cid.toString());
+    this.cid = cid;
   }
 }
