@@ -8,7 +8,7 @@ See the [MicroLib](https://github.com/module-federation/MicroLib) repo for docum
 [![Open in Visual Studio Code](https://open.vscode.dev/badges/open-in-vscode.svg)](https://open.vscode.dev/module-federation/aegis)
 
 ```shell
-git clone https://github.com/module-federation/MicroLib
+git clone https://github.com/module-federation/aegis
 cd microlib
 cp dotenv.example .env
 yarn
