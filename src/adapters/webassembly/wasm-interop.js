@@ -105,7 +105,8 @@ export default function WasmInterop (module) {
           if (cmd) {
             return {
               [command]: {
-                command: input => callWasmFunction(cmd, input)
+                command: input => callWasmFunction(cmd, input),
+                acl: ['write']
               },
               description: commandNames[command] || 'wasm command'
             }
