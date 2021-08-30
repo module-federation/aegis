@@ -5,7 +5,7 @@ See the [MicroLib](https://github.com/module-federation/MicroLib) repo for docum
 
 ## Using Aegis
 
-[![Open in Visual Studio Code](https://open.vscode.dev/badges/open-in-vscode.svg)](https://open.vscode.dev/module-federation/microlib)
+[![Open in Visual Studio Code](https://open.vscode.dev/badges/open-in-vscode.svg)](https://open.vscode.dev/module-federation/aegis)
 
 ```shell
 git clone https://github.com/module-federation/MicroLib
