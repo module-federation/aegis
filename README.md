@@ -5,7 +5,12 @@ See the [MicroLib](https://github.com/module-federation/MicroLib) repo for docum
 
 ## Using Aegis
 
-[![Open in Visual Studio Code](https://open.vscode.dev/badges/open-in-vscode.svg)](https://open.vscode.dev/module-federation/aegis)
+## Install [<img src="https://github.com/tysonrm/cluster-rolling-restart/blob/main/npm-tile.png">](https://www.npmjs.com/package/@module-federation/aegis)
+```shell
+npm i @module-federation/aegis
+```
+
+## Hack [![Open in Visual Studio Code](https://open.vscode.dev/badges/open-in-vscode.svg)](https://open.vscode.dev/module-federation/aegis)
 
 ```shell
 git clone https://github.com/module-federation/aegis
@@ -17,14 +22,7 @@ yarn start
 yarn demo
 ```
 
-## Install [<img src="https://github.com/tysonrm/cluster-rolling-restart/blob/main/npm-tile.png">](https://www.npmjs.com/package/@module-federation/aegis)
-```shell
-npm i @module-federation/aegis
-```
-
-
-
-## Contributing
+## Contribute
 1) Git clone Aegis and run `yarn link`
 2) Git clone Microlib and run `yarn link "@module-federation/aegis"`
 3) Then follow the steps mentioned above under the Using Aegis section
