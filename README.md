@@ -17,6 +17,10 @@ yarn start
 yarn demo
 ```
 
+## Install [<img src="https://github.com/tysonrm/cluster-rolling-restart/blob/main/npm-tile.png">](https://www.npmjs.com/package/@module-federation/aegis)
+
+
+
 ## Contributing
 1) Git clone Aegis and run `yarn link`
 2) Git clone Microlib and run `yarn link "@module-federation/aegis"`
