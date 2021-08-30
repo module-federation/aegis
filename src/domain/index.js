@@ -193,24 +193,6 @@ const deleteEvent = model => ({
   model: model
 })
 
-// /** @type {import("../domain").ModelSpecification} */
-// const System = {
-//   modelName: "system",
-//   endpoint: "system",
-//   factory: function () {
-//     const eventEmitter = new EventEmitter();
-//     return async function (payload) {
-//       const input = payload;
-//       return {
-//         addCommand(eventName, callback) {
-//           eventEmitter.addListener(eventName, () => callback(payload));
-//         }
-//       }
-//     }
-//   },
-//   eventHandlers: [({eventName, model:system})+>]
-// }
-
 function register(model, services, adapters, isCached = false) {
   const serviceAdapters = bindAdapters(model.ports, adapters, services)
 
