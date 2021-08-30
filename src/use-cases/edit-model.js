@@ -40,34 +40,45 @@ export default function makeEditModel({
       throw new Error("no such id");
     }
 
-    const updated = models.updateModel(model, changes);
-    const event = await models.createEvent(eventType, modelName, {
-      updated,
-      changes,
-    });
-
     try {
-      await repository.save(id, updated);
-      await observer.notify(event.eventName, event);
+      const updated = models.updateModel(model, changes);
+
+      const event = await models.createEvent(eventType, modelName, {
+        updated,
+        changes,
+      });
+
+      try {
+        await repository.save(id, updated);
+      } catch (error) {
+        throw new Error(error);
+      }
+
+      try {
+        await observer.notify(event.eventName, event);
+      } catch (error) {
+        await repository.save(id, model);
+        throw new Error(error);
+      }
+
+      if (command) {
+        const result = await async(executeCommand(updated, command, "write"));
+        if (result.ok) {
+          return result.data;
+        }
+      }
+
+      if (command) {
+        const result = await async(invokePort(updated, command, "write"));
+        if (result.ok) {
+          return result.data;
+        }
+      }
+
+      return updated;
     } catch (error) {
       throw new Error(error);
     }
-
-    if (command) {
-      const result = await async(executeCommand(updated, command, "write"));
-      if (result.ok) {
-        return result.data;
-      }
-    }
-
-    if (command) {
-      const result = await async(invokePort(updated, command, "write"));
-      if (result.ok) {
-        return result.data;
-      }
-    }
-
-    return updated;
   }
 
   async function editModelHandler(event) {

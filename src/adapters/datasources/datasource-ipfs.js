@@ -1,8 +1,6 @@
 import fs from "fs";
 import { DataSourceFile } from ".";
 import IPFS from "ipfs-core";
-const lockfile = require("proper-lockfile");
-
 /**
  * Storage on the distributed web {@link https://ipfs.io}
  */
@@ -60,11 +58,16 @@ export class DataSourceIpfs extends DataSourceFile {
   }
 
   async writeFile() {
-    // add your data to to IPFS - this can be a string, a Buffer,
-    // a stream of Buffers, etc
-    const { cid } = this.ipfs.add(JSON.stringify([...this.dataSource]));
+    try {
+      // add your data to to IPFS - this can be a string, a Buffer,
+      // a stream of Buffers, etc
+      const { cid } = this.ipfs.add(JSON.stringify([...this.dataSource]));
 
-    fs.writeFileSync(this.file, cid.toString());
-    this.cid = cid;
+      fs.writeFileSync(this.file, cid.toString());
+      this.cid = cid;
+
+    } catch (error) {
+      console.error(error)
+    }
   }
 }

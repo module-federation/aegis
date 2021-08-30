@@ -41,8 +41,15 @@ export default function makeAddModel({
 
     try {
       await repository.save(model.getId(), model);
+    } catch (error) {
+      throw new Error(error);
+    }
+
+    try {
       await observer.notify(event.eventName, event);
     } catch (error) {
+      // remote the object if not processed
+      await repository.delete(model.getId());
       throw new Error(error);
     }
 
