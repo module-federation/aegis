@@ -17,20 +17,18 @@ exports.wrapWasmModelSpec = function (module) {
 
   const {
     test,
-    modelFactory,
-    modelName,
-    endpoint,
+    __pin,
     __getString,
     ModelSpec,
     getModelSpec,
-    __pin
+    modelFactory
   } = module.exports
 
   const specPtr = __pin(getModelSpec())
   const modelSpec = ModelSpec.wrap(specPtr)
 
   // wrapped model spec
-  return Object.freeze({
+  const wrappedSpec = {
     modelName: __getString(modelSpec.modelName),
     endpoint: __getString(modelSpec.endpoint),
     test: () => adapter.callWasmFunction(test, { key1: 'val1', c: 'd' }),
@@ -51,15 +49,17 @@ exports.wrapWasmModelSpec = function (module) {
 
     commands: {
       ...adapter.getWasmCommands()
-    }
+    },
 
     // ports: {
     //   ...adapter.getWasmPorts(),
     // },
 
     // call to dispose of spec memory
-    // dispose: () => adapter.dispose(),
-  })
+    dispose: () => __unpin(specPtr)
+  }
+  console.debug(wrappedSpec)
+  return Object.freeze(wrappedSpec)
 }
 
 /**

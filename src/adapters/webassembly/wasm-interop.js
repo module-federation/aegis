@@ -23,8 +23,11 @@ export default function WasmInterop (module) {
    * @returns {{keys:number[],vals:number[]}} pointer arrays
    */
   function parseArguments (args) {
-    const keyPtrs = Object.keys(args).map(k => __pin(__newString(k)))
-    const valPtrs = Object.values(args).map(v => __pin(__newString(v)))
+    const filtered = Object.entries(args).filter(([k, v]) =>
+      ['string', 'number'].includes(typeof v)
+    )
+    const keyPtrs = filtered.map(([k, v]) => __pin(__newString(k)))
+    const valPtrs = filtered.map(([k, v]) => __pin(__newString(v)))
 
     return {
       keys: keyPtrs,
@@ -32,12 +35,7 @@ export default function WasmInterop (module) {
     }
   }
 
-  function callExport ({
-    fn: wasmFn,
-    keys: keyPtrs,
-    vals: valPtrs,
-    retval = true
-  }) {
+  function callExport ({ fn, keys: keyPtrs, vals: valPtrs, retval = true }) {
     if (keyPtrs.length > 0) {
       const keyArrayPtr = __pin(__newArray(ArrayOfStrings_ID, keyPtrs))
       const valArrayPtr = __pin(__newArray(ArrayOfStrings_ID, valPtrs))
@@ -47,12 +45,12 @@ export default function WasmInterop (module) {
       valPtrs.forEach(__unpin)
 
       // Provide input as two arrays of strings, one for keys, other for values
-      if (retval) return __pin(wasmFn(keyArrayPtr, valArrayPtr))
+      if (retval) return __pin(fn(keyArrayPtr, valArrayPtr))
     } else {
-      if (retval) return __pin(wasmFn())
+      if (retval) return __pin(fn())
     }
     // no return or input
-    return wasmFunc()
+    return fn()
   }
 
   function returnObject (ptr) {
@@ -105,10 +103,11 @@ export default function WasmInterop (module) {
           if (cmd) {
             return {
               [command]: {
-                command: input => callWasmFunction(cmd, input),
-                acl: ['write']
-              },
-              description: commandNames[command] || 'wasm command'
+                command: input =>
+                  this.callWasmFunction(module.exports[cmd], input),
+                acl: ['write'],
+                description: commandNames[command] || 'wasm command'
+              }
             }
           }
         })
@@ -116,7 +115,7 @@ export default function WasmInterop (module) {
     },
 
     getWasmPorts () {
-      const ports = callWasmFunction(getPorts)
+      const ports = this.callWasmFunction(getPorts)
       return Object.keys(ports)
         .map(port => {
           if (ports[port]) {
