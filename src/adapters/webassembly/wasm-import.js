@@ -5,10 +5,8 @@ import {
   wrapWasmModelSpec,
   wrapWasmService
 } from './wasm-decorators'
-import WasmInterop from './wasm-interop'
 import loader from '@assemblyscript/loader'
 import { ObserverFactory } from '../../domain/observer'
-import { wasm } from 'webpack'
 const observer = ObserverFactory.getInstance()
 
 const { Octokit } = require('@octokit/rest')
@@ -92,28 +90,6 @@ export function fetchWasm (entry) {
   return httpGet(entry.url)
 }
 
-function getFn (wasm) {
-  if (wasm.then) {
-    return wasm.then(inst => inst.exports.__getString)
-  } else if (wasm.exports) {
-    return wasm.exports.__getString
-  } else {
-    console.log('no ref to module')
-  }
-}
-
-function getStrings (fn, ptr) {
-  if (ptr instanceof Array) {
-    return ptr.map(p => fn(p))
-  }
-  return fn(ptr)
-}
-
-function logger (wasm, ...ptr) {
-  const strings = getStrings(getFn(wasm), ...ptr)
-  console.log(strings)
-}
-
 export async function importWebAssembly (remoteEntry, type = 'model') {
   const startTime = Date.now()
 
@@ -123,36 +99,58 @@ export async function importWebAssembly (remoteEntry, type = 'model') {
   const response = await fetchWasm(remoteEntry)
   const wasm = await loader.instantiate(response.asBase64Buffer(), {
     aegis: {
-      log: ptr => logger(wasm, ptr),
+      log: ptr => logger(ptr),
 
       invokePort: (portName, portConsumerEvent, portData) =>
-        logger(wasm, portName, portConsumerEvent, portData),
+        logger('invokePort', portName, portConsumerEvent, portData),
 
       invokeMethod: (methodName, methodData, moduleName) =>
-        logger(wasm, moduleName, methodName, methodData),
+        logger('invokeMethod', moduleName, methodName, methodData),
 
       websocketListen: (eventName, callbackName) => {
         console.debug('websocket listen invoked')
         observer.listen(eventName, eventData => {
-          const cmd = adapter.findWasmCommand(str(callbackName))
+          const cmd = adapter.findWasmCommand(getString(callbackName))
           if (typeof cmd === 'function') {
-            adapter.callWasmFunction(cmd, str(eventData))
+            adapter.callWasmFunction(cmd, getString(eventData))
           }
           console.log('no command found')
         })
       },
       websocketNotify: (eventName, eventData) =>
-        wasm.then(inst =>
-          observer.notify(
-            inst.exports.__getString(eventName),
-            inst.exports.__getString(eventData)
-          )
-        ),
+        observer.notify(getString(eventName), getString(eventData)),
+
       requestDeployment: (webswitchId, remoteEntry) =>
-        logger(wasm, webswitchId, remoteEntry)
+        logger('requesting deployment', webswitchId, remoteEntry)
     }
   })
   console.info('wasm modules took %dms', Date.now() - startTime)
+
+  function getStringAsync () {
+    if (wasm.then) {
+      return wasm.then(inst => inst.exports.__getString)
+    } else if (wasm.exports) {
+      return wasm.exports.__getString
+    } else {
+      console.log('no ref to module')
+    }
+  }
+
+  function getStringArray (fn, ptr) {
+    if (ptr instanceof Array) {
+      return ptr.map(p => fn(p))
+    }
+    return fn(ptr)
+  }
+
+  function getString (...prt) {
+    return getStringArray(getStringAsync(), ...prt)
+  }
+
+  function logger (...ptr) {
+    const strings = getStringArray(getStringAsync(), ...ptr)
+    console.log(strings)
+  }
 
   if (type === 'model') return wrapWasmModelSpec(wasm)
   if (type === 'adapter') return wrapWasmAdapter(wasm)
