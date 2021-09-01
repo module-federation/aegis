@@ -9,6 +9,7 @@ import {
   wrapWasmModelSpec,
   wrapWasmService
 } from './wasm-wrappers'
+import WasmInterop from './wasm-interop'
 
 const { Octokit } = require('@octokit/rest')
 const token = process.env.GITHUB_TOKEN
@@ -94,30 +95,43 @@ export function fetchWasm (entry) {
 export async function importWebAssembly (remoteEntry, type = 'model') {
   const startTime = Date.now()
 
-  var importObject = {
-    env: {
-      abort: function (arg) {
-        console.log(arg)
-      }
-    },
-    aegis: {
-      callPort: (moduleName, portName, portConsumerEvent, portData) => {
-        console.debug(moduleName, 'wasm module calling port', portName)
-        observer.notify(portConsumerEvent, portData)
-      },
-      callMethod: (methodName, methodData, moduleName) => {
-        console.debug(moduleName, 'wasm calling method', methodName)
-        observer.notify('wasmMethodEvent', { methodName, methodData })
-      }
-    }
-  }
-
   // Check if we support streaming instantiation
   if (!WebAssembly.instantiateStreaming)
     console.log("we can't stream-compile wasm")
 
   const response = await fetchWasm(remoteEntry)
-  const wasm = await loader.instantiate(response.asBase64Buffer(), importObject)
+  const wasm = await loader.instantiate(response.asBase64Buffer(), {
+    aegis: {
+      log: ptr => wasm.then(inst => console.log(inst.exports.__getString(ptr))),
+      invokePort: (portName, portConsumerEvent, portData) => {
+        wasm.then(instance => {
+          const str = instance.exports.__getString
+          console.debug('wasm module calling port', str(portName))
+          observer.notify(str(portConsumerEvent), str(portData))
+        })
+      },
+      invokeMethod: (methodName, methodData, moduleName) => {
+        wasm.then(instance => {
+          const str = instance.exports.__getString
+          console.debug(str(moduleName), 'wasm calling method', str(methodName))
+          observer.notify('wasmMethodEvent', {
+            methodName: str(methodName),
+            methodData: str(methodData)
+          })
+        })
+      },
+      websocketListen: (eventName, callbackName) => {
+        console.debug('websocket listen invoked')
+        observer.listen(eventName, eventData => {
+          const adapter = WasmInterop(wasm)
+          const cmd = adapter.getWasmCommand(callbackName)
+          if (cmd) {
+            adapter.callWasmFunction(cmd, eventData)
+          }
+        })
+      }
+    }
+  })
   console.info('wasm modules took %dms', Date.now() - startTime)
 
   if (type === 'model') return wrapWasmModelSpec(wasm)
