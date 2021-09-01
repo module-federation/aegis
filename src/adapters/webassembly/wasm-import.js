@@ -1,15 +1,14 @@
 'use strict'
 
-import loader from '@assemblyscript/loader'
-import { ObserverFactory } from '../../domain/observer'
-const observer = ObserverFactory.getInstance()
-
 import {
   wrapWasmAdapter,
   wrapWasmModelSpec,
   wrapWasmService
-} from './wasm-wrappers'
+} from './wasm-decorators'
 import WasmInterop from './wasm-interop'
+import loader from '@assemblyscript/loader'
+import { ObserverFactory } from '../../domain/observer'
+const observer = ObserverFactory.getInstance()
 
 const { Octokit } = require('@octokit/rest')
 const token = process.env.GITHUB_TOKEN
@@ -96,8 +95,7 @@ export async function importWebAssembly (remoteEntry, type = 'model') {
   const startTime = Date.now()
 
   // Check if we support streaming instantiation
-  if (!WebAssembly.instantiateStreaming)
-    console.log("we can't stream-compile wasm")
+  if (WebAssembly.instantiateStreaming) console.log('we can stream-compile now')
 
   const response = await fetchWasm(remoteEntry)
   const wasm = await loader.instantiate(response.asBase64Buffer(), {
@@ -120,16 +118,26 @@ export async function importWebAssembly (remoteEntry, type = 'model') {
           })
         })
       },
-      websocketListen: (eventName, callbackName) => {
-        console.debug('websocket listen invoked')
-        observer.listen(eventName, eventData => {
-          const adapter = WasmInterop(wasm)
-          const cmd = adapter.getWasmCommand(callbackName)
-          if (cmd) {
-            adapter.callWasmFunction(cmd, eventData)
-          }
-        })
-      }
+      websocketListen: (eventName, callbackName) =>
+        wasm.then(inst => {
+          const str = inst.exports.__getString
+          console.debug('websocket listen invoked')
+          observer.listen(eventName, eventData => {
+            const adapter = WasmInterop(wasm)
+            const cmd = adapter.findWasmCommand(str(callbackName))
+            if (typeof cmd === 'function') {
+              adapter.callWasmFunction(cmd, str(eventData))
+            }
+            aegis.log('no command found')
+          })
+        }),
+      websocketNotify: (eventName, eventData) =>
+        wasm.then(inst =>
+          observer.notify(
+            inst.exports.__getString(eventName),
+            inst.exports.__getString(eventData)
+          )
+        )
     }
   })
   console.info('wasm modules took %dms', Date.now() - startTime)
