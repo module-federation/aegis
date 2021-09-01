@@ -8,6 +8,7 @@ import {
 import WasmInterop from './wasm-interop'
 import loader from '@assemblyscript/loader'
 import { ObserverFactory } from '../../domain/observer'
+import { wasm } from 'webpack'
 const observer = ObserverFactory.getInstance()
 
 const { Octokit } = require('@octokit/rest')
@@ -91,6 +92,28 @@ export function fetchWasm (entry) {
   return httpGet(entry.url)
 }
 
+function getFn (wasm) {
+  if (wasm.then) {
+    return wasm.then(inst => inst.exports.__getString)
+  } else if (wasm.exports) {
+    return wasm.exports.__getString
+  } else {
+    console.log('no ref to module')
+  }
+}
+
+function getStrings (fn, ptr) {
+  if (ptr instanceof Array) {
+    return ptr.map(p => fn(p))
+  }
+  return fn(ptr)
+}
+
+function logger (wasm, ...ptr) {
+  const strings = getStrings(getFn(wasm), ...ptr)
+  console.log(strings)
+}
+
 export async function importWebAssembly (remoteEntry, type = 'model') {
   const startTime = Date.now()
 
@@ -100,37 +123,24 @@ export async function importWebAssembly (remoteEntry, type = 'model') {
   const response = await fetchWasm(remoteEntry)
   const wasm = await loader.instantiate(response.asBase64Buffer(), {
     aegis: {
-      log: ptr => wasm.then(inst => console.log(inst.exports.__getString(ptr))),
-      invokePort: (portName, portConsumerEvent, portData) => {
-        wasm.then(instance => {
-          const str = instance.exports.__getString
-          console.debug('wasm module calling port', str(portName))
-          observer.notify(str(portConsumerEvent), str(portData))
+      log: ptr => logger(wasm, ptr),
+
+      invokePort: (portName, portConsumerEvent, portData) =>
+        logger(wasm, portName, portConsumerEvent, portData),
+
+      invokeMethod: (methodName, methodData, moduleName) =>
+        logger(wasm, moduleName, methodName, methodData),
+
+      websocketListen: (eventName, callbackName) => {
+        console.debug('websocket listen invoked')
+        observer.listen(eventName, eventData => {
+          const cmd = adapter.findWasmCommand(str(callbackName))
+          if (typeof cmd === 'function') {
+            adapter.callWasmFunction(cmd, str(eventData))
+          }
+          console.log('no command found')
         })
       },
-      invokeMethod: (methodName, methodData, moduleName) => {
-        wasm.then(instance => {
-          const str = instance.exports.__getString
-          console.debug(str(moduleName), 'wasm calling method', str(methodName))
-          observer.notify('wasmMethodEvent', {
-            methodName: str(methodName),
-            methodData: str(methodData)
-          })
-        })
-      },
-      websocketListen: (eventName, callbackName) =>
-        wasm.then(inst => {
-          const str = inst.exports.__getString
-          console.debug('websocket listen invoked')
-          observer.listen(eventName, eventData => {
-            const adapter = WasmInterop(wasm)
-            const cmd = adapter.findWasmCommand(str(callbackName))
-            if (typeof cmd === 'function') {
-              adapter.callWasmFunction(cmd, str(eventData))
-            }
-            aegis.log('no command found')
-          })
-        }),
       websocketNotify: (eventName, eventData) =>
         wasm.then(inst =>
           observer.notify(

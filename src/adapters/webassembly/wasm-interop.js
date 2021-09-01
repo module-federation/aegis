@@ -1,3 +1,4 @@
+'use strict'
 /**@typedef {import("../../domain").ModelSpecification} ModelSpecification */
 /**@typedef {import("../../domain").Model} Model */
 /**@typedef {{[x:string]:()=>void}} Service */
@@ -67,9 +68,7 @@ export default function WasmInterop (module) {
   }
 
   return {
-    cleanup ({ keys, vals, obj }) {
-      if (keys) __unpin(vals)
-      if (vals) __unpin(keys)
+    cleanup (obj) {
       if (obj) __unpin(obj)
     },
 
@@ -87,24 +86,32 @@ export default function WasmInterop (module) {
       const { keys, vals } = parseArguments(args)
       const obj = callExport({ fn, keys, vals })
       if (retval) return returnObject(obj)
-      cleanup({ keys, vals, obj })
+      cleanup(obj)
+    },
+    log (wasm, ptr) {
+      if (wasm.then) {
+        wasm.then(inst => console.log(inst.exports.__getString(ptr)))
+      }
+      if (wasm.exports) {
+        console.log(wasm.exports.__getString(ptr))
+      }
+    },
+    findWasmCommand (name) {
+      const commandName = Object.keys(module.exports).find(
+        k => typeof module.exports[k] === 'function' && k === name
+      )
+      if (commandName) return module.exports[commandName]
     },
 
-    getWasmCommands () {
+    configureWasmCommands () {
       const commandNames = this.callWasmFunction(getCommands)
-      const findCommand = command =>
-        Object.keys(module.exports).find(
-          k => typeof module.exports[k] === 'function' && k === command
-        )
-
       return Object.keys(commandNames)
         .map(command => {
-          const cmd = findCommand(command)
-          if (cmd) {
+          const cmdFn = this.findWasmCommand(command)
+          if (cmdFn) {
             return {
               [command]: {
-                command: input =>
-                  this.callWasmFunction(module.exports[cmd], input),
+                command: input => this.callWasmFunction(cmdFn, input),
                 acl: ['write'],
                 description: commandNames[command] || 'wasm command'
               }
@@ -114,7 +121,7 @@ export default function WasmInterop (module) {
         .reduce((p, c) => ({ ...p, ...c }))
     },
 
-    getWasmPorts () {
+    configureWasmPorts () {
       const ports = this.callWasmFunction(getPorts)
       return Object.keys(ports)
         .map(port => {
