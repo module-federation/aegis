@@ -99,6 +99,16 @@ export async function importWebAssembly (remoteEntry, type = 'model') {
       abort: function (arg) {
         console.log(arg)
       }
+    },
+    aegis: {
+      callPort: (moduleName, portName, portConsumerEvent, portData) => {
+        console.debug(moduleName, 'wasm module calling port', portName)
+        observer.notify(portConsumerEvent, portData)
+      },
+      callMethod: (methodName, methodData, moduleName) => {
+        console.debug(moduleName, 'wasm calling method', methodName)
+        observer.notify('wasmMethodEvent', { methodName, methodData })
+      }
     }
   }
 
