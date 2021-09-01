@@ -147,7 +147,9 @@ export async function importWebAssembly (remoteEntry, type = 'model') {
             inst.exports.__getString(eventName),
             inst.exports.__getString(eventData)
           )
-        )
+        ),
+      requestDeployment: (webswitchId, remoteEntry) =>
+        logger(wasm, webswitchId, remoteEntry)
     }
   })
   console.info('wasm modules took %dms', Date.now() - startTime)
