@@ -39,10 +39,10 @@
     "whois": "^2.13.5"
   },
   "devDependencies": {
-    "@babel/cli": "7.14.8",
-    "@babel/core": "7.15.0",
-    "@babel/node": "7.14.9",
-    "@babel/preset-env": "7.15.0",
+    "@babel/cli": "7.15.4",
+    "@babel/core": "7.15.4",
+    "@babel/node": "7.15.4",
+    "@babel/preset-env": "7.15.4",
     "@types/node": "14.17.9",
     "babel-loader": "8.2.2",
     "babel-preset-env": "1.7.0",
