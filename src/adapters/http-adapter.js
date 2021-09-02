@@ -1,4 +1,4 @@
-"use strict";
+'use strict'
 /**
  * @callback httpController
  * @param {{
@@ -16,7 +16,7 @@
 /**
  * @param {httpController} controller
  */
-export default function buildCallback(controller) {
+export default function buildCallback (controller) {
   return async (req, res) => {
     const httpRequest = {
       body: req.body,
@@ -31,7 +31,7 @@ export default function buildCallback(controller) {
       //   "User-Agent": req.get("User-Agent"),
       // },
 
-      log(func) {
+      log (func) {
         //const { source = {}, ...payload } = httpRequest.body;
         //source.ip = httpRequest.ip;
         //source.browser = httpRequest.headers["User-Agent"];
@@ -46,20 +46,20 @@ export default function buildCallback(controller) {
           params: httpRequest.params,
           query: httpRequest.query,
           //source,
-          ...httpRequest.body,
-        });
-      },
-    };
+          ...httpRequest.body
+        })
+      }
+    }
 
     return controller(httpRequest)
       .then(httpResponse => {
         if (httpResponse.headers) {
-          res.set(httpResponse.headers);
+          res.set(httpResponse.headers)
         }
-        res.type("json");
-        res.status(httpResponse.statusCode).send(httpResponse.body);
-        return httpResponse;
+        res.type('json')
+        res.status(httpResponse.statusCode).send(httpResponse.body)
+        return httpResponse
       })
-      .catch(e => res.status(500).send({ error: "An unkown error occurred." }));
-  };
+      .catch(e => res.status(500).send({ error: 'An unkown error occurred.' }))
+  }
 }

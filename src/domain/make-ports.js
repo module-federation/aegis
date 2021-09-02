@@ -1,17 +1,17 @@
-"use strict";
+'use strict'
 
-import portHandler from "./port-handler";
-import async from "./util/async-error";
-import domainEvents from "./domain-events";
-import CircuitBreaker from "./circuit-breaker";
+import portHandler from './port-handler'
+import async from './util/async-error'
+import domainEvents from './domain-events'
+import CircuitBreaker from './circuit-breaker'
 
-const TIMEOUTSECONDS = 60;
-const MAXRETRY = 5;
+const TIMEOUTSECONDS = 60
+const MAXRETRY = 5
 
-function getTimerArgs(args) {
-  const timerArg = { calledByTimer: new Date().toUTCString() };
-  if (args) return [...args, timerArg];
-  return [timerArg];
+function getTimerArgs (args) {
+  const timerArg = { calledByTimer: new Date().toUTCString() }
+  if (args) return [...args, timerArg]
+  return [timerArg]
 }
 
 /**
@@ -19,13 +19,13 @@ function getTimerArgs(args) {
  * @param {*} args
  * @returns
  */
-function getRetries(args) {
-  const timerArgs = getTimerArgs(args);
-  const retries = timerArgs.filter(arg => arg.calledByTimer);
+function getRetries (args) {
+  const timerArgs = getTimerArgs(args)
+  const retries = timerArgs.filter(arg => arg.calledByTimer)
   return {
     count: retries.length,
-    nextArg: timerArgs,
-  };
+    nextArg: timerArgs
+  }
 }
 
 /**
@@ -35,63 +35,63 @@ function getRetries(args) {
  *  portConf: import('.').ports,
  * }} options
  */
-function setPortTimeout(options) {
-  const { portConf, portName, model, args } = options;
-  const handler = portConf.timeoutCallback;
-  const noTimer = portConf.timeout === 0;
-  const timeout = (portConf.timeout || TIMEOUTSECONDS) * 1000;
-  const maxRetry = portConf.maxRetry || MAXRETRY;
-  const timerArgs = getRetries(args);
-  const expired = () => timerArgs.count > maxRetry;
+function setPortTimeout (options) {
+  const { portConf, portName, model, args } = options
+  const handler = portConf.timeoutCallback
+  const noTimer = portConf.timeout === 0
+  const timeout = (portConf.timeout || TIMEOUTSECONDS) * 1000
+  const maxRetry = portConf.maxRetry || MAXRETRY
+  const timerArgs = getRetries(args)
+  const expired = () => timerArgs.count > maxRetry
 
   const timer = {
     enabled: false,
     stopTimer: id => id,
-    expired,
-  };
+    expired
+  }
 
   if (noTimer) {
-    return timer;
+    return timer
   }
 
   if (expired()) {
-    model.emit(domainEvents.portRetryFailed(model), options);
+    model.emit(domainEvents.portRetryFailed(model), options)
     return {
       ...timer,
-      enabled: true,
-    };
+      enabled: true
+    }
   }
 
   // Retry the port on timeout
   const timerId = setTimeout(async () => {
     // Notify interested parties
-    await model.emit(domainEvents.portTimeout(model), options);
+    await model.emit(domainEvents.portTimeout(model), options)
 
     // Invoke optional custom handler
-    if (handler) handler(options);
+    if (handler) handler(options)
 
     // Count retries by adding to an array passed on the stack
-    await async(model[portName](...timerArgs.nextArg));
+    await async(model[portName](...timerArgs.nextArg))
 
     // Retry worked
-    model.emit(domainEvents.portRetryWorked(model), options);
-  }, timeout);
+    model.emit(domainEvents.portRetryWorked(model), options)
+  }, timeout)
 
   return {
     ...timer,
     enabled: true,
-    stopTimer: () => clearTimeout(timerId),
-  };
+    stopTimer: () => clearTimeout(timerId)
+  }
 }
 
 /**
  * @param {function({model:Model,port:string},{*})} cb
  */
-function getPortCallback(cb) {
-  if (typeof cb === "function") {
-    return cb;
+function getPortCallback (cb) {
+  if (typeof cb === 'function') {
+    return cb
   }
-  return portHandler;
+  return portHandler
 }
 
 /**
@@ -99,9 +99,9 @@ function getPortCallback(cb) {
  * @param {import(".").Model} model
  * @returns {Promise<boolean>}
  */
-async function isUndoRunning(model) {
-  const latest = await model.find(model.getId());
-  return latest.compensate;
+async function isUndoRunning (model) {
+  const latest = await model.find(model.getId())
+  return latest.compensate
 }
 
 /**
@@ -113,11 +113,11 @@ async function isUndoRunning(model) {
  * @returns {boolean} whether or not to remember this port
  * for compensation and restart
  */
-function addPortListener(portName, portConf, observer, disabled) {
-  if (disabled) return false;
+function addPortListener (portName, portConf, observer, disabled) {
+  if (disabled) return false
 
   if (portConf.consumesEvent) {
-    const callback = getPortCallback(portConf.callback);
+    const callback = getPortCallback(portConf.callback)
 
     // listen for triggering event
     observer.on(
@@ -125,18 +125,18 @@ function addPortListener(portName, portConf, observer, disabled) {
       async function ({ eventName, model }) {
         // Don't call any more ports if we are reversing a transaction.
         if (await isUndoRunning(model)) {
-          console.warn("undo running, canceling port operation");
-          return;
+          console.warn('undo running, canceling port operation')
+          return
         }
-        console.info(`event ${eventName} fired: calling port ${portName}`);
+        console.info(`event ${eventName} fired: calling port ${portName}`)
         // invoke this port
-        await async(model[portName](callback));
+        await async(model[portName](callback))
       },
       false
-    );
-    return true;
+    )
+    return true
   }
-  return false;
+  return false
 }
 
 /**
@@ -146,15 +146,15 @@ function addPortListener(portName, portConf, observer, disabled) {
  * @param {*} remember
  * @returns {Promise<import(".").Model>}
  */
-async function updatePortFlow(model, port, remember) {
-  if (!remember) return model;
+async function updatePortFlow (model, port, remember) {
+  if (!remember) return model
 
   return model.update(
     {
-      [model.getKey("portFlow")]: [...model.getPortFlow(), port],
+      [model.getKey('portFlow')]: [...model.getPortFlow(), port]
     },
     false
-  );
+  )
 }
 
 /**
@@ -172,16 +172,16 @@ async function updatePortFlow(model, port, remember) {
  * @param {object} adapters - object containing application adapters
  * @param {import('./observer').Observer} observer
  */
-export default function makePorts(ports, adapters, observer) {
+export default function makePorts (ports, adapters, observer) {
   if (!ports || !adapters) {
-    return;
+    return
   }
 
   return Object.keys(ports)
     .map(function (port) {
-      const portName = port;
-      const portConf = ports[port];
-      const disabled = portConf.disabled || !adapters[port];
+      const portName = port
+      const portConf = ports[port]
+      const disabled = portConf.disabled || !adapters[port]
 
       // Listen for event that will invoke this port
       const rememberPort = addPortListener(
@@ -189,17 +189,17 @@ export default function makePorts(ports, adapters, observer) {
         portConf,
         observer,
         disabled
-      );
+      )
 
       /**
        *
        * @param  {...any} args
        * @returns
        */
-      async function portFn(...args) {
+      async function portFn (...args) {
         // Don't run if port is disabled
         if (disabled) {
-          return this;
+          return this
         }
 
         // Handle port timeouts
@@ -207,66 +207,66 @@ export default function makePorts(ports, adapters, observer) {
           portName,
           portConf,
           model: this,
-          args,
-        });
+          args
+        })
 
         if (timer.enabled && timer.expired()) {
           // This means we hit max retries
-          console.error("max retries exceeded", port, this);
-          return this;
+          console.error('max retries exceeded', port, this)
+          return this
         }
 
         try {
           // Call the adapter and wait
-          const model = await adapters[port]({ model: this, port, args });
+          const model = await adapters[port]({ model: this, port, args })
 
           // Stop the timer
-          timer.stopTimer();
+          timer.stopTimer()
 
           // Remember what ports we called for undo and restart
-          const saved = await updatePortFlow(model, port, rememberPort);
+          const saved = await updatePortFlow(model, port, rememberPort)
 
           // Signal the next port to run.
           if (rememberPort) {
-            await saved.emit(portConf.producesEvent, portName);
+            await saved.emit(portConf.producesEvent, portName)
           }
 
-          return saved;
+          return saved
         } catch (error) {
-          console.error({ func: port, args, error });
+          console.error({ func: port, args, error })
 
           // Is the timer still running?
           if (timer.expired()) {
             // Try to back out previous transactions.
-            await async(this.undo());
-            return this;
+            await async(this.undo())
+            return this
           }
 
-          throw new Error("error calling port", error, port);
+          throw new Error('error calling port', error, port)
         }
       }
 
       return {
         // The port function
-        async [port](...args) {
+        async [port] (...args) {
           // check if the port requires a breaker
-          const thresholds = portConf.circuitBreaker;
+          const thresholds = portConf.circuitBreaker
 
           if (thresholds) {
             // wrap port call in circuit breaker
-            const breaker = CircuitBreaker(port, portFn, thresholds);
+            const breaker = CircuitBreaker(port, portFn, thresholds)
 
             // Listen for errors
-            breaker.errorListener(domainEvents.portRetryFailed(this));
-            breaker.errorListener(domainEvents.portTimeout(this, port));
+            breaker.errorListener(domainEvents.portRetryFailed(this))
+            breaker.errorListener(domainEvents.portTimeout(this, port))
 
             // invoke port with circuit breaker failsafe
-            return breaker.invoke.apply(this, args);
+            return breaker.invoke.apply(this, args)
           }
           // no breaker
-          return portFn.apply(this, args);
-        },
-      };
+          return portFn.apply(this, args)
+        }
+      }
     })
-    .reduce((p, c) => ({ ...p, ...c }));
+    .reduce((p, c) => ({ ...p, ...c }))
 }

@@ -1,13 +1,13 @@
-"use strict";
+'use strict'
 
 /** @typedef {import('.').Model} Model */
 
-import ModelFactory from ".";
-import * as adapters from "../adapters/datasources";
-import config from "../adapters/datasources";
+import ModelFactory from '.'
+import * as adapters from '../adapters/datasources'
+import config from '../adapters/datasources'
 
-const defaultAdapter = process.env.DATASOURCE_ADAPTER || config.MEMORYADAPTER;
-const DefaultDataSource = adapters[defaultAdapter];
+const defaultAdapter = process.env.DATASOURCE_ADAPTER || config.MEMORYADAPTER
+const DefaultDataSource = adapters[defaultAdapter]
 
 /**
  * @todo handle all state same way
@@ -16,19 +16,19 @@ const DefaultDataSource = adapters[defaultAdapter];
  */
 const DataSourceFactory = (() => {
   // References all DSes
-  let dataSources;
+  let dataSources
 
   /**
    * @method
    * @param {*} name
    * @returns
    */
-  function hasDataSource(name) {
-    return dataSources.has(name);
+  function hasDataSource (name) {
+    return dataSources.has(name)
   }
 
-  function listDataSources() {
-    return [...dataSources];
+  function listDataSources () {
+    return [...dataSources]
   }
 
   /**
@@ -38,24 +38,24 @@ const DataSourceFactory = (() => {
    * @param {*} name datasource name
    * @returns
    */
-  function getSpecDataSource(ds, factory, name) {
-    const spec = ModelFactory.getModelSpec(name);
+  function getSpecDataSource (ds, factory, name) {
+    const spec = ModelFactory.getModelSpec(name)
 
     if (spec && spec.datasource) {
-      const url = spec.datasource.url;
-      const cacheSize = spec.datasource.cacheSize;
-      const adapterFactory = spec.datasource.factory;
-      const BaseClass = config.getBaseClass(spec.datasource.baseClass);
+      const url = spec.datasource.url
+      const cacheSize = spec.datasource.cacheSize
+      const adapterFactory = spec.datasource.factory
+      const BaseClass = config.getBaseClass(spec.datasource.baseClass)
 
       try {
-        const DataSource = adapterFactory(url, cacheSize, BaseClass);
-        return new DataSource(ds, factory, name);
+        const DataSource = adapterFactory(url, cacheSize, BaseClass)
+        return new DataSource(ds, factory, name)
       } catch (error) {
-        console.error(error);
+        console.error(error)
       }
     }
     // use default datasource
-    return new DefaultDataSource(ds, factory, name);
+    return new DefaultDataSource(ds, factory, name)
   }
 
   /**
@@ -63,29 +63,29 @@ const DataSourceFactory = (() => {
    * @param {string} name - model name
    * @param {boolean} cacheOnly - if true returns memory adapter, default is false
    */
-  function getDataSource(name, cacheOnly = false) {
+  function getDataSource (name, cacheOnly = false) {
     if (!dataSources) {
-      dataSources = new Map();
+      dataSources = new Map()
     }
 
     if (dataSources.has(name)) {
-      return dataSources.get(name);
+      return dataSources.get(name)
     }
 
     if (cacheOnly) {
-      const MemoryDs = config.getBaseClass(config.MEMORYADAPTER);
-      const newDs = new MemoryDs(new Map(), this, name);
-      dataSources.set(name, newDs);
-      return newDs;
+      const MemoryDs = config.getBaseClass(config.MEMORYADAPTER)
+      const newDs = new MemoryDs(new Map(), this, name)
+      dataSources.set(name, newDs)
+      return newDs
     }
 
-    const newDs = getSpecDataSource(new Map(), this, name);
-    dataSources.set(name, newDs);
-    return newDs;
+    const newDs = getSpecDataSource(new Map(), this, name)
+    dataSources.set(name, newDs)
+    return newDs
   }
 
-  function close() {
-    dataSources.forEach(ds => ds.close());
+  function close () {
+    dataSources.forEach(ds => ds.close())
   }
 
   return Object.freeze({
@@ -97,8 +97,8 @@ const DataSourceFactory = (() => {
     getDataSource,
     hasDataSource,
     listDataSources,
-    close,
-  });
-})();
+    close
+  })
+})()
 
-export default DataSourceFactory;
+export default DataSourceFactory

@@ -1,6 +1,6 @@
-"use strict";
+'use strict'
 
-import domainEvents from "../domain/domain-events";
+import domainEvents from '../domain/domain-events'
 
 /**
  * @typedef {Object} dependencies injected dependencies
@@ -16,46 +16,46 @@ import domainEvents from "../domain/domain-events";
  * @param {dependencies} param0
  * @returns {function():Promise<import('../domain').Model>}
  */
-export default function makeAddModel({
+export default function makeAddModel ({
   modelName,
   models,
   repository,
   observer,
-  handlers = [],
+  handlers = []
 } = {}) {
-  const eventType = models.EventTypes.CREATE;
-  const eventName = models.getEventName(eventType, modelName);
-  handlers.forEach(handler => observer.on(eventName, handler));
+  const eventType = models.EventTypes.CREATE
+  const eventName = models.getEventName(eventType, modelName)
+  handlers.forEach(handler => observer.on(eventName, handler))
 
   // Add an event whose callback invokes this factory.
-  observer.on(domainEvents.addModel(modelName), addModel, false);
+  observer.on(domainEvents.addModel(modelName), addModel, false)
 
-  async function addModel(input) {
+  async function addModel (input) {
     const model = await models.createModel(
       observer,
       repository,
       modelName,
       input
-    );
-    const event = await models.createEvent(eventType, modelName, model);
+    )
+    const event = await models.createEvent(eventType, modelName, model)
 
     try {
-      await repository.save(model.getId(), model);
+      await repository.save(model.getId(), model)
     } catch (error) {
-      throw new Error(error);
+      throw new Error(error)
     }
 
     try {
-      await observer.notify(event.eventName, event);
+      await observer.notify(event.eventName, event)
     } catch (error) {
       // remote the object if not processed
-      await repository.delete(model.getId());
-      throw new Error(error);
+      await repository.delete(model.getId())
+      throw new Error(error)
     }
 
     // Return the latest changes
-    return repository.find(model.getId());
+    return repository.find(model.getId())
   }
 
-  return addModel;
+  return addModel
 }

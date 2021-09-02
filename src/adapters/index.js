@@ -1,2 +1,2 @@
-export * from "./http-adapter";
-export * from "./persistence-adapter";
+export * from './http-adapter'
+export * from './persistence-adapter'

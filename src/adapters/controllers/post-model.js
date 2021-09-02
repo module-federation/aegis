@@ -1,4 +1,4 @@
-"use strict";
+'use strict'
 
 /**
  *
@@ -6,35 +6,35 @@
  * @param {function():string} hash
  * @returns {import("../adapters/http-adapter").httpController}
  */
-export default function postModelFactory(addModel) {
-  return async function postModel(httpRequest) {
+export default function postModelFactory (addModel) {
+  return async function postModel (httpRequest) {
     try {
-      httpRequest.log(postModel.name);
+      httpRequest.log(postModel.name)
 
-      const model = await addModel(httpRequest.body);
+      const model = await addModel(httpRequest.body)
 
-      console.debug({ function: addModel.name, output: model });
+      console.debug({ function: addModel.name, output: model })
 
       return {
         headers: {
-          "Content-Type": "application/json",
-          "Last-Modified": new Date().toUTCString(),
+          'Content-Type': 'application/json',
+          'Last-Modified': new Date().toUTCString()
         },
         statusCode: 201,
-        body: { modelId: model.getId() },
-      };
+        body: { modelId: model.getId() }
+      }
     } catch (e) {
-      console.error(e);
+      console.error(e)
 
       return {
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json'
         },
         statusCode: 400,
         body: {
-          error: e.message,
-        },
-      };
+          error: e.message
+        }
+      }
     }
-  };
+  }
 }

@@ -1,17 +1,17 @@
-"use strict";
+'use strict'
 
-import DataSource from "../domain/datasource-factory";
+import DataSource from '../domain/datasource-factory'
 
 export const Persistence = {
-  async save(model) {
-    return DataSource.getDataSource(model.getName()).save(model.getId(), model);
+  async save (model) {
+    return DataSource.getDataSource(model.getName()).save(model.getId(), model)
   },
 
-  async find(model) {
-    return DataSource.getDataSource(model.getName()).find(model.getId());
+  async find (model) {
+    return DataSource.getDataSource(model.getName()).find(model.getId())
   },
 
-  close() {
-    DataSource.getFactory().close();
-  },
-};
+  close () {
+    DataSource.getFactory().close()
+  }
+}

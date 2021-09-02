@@ -8,7 +8,7 @@ import WasmInterop from './wasm-interop'
 /**@typedef {function(Service):function(*):Promise} Adapter*/
 
 /**
- * Wrap wasm factory function, etc in {@link ModelSpecification}
+ * Wrap the WASM Module  {@link ModelSpecification}
  * @param {import("node:module")} module WebAssembly module
  * @returns {ModelSpecification}
  */
@@ -16,7 +16,6 @@ exports.wrapWasmModelSpec = function (module) {
   const adapter = WasmInterop(module)
 
   const {
-    test,
     __pin,
     __getString,
     ModelSpec,
@@ -31,7 +30,6 @@ exports.wrapWasmModelSpec = function (module) {
   const wrappedSpec = {
     modelName: __getString(modelSpec.modelName),
     endpoint: __getString(modelSpec.endpoint),
-    test: () => adapter.callWasmFunction(test, { key1: 'val1', c: 'd' }),
     /**
      * Pass any dependencies, return factory function that creates model
      * @param {*} dependencies
@@ -40,8 +38,11 @@ exports.wrapWasmModelSpec = function (module) {
     factory: dependencies => async input =>
       adapter.callWasmFunction(modelFactory, { ...dependencies, ...input }),
 
+    validate: (model, changes) =>
+      adapter.callWasmFunction(module.exports.validate, { model, changes }),
+
     onUpdate: (model, changes) =>
-      callWasmFunction(module.exports.onUpdate, { model, changes }),
+      adapter.callWasmFunction(module.exports.onUpdate, { model, changes }),
 
     onDelete: model =>
       adapter.callWasmFunction(module.exports.onDelete, model, false),

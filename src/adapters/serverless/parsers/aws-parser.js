@@ -1,35 +1,35 @@
-"use strict";
+'use strict'
 
 /**`
  * Cloud vendor-specific message parsers.
  */
 
 const res = {
-  send(data) {
-    console.log("send", data);
-    return data;
+  send (data) {
+    console.log('send', data)
+    return data
   },
-  status(num) {
-    console.log("status", num);
-    return this;
+  status (num) {
+    console.log('status', num)
+    return this
   },
   set: data => data,
   headers: {},
-  type: data => data,
-};
+  type: data => data
+}
 
 // Thanks API GW for this 🙁
-function handleMultiline(body) {
-  if (!body) return null;
+function handleMultiline (body) {
+  if (!body) return null
   try {
     return JSON.parse(
       body
-        .split("\n")
+        .split('\n')
         .map(s => s.trim())
-        .join("")
-    );
+        .join('')
+    )
   } catch {
-    return body;
+    return body
   }
 }
 
@@ -43,16 +43,16 @@ export const parsers = {
         query: args.queryStringParameters,
         params: args.pathParameters,
         body: handleMultiline(args.body),
-        all: { ...args },
+        all: { ...args }
       },
-      res,
+      res
     }),
     response: args => ({
       // API GW res
       isBase64Encoded: false,
       statusCode: args.statusCode,
       headers: args.headers,
-      body: JSON.stringify(args.body || args),
-    }),
-  },
-};
+      body: JSON.stringify(args.body || args)
+    })
+  }
+}

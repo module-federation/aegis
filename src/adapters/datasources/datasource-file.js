@@ -1,8 +1,8 @@
-import fs from "fs";
-import path from "path";
-import { DataSourceMemory } from "./datasource-memory";
+import fs from 'fs'
+import path from 'path'
+import { DataSourceMemory } from './datasource-memory'
 
-const dirPath = process.env.DATASOURCE_FILE_DIRECTORY;
+const dirPath = process.env.DATASOURCE_FILE_DIRECTORY
 
 /**
  * Persistent storage on filesystem
@@ -11,14 +11,14 @@ export class DataSourceFile extends DataSourceMemory {
   /**
    * @param {Set} dataSource
    */
-  constructor(dataSource, factory, name) {
-    super(dataSource, factory, name);
+  constructor (dataSource, factory, name) {
+    super(dataSource, factory, name)
   }
 
-  getFilePath() {
+  getFilePath () {
     return dirPath
       ? path.resolve(dirPath, `${this.name}.json`)
-      : path.resolve(process.cwd(), `./public/${this.name}.json`);
+      : path.resolve(process.cwd(), `./public/${this.name}.json`)
   }
   /**
    *
@@ -27,56 +27,56 @@ export class DataSourceFile extends DataSourceMemory {
    *  serializer:import("../../domain/serializer").Serializer,
    * }} param0
    */
-  async load({ hydrate, serializer }) {
-    this.file = this.getFilePath();
-    console.log("path to filesystem storage:", this.file);
-    this.serializer = serializer;
-    this.dataSource = this.readFile(hydrate);
+  async load ({ hydrate, serializer }) {
+    this.file = this.getFilePath()
+    console.log('path to filesystem storage:', this.file)
+    this.serializer = serializer
+    this.dataSource = this.readFile(hydrate)
   }
 
-  replace(key, value) {
+  replace (key, value) {
     if (value && this.serializer) {
-      return this.serializer.serialize(key, value);
+      return this.serializer.serialize(key, value)
     }
-    return value;
+    return value
   }
 
-  revive(key, value) {
+  revive (key, value) {
     if (value && this.serializer) {
-      return this.serializer.deserialize(key, value);
+      return this.serializer.deserialize(key, value)
     }
-    return value;
+    return value
   }
 
-  writeFile() {
+  writeFile () {
     try {
-      const dataStr = JSON.stringify([...this.dataSource], this.replace);
-      fs.writeFileSync(this.file, dataStr);
+      const dataStr = JSON.stringify([...this.dataSource], this.replace)
+      fs.writeFileSync(this.file, dataStr)
     } catch (error) {
-      console.error(this.writeFile.name, error.message);
+      console.error(this.writeFile.name, error.message)
     }
   }
 
   /**
    *
    */
-  readFile(hydrate) {
+  readFile (hydrate) {
     if (fs.existsSync(this.file)) {
-      const models = fs.readFileSync(this.file, "utf-8");
+      const models = fs.readFileSync(this.file, 'utf-8')
       if (models) {
-        return hydrate(new Map(JSON.parse(models, this.revive)));
+        return hydrate(new Map(JSON.parse(models, this.revive)))
       }
     }
-    return new Map();
+    return new Map()
   }
 
   /**
    * @override
    * @param {*} id
    */
-  async delete(id) {
-    await super.delete(id);
-    this.writeFile();
+  async delete (id) {
+    await super.delete(id)
+    this.writeFile()
   }
 
   /**
@@ -84,13 +84,13 @@ export class DataSourceFile extends DataSourceMemory {
    * @param {*} id
    * @param {*} data
    */
-  async save(id, data) {
-    const ds = await super.save(id, data);
-    this.writeFile();
-    return ds;
+  async save (id, data) {
+    const ds = await super.save(id, data)
+    this.writeFile()
+    return ds
   }
 
-  close() {
-    this.writeFile();
+  close () {
+    this.writeFile()
   }
 }

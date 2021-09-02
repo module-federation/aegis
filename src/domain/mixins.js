@@ -1,6 +1,6 @@
-"use strict";
+'use strict'
 
-import pipe from "./util/pipe";
+import pipe from './util/pipe'
 
 /**
  * @callback functionalMixin
@@ -17,15 +17,15 @@ import pipe from "./util/pipe";
 /**
  *
  */
-export const time = () => new Date().getTime();
+export const time = () => new Date().getTime()
 
 /**
  * Add a unique identifier
  * @param {Function} fnCreateId function that returns unique id
  */
 export const withId = (propName, fnCreateId) => {
-  return o => ({ ...o, [propName]: fnCreateId() });
-};
+  return o => ({ ...o, [propName]: fnCreateId() })
+}
 
 /**
  * Add a timestamp
@@ -33,8 +33,8 @@ export const withId = (propName, fnCreateId) => {
  * @param {Function} [fnTimestamp] default is UTC
  */
 export const withTimestamp = (propName, fnTimestamp = time) => {
-  return o => ({ [propName]: fnTimestamp(), ...o });
-};
+  return o => ({ [propName]: fnTimestamp(), ...o })
+}
 
 /**
  * Convert keys from symbols to strings when
@@ -46,13 +46,13 @@ export const fromSymbol = keyMap => o => {
   const stringifySymbols = () =>
     Object.keys(keyMap)
       .map(k => ({ [k]: o[keyMap[k]] }))
-      .reduce((p, c) => ({ ...p, ...c }));
+      .reduce((p, c) => ({ ...p, ...c }))
 
   return {
     ...o,
-    ...stringifySymbols(),
-  };
-};
+    ...stringifySymbols()
+  }
+}
 
 /**
  * Convert keys from strings to symbols when
@@ -60,73 +60,67 @@ export const fromSymbol = keyMap => o => {
  * @param {{key: string, value: Symbol}} keyMap
  */
 export const toSymbol = keyMap => o => {
-  function parseSymbols() {
+  function parseSymbols () {
     return Object.keys(keyMap)
       .map(k => (o[k] ? { [keyMap[k]]: o[k] } : {}))
-      .reduce((p, c) => ({ ...p, ...c }));
+      .reduce((p, c) => ({ ...p, ...c }))
   }
   return {
     ...o,
-    ...parseSymbols(),
-  };
-};
+    ...parseSymbols()
+  }
+}
 
 /**
  * Convert timestamp number to formatted date string.
  * @param {number[]} timestamps
  * @param {"utc"|"iso"} format
  */
-export const fromTimestamp =
-  (timestamps, format = "utc") =>
-  o => {
-    const formats = { utc: "toUTCString", iso: "toISOString" };
-    const fn = formats[format];
+export const fromTimestamp = (timestamps, format = 'utc') => o => {
+  const formats = { utc: 'toUTCString', iso: 'toISOString' }
+  const fn = formats[format]
 
-    if (!fn) {
-      throw new Error("invalid date format");
-    }
+  if (!fn) {
+    throw new Error('invalid date format')
+  }
 
-    const stringifyTimestamps = () =>
-      timestamps
-        .map(k => (o[k] ? { [k]: new Date(o[k])[fn]() } : {}))
-        .reduce((p, c) => ({ ...c, ...p }));
+  const stringifyTimestamps = () =>
+    timestamps
+      .map(k => (o[k] ? { [k]: new Date(o[k])[fn]() } : {}))
+      .reduce((p, c) => ({ ...c, ...p }))
 
-    return {
-      ...o,
-      ...stringifyTimestamps(),
-    };
-  };
+  return {
+    ...o,
+    ...stringifyTimestamps()
+  }
+}
 
 /**
  * Adds `toJSON` method that pipes multiple serializing mixins together.
  * @param {...functionalMixin} keyMap
  */
-export const withSerializers =
-  (...funcs) =>
-  o => {
-    return {
-      ...o,
-      toJSON() {
-        return pipe(...funcs)(this);
-      },
-    };
-  };
+export const withSerializers = (...funcs) => o => {
+  return {
+    ...o,
+    toJSON () {
+      return pipe(...funcs)(this)
+    }
+  }
+}
 
 /**
  * Pipes multiple deserializing mixins together.
  * @param  {...functionalMixin} funcs
  */
-export const withDeserializers =
-  (...funcs) =>
-  o => {
-    function fromJSON() {
-      return pipe(...funcs)(o);
-    }
-    return {
-      ...o,
-      ...fromJSON(),
-    };
-  };
+export const withDeserializers = (...funcs) => o => {
+  function fromJSON () {
+    return pipe(...funcs)(o)
+  }
+  return {
+    ...o,
+    ...fromJSON()
+  }
+}
 
 /**
  * Subscribe to and emit application and domain events.
@@ -135,11 +129,11 @@ export const withDeserializers =
 export const withObserver = observer => o => {
   return {
     ...o,
-    async emit(eventName, eventData) {
-      observer.notify(eventName, eventData);
+    async emit (eventName, eventData) {
+      observer.notify(eventName, eventData)
     },
-    subscribe(eventName, callback) {
-      observer.on(eventName, callback);
-    },
-  };
-};
+    subscribe (eventName, callback) {
+      observer.on(eventName, callback)
+    }
+  }
+}

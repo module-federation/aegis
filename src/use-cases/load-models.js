@@ -1,7 +1,7 @@
-"use strict";
+'use strict'
 
-import Serializer from "../domain/serializer";
-import { resumeWorkflow } from "../domain/orchestrate";
+import Serializer from '../domain/serializer'
+import { resumeWorkflow } from '../domain/orchestrate'
 
 /**
  * @param {function(import("../domain").Model)} loadModel
@@ -9,40 +9,43 @@ import { resumeWorkflow } from "../domain/orchestrate";
  * @param {import("../datasources/datasource").default} repository
  * @returns {function(Map<string,Model>|Model)}
  */
-function hydrateModels(loadModel, observer, repository) {
+function hydrateModels (loadModel, observer, repository) {
   return function (saved) {
-    if (!saved) return;
+    if (!saved) return
 
     try {
       if (saved instanceof Map) {
         return new Map(
           [...saved].map(function ([k, v]) {
-            const model = loadModel(observer, repository, v, v.modelName);
-            return [k, model];
+            const model = loadModel(observer, repository, v, v.modelName)
+            return [k, model]
           })
-        );
+        )
       }
 
-      if (Object.getOwnPropertyNames(saved).includes("modelName")) {
-        return loadModel(observer, repository, saved, saved.modelName);
+      if (Object.getOwnPropertyNames(saved).includes('modelName')) {
+        return loadModel(observer, repository, saved, saved.modelName)
       }
     } catch (error) {
-      console.warn(loadModel.name, error.message);
+      console.warn(loadModel.name, error.message)
     }
-  };
+  }
 }
 
-function handleError(e) {
-  console.error(e);
+function handleError (e) {
+  console.error(e)
 }
 /**
  *
  * @param {import("../datasources/datasource").default} repository
  */
-function handleRestart(repository) {
+function handleRestart (repository) {
   // console.log("resuming workflow", repository.name);
-  if (process.env.RESUME_WORKFLOW_DISABLED) return;
-  repository.list().then(resumeWorkflow).catch(handleError);
+  if (process.env.RESUME_WORKFLOW_DISABLED) return
+  repository
+    .list()
+    .then(resumeWorkflow)
+    .catch(handleError)
 }
 
 /**
@@ -57,14 +60,14 @@ function handleRestart(repository) {
  * @returns {function():Promise<void>}
  */
 export default function ({ models, observer, repository, modelName }) {
-  return async function loadModels() {
-    const spec = models.getModelSpec(modelName);
+  return async function loadModels () {
+    const spec = models.getModelSpec(modelName)
 
-    setInterval(handleRestart, 30000, repository);
+    setInterval(handleRestart, 30000, repository)
 
     return repository.load({
       hydrate: hydrateModels(models.loadModel, observer, repository),
-      serializer: Serializer.addSerializer(spec.serializers),
-    });
-  };
+      serializer: Serializer.addSerializer(spec.serializers)
+    })
+  }
 }

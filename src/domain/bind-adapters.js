@@ -1,4 +1,4 @@
-"use strict";
+'use strict'
 
 /**
  * In a hex arch, ports and adapters control I/O between
@@ -11,9 +11,9 @@
  * @param {{[x:string]:function(*):function(*):any}} adapters - service adapters
  * @param {*} [services] - (micro-)services
  */
-export default function bindAdapters(ports, adapters, services = {}) {
+export default function bindAdapters (ports, adapters, services = {}) {
   if (!ports || !adapters) {
-    return;
+    return
   }
 
   return Object.keys(ports)
@@ -21,12 +21,12 @@ export default function bindAdapters(ports, adapters, services = {}) {
       try {
         if (adapters[port] && !ports[port].disabled) {
           return {
-            [port]: adapters[port](services[ports[port].service]),
-          };
+            [port]: adapters[port](services[ports[port].service])
+          }
         }
       } catch (e) {
-        console.warn(e.message);
+        console.warn(e.message)
       }
     })
-    .reduce((p, c) => ({ ...p, ...c }));
+    .reduce((p, c) => ({ ...p, ...c }))
 }

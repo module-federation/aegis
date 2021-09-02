@@ -1,7 +1,7 @@
-"use strict";
+'use strict'
 
-import Model from "./model";
-import Event from "./event";
+import Model from './model'
+import Event from './event'
 
 /** @typedef {'CREATE' | 'UPDATE' | 'DELETE'} EventType */
 /** @typedef {import('./index').ModelSpecification} ModelSpecification */
@@ -30,33 +30,33 @@ import Event from "./event";
  * @enum {EventType}
  */
 const EventTypes = {
-  CREATE: "CREATE",
-  UPDATE: "UPDATE",
-  DELETE: "DELETE",
-};
+  CREATE: 'CREATE',
+  UPDATE: 'UPDATE',
+  DELETE: 'DELETE'
+}
 
 /**
  * @param {String} modelName
  */
-function checkModelName(modelName) {
-  if (typeof modelName === "string") {
-    return modelName.toUpperCase();
+function checkModelName (modelName) {
+  if (typeof modelName === 'string') {
+    return modelName.toUpperCase()
   }
-  throw new Error("modelName missing or invalid");
+  throw new Error('modelName missing or invalid')
 }
 
 /**
  *
  * @param {EventType} eventType
  */
-function checkEventType(eventType) {
-  if (typeof eventType === "string") {
-    const upper = eventType.toUpperCase();
+function checkEventType (eventType) {
+  if (typeof eventType === 'string') {
+    const upper = eventType.toUpperCase()
     if (Object.values(EventTypes).includes(upper)) {
-      return upper;
+      return upper
     }
   }
-  throw new Error("eventType missing or invalid");
+  throw new Error('eventType missing or invalid')
 }
 
 /**
@@ -64,15 +64,15 @@ function checkEventType(eventType) {
  * @param {EventType} eventType
  * @param {String} modelName
  */
-function createEventName(eventType, modelName) {
-  return checkEventType(eventType) + checkModelName(modelName);
+function createEventName (eventType, modelName) {
+  return checkEventType(eventType) + checkModelName(modelName)
 }
 
 /**
  * @todo handle all state same way
  * @type {Map<string,ModelSpecification>}
  */
-const modelFactories = new Map();
+const modelFactories = new Map()
 
 /**
  * @type {{[x: string]: Map<string,function(string,EventType,function()):Event>}}
@@ -80,8 +80,8 @@ const modelFactories = new Map();
 const eventFactories = {
   [EventTypes.CREATE]: new Map(),
   [EventTypes.UPDATE]: new Map(),
-  [EventTypes.DELETE]: new Map(),
-};
+  [EventTypes.DELETE]: new Map()
+}
 
 /**
  * Register model types and create model instances.
@@ -93,13 +93,13 @@ const ModelFactory = {
    * @param {ModelSpecification} model
    */
   registerModel: model => {
-    const name = checkModelName(model.modelName);
+    const name = checkModelName(model.modelName)
     if (!modelFactories.has(name)) {
-      modelFactories.set(name, model);
+      modelFactories.set(name, model)
     } else {
-      console.log("deleting and readding model spec", name);
-      modelFactories.delete(name);
-      modelFactories.set(name, model);
+      console.log('deleting and readding model spec', name)
+      modelFactories.delete(name)
+      modelFactories.set(name, model)
     }
   },
 
@@ -110,11 +110,11 @@ const ModelFactory = {
    * @param {Function} factory factory function
    */
   registerEvent: (eventType, modelName, factory) => {
-    const name = checkModelName(modelName);
-    const type = checkEventType(eventType);
+    const name = checkModelName(modelName)
+    const type = checkEventType(eventType)
 
-    if (typeof factory === "function") {
-      eventFactories[type].set(name, factory);
+    if (typeof factory === 'function') {
+      eventFactories[type].set(name, factory)
     }
   },
 
@@ -127,8 +127,8 @@ const ModelFactory = {
    * @returns {Promise<Readonly<Model>>} the model instance
    */
   createModel: async function (observer, datasource, modelName, ...args) {
-    const name = checkModelName(modelName);
-    const spec = modelFactories.get(name);
+    const name = checkModelName(modelName)
+    const spec = modelFactories.get(name)
 
     if (spec) {
       return Model.create({
@@ -136,11 +136,11 @@ const ModelFactory = {
         spec: {
           ...spec,
           observer,
-          datasource,
-        },
-      });
+          datasource
+        }
+      })
     }
-    throw new Error("unregistered model");
+    throw new Error('unregistered model')
   },
 
   /**
@@ -149,8 +149,8 @@ const ModelFactory = {
    * @param {*} modelName
    */
   loadModel: (observer, datasource, model, modelName) => {
-    const name = checkModelName(modelName);
-    const spec = modelFactories.get(name);
+    const name = checkModelName(modelName)
+    const spec = modelFactories.get(name)
 
     if (spec) {
       return Model.load({
@@ -158,11 +158,11 @@ const ModelFactory = {
         spec: {
           ...spec,
           observer,
-          datasource,
-        },
-      });
+          datasource
+        }
+      })
     }
-    throw new Error("unregistered model", name);
+    throw new Error('unregistered model', name)
   },
 
   /**
@@ -173,19 +173,19 @@ const ModelFactory = {
    * @returns {Promise<Readonly<Event>>} the event instance
    */
   createEvent: async (eventType, modelName, args) => {
-    const name = checkModelName(modelName);
-    const type = checkEventType(eventType);
-    const factory = eventFactories[type].get(name);
+    const name = checkModelName(modelName)
+    const type = checkEventType(eventType)
+    const factory = eventFactories[type].get(name)
 
     if (factory) {
       return Event.create({
         args,
         factory,
         eventType: type,
-        modelName: name,
-      });
+        modelName: name
+      })
     }
-    throw new Error("unregistered model event");
+    throw new Error('unregistered model event')
   },
 
   /**
@@ -205,9 +205,9 @@ const ModelFactory = {
    * @param {Model|string} model
    */
   getModelSpec: model => {
-    if (!model) return;
-    const name = typeof model === "object" ? Model.getName(model) : model;
-    return modelFactories.get(checkModelName(name));
+    if (!model) return
+    const name = typeof model === 'object' ? Model.getName(model) : model
+    return modelFactories.get(checkModelName(name))
   },
 
   /**
@@ -225,12 +225,14 @@ const ModelFactory = {
   deleteModel: model => Model.delete(model),
 
   /**
-   * Call `dispose()` on each factory to release resources, 
+   * Call `dispose()` on each factory to release resources,
    * then delete them.
    */
   clearModels: () => {
-    modelFactories.forEach(mf => { if (mf.dispose) mf.dispose(); });
-    modelFactories.clear();
+    modelFactories.forEach(mf => {
+      if (mf.dispose) mf.dispose()
+    })
+    modelFactories.clear()
   },
 
   /**
@@ -249,12 +251,12 @@ const ModelFactory = {
    */
   getEventName: createEventName,
 
-  EventTypes,
-};
+  EventTypes
+}
 
-Object.freeze(modelFactories);
-Object.freeze(eventFactories);
-Object.freeze(ModelFactory);
-Object.freeze(EventTypes);
+Object.freeze(modelFactories)
+Object.freeze(eventFactories)
+Object.freeze(ModelFactory)
+Object.freeze(EventTypes)
 
-export default ModelFactory;
+export default ModelFactory

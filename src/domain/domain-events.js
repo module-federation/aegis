@@ -1,4 +1,4 @@
-"use strict";
+'use strict'
 
 const domainEvents = {
   internalCacheRequest: modelName => `internalCacheRequest_${modelName}`,
@@ -16,8 +16,7 @@ const domainEvents = {
   portTimeout: (model, port) => `portTimeout_${port}_${model.getName()}`,
   portRetryFailed: (model, port) =>
     `portRetryFailed_${port}_${model.getName()}`,
-  portRetryWorked: (model, port) =>
-    `portRetryWorked_${port}_${model.getName()}`,
-};
+  portRetryWorked: (model, port) => `portRetryWorked_${port}_${model.getName()}`
+}
 
-export default domainEvents;
+export default domainEvents

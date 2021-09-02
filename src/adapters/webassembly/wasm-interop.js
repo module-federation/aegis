@@ -18,10 +18,10 @@ export default function WasmInterop (module) {
   } = module.exports
 
   /**
-   * Object only supports strings and numbers for the moment.
+   * only strings and numbers in the object are supported for the moment.
    *
    * @param {object} args input object
-   * @returns {{keys:number[],vals:number[]}} pointer arrays
+   * @returns {{keys:string[],vals:string[]}} pointer arrays
    */
   function parseArguments (args) {
     const filtered = Object.entries(args).filter(([k, v]) =>
@@ -36,6 +36,16 @@ export default function WasmInterop (module) {
     }
   }
 
+  /**
+   *
+   * @param {{
+   *  fn:function(number[],number[]),
+   *  keys:string[],
+   *  vals:string[],
+   *  retval:boolean
+   * }} param0
+   * @returns {string[][]|void}
+   */
   function callExport ({ fn, keys: keyPtrs, vals: valPtrs, retval = true }) {
     if (keyPtrs.length > 0) {
       const keyArrayPtr = __pin(__newArray(ArrayOfStrings_ID, keyPtrs))
@@ -54,6 +64,11 @@ export default function WasmInterop (module) {
     return fn()
   }
 
+  /**
+   * Construct an object from the key value pairs
+   * @param {*} ptr
+   * @returns
+   */
   function returnObject (ptr) {
     const obj = __getArray(ptr)
       .map(inner => __getArray(inner))
@@ -74,8 +89,9 @@ export default function WasmInterop (module) {
 
     /**
      * For any function that accepts and returns an object,
-     * we instead pass and return two string arrays, one array
-     * for the object's keys, the other for it's values.
+     * we parse the input object into 2 string arrays, one for keys,
+     * the other for values and return a multidemnsional array of
+     * key-value pairs. This way we avoid having to declare classes.
      *
      * @param {function()} fn exported wasm function
      * @param {object} [args] data from request, see above
@@ -88,14 +104,14 @@ export default function WasmInterop (module) {
       if (retval) return returnObject(obj)
       cleanup(obj)
     },
-    log (wasm, ptr) {
-      if (wasm.then) {
-        wasm.then(inst => console.log(inst.exports.__getString(ptr)))
-      }
-      if (wasm.exports) {
-        console.log(wasm.exports.__getString(ptr))
-      }
-    },
+
+    /**
+     * Commands can be invoked from the REST API. Return
+     * a list of commands to invoke in this way. The name
+     * must match the name of an exported function.
+     * @param {*} name
+     * @returns {function()}
+     */
     findWasmCommand (name) {
       const commandName = Object.keys(module.exports).find(
         k => typeof module.exports[k] === 'function' && k === name
@@ -103,6 +119,10 @@ export default function WasmInterop (module) {
       if (commandName) return module.exports[commandName]
     },
 
+    /**
+     * Generate new method that implements the command
+     * @returns
+     */
     configureWasmCommands () {
       const commandNames = this.callWasmFunction(getCommands)
       return Object.keys(commandNames)
@@ -121,6 +141,10 @@ export default function WasmInterop (module) {
         .reduce((p, c) => ({ ...p, ...c }))
     },
 
+    /**
+     * Generate port method
+     * @returns
+     */
     configureWasmPorts () {
       const ports = this.callWasmFunction(getPorts)
       return Object.keys(ports)
@@ -139,13 +163,6 @@ export default function WasmInterop (module) {
           }
         })
         .reduce((p, c) => ({ ...p, ...c }))
-    },
-
-    /**
-     * in case we need to call something later on that alloc's mem
-     */
-    dispose () {
-      //
     }
   }
 }

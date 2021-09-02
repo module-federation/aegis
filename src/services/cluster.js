@@ -1,10 +1,10 @@
-"use strict";
+'use strict'
 
-const cluster = require("cluster");
-const numCores = require("os").cpus().length;
-let reloading = false;
-let reloadList = [];
-let workerList = [];
+const cluster = require('cluster')
+const numCores = require('os').cpus().length
+let reloading = false
+let reloadList = []
+let workerList = []
 
 /**
  * @typedef {function()} startWorker
@@ -12,33 +12,33 @@ let workerList = [];
  * listen for a reload request from it,
  * add it to `workerList` which is used during the rolling restart.
  */
-function startWorker() {
-  const worker = cluster.fork();
+function startWorker () {
+  const worker = cluster.fork()
 
-  worker.on("message", function (message) {
-    if (message.cmd === "reload") {
-      console.log("reload requested 👍");
+  worker.on('message', function (message) {
+    if (message.cmd === 'reload') {
+      console.log('reload requested 👍')
       if (reloading) {
-        console.log("reload already in progress");
-        return;
+        console.log('reload already in progress')
+        return
       }
-      reloading = true;
-      reloadList = [...workerList];
-      workerList = [];
-      const worker = reloadList.pop();
-      worker.kill("SIGTERM");
+      reloading = true
+      reloadList = [...workerList]
+      workerList = []
+      const worker = reloadList.pop()
+      worker.kill('SIGTERM')
     }
-  });
+  })
 
-  worker.on("message", function (message) {
-    if (message.cmd === "reset-reload") {
-      reloading = false;
-      console.log("reload status reset to false");
+  worker.on('message', function (message) {
+    if (message.cmd === 'reset-reload') {
+      reloading = false
+      console.log('reload status reset to false')
     }
-  });
+  })
 
-  worker.on("message", function (message) {
-    if (message.pid === process.pid) return;
+  worker.on('message', function (message) {
+    if (message.pid === process.pid) return
 
     if (/.*Broadcast$/.test(message.cmd)) {
       for (const id in cluster.workers) {
@@ -46,26 +46,26 @@ function startWorker() {
           cluster.workers[id].send({
             ...message,
             pid: process.pid,
-            cmd: message.cmd.replace("Broadcast", "Command"),
-          });
+            cmd: message.cmd.replace('Broadcast', 'Command')
+          })
         }
       }
     }
-  });
+  })
 
-  workerList.push(worker);
+  workerList.push(worker)
 }
 
 /**
  * @typedef {function()} stopWorker
  * Gracefully stop a worker on the reload list.
  */
-function stopWorker() {
-  const worker = reloadList.pop();
-  if (worker) worker.kill("SIGTERM");
+function stopWorker () {
+  const worker = reloadList.pop()
+  if (worker) worker.kill('SIGTERM')
   else {
-    reloading = false;
-    console.log("reload complete ✅");
+    reloading = false
+    console.log('reload complete ✅')
   }
 }
 
@@ -75,14 +75,14 @@ function stopWorker() {
  * @param {number} waitms - Delay execution by `waitms`
  * milliseconds so your app has time to start
  */
-function continueReload(callback, waitms) {
+function continueReload (callback, waitms) {
   const failedWorker =
     !reloading &&
     workerList.length < numCores &&
-    callback.name.includes("start");
+    callback.name.includes('start')
 
   if (reloading || failedWorker) {
-    setTimeout(callback, failedWorker ? 60000 : waitms);
+    setTimeout(callback, failedWorker ? 60000 : waitms)
   }
 }
 
@@ -107,26 +107,26 @@ function continueReload(callback, waitms) {
 exports.startCluster = function (startService, waitms = 2000) {
   if (cluster.isMaster) {
     // Worker stopped. If reloading, start a new one.
-    cluster.on("exit", function (worker) {
-      console.log("worker down", worker.process.pid);
-      continueReload(startWorker, 0);
-    });
+    cluster.on('exit', function (worker) {
+      console.log('worker down', worker.process.pid)
+      continueReload(startWorker, 0)
+    })
 
     // Worker started. If reloading, stop the next one.
-    cluster.on("online", function (worker) {
-      console.log("worker up", worker.process.pid);
-      continueReload(stopWorker, waitms);
-    });
+    cluster.on('online', function (worker) {
+      console.log('worker up', worker.process.pid)
+      continueReload(stopWorker, waitms)
+    })
 
-    setInterval(continueReload, 60000, startWorker, waitms);
+    setInterval(continueReload, 60000, startWorker, waitms)
 
-    console.log(`master starting ${numCores} workers 🌎`);
+    console.log(`master starting ${numCores} workers 🌎`)
     // Run a copy of this program on each core
     for (let i = 0; i < numCores; i++) {
-      startWorker();
+      startWorker()
     }
   } else {
     // this is a worker, run the service.
-    startService();
+    startService()
   }
-};
+}
