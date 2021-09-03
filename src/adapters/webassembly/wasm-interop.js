@@ -46,7 +46,17 @@ export default function WasmInterop (module) {
    * }} param0
    * @returns {string[][]|void}
    */
-  function callExport ({ fn, keys: keyPtrs, vals: valPtrs, retval = true }) {
+  function callExport ({
+    fn: wasmFn,
+    keys: keyPtrs = [],
+    vals: valPtrs = [],
+    num = null,
+    retval = true
+  }) {
+    if (typeof num === 'number') {
+      return wasmFn(num)
+    }
+
     if (keyPtrs.length > 0) {
       const keyArrayPtr = __pin(__newArray(ArrayOfStrings_ID, keyPtrs))
       const valArrayPtr = __pin(__newArray(ArrayOfStrings_ID, valPtrs))
@@ -56,12 +66,12 @@ export default function WasmInterop (module) {
       valPtrs.forEach(__unpin)
 
       // Provide input as two arrays of strings, one for keys, other for values
-      if (retval) return __pin(fn(keyArrayPtr, valArrayPtr))
+      if (retval) return __pin(wasmFn(keyArrayPtr, valArrayPtr))
     } else {
-      if (retval) return __pin(fn())
+      if (retval) return __pin(wasmFn())
     }
     // no return or input
-    return fn()
+    return wasmFn()
   }
 
   /**
@@ -76,17 +86,15 @@ export default function WasmInterop (module) {
       .reduce((prop1, prop2) => ({ ...prop1, ...prop2 }))
 
     const immutableClone = Object.freeze({ ...obj })
-
     __unpin(ptr)
-
     return immutableClone
   }
 
-  return {
-    cleanup (obj) {
-      if (obj) __unpin(obj)
-    },
+  function cleanup (obj) {
+    if (obj) __unpin(obj)
+  }
 
+  return {
     /**
      * For any function that accepts and returns an object,
      * we parse the input object into 2 string arrays, one for keys,
@@ -99,6 +107,7 @@ export default function WasmInterop (module) {
      * @returns {object} see above
      */
     callWasmFunction (fn, args = {}, retval = true) {
+      if (typeof args === 'number') return callExport({ fn, num: args })
       const { keys, vals } = parseArguments(args)
       const obj = callExport({ fn, keys, vals })
       if (retval) return returnObject(obj)
@@ -132,8 +141,7 @@ export default function WasmInterop (module) {
             return {
               [command]: {
                 command: input => this.callWasmFunction(cmdFn, input),
-                acl: ['write'],
-                description: commandNames[command] || 'wasm command'
+                acl: ['write']
               }
             }
           }

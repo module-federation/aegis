@@ -99,57 +99,46 @@ export async function importWebAssembly (remoteEntry, type = 'model') {
   const response = await fetchWasm(remoteEntry)
   const wasm = await loader.instantiate(response.asBase64Buffer(), {
     aegis: {
-      log: ptr => logger(ptr),
+      log: ptr => handleAsync(console.log, ptr),
 
       invokePort: (portName, portConsumerEvent, portData) =>
-        logger('invokePort', portName, portConsumerEvent, portData),
+        handleAsync(console.log, portName, portConsumerEvent, portData),
 
       invokeMethod: (methodName, methodData, moduleName) =>
-        logger('invokeMethod', moduleName, methodName, methodData),
+        handleAsync(console.log, moduleName, methodName, methodData),
 
       websocketListen: (eventName, callbackName) => {
         console.debug('websocket listen invoked')
-        observer.listen(eventName, eventData => {
-          const cmd = adapter.findWasmCommand(getString(callbackName))
-          if (typeof cmd === 'function') {
-            adapter.callWasmFunction(cmd, getString(eventData))
-          }
-          console.log('no command found')
-        })
+        if (wasm.then) {
+          observer.listen(eventName, eventData => {
+            const cmd = adapter.findWasmCommand(getString(callbackName))
+            if (typeof cmd === 'function') {
+              handleAsync(adapter.callWasmFunction, eventData)
+            }
+            console.log('no command found')
+          })
+        }
       },
       websocketNotify: (eventName, eventData) =>
-        observer.notify(getString(eventName), getString(eventData)),
+        handleAsync(observer.notify, eventName, eventData),
 
       requestDeployment: (webswitchId, remoteEntry) =>
-        logger('requesting deployment', webswitchId, remoteEntry)
+        handleAsync(console.log, webswitchId, remoteEntry)
     }
   })
   console.info('wasm modules took %dms', Date.now() - startTime)
 
-  function getStringAsync () {
+  function handleAsync (fn, ...ptr) {
+    const ptrArray = ptr instanceof Array ? ptr : [ptr]
     if (wasm.then) {
-      return wasm.then(inst => inst.exports.__getString)
+      return wasm.then(inst =>
+        fn(...ptrArray.map(p => inst.exports.__getString(p)))
+      )
     } else if (wasm.exports) {
-      return wasm.exports.__getString
+      return fn(...ptr.map(p => wasm.exports.__getString(p)))
     } else {
       console.log('no ref to module')
     }
-  }
-
-  function getStringArray (fn, ptr) {
-    if (ptr instanceof Array) {
-      return ptr.map(p => fn(p))
-    }
-    return fn(ptr)
-  }
-
-  function getString (...prt) {
-    return getStringArray(getStringAsync(), ...prt)
-  }
-
-  function logger (...ptr) {
-    const strings = getStringArray(getStringAsync(), ...ptr)
-    console.log(strings)
   }
 
   if (type === 'model') return wrapWasmModelSpec(wasm)
