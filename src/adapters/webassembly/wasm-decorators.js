@@ -20,7 +20,10 @@ exports.wrapWasmModelSpec = function (module) {
     __getString,
     ModelSpec,
     getModelSpec,
-    modelFactory
+    modelFactory,
+    validate,
+    onUpdate,
+    onDelete
   } = module.exports
 
   const specPtr = __pin(getModelSpec())
@@ -39,13 +42,12 @@ exports.wrapWasmModelSpec = function (module) {
       adapter.callWasmFunction(modelFactory, { ...dependencies, ...input }),
 
     validate: (model, changes) =>
-      adapter.callWasmFunction(module.exports.validate, { model, changes }),
+      adapter.callWasmFunction(validate, { model, changes }),
 
     onUpdate: (model, changes) =>
-      adapter.callWasmFunction(module.exports.onUpdate, { model, changes }),
+      adapter.callWasmFunction(onUpdate, { model, changes }),
 
-    onDelete: model =>
-      adapter.callWasmFunction(module.exports.onDelete, model, false),
+    onDelete: model => adapter.callWasmFunction(onDelete, model, false),
 
     commands: {
       ...adapter.configureWasmCommands()
@@ -59,6 +61,7 @@ exports.wrapWasmModelSpec = function (module) {
     dispose: () => __unpin(specPtr)
   }
   console.debug(wrappedSpec)
+
   return Object.freeze(wrappedSpec)
 }
 
