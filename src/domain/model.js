@@ -352,7 +352,6 @@ const Model = (() => {
    * mixins, etc.
    *
    * @lends Model
-   * @namespace
    * @class
    * @param {{
    *  args: any[],
