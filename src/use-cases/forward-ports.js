@@ -30,13 +30,16 @@ function getLocallyUnhandledEvents (specs) {
 /**
  * Subscribe to remote consumer port events
  * and publish local producer port events,
- * provided there is no local service handling
- * the event or they are marked as `internal`,
- * meaning there is no third party integration
- * handling the port. Interal ports use the
- * built-in mesh network.
+ * provided:
  *
- * This enables event-driven worklfow to function
+ * - there is no local service handling
+ * the event
+ *
+ * - they are marked as `internal`, meaning there
+ * is no custom adapter handling the port.
+ *
+ * Internal ports use the built-in mesh network,
+ * which enables event-driven worklfow to function
  * whether participating components are local or
  * remote, i.e. it enables transparent integration.
  *
@@ -55,13 +58,15 @@ export function handlePortEvents ({ observer, models, publish, subscribe }) {
 
   const { consumerEvents, producerEvents } = getLocallyUnhandledEvents(specs)
 
-  consumerEvents.forEach(consumer =>
-    subscribe(consumer, eventData =>
+  consumerEvents.forEach(consumerEvent =>
+    subscribe(consumerEvent, eventData =>
       observer.notify(eventData.eventName, eventData)
     )
   )
 
-  producerEvents.forEach(producer =>
-    observer.on(producer, eventData => publish(eventData.eventName, eventData))
+  producerEvents.forEach(producerEvent =>
+    observer.on(producerEvent, eventData =>
+      publish(eventData.eventName, eventData)
+    )
   )
 }
