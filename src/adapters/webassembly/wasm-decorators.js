@@ -41,8 +41,8 @@ exports.wrapWasmModelSpec = function (module) {
     factory: dependencies => async input =>
       adapter.callWasmFunction(modelFactory, { ...dependencies, ...input }),
 
-    validate: (model, changes) => void 0,
-    //adapter.callWasmFunction(validate, { model, changes }, false),
+    // validate: (model, changes) =>
+    //   adapter.callWasmFunction(validate, { model, changes }, false),
 
     onUpdate: (model, changes) =>
       adapter.callWasmFunction(onUpdate, { model, changes }),

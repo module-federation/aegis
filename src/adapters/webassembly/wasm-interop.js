@@ -129,7 +129,8 @@ exports.WasmInterop = function (module) {
     },
 
     /**
-     * Generate new method that implements the command
+     * For every command in {@link getCommands} create a
+     * `commands` entry pointing to the exported function
      * @returns
      */
     configureWasmCommands () {

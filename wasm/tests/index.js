@@ -32,7 +32,6 @@ require('..').then(async wasmInstance => {
   const spec = wrapper.wrapWasmModelSpec(wasmInstance)
 
   console.log(spec)
-  console.log(spec.test({}))
   const model = await spec.factory({ a: 'b' })({ c: 'd' })
   console.log(model)
   adapter.callWasmFunction(onUpdate, model, false)
