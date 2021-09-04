@@ -54,18 +54,13 @@ export function handlePortEvents ({ observer, models, publish, subscribe }) {
 
   const { consumers, producers } = getNonLocalEvents(specs)
 
-  consumers
-    .filter(con => !producers.includes(con))
-    .forEach(consumer =>
-      subscribe(consumer, eventData =>
-        observer.notify(eventData.eventName, eventData)
-      )
+  consumers.forEach(consumer =>
+    subscribe(consumer, eventData =>
+      observer.notify(eventData.eventName, eventData)
     )
-  producers
-    .filter(p => !consumers.includes(p))
-    .forEach(producer =>
-      observer.on(producer, eventData =>
-        publish(eventData.eventName, eventData)
-      )
-    )
+  )
+
+  producers.forEach(producer =>
+    observer.on(producer, eventData => publish(eventData.eventName, eventData))
+  )
 }

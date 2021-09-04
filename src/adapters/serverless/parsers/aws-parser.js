@@ -1,7 +1,7 @@
 'use strict'
 
 /**`
- * Cloud vendor-specific message parsers.
+ * Cloud vendor-specific message parser.
  */
 
 const res = {
