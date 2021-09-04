@@ -1,6 +1,6 @@
 'use strict'
 
-import WasmInterop from './wasm-interop'
+const WasmInterop = require('./wasm-interop').WasmInterop
 
 /**@typedef {import("../../domain").ModelSpecification} ModelSpecification */
 /**@typedef {import("../../domain").Model} Model */
@@ -70,11 +70,11 @@ exports.wrapWasmModelSpec = function (module) {
  * @param {import("node:module")} module
  * @returns {Adapter}
  */
-export function wrapWasmAdapter (module) {}
+exports.wrapWasmAdapter = function (module) {}
 
 /**
  *
  * @param {import("node:module")} module
  * @returns {Service}
  */
-export function wrapWasmService (module) {}
+exports.wrapWasmService = function (module) {}

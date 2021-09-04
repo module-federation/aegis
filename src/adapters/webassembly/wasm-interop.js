@@ -4,7 +4,7 @@
 /**@typedef {{[x:string]:()=>void}} Service */
 /**@typedef {function(Service):function(*):Promise} Adapter*/
 
-export default function WasmInterop (module) {
+exports.WasmInterop = function (module) {
   const {
     getCommands,
     getPorts,

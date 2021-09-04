@@ -1,6 +1,7 @@
 const assert = require('assert')
-const WasmInterop = require('../wasm-interop').WasmInterop
-const wrapper = require('../wasm-wrappers')
+const WasmInterop = require('../../src/adapters/webassembly/wasm-interop')
+  .WasmInterop
+const wrapper = require('../../src/adapters/webassembly/wasm-decorators')
 
 require('..').then(async wasmInstance => {
   const {
