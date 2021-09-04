@@ -13,7 +13,7 @@ npm i @module-federation/aegis
 ### Contribute [![Open in Visual Studio Code](https://open.vscode.dev/badges/open-in-vscode.svg)](https://open.vscode.dev/module-federation/aegis)
 
 ```shell
-git clone https://github.com/module-federation/aegis
+git clone https://github.com/module-federation/microlib
 cd microlib
 cp dotenv.example .env
 yarn
