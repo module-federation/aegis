@@ -167,7 +167,7 @@ import {
   importRemoteAdapters,
   importModelCache,
   importAdapterCache,
-  importServiceCache,
+  importServiceCache
 } from './import-remotes'
 
 /**
@@ -193,25 +193,7 @@ const deleteEvent = model => ({
   model: model
 })
 
-// /** @type {import("../domain").ModelSpecification} */
-// const System = {
-//   modelName: "system",
-//   endpoint: "system",
-//   factory: function () {
-//     const eventEmitter = new EventEmitter();
-//     return async function (payload) {
-//       const input = payload;
-//       return {
-//         addCommand(eventName, callback) {
-//           eventEmitter.addListener(eventName, () => callback(payload));
-//         }
-//       }
-//     }
-//   },
-//   eventHandlers: [({eventName, model:system})+>]
-// }
-
-function register(model, services, adapters, isCached = false) {
+function register (model, services, adapters, isCached = false) {
   const serviceAdapters = bindAdapters(model.ports, adapters, services)
 
   const dependencies = {
@@ -252,9 +234,9 @@ function register(model, services, adapters, isCached = false) {
  * @param {*} services - services on which the model depends
  * @param {*} adapters - adapters for talking to the services
  */
-async function importModels(remoteEntries, services, adapters) {
-  const models = await importRemoteModels(remoteEntries);
-  models.forEach(model => register(model, services, adapters));
+async function importModels (remoteEntries, services, adapters) {
+  const models = await importRemoteModels(remoteEntries)
+  models.forEach(model => register(model, services, adapters))
 }
 
 let remotesConfig
@@ -265,7 +247,7 @@ let localOverrides = {}
  *
  * @param {*} overrides - override or add services and adapters
  */
-export async function importRemotes(remoteEntries, overrides = {}) {
+export async function importRemotes (remoteEntries, overrides = {}) {
   const services = await importRemoteServices(remoteEntries)
   const adapters = await importRemoteAdapters(remoteEntries)
 
@@ -291,7 +273,7 @@ let modelCache
 let adapterCache
 let serviceCache
 
-export async function importRemoteCache(name) {
+export async function importRemoteCache (name) {
   if (!remotesConfig) {
     console.warn('distributed cache cannot be initialized')
     return

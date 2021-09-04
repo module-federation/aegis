@@ -1,4 +1,4 @@
-"use strict";
+'use strict'
 
 /**
  * State of the breaker.
@@ -10,8 +10,8 @@ const State = {
   /** Closed circuit. Normal operation. Client call allowed. */
   Closed: Symbol(),
   /** Test circuit. Let next transation through. Close if it fails. */
-  HalfOpen: Symbol(),
-};
+  HalfOpen: Symbol()
+}
 
 /**
  * @type {import("./index").circuitBreaker[x]}
@@ -24,26 +24,26 @@ const DefaultThreshold = {
   /** Milliseconds in which to measure threshold*/
   intervalMs: 10000,
   /** Milliseconds to wait after tripping breaker before retesting */
-  retryDelay: 30000,
-};
+  retryDelay: 30000
+}
 
 /**
  * Circuit history
  * @todo handle all state same way
  * @type {Map<string, {state:State,time:number,error:Error|null}[]}
  */
-const logs = new Map();
+const logs = new Map()
 
 /**
  *
  * @param {*} id
  * @returns
  */
-function fetchLog(id) {
+function fetchLog (id) {
   if (logs.has(id)) {
-    return logs.get(id);
+    return logs.get(id)
   }
-  return logs.set(id, []).get(id);
+  return logs.set(id, []).get(id)
 }
 
 /**
@@ -51,11 +51,11 @@ function fetchLog(id) {
  * @returns {symbold} breaker state
  * @returns {State}
  */
-function getState(log) {
+function getState (log) {
   if (log.length > 0) {
-    return log[log.length - 1].state;
+    return log[log.length - 1].state
   }
-  return State.Closed;
+  return State.Closed
 }
 
 /**
@@ -75,9 +75,9 @@ function getState(log) {
  * @param {thresholds} thresholds
  * @returns {thresholds[x]}
  */
-function getThreshold(error, thresholds) {
-  const specific = error && error.name ? thresholds[error.name] : null;
-  return specific || thresholds.default || DefaultThreshold;
+function getThreshold (error, thresholds) {
+  const specific = error && error.name ? thresholds[error.name] : null
+  return specific || thresholds.default || DefaultThreshold
 }
 
 /**
@@ -87,16 +87,16 @@ function getThreshold(error, thresholds) {
  * @param {thresholds} thresholds
  * @returns {boolean} has it been breached?
  */
-function thresholdBreached(log, error, thresholds) {
-  if (log.length < 1) return false;
-  const threshold = getThreshold(error, thresholds);
+function thresholdBreached (log, error, thresholds) {
+  if (log.length < 1) return false
+  const threshold = getThreshold(error, thresholds)
   const entriesInScope = log.filter(
     entry => entry.time > Date.now() - threshold.intervalMs
-  );
-  const errors = entriesInScope.filter(e => e.error);
-  const callVolume = entriesInScope.length - errors.length;
-  const errorRate = (errors.length / callVolume) * 100;
-  return callVolume > threshold.callVolume && errorRate > threshold.errorRate;
+  )
+  const errors = entriesInScope.filter(e => e.error)
+  const callVolume = entriesInScope.length - errors.length
+  const errorRate = (errors.length / callVolume) * 100
+  return callVolume > threshold.callVolume && errorRate > threshold.errorRate
 }
 
 /**
@@ -106,15 +106,15 @@ function thresholdBreached(log, error, thresholds) {
  * @param {*} options
  * @returns
  */
-function setStateOnError(log, error, options) {
-  const state = getState(log);
+function setStateOnError (log, error, options) {
+  const state = getState(log)
   if (
     state === State.HalfOpen ||
     (state === State.Closed && thresholdBreached(log, error, options))
   ) {
-    return State.Open;
+    return State.Open
   }
-  return state;
+  return state
 }
 
 /**
@@ -122,11 +122,11 @@ function setStateOnError(log, error, options) {
  * @param {string} id name of protected function
  * @param {string} error
  */
-export function logError(id, error, thresholds) {
-  const log = fetchLog(id);
-  const state = setStateOnError(log, error, thresholds);
-  const testDelay = getThreshold(error, thresholds).retryDelay;
-  log.push({ name: id, time: Date.now(), state, error, testDelay });
+export function logError (id, error, thresholds) {
+  const log = fetchLog(id)
+  const state = setStateOnError(log, error, thresholds)
+  const testDelay = getThreshold(error, thresholds).retryDelay
+  log.push({ name: id, time: Date.now(), state, error, testDelay })
 }
 
 /**
@@ -134,10 +134,10 @@ export function logError(id, error, thresholds) {
  * @param {*} id
  * @returns {boolean}
  */
-function readyToTest(log) {
-  if (log.length < 1) return true;
-  const lastEntry = log[log.length - 1];
-  return Date.now() - lastEntry.time > lastEntry.testDelay;
+function readyToTest (log) {
+  if (log.length < 1) return true
+  const lastEntry = log[log.length - 1]
+  return Date.now() - lastEntry.time > lastEntry.testDelay
 }
 
 /**
@@ -146,7 +146,7 @@ function readyToTest(log) {
  * @param {thresholds} thresholds
  */
 const Switch = function (id, thresholds) {
-  const log = fetchLog(id);
+  const log = fetchLog(id)
 
   return {
     /** @type {State}  current state of the braker */
@@ -155,41 +155,41 @@ const Switch = function (id, thresholds) {
      * Breaker closed. Normal function. Requests allowed.
      * @returns {boolean}
      */
-    closed() {
-      return this.state === State.Closed;
+    closed () {
+      return this.state === State.Closed
     },
     /**
      * Breaker open. Error threshold breached. Requests suppressed.
      * @returns {boolean}
      */
-    open() {
-      return this.state === State.Open;
+    open () {
+      return this.state === State.Open
     },
     /**
      * Ready to test breaker.
      * @returns {boolean}
      */
-    halfOpen() {
-      return this.state === State.HalfOpen;
+    halfOpen () {
+      return this.state === State.HalfOpen
     },
     /**
      * Trip the breaker. Open switch.
      */
-    trip() {
-      this.state = State.Open;
+    trip () {
+      this.state = State.Open
     },
     /**
      * Reset the breaker. Close switch.
      */
-    reset() {
-      this.state = State.Closed;
+    reset () {
+      this.state = State.Closed
     },
     /**
      * Test the breaker. Open switch half way. Let next transation thru.
      * If it fails, close it immediately without checking threshold.
      */
-    test() {
-      this.state = State.HalfOpen;
+    test () {
+      this.state = State.HalfOpen
     },
     /**
      * Check error-specific threshold.
@@ -197,31 +197,31 @@ const Switch = function (id, thresholds) {
      * @param {Error} error
      * @returns {boolean}
      */
-    thresholdBreached(error) {
-      return thresholdBreached(log, error, thresholds);
+    thresholdBreached (error) {
+      return thresholdBreached(log, error, thresholds)
     },
     /**
      * Check if its time to test the circuit, i.e. retry.
      * @returns {boolean}
      */
-    readyToTest() {
-      return readyToTest(log);
+    readyToTest () {
+      return readyToTest(log)
     },
     /**
      * Update log with current state and error details if error.
      * @param {*} error
      */
-    appendLog(error = null) {
+    appendLog (error = null) {
       log.push({
         name: id,
         time: Date.now(),
         state: this.state,
         testDelay: getThreshold(error, thresholds).retryDelay,
-        error,
-      });
-    },
-  };
-};
+        error
+      })
+    }
+  }
+}
 
 /**
  * @typedef breaker
@@ -253,55 +253,55 @@ const Switch = function (id, thresholds) {
  * @returns {breaker}
  */
 const CircuitBreaker = function (id, protectedCall, thresholds) {
-  const errorEvents = [];
+  const errorEvents = []
 
   return {
     // wrap client call
-    async invoke(...args) {
-      const breaker = Switch(id, thresholds);
-      breaker.appendLog();
+    async invoke (...args) {
+      const breaker = Switch(id, thresholds)
+      breaker.appendLog()
 
       const countError = function (eventName) {
-        if (typeof this["addListener"] !== "function") return;
+        if (typeof this['addListener'] !== 'function') return
         this.addListener(eventName, eventData =>
           logError(id, eventData.eventName, thresholds)
-        );
-      }.bind(this);
+        )
+      }.bind(this)
 
-      errorEvents.forEach(countError);
+      errorEvents.forEach(countError)
 
       // check breaker status
       if (breaker.closed()) {
         try {
-          return await protectedCall.apply(this, args);
+          return await protectedCall.apply(this, args)
         } catch (error) {
-          breaker.appendLog(error);
+          breaker.appendLog(error)
 
           if (breaker.thresholdBreached(error)) {
-            breaker.trip();
+            breaker.trip()
           }
-          return this;
+          return this
         }
       }
 
       if (breaker.open()) {
         if (breaker.readyToTest()) {
-          breaker.test();
+          breaker.test()
         } else {
-          console.warn("circuit open, call aborted", protectedCall.name);
-          breaker.fallbackFn(id);
-          return this;
+          console.warn('circuit open, call aborted', protectedCall.name)
+          breaker.fallbackFn(id)
+          return this
         }
       }
 
       if (breaker.halfOpen()) {
         try {
-          const result = await protectedCall.apply(this, args);
-          breaker.reset();
-          return result;
+          const result = await protectedCall.apply(this, args)
+          breaker.reset()
+          return result
         } catch (error) {
-          breaker.trip();
-          breaker.appendLog(error);
+          breaker.trip()
+          breaker.appendLog(error)
         }
       }
     },
@@ -311,10 +311,10 @@ const CircuitBreaker = function (id, protectedCall, thresholds) {
      *
      * @param {Error} event
      */
-    errorListener(eventName) {
-      errorEvents.push(eventName);
-    },
-  };
-};
+    errorListener (eventName) {
+      errorEvents.push(eventName)
+    }
+  }
+}
 
-export default CircuitBreaker;
+export default CircuitBreaker

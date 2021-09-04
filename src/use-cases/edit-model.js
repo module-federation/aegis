@@ -1,9 +1,9 @@
-"use strict";
+'use strict'
 
-import executeCommand from "./execute-command";
-import invokePort from "./invoke-port";
-import async from "../domain/util/async-error";
-import domainEvents from "../domain/domain-events";
+import executeCommand from './execute-command'
+import invokePort from './invoke-port'
+import async from '../domain/util/async-error'
+import domainEvents from '../domain/domain-events'
 
 /**
  * @typedef {Object} ModelParam
@@ -19,60 +19,71 @@ import domainEvents from "../domain/domain-events";
  * @param {ModelParam} param0
  * @returns {function():Promise<import("../domain/model").Model>}
  */
-export default function makeEditModel({
+export default function makeEditModel ({
   modelName,
   models,
   repository,
   observer,
-  handlers = [],
+  handlers = []
 } = {}) {
-  const eventType = models.EventTypes.UPDATE;
-  const eventName = models.getEventName(eventType, modelName);
-  handlers.forEach(handler => observer.on(eventName, handler));
+  const eventType = models.EventTypes.UPDATE
+  const eventName = models.getEventName(eventType, modelName)
+  handlers.forEach(handler => observer.on(eventName, handler))
 
   // Add an event that can be used to edit this model
-  observer.on(domainEvents.editModel(modelName), editModelHandler);
+  observer.on(domainEvents.editModel(modelName), editModelHandler)
 
-  async function editModel(id, changes, command) {
-    const model = await repository.find(id);
+  async function editModel (id, changes, command) {
+    const model = await repository.find(id)
 
     if (!model) {
-      throw new Error("no such id");
+      throw new Error('no such id')
     }
-
-    const updated = models.updateModel(model, changes);
-    const event = await models.createEvent(eventType, modelName, {
-      updated,
-      changes,
-    });
 
     try {
-      await repository.save(id, updated);
-      await observer.notify(event.eventName, event);
+      const updated = models.updateModel(model, changes)
+
+      const event = await models.createEvent(eventType, modelName, {
+        updated,
+        changes
+      })
+
+      try {
+        await repository.save(id, updated)
+      } catch (error) {
+        throw new Error(error)
+      }
+
+      try {
+        await observer.notify(event.eventName, event)
+      } catch (error) {
+        await repository.save(id, model)
+        throw new Error(error)
+      }
+
+      if (command) {
+        const result = await async(executeCommand(updated, command, 'write'))
+        if (result.ok) {
+          return result.data
+        }
+      }
+
+      if (command) {
+        const result = await async(invokePort(updated, command, 'write'))
+        if (result.ok) {
+          return result.data
+        }
+      }
+
+      return updated
     } catch (error) {
-      throw new Error(error);
+      throw new Error(error)
     }
-
-    if (command) {
-      const result = await async(executeCommand(updated, command, "write"));
-      if (result.ok) {
-        return result.data;
-      }
-    }
-
-    if (command) {
-      const result = await async(invokePort(updated, command, "write"));
-      if (result.ok) {
-        return result.data;
-      }
-    }
-
-    return updated;
   }
 
-  async function editModelHandler(event) {
-    return editModel(event.id, event.changes, event.command);
+  async function editModelHandler (event) {
+    return editModel(event.id, event.changes, event.command)
   }
 
-  return editModel;
+  return editModel
 }

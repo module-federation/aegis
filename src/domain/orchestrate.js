@@ -1,17 +1,17 @@
-"use strict";
+'use strict'
 
-import async from "./util/async-error";
-import ModelFactory from "../domain";
-import DataSourceFactory from "../domain/datasource-factory";
-import ObserverFactory from "../domain/observer";
-import EventEmitter from "events";
+import async from './util/async-error'
+import ModelFactory from '../domain'
+import DataSourceFactory from '../domain/datasource-factory'
+import ObserverFactory from '../domain/observer'
+import EventEmitter from 'events'
 
-export async function generateWorkflow(options) {
-  const { wfName, wfInput, wfTasks } = options;
+export async function generateWorkflow (options) {
+  const { wfName, wfInput, wfTasks } = options
 
   if (ModelFactory.getModelSpec(wfName)) {
-    console.warn(wfName, "already registered");
-    return;
+    console.warn(wfName, 'already registered')
+    return
   }
 
   /**
@@ -20,23 +20,23 @@ export async function generateWorkflow(options) {
    */
   const workflow = {
     modelName: wfName,
-    endpoint: "workflows",
-    factory: () => (dependencies) =>
+    endpoint: 'workflows',
+    factory: () => dependencies =>
       new Object.freeze({ ...dependencies, ...wfInput }),
-    ports: wfTasks,
-  };
+    ports: wfTasks
+  }
 
-  ModelFactory.registerModel(workflow);
+  ModelFactory.registerModel(workflow)
 }
 
-export async function runWorkflow({ wfName }) {
+export async function runWorkflow ({ wfName }) {
   const model = await ModelFactory.createModel(
     ObserverFactory.getInstance(),
     DataSourceFactory.getDataSource(wfName),
     wfName
-  );
-  await model.emit(wfName);
-  console.info(wfName, "workflow started");
+  )
+  await model.emit(wfName)
+  console.info(wfName, 'workflow started')
 }
 
 /**
@@ -45,29 +45,29 @@ export async function runWorkflow({ wfName }) {
  *
  * @param {Array<import("../domain").Model>} list
  */
-export async function resumeWorkflow(list) {
+export async function resumeWorkflow (list) {
   if (list?.length > 0) {
     await Promise.all(
       list.map(async function (model) {
-        const history = model.getPortFlow();
-        const ports = model.getSpec().ports;
+        const history = model.getPortFlow()
+        const ports = model.getSpec().ports
 
         if (history?.length > 0 && !model.compensate) {
-          const lastPort = history.length - 1;
-          const nextPort = ports[history[lastPort]].producesEvent;
+          const lastPort = history.length - 1
+          const nextPort = ports[history[lastPort]].producesEvent
 
-          if (nextPort && nextPort !== "workflowComplete") {
-            await async(model.emit(nextPort, resumeWorkflow.name));
+          if (nextPort && nextPort !== 'workflowComplete') {
+            await async(model.emit(nextPort, resumeWorkflow.name))
           }
         }
       })
-    ).catch((error) => console.error(error));
+    ).catch(error => console.error(error))
   }
 }
 
-export class WorkflowEmitter extends EventEmitter { }
-const wfEvents = new WorkflowEmitter();
+export class WorkflowEmitter extends EventEmitter {}
+const wfEvents = new WorkflowEmitter()
 
-wfEvents.on('generateWorkflow', (payload) => {
-  generateWorkflow(payload);
-});
+wfEvents.on('generateWorkflow', payload => {
+  generateWorkflow(payload)
+})

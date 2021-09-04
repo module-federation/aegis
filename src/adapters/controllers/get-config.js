@@ -1,29 +1,29 @@
-"use strict";
+'use strict'
 
-export default function getConfigFactory(listConfigs) {
-  return async function getConfig(httpRequest) {
+export default function getConfigFactory (listConfigs) {
+  return async function getConfig (httpRequest) {
     try {
-      httpRequest.log(getConfig.name);
+      httpRequest.log(getConfig.name)
 
-      const configs = await listConfigs(httpRequest.query);
+      const configs = await listConfigs(httpRequest.query)
 
       return {
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json'
         },
         statusCode: 200,
-        body: configs,
-      };
+        body: configs
+      }
     } catch (e) {
       return {
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json'
         },
         statusCode: 400,
         body: {
-          error: e.message,
-        },
-      };
+          error: e.message
+        }
+      }
     }
-  };
+  }
 }

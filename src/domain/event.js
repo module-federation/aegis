@@ -1,8 +1,8 @@
-"use strict";
+'use strict'
 
-import { withId, withTimestamp } from "./mixins";
-import asyncPipe from "../domain/util/async-pipe";
-import uuid from "../domain/util/uuid";
+import { withId, withTimestamp } from './mixins'
+import asyncPipe from '../domain/util/async-pipe'
+import uuid from '../domain/util/uuid'
 
 /**
  * @typedef {import('./model-factory').EventType} EventType
@@ -43,15 +43,15 @@ const Event = (() => {
       ...event,
       eventName: (eventType + modelName).toUpperCase(),
       eventType,
-      modelName,
-    }));
+      modelName
+    }))
 
   const makeEvent = asyncPipe(
     Event,
-    withTimestamp("eventTime"),
-    withId("id", uuid),
+    withTimestamp('eventTime'),
+    withId('id', uuid),
     Object.freeze
-  );
+  )
 
   return {
     /**
@@ -59,8 +59,8 @@ const Event = (() => {
      * @param {options} options
      * @returns {Promise<Readonly<Event>>}
      */
-    create: async options => makeEvent(options),
-  };
-})();
+    create: async options => makeEvent(options)
+  }
+})()
 
-export default Event;
+export default Event

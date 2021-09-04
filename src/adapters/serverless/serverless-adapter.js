@@ -1,6 +1,6 @@
-"use strict";
+'use strict'
 
-let controller;
+let controller
 
 /**
  * Start `startService` if it hasn't been started
@@ -22,33 +22,33 @@ exports.ServerlessAdapter = async function (service, provider, parsers) {
    * @param  {...any} args
    * @returns
    */
-  function parseMessage(type, ...args) {
-    const parse = parsers[provider][type];
+  function parseMessage (type, ...args) {
+    const parse = parsers[provider][type]
 
-    if (typeof parse === "function") {
-      const output = parse(...args);
-      console.debug({ func: parse.name, output });
-      return output;
+    if (typeof parse === 'function') {
+      const output = parse(...args)
+      console.debug({ func: parse.name, output })
+      return output
     }
-    console.warn("no parser found for provider");
+    console.warn('no parser found for provider')
   }
 
   /**
    * invokes the controller for a given route
    * @param  {...any} args
    */
-  async function invoke(...args) {
-    const { req, res } = parseMessage("request", ...args);
-    const response = await controller(req.path, req.method, req, res);
-    return parseMessage("response", response);
+  async function invoke (...args) {
+    const { req, res } = parseMessage('request', ...args)
+    const response = await controller(req.path, req.method, req, res)
+    return parseMessage('response', response)
   }
 
   if (!controller) {
     // Call MicroLib and wait for controller
-    controller = await service();
+    controller = await service()
   }
 
   return {
-    invokeController: invoke,
-  };
-};
+    invokeController: invoke
+  }
+}

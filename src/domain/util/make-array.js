@@ -1,5 +1,5 @@
-"use strict";
+'use strict'
 
-export default function makeArray(v) {
-  return Array.isArray(v) ? v : [v];
+export default function makeArray (v) {
+  return Array.isArray(v) ? v : [v]
 }

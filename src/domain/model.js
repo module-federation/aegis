@@ -1,4 +1,4 @@
-"use strict";
+'use strict'
 
 /**
  * @typedef {Object} Model Domain entity/service object - conforms to `ModelSpecification`
@@ -51,29 +51,29 @@ import {
   withDeserializers,
   fromTimestamp,
   fromSymbol,
-  toSymbol,
-} from "./mixins";
-import makePorts from "./make-ports";
-import makeRelations from "./make-relations";
-import compensate from "./compensate";
-import asyncPipe from "./util/async-pipe";
-import compose from "./util/compose";
-import pipe from "./util/pipe";
-import uuid from "./util/uuid";
+  toSymbol
+} from './mixins'
+import makePorts from './make-ports'
+import makeRelations from './make-relations'
+import compensate from './compensate'
+import asyncPipe from './util/async-pipe'
+import compose from './util/compose'
+import pipe from './util/pipe'
+import uuid from './util/uuid'
 
 /**
  * @namespace
  */
 const Model = (() => {
   // Protect core properties from user mixins
-  const ID = Symbol("id");
-  const MODELNAME = Symbol("modelName");
-  const CREATETIME = Symbol("createTime");
-  const UPDATETIME = Symbol("updateTime");
-  const ONUPDATE = Symbol("onUpdate");
-  const ONDELETE = Symbol("onDelete");
-  const VALIDATE = Symbol("validate");
-  const PORTFLOW = Symbol("portFlow");
+  const ID = Symbol('id')
+  const MODELNAME = Symbol('modelName')
+  const CREATETIME = Symbol('createTime')
+  const UPDATETIME = Symbol('updateTime')
+  const ONUPDATE = Symbol('onUpdate')
+  const ONDELETE = Symbol('onDelete')
+  const VALIDATE = Symbol('validate')
+  const PORTFLOW = Symbol('portFlow')
 
   const keyMap = {
     id: ID,
@@ -83,8 +83,8 @@ const Model = (() => {
     onUpdate: ONUPDATE,
     onDelete: ONDELETE,
     validate: VALIDATE,
-    portFlow: PORTFLOW,
-  };
+    portFlow: PORTFLOW
+  }
 
   /**
    * bitmask for identifying events
@@ -93,22 +93,22 @@ const Model = (() => {
   const eventMask = {
     update: 1, //  0001 Update
     create: 1 << 1, //  0010 Create
-    onload: 1 << 2, //  0100 Load
-  };
+    onload: 1 << 2 //  0100 Load
+  }
 
-  const defaultOnUpdate = (model, changes) => ({ ...model, ...changes });
+  const defaultOnUpdate = (model, changes) => ({ ...model, ...changes })
 
-  const defaultOnDelete = model => withTimestamp("deleteTime")(model);
+  const defaultOnDelete = model => withTimestamp('deleteTime')(model)
 
-  const defaultValidate = (model, changes) => model;
+  const defaultValidate = (model, changes) => model
 
   const optionalValidation = (model, changes, option = true) => {
-    if (option) return model[VALIDATE](changes, eventMask.update);
+    if (option) return model[VALIDATE](changes, eventMask.update)
     return {
       ...model,
-      ...changes,
-    };
-  };
+      ...changes
+    }
+  }
 
   /**
    * Add data and functions that support framework services.
@@ -117,7 +117,7 @@ const Model = (() => {
    *  spec:import('./index').ModelSpecification
    * }} modelInfo
    */
-  function make(modelInfo) {
+  function make (modelInfo) {
     const {
       model,
       spec: {
@@ -130,9 +130,9 @@ const Model = (() => {
         datasource,
         mixins = [],
         dependencies,
-        relations = {},
-      },
-    } = modelInfo;
+        relations = {}
+      }
+    } = modelInfo
 
     return {
       // User mixins
@@ -154,13 +154,13 @@ const Model = (() => {
       [ID]: uuid(),
 
       // Called before update is committed
-      [ONUPDATE](changes) {
-        return onUpdate(this, changes);
+      [ONUPDATE] (changes) {
+        return onUpdate(this, changes)
       },
 
       // Called before delete is committed
-      [ONDELETE]() {
-        return onDelete(this);
+      [ONDELETE] () {
+        return onDelete(this)
       },
 
       /**
@@ -169,8 +169,8 @@ const Model = (() => {
        * @param {eventMask} event - event type, see {@link eventMask}.
        * @returns {Model} - updated model
        */
-      [VALIDATE](changes, event) {
-        return validate(this, changes, event);
+      [VALIDATE] (changes, event) {
+        return validate(this, changes, event)
       },
 
       /**
@@ -179,17 +179,17 @@ const Model = (() => {
        * @param {number} event
        * @returns {string|string[]} key name: update, change, onload
        */
-      getEventName(event) {
-        if (typeof event !== "number") return;
-        const keys = Object.keys(eventMask).filter(k => eventMask[k] & event);
-        return keys;
+      getEventName (event) {
+        if (typeof event !== 'number') return
+        const keys = Object.keys(eventMask).filter(k => eventMask[k] & event)
+        return keys
       },
 
       /**
        * Back out port transactions
        */
-      async undo() {
-        return compensate(this);
+      async undo () {
+        return compensate(this)
       },
 
       /**
@@ -204,24 +204,24 @@ const Model = (() => {
        * @param {boolean} overwrite - do not merge with last saved
        * copy - the default behavior is to merge
        */
-      async update(changes, validate = true, overwrite = false) {
-        const model = optionalValidation(this, changes, validate);
-        const saved = await datasource.find(model[ID]);
+      async update (changes, validate = true, overwrite = false) {
+        const model = optionalValidation(this, changes, validate)
+        const saved = await datasource.find(model[ID])
 
         // by default merge the incoming model with the last one saved
-        const merge = overwrite ? model : { ...saved, ...model };
+        const merge = overwrite ? model : { ...saved, ...model }
 
         const final = datasource.save(model[ID], {
           ...merge,
-          [UPDATETIME]: Date.now(),
-        });
+          [UPDATETIME]: Date.now()
+        })
 
-        await observer.notify("UPDATE" + model.modelName, {
+        await observer.notify('UPDATE' + model.modelName, {
           modelName: model.modelName,
-          model: final,
-        });
+          model: final
+        })
 
-        return final;
+        return final
       },
 
       /**
@@ -231,8 +231,8 @@ const Model = (() => {
        * @param {{key1, keyN}} filter - list of required matching key-values
        * @returns {Model[]}
        */
-      listSync(filter) {
-        return datasource.listSync(filter);
+      listSync (filter) {
+        return datasource.listSync(filter)
       },
 
       /**
@@ -242,8 +242,8 @@ const Model = (() => {
        * @param {{key1, keyN}} filter
        * @returns {Model[]}
        */
-      async list(filter, cache = false) {
-        return datasource.list(filter, cache);
+      async list (filter, cache = false) {
+        return datasource.list(filter, cache)
       },
 
       /**
@@ -254,8 +254,8 @@ const Model = (() => {
        * @param {boolean} [multi] - allow multiple listeners for event,
        * defaults to `true`
        */
-      addListener(eventName, callback, multi = true) {
-        observer.on(eventName, callback, multi);
+      addListener (eventName, callback, multi = true) {
+        observer.on(eventName, callback, multi)
       },
 
       /**
@@ -264,28 +264,28 @@ const Model = (() => {
        * @param {string} eventName - event identifier, unique string
        * @param {Model|Event} eventData - any, but typically `Model`
        */
-      async emit(eventName, eventData) {
+      async emit (eventName, eventData) {
         await observer.notify(eventName, {
           eventName,
           eventData,
-          model: this,
-        });
+          model: this
+        })
       },
 
       /**
        * Original request passed in by caller
        * @returns arguments passed by caller
        */
-      getArgs() {
-        return modelInfo.args ? modelInfo.args : [];
+      getArgs () {
+        return modelInfo.args ? modelInfo.args : []
       },
 
       /**
        * Identify events types.
        * @returns {eventMask}
        */
-      getEventMask() {
-        return eventMask;
+      getEventMask () {
+        return eventMask
       },
 
       /**
@@ -293,8 +293,8 @@ const Model = (() => {
        *
        * @returns {import(".").ModelSpecification}
        */
-      getSpec() {
-        return modelInfo.spec;
+      getSpec () {
+        return modelInfo.spec
       },
 
       /**
@@ -302,8 +302,8 @@ const Model = (() => {
        *
        * @returns {import(".").ports}
        */
-      getPorts() {
-        return modelInfo.spec.ports;
+      getPorts () {
+        return modelInfo.spec.ports
       },
 
       /**
@@ -311,8 +311,8 @@ const Model = (() => {
        *
        * @returns
        */
-      getName() {
-        return this[MODELNAME];
+      getName () {
+        return this[MODELNAME]
       },
 
       /**
@@ -320,8 +320,8 @@ const Model = (() => {
        *
        * @returns {string}
        */
-      getId() {
-        return this[ID];
+      getId () {
+        return this[ID]
       },
 
       /**
@@ -329,8 +329,8 @@ const Model = (() => {
        *
        * @returns {string[]} history of ports called by this model instance
        */
-      getPortFlow() {
-        return this[PORTFLOW];
+      getPortFlow () {
+        return this[PORTFLOW]
       },
 
       /**
@@ -339,10 +339,10 @@ const Model = (() => {
        * @param {string} key - string representation of Symbol
        * @returns {Symbol}
        */
-      getKey(key) {
-        return keyMap[key];
-      },
-    };
+      getKey (key) {
+        return keyMap[key]
+      }
+    }
   }
 
   /**
@@ -367,11 +367,11 @@ const Model = (() => {
       make({
         model,
         args: modelInfo.args,
-        spec: modelInfo.spec,
+        spec: modelInfo.spec
       })
-    );
+    )
 
-  const validate = event => model => model[VALIDATE]({}, event);
+  const validate = event => model => model[VALIDATE]({}, event)
 
   // Create model instance
   const makeModel = asyncPipe(
@@ -379,24 +379,24 @@ const Model = (() => {
     withTimestamp(CREATETIME),
     withSerializers(
       fromSymbol(keyMap),
-      fromTimestamp(["createTime", "updateTime"])
+      fromTimestamp(['createTime', 'updateTime'])
     ),
     withDeserializers(toSymbol(keyMap)),
     validate(eventMask.create),
     Object.freeze
-  );
+  )
 
   // Recreate model from deserialized object
   const loadModel = pipe(
     make,
     withSerializers(
       fromSymbol(keyMap),
-      fromTimestamp(["createTime", "updateTime"])
+      fromTimestamp(['createTime', 'updateTime'])
     ),
     withDeserializers(toSymbol(keyMap)),
     validate(eventMask.onload),
     Object.freeze
-  );
+  )
 
   return {
     /**
@@ -425,11 +425,11 @@ const Model = (() => {
      *
      */
     update: function (model, changes) {
-      const valid = model[VALIDATE](changes, eventMask.update);
+      const valid = model[VALIDATE](changes, eventMask.update)
       return {
         ...valid,
-        [UPDATETIME]: Date.now(),
-      };
+        [UPDATETIME]: Date.now()
+      }
     },
 
     /**
@@ -466,8 +466,8 @@ const Model = (() => {
      * @param {Model} model
      * @returns {string} model's ID
      */
-    getId: model => model[ID],
-  };
-})();
+    getId: model => model[ID]
+  }
+})()
 
-export default Model;
+export default Model

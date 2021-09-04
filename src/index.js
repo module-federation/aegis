@@ -1,46 +1,49 @@
-"use strict";
+'use strict'
 
-require("dotenv").config();
-require("regenerator-runtime");
-const importFresh = require("import-fresh");
-const fs = require("fs");
-const http = require("http");
-const https = require("https");
-const secure = require("../src/services/auth");
-const express = require("express");
-const cluster = require("../src/services/cluster");
-const graceful = require("express-graceful-shutdown");
-const messageParser = require("../src/adpaters/serverless/message-parsers").parsers;
-const { ServerlessAdapter } = require("../src/adapters/serverless/serverless-adapter");
-const StaticFileHandler = require("serverless-aws-static-file-handler");
+require('dotenv').config()
+require('regenerator-runtime')
+const importFresh = require('import-fresh')
+const fs = require('fs')
+const http = require('http')
+const https = require('https')
+const secure = require('../src/services/auth')
+const express = require('express')
+const cluster = require('../src/services/cluster')
+const graceful = require('express-graceful-shutdown')
+const messageParser = require('../src/adpaters/serverless/message-parsers')
+  .parsers
+const {
+  ServerlessAdapter
+} = require('../src/adapters/serverless/serverless-adapter')
+const StaticFileHandler = require('serverless-aws-static-file-handler')
 
-const port = process.argv[2] ? process.argv[2] : process.env.PORT || 8070;
-const sslPort = process.env.SSL_PORT || 8071;
-const apiRoot = process.env.API_ROOT || "/microlib/api";
-const reloadPath = process.env.RELOAD_PATH || "/microlib/reload";
-const sslEnabled = /true/i.test(process.env.SSL_ENABLED);
-const cloudProvider = process.env.CLOUD_PROVIDER;
-const clusterEnabled = /true/i.test(process.env.CLUSTER_ENABLED);
+const port = process.argv[2] ? process.argv[2] : process.env.PORT || 8070
+const sslPort = process.env.SSL_PORT || 8071
+const apiRoot = process.env.API_ROOT || '/microlib/api'
+const reloadPath = process.env.RELOAD_PATH || '/microlib/reload'
+const sslEnabled = /true/i.test(process.env.SSL_ENABLED)
+const cloudProvider = process.env.CLOUD_PROVIDER
+const clusterEnabled = /true/i.test(process.env.CLUSTER_ENABLED)
 
 // enable authorization
-const app = secure(express(), "/microlib");
+const app = secure(express(), '/microlib')
 
 /** @todo provision CA certs if SSL is enabled */
 
-function isServerless() {
+function isServerless () {
   return (
     /serverless/i.test(process.title) || /true/i.test(process.env.SERVERLESS)
-  );
+  )
 }
 
 /**
  * Callbacks attached to existing routes are stale.
  * Clear the routes we need to update.
  */
-function clearRoutes() {
+function clearRoutes () {
   app._router.stack = app._router.stack.filter(
     k => !(k && k.route && k.route.path && k.route.path.startsWith(apiRoot))
-  );
+  )
 }
 
 /**
@@ -50,46 +53,46 @@ function clearRoutes() {
  *
  * @param {boolean} hot `true` to hot reload
  */
-async function startMicroLib({ hot = false, serverless = false } = {}) {
-  const remoteEntry = importFresh("./remoteEntry");
-  const factory = await remoteEntry.microlib.get("./server");
-  const serverModule = factory();
+async function startMicroLib ({ hot = false, serverless = false } = {}) {
+  const remoteEntry = importFresh('./remoteEntry')
+  const factory = await remoteEntry.microlib.get('./server')
+  const serverModule = factory()
   if (hot) {
     // clear stale routes
-    clearRoutes();
+    clearRoutes()
     // clear cache on hot reload
-    serverModule.default.clear();
+    serverModule.default.clear()
   }
-  await serverModule.default.start(app, serverless);
-  return serverModule.default.control;
+  await serverModule.default.start(app, serverless)
+  return serverModule.default.control
 }
 
 /**
  * Control hot reload differently depending on cluster mode.
  */
-function reloadCallback() {
+function reloadCallback () {
   // Manual reset if left in wrong stated
   app.use(`${reloadPath}-reset`, function (req, res) {
-    process.send({ cmd: "reload-reset" });
-    res.send("reload status reset...try again");
-  });
+    process.send({ cmd: 'reload-reset' })
+    res.send('reload status reset...try again')
+  })
 
   if (clusterEnabled) {
     app.use(reloadPath, async function (req, res) {
-      res.send("<h1>starting cluster reload</h1>");
-      process.send({ cmd: "reload" });
-    });
-    return;
+      res.send('<h1>starting cluster reload</h1>')
+      process.send({ cmd: 'reload' })
+    })
+    return
   }
 
   app.use(reloadPath, async function (req, res) {
     try {
-      await startMicroLib({ hot: true });
-      res.send("<h1>hot reload complete</h1>");
+      await startMicroLib({ hot: true })
+      res.send('<h1>hot reload complete</h1>')
     } catch (error) {
-      console.error(error);
+      console.error(error)
     }
-  });
+  })
 }
 
 /**
@@ -97,45 +100,45 @@ function reloadCallback() {
  * @param {*} provider
  * @param {*} messages
  */
-function checkPublicIpAddress() {
-  const bytes = [];
-  const proto = sslEnabled ? "https" : "http";
-  const prt = sslEnabled ? sslPort : port;
+function checkPublicIpAddress () {
+  const bytes = []
+  const proto = sslEnabled ? 'https' : 'http'
+  const prt = sslEnabled ? sslPort : port
 
   if (/local/i.test(process.env.NODE_ENV)) {
-    const ipAddr = "localhost";
-    console.log(`\n 🌎 ÆGIS listening on ${proto}://${ipAddr}:${prt} \n`);
-    return;
+    const ipAddr = 'localhost'
+    console.log(`\n 🌎 ÆGIS listening on ${proto}://${ipAddr}:${prt} \n`)
+    return
   }
   http.get(
     {
-      hostname: "checkip.amazonaws.com",
-      method: "get",
+      hostname: 'checkip.amazonaws.com',
+      method: 'get'
     },
     function (res) {
-      res.on("data", chunk => bytes.push(chunk));
-      res.on("end", function () {
-        const ipAddr = bytes.join("").trim();
-        console.log(`\n 🌎 ÆGIS listening on ${proto}://${ipAddr}:${prt} \n`);
-      });
+      res.on('data', chunk => bytes.push(chunk))
+      res.on('end', function () {
+        const ipAddr = bytes.join('').trim()
+        console.log(`\n 🌎 ÆGIS listening on ${proto}://${ipAddr}:${prt} \n`)
+      })
     }
-  );
+  )
 }
 
 /**
  * Start web server, optionally require secure socket.
  */
-async function startWebServer() {
+async function startWebServer () {
   if (sslEnabled) {
-    const key = fs.readFileSync("cert/server.key", "utf8");
-    const cert = fs.readFileSync("cert/domain.crt", "utf8");
-    const httpsServer = https.createServer({ key, cert }, app);
-    app.use(graceful(httpsServer, { logger: console, forceTimeout: 30000 }));
-    httpsServer.listen(sslPort, checkPublicIpAddress);
+    const key = fs.readFileSync('cert/server.key', 'utf8')
+    const cert = fs.readFileSync('cert/domain.crt', 'utf8')
+    const httpsServer = https.createServer({ key, cert }, app)
+    app.use(graceful(httpsServer, { logger: console, forceTimeout: 30000 }))
+    httpsServer.listen(sslPort, checkPublicIpAddress)
   } else {
-    const httpServer = http.createServer(app);
-    app.use(graceful(httpServer, { logger: console, forceTimeout: 30000 }));
-    httpServer.listen(port, checkPublicIpAddress);
+    const httpServer = http.createServer(app)
+    app.use(graceful(httpServer, { logger: console, forceTimeout: 30000 }))
+    httpServer.listen(port, checkPublicIpAddress)
   }
 }
 
@@ -148,47 +151,47 @@ async function startWebServer() {
  * clustered or single process,
  * hot reload via rolling restart or deleting cache
  */
-async function startService() {
+async function startService () {
   try {
-    app.use(express.json());
-    app.use(express.static("public"));
-    await startMicroLib();
-    reloadCallback();
-    startWebServer();
+    app.use(express.json())
+    app.use(express.static('public'))
+    await startMicroLib()
+    reloadCallback()
+    startWebServer()
   } catch (e) {
-    console.error(e);
+    console.error(e)
   }
 }
 
 if (!isServerless()) {
   if (clusterEnabled) {
-    cluster.startCluster(startService);
+    cluster.startCluster(startService)
   } else {
-    startService();
+    startService()
   }
 }
 
-let serverlessAdapter = null;
+let serverlessAdapter = null
 
 /**
  * Serverless entry point - called by the serverless function.
  * @param  {...any} args arguments passsed to serverless function
  */
 exports.handleServerlessRequest = async function (...args) {
-  console.info("running in serverless mode", args);
+  console.info('running in serverless mode', args)
 
   if (!serverlessAdapter) {
     serverlessAdapter = await ServerlessAdapter(
       () => startMicroLib({ serverless: true }),
       cloudProvider,
       messageParser
-    );
+    )
   }
 
-  return serverlessAdapter.invokeController(...args);
-};
+  return serverlessAdapter.invokeController(...args)
+}
 
-const fileHandler = new StaticFileHandler("public");
+const fileHandler = new StaticFileHandler('public')
 /**
  * Serve static files, i.e. the demo app.
  * @param {*} event
@@ -196,8 +199,8 @@ const fileHandler = new StaticFileHandler("public");
  * @returns
  */
 exports.serveHtml = async (event, context) => {
-  console.debug({ event, context });
-  console.log(event.path);
-  event.path = "index.html";
-  return fileHandler.get(event, context);
-};
+  console.debug({ event, context })
+  console.log(event.path)
+  event.path = 'index.html'
+  return fileHandler.get(event, context)
+}

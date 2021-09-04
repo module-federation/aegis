@@ -1,8 +1,8 @@
-"use strict";
+'use strict'
 
-export default function makeObject(prop) {
+export default function makeObject (prop) {
   if (Array.isArray(prop)) {
-    return prop.reduce((p, c) => ({ ...p, ...c }));
+    return prop.reduce((p, c) => ({ ...p, ...c }))
   }
-  return prop;
+  return prop
 }

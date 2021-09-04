@@ -1,4 +1,3 @@
-
 export const parsers = {
   azure: {
     // request: args => ({
@@ -20,8 +19,8 @@ export const parsers = {
     //   headers: args.headers,
     //   body: JSON.stringify(args.body || args),
     // }),
-  },
+  }
 
   /**@todo not implemented */
   //azure: args => ({ req: { ...args, ...reqContent }, res }),
-};
+}

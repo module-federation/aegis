@@ -1,10 +1,10 @@
 {
   "name": "@module-federation/aegis",
-  "version": "0.0.0-beta.13",
+  "version": "0.0.0-beta.16",
   "main": "lib/",
   "module": "esm/",
   "repository": "git@github.com:module-federation/aegis.git",
-  "author": "Zack Jackson <zackary.l.jackson@gmail.com>",
+  "author": "Tyson Midboe <tyson.midboe@gmail.com>",
   "license": "MIT",
   "scripts": {
     "format": "yarn pretty -- --write",
@@ -39,10 +39,10 @@
     "whois": "^2.13.5"
   },
   "devDependencies": {
-    "@babel/cli": "7.14.8",
-    "@babel/core": "7.15.0",
-    "@babel/node": "7.14.9",
-    "@babel/preset-env": "7.15.0",
+    "@babel/cli": "7.15.4",
+    "@babel/core": "7.15.4",
+    "@babel/node": "7.15.4",
+    "@babel/preset-env": "7.15.4",
     "@types/node": "14.17.9",
     "babel-loader": "8.2.2",
     "babel-preset-env": "1.7.0",

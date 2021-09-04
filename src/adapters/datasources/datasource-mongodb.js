@@ -1,10 +1,10 @@
-"use strict";
+'use strict'
 
-const MongoClient = require("mongodb").MongoClient;
-const DataSourceMemory = require("./datasource-memory").DataSourceMemory;
+const MongoClient = require('mongodb').MongoClient
+const DataSourceMemory = require('./datasource-memory').DataSourceMemory
 
-const url = process.env.MONGODB_URL || "mongodb://localhost:27017";
-const cacheSize = Number(process.env.CACHE_SIZE) || 300;
+const url = process.env.MONGODB_URL || 'mongodb://localhost:27017'
+const cacheSize = Number(process.env.CACHE_SIZE) || 300
 
 /**
  * MongoDB adapter extends in-memory datasource to support caching.
@@ -12,10 +12,10 @@ const cacheSize = Number(process.env.CACHE_SIZE) || 300;
  * even when the database is offline.
  */
 export class DataSourceMongoDb extends DataSourceMemory {
-  constructor(datasource, factory, name) {
-    super(datasource, factory, name);
-    this.url = url;
-    this.cacheSize = cacheSize;
+  constructor (datasource, factory, name) {
+    super(datasource, factory, name)
+    this.url = url
+    this.cacheSize = cacheSize
   }
 
   /**
@@ -25,69 +25,69 @@ export class DataSourceMongoDb extends DataSourceMemory {
    *  serializer:import("../../lib/serializer").Serializer
    * }} options
    */
-  load({ hydrate, serializer }) {
-    this.hydrate = hydrate;
-    this.serializer = serializer;
+  load ({ hydrate, serializer }) {
+    this.hydrate = hydrate
+    this.serializer = serializer
 
     this.connectDb()
       .then(() => this.setCollection())
       .then(() => this.loadModels())
-      .catch(e => console.error(e));
+      .catch(e => console.error(e))
   }
 
-  async connectDb() {
+  async connectDb () {
     if (!this.client) {
       this.client = await MongoClient.connect(this.url, {
         useNewUrlParser: true,
-        useUnifiedTopology: true,
-      });
+        useUnifiedTopology: true
+      })
 
       if (!this.client || !this.client.isConnected) {
-        console.error("can't connect to db - using memory");
+        console.error("can't connect to db - using memory")
       }
     }
   }
 
-  setCollection() {
+  setCollection () {
     try {
-      this.collection = this.client.db(this.name).collection(this.name);
+      this.collection = this.client.db(this.name).collection(this.name)
     } catch (error) {
-      console.error("error setting collection", error);
+      console.error('error setting collection', error)
     }
   }
 
-  async loadModels() {
+  async loadModels () {
     try {
-      const cursor = this.collection.find().limit(this.cacheSize);
+      const cursor = this.collection.find().limit(this.cacheSize)
       cursor.forEach(
         async model => await super.save(model.id, this.hydrate(model))
-      );
+      )
     } catch (error) {
-      console.error(error);
+      console.error(error)
     }
   }
 
-  async checkConnection(error) {
+  async checkConnection (error) {
     try {
-      console.error("check connection on error", error);
-      await this.connectDb();
-      this.setCollection();
+      console.error('check connection on error', error)
+      await this.connectDb()
+      this.setCollection()
     } catch (error) {
-      console.error(error);
+      console.error(error)
     }
   }
 
-  async findDb(id) {
+  async findDb (id) {
     try {
-      const model = await this.collection.findOne({ _id: id });
+      const model = await this.collection.findOne({ _id: id })
       if (!model) {
-        this.setCollection();
-        return model;
+        this.setCollection()
+        return model
       }
       // add to the cache and return it
-      return super.save(id, this.hydrate(model));
+      return super.save(id, this.hydrate(model))
     } catch (error) {
-      this.checkConnection(error);
+      this.checkConnection(error)
     }
   }
 
@@ -96,33 +96,33 @@ export class DataSourceMongoDb extends DataSourceMemory {
    * @overrid
    * @param {*} id - `Model.id`
    */
-  async find(id) {
+  async find (id) {
     try {
-      const cached = await super.find(id);
+      const cached = await super.find(id)
       if (!cached) {
-        return this.findDb(id);
+        return this.findDb(id)
       }
-      return cached;
+      return cached
     } catch (error) {
-      await this.checkConnection(error);
+      await this.checkConnection(error)
     }
   }
 
-  serialize(data) {
+  serialize (data) {
     if (this.serializer) {
-      return JSON.stringify(data, this.serializer.serialize);
+      return JSON.stringify(data, this.serializer.serialize)
     }
-    return JSON.stringify(data);
+    return JSON.stringify(data)
   }
 
-  async saveDb(id, data) {
-    const clone = JSON.parse(this.serialize(data));
+  async saveDb (id, data) {
+    const clone = JSON.parse(this.serialize(data))
     await this.collection.replaceOne(
       { _id: id },
       { ...clone, _id: id },
       { upsert: true }
-    );
-    return data;
+    )
+    return data
   }
 
   /**
@@ -134,12 +134,12 @@ export class DataSourceMongoDb extends DataSourceMemory {
    * @param {*} id
    * @param {*} data
    */
-  async save(id, data) {
+  async save (id, data) {
     try {
-      await Promise.allSettled([super.save(id, data), this.saveDb(id, data)]);
-      return data;
+      await Promise.allSettled([super.save(id, data), this.saveDb(id, data)])
+      return data
     } catch (error) {
-      await this.checkConnection(error);
+      await this.checkConnection(error)
     }
   }
 
@@ -148,15 +148,15 @@ export class DataSourceMongoDb extends DataSourceMemory {
    * @param {{key1:string, keyN:string}} filter - e.g. http query
    * @param {boolean} cached - use the cache if true, otherwise go to db.
    */
-  async list(filter = null, cached = true) {
+  async list (filter = null, cached = true) {
     try {
       if (cached) {
         //console.log("cache size", this.dataSource.size);
-        return super.list(filter);
+        return super.list(filter)
       }
-      return await this.collection.find().toArray();
+      return await this.collection.find().toArray()
     } catch (error) {
-      await this.checkConnection(error);
+      await this.checkConnection(error)
     }
   }
 
@@ -167,28 +167,28 @@ export class DataSourceMongoDb extends DataSourceMemory {
    * @override
    * @param {*} id
    */
-  async delete(id) {
+  async delete (id) {
     try {
       await Promise.all([
         this.collection.deleteOne({ _id: id }),
-        super.delete(id),
-      ]);
+        super.delete(id)
+      ])
     } catch (error) {
-      console.error(error);
+      console.error(error)
     }
   }
 
   /**
    * Flush the cache to disk.
    */
-  flush() {
+  flush () {
     try {
-      [...this.dataSource.values()].reduce(
+      ;[...this.dataSource.values()].reduce(
         (a, b) => a.then(() => this.saveDb(b.getId(), b)),
         {}
-      );
+      )
     } catch (error) {
-      console.error(error);
+      console.error(error)
     }
   }
 
@@ -196,8 +196,8 @@ export class DataSourceMongoDb extends DataSourceMemory {
    * Process terminating, flush cache, close connections.
    * @override
    */
-  close() {
-    this.flush();
-    this.client.close();
+  close () {
+    this.flush()
+    this.client.close()
   }
 }
