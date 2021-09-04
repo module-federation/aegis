@@ -140,7 +140,7 @@ function addPortListener (portName, portConf, observer, disabled) {
 }
 
 /**
- * Pop the stack and update the model, immutably.
+ * Push new port on stack and update model, immutably.
  * @param {import(".").Model} model
  * @param {*} port
  * @param {*} remember
