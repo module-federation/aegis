@@ -19,6 +19,8 @@ yarn
 yarn build
 yarn link 
 
+cd ..
+
 git clone https://github.com/module-federation/microlib
 cd microlib
 cp dotenv.example .env
