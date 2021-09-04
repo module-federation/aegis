@@ -107,9 +107,9 @@ export default function WasmInterop (module) {
      * @returns {object} see above
      */
     callWasmFunction (fn, args = {}, retval = true) {
-      if (typeof args === 'number') return callExport({ fn, num: args })
+      if (typeof args === 'number') return callExport({ fn, num: args, retval })
       const { keys, vals } = parseArguments(args)
-      const obj = callExport({ fn, keys, vals })
+      const obj = callExport({ fn, keys, vals, retval })
       if (retval) return returnObject(obj)
       cleanup(obj)
     },

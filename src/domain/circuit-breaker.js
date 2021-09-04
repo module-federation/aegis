@@ -18,13 +18,13 @@ const State = {
  */
 const DefaultThreshold = {
   /** Percentage of requests that failed within `intervalMs`. */
-  errorRate: 20,
+  errorRate: process.env.CIRCUITBREAKER_ERRORRATE || 20,
   /** Total number of requests within `intervalMs` */
-  callVolume: 10,
+  callVolume: process.env.CIRCUITBREAKER_CALLVOLUME || 100,
   /** Milliseconds in which to measure threshold*/
-  intervalMs: 10000,
+  intervalMs: process.env.CIRCUITBREAKER_INTERVALMS || 1000,
   /** Milliseconds to wait after tripping breaker before retesting */
-  retryDelay: 30000
+  retryDelay: process.env.CIRCUITBREAKER_RETRYDELAY || 10000
 }
 
 /**
@@ -76,8 +76,9 @@ function getState (log) {
  * @returns {thresholds[x]}
  */
 function getThreshold (error, thresholds) {
-  const specific = error && error.name ? thresholds[error.name] : null
-  return specific || thresholds.default || DefaultThreshold
+  const defaults = (thresholds && thresholds.default) || DefaultThreshold
+  const specific = error?.name && thresholds && thresholds[error.name]
+  return specific || defaults
 }
 
 /**
@@ -254,21 +255,21 @@ const Switch = function (id, thresholds) {
  */
 const CircuitBreaker = function (id, protectedCall, thresholds) {
   const errorEvents = []
+  const countError = function (eventName) {
+    if (typeof this['addListener'] !== 'function') return
+    this.addListener(
+      eventName,
+      eventData => logError(id, eventData.eventName, thresholds),
+      true
+    )
+  }
 
   return {
     // wrap client call
     async invoke (...args) {
       const breaker = Switch(id, thresholds)
       breaker.appendLog()
-
-      const countError = function (eventName) {
-        if (typeof this['addListener'] !== 'function') return
-        this.addListener(eventName, eventData =>
-          logError(id, eventData.eventName, thresholds)
-        )
-      }.bind(this)
-
-      errorEvents.forEach(countError)
+      errorEvents.forEach(countError.bind(this))
 
       // check breaker status
       if (breaker.closed()) {

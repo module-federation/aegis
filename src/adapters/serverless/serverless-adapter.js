@@ -11,7 +11,7 @@ let controller
  * which is what would happen if we were warm-started.
  * @param {function():Promise<{function(...args):Promise<string>}>} service - callback starts service (MicroLib)
  * @param {"aws"|"google"|"azure"|"ibm"} provider - the name of the serverless provider
- * @param {{req:{send:function(),status:function()},res:{}}} parsers - messsage parsers
+ * @param {{req:{send:function(),status:function()},res:{}}} parser - messsage parsers
  * @returns {Promise<{invoke:function(...args)}>}
  * call `invokeController` to parse the input and call the controller
  */

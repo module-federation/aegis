@@ -249,22 +249,18 @@ export default function makePorts (ports, adapters, observer) {
       return {
         // The port function
         async [port] (...args) {
-          // check if the port requires a breaker
+          // check if the port defines breaker thresholds
           const thresholds = portConf.circuitBreaker
 
-          if (thresholds) {
-            // wrap port call in circuit breaker
-            const breaker = CircuitBreaker(port, portFn, thresholds)
+          // wrap port call in circuit breaker
+          const breaker = CircuitBreaker(port, portFn, thresholds)
 
-            // Listen for errors
-            breaker.errorListener(domainEvents.portRetryFailed(this))
-            breaker.errorListener(domainEvents.portTimeout(this, port))
+          // Listen for errors
+          breaker.errorListener(domainEvents.portRetryFailed(this))
+          breaker.errorListener(domainEvents.portTimeout(this, port))
 
-            // invoke port with circuit breaker failsafe
-            return breaker.invoke.apply(this, args)
-          }
-          // no breaker
-          return portFn.apply(this, args)
+          // invoke port with circuit breaker failsafe
+          return breaker.invoke.apply(this, args)
         }
       }
     })

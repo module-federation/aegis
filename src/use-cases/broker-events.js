@@ -3,7 +3,7 @@
 import DistributedCache from '../domain/distributed-cache'
 import EventBus from '../services/event-bus'
 import AppMesh from '../services/app-mesh/web-node'
-import { externalizePortEvents } from './forward-ports'
+import { handlePortEvents } from './forward-ports'
 import uuid from '../domain/util/uuid'
 
 const BROADCAST = process.env.TOPIC_BROADCAST || 'broadcastChannel'
@@ -49,7 +49,7 @@ export default function brokerEvents (observer, datasources, models) {
     broker.start()
   }
 
-  externalizePortEvents({ observer, models, publish, subscribe })
+  handlePortEvents({ observer, models, publish, subscribe })
 
   /**
    * This is the cluster cache sync listener - when data is
