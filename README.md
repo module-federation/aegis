@@ -14,18 +14,22 @@ npm i @module-federation/aegis
 
 ```shell
 git clone https://github.com/module-federation/aegis
+cd aegis
+yarn
+yarn build
+yarn link 
+
+cd ..
+
+git clone https://github.com/module-federation/microlib
 cd microlib
 cp dotenv.example .env
 yarn
+yarn link "@module-federation/aegis"
 yarn build
 yarn start
 yarn demo
 ```
-
-1) Git clone Aegis and run `yarn link`
-2) Git clone Microlib and run `yarn link "@module-federation/aegis"`
-3) Then follow the steps mentioned above under the Using Aegis section
-
 
 # Work in Progress
 
