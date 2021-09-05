@@ -5,13 +5,13 @@ function getLocallyUnhandledEvents (specs) {
   const cons = specs
     .filter(spec => spec.ports)
     .map(spec => Object.values(spec.ports))
-    .filter(([port]) => port.internal)
+    .filter(([port]) => !port.internal)
     .map(([port]) => port.consumesEvent)
 
   const pros = specs
     .filter(spec => spec.ports)
     .map(spec => Object.values(spec.ports))
-    .filter(([port]) => port.internal)
+    .filter(([port]) => !port.internal)
     .map(([port]) => port.producesEvent)
 
   console.debug(cons, pros)

@@ -14,7 +14,6 @@ const WasmInterop = require('./wasm-interop').WasmInterop
  */
 exports.wrapWasmModelSpec = function (module) {
   const adapter = WasmInterop(module)
-
   const {
     __pin,
     __getString,
@@ -25,6 +24,7 @@ exports.wrapWasmModelSpec = function (module) {
     onUpdate,
     onDelete
   } = module.exports
+
 
   const specPtr = __pin(getModelSpec())
   const modelSpec = ModelSpec.wrap(specPtr)
