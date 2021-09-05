@@ -50,6 +50,11 @@ export default function brokerEvents (observer, datasources, models) {
   }
 
   handlePortEvents({ observer, models, publish, subscribe })
+  
+  // register wasm comm events
+  observer.on('wasmWebNotify', eventData =>
+    publish('wasmWebsocketEvent', eventData)
+  )
 
   /**
    * This is the cluster cache sync listener - when data is

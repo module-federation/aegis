@@ -1,6 +1,6 @@
 {
   "name": "@module-federation/aegis",
-  "version": "0.0.0-beta.17",
+  "version": "0.0.0-beta.18",
   "main": "lib/",
   "module": "esm/",
   "repository": "git@github.com:module-federation/aegis.git",
@@ -18,11 +18,11 @@
     "core-js": "^3"
   },
   "dependencies": {
-    "@assemblyscript/loader": "^0.19.11",
+    "@assemblyscript/loader": "^0.19.12",
     "@octokit/core": "^3.4.0",
     "@octokit/rest": "^18.5.2",
     "as-bind": "^0.8.0",
-    "assemblyscript": "^0.19.11",
+    "assemblyscript": "^0.19.12",
     "dotenv": "^10.0.0",
     "express": "^4.17.1",
     "express-graceful-shutdown": "^1.1.3",

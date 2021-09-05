@@ -92,7 +92,6 @@ export function fetchWasm (entry) {
 
 export async function importWebAssembly (remoteEntry, type = 'model') {
   const startTime = Date.now()
-
   // Check if we support streaming instantiation
   if (WebAssembly.instantiateStreaming) console.log('we can stream-compile now')
 
@@ -128,17 +127,20 @@ export async function importWebAssembly (remoteEntry, type = 'model') {
         })
       },
 
-      websocketNotify: (eventName, eventData) =>
+      websocketNotify: (eventName, eventData) => {
+        console.log(
+          'wasm called js to send an event',
+          wasm.exports.__getString(eventName)
+        )
         observer.notify(
           wasm.exports.__getString(eventName),
           wasm.exports.__getString(eventData)
-        ),
-
+        )
+      },
       requestDeployment: (webswitchId, remoteEntry) => console.log('deploy')
     }
   })
   console.info('wasm modules took %dms', Date.now() - startTime)
-
 
   // allow imports access to memory
   // compile with --explicitStart

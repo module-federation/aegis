@@ -108,9 +108,13 @@ exports.WasmInterop = function (module) {
      */
     callWasmFunction (fn, args = {}, retval = true) {
       if (typeof args === 'number') return callExport({ fn, num: args, retval })
+      // Parse the object into a couple string arrays, one for keys, the other values
       const { keys, vals } = parseArguments(args)
+      // Call the exported function, return a multidimensional array
       const obj = callExport({ fn, keys, vals, retval })
+      // Construct an object from the key value pairs
       if (retval) return returnObject(obj)
+      // Unpin memory for GC
       cleanup(obj)
     },
 
@@ -141,7 +145,7 @@ exports.WasmInterop = function (module) {
           if (cmdFn) {
             return {
               [command]: {
-                command: input => this.callWasmFunction(cmdFn, input),
+                command: input => this.callWasmFunction(cmdFn, input, false),
                 acl: ['write']
               }
             }
