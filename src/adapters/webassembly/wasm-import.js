@@ -127,32 +127,21 @@ export async function importWebAssembly (remoteEntry, type = 'model') {
           console.log('no command found')
         })
       },
+
       websocketNotify: (eventName, eventData) =>
         observer.notify(
           wasm.exports.__getString(eventName),
           wasm.exports.__getString(eventData)
         ),
-      //handleAsync(observer.notify, eventName, eventData),
 
       requestDeployment: (webswitchId, remoteEntry) => console.log('deploy')
-      //handleAsync(console.log, webswitchId, remoteEntry)
     }
   })
   console.info('wasm modules took %dms', Date.now() - startTime)
 
-  // function handleAsync (fn, ...ptr) {
-  //   const ptrArray = ptr instanceof Array ? ptr : [ptr]
-  //   if (wasm.then) {
-  //     return wasm.then(inst =>
-  //       fn(...ptrArray.map(p => inst.exports.__getString(p)))
-  //     )
-  //   } else if (wasm.exports?.__getString) {
-  //     return fn(...ptr.map(p => wasm.exports.__getString(p)))
-  //   } else {
-  //     console.log('no ref to module')
-  //   }
-  // }
 
+  // allow imports access to memory
+  // compile with --explicitStart
   wasm.instance.exports._start()
 
   if (type === 'model') return wrapWasmModelSpec(wasm)
