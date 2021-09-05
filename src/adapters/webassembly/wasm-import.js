@@ -18,8 +18,8 @@ function octoGet (entry) {
   const owner = entry.owner
   const repo = entry.repo
   const filedir = entry.filedir
-
   const branch = entry.branch
+
   return new Promise(function (resolve, reject) {
     octokit
       .request('GET /repos/{owner}/{repo}/contents/{filedir}?ref={branch}', {
