@@ -1,25 +1,20 @@
 'use strict'
 
 function getLocallyUnhandledEvents (specs) {
-  const cons = [...specs]
-    .map(([k, v]) =>
-      [...v].map(([k2, v2]) =>
-        Object.values(v2.ports)
-          .filter(p => p.internal)
-          .map(p => p.consumesEvent)
-      )
-    )
-    .flat(3)
+  console.debug(specs)
+  const cons = specs
+    .filter(spec => spec.ports)
+    .map(spec => Object.values(spec.ports))
+    .filter(([port]) => port.internal)
+    .map(([port]) => port.consumesEvent)
 
-  const pros = [...specs]
-    .map(([k, v]) =>
-      [...v].map(([k2, v2]) =>
-        Object.values(v2.ports)
-          .filter(p => p.internal)
-          .map(p => p.producesEvent)
-      )
-    )
-    .flat(3)
+  const pros = specs
+    .filter(spec => spec.ports)
+    .map(spec => Object.values(spec.ports))
+    .filter(([port]) => port.internal)
+    .map(([port]) => port.producesEvent)
+
+  console.debug(cons, pros)
 
   return {
     consumerEvents: cons.filter(c => !pros.includes(c)),
