@@ -18,7 +18,8 @@ require('..').then(async wasmInstance => {
     fibonacci,
     onUpdate,
     websocketNotify,
-    portEx
+    portEx,
+    fibonacciRemote
     // Input,
     // Output,
     // getInput,
@@ -36,7 +37,7 @@ require('..').then(async wasmInstance => {
   const model = await spec.factory({ a: 'b' })({ c: 'd' })
   console.log(model)
   adapter.callWasmFunction(onUpdate, model, false)
-  adapter.callWasmFunction(websocketNotify, "testing", false)
+  adapter.callWasmFunction(websocketNotify, 'testing', false)
 
   const fib = 20
   console.log(
@@ -45,4 +46,5 @@ require('..').then(async wasmInstance => {
     'is',
     adapter.callWasmFunction(fibonacci, fib)
   )
+  console.log(adapter.callWasmFunction(fibonacciRemote, { fibonacci: 30.0 }))
 })

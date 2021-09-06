@@ -37,7 +37,7 @@ export function test(keys: string[], values: string[]): string[][] {
 }
 
 export function getCommands(): string[][] {
-  const commands = new Array<string[]>(6);
+  const commands = new Array<string[]>(7);
   commands[0] = ["websocketListen", "tell wasm module to begin listening"];
   commands[1] = ["websocketNotify", "tell wasm module to send broadcast"];
   commands[2] = [
@@ -45,8 +45,9 @@ export function getCommands(): string[][] {
     "an event to which wasm subscribed has fired",
   ];
   commands[3] = ["fibonacci", "calculate fibonacci for a number"];
-  commands[4] = ["deployModule", "request deployment of a module"];
-  commands[5] = ["commandEx", "command example"];
+  commands[4] = ["fibonacciRemote", "calculate fibonacci for a number"];
+  commands[5] = ["deployModule", "request deployment of a module"];
+  commands[6] = ["commandEx", "command example"];
   return commands;
 }
 
@@ -76,12 +77,17 @@ export function fibonacci(x: f64): f64 {
   return fibonacci(x - 1) + fibonacci(x - 2);
 }
 
-export function fibonnacciRemote(keys: string[], vals: string[]): string[][] {
-  // const x = vals.map((v,i) => keys[i] === 'fibonacci' ? v : null)
+export function fibonacciRemote(keys: string[], vals: string[]): string[][] {
+  let val: number = 0;
+
+  for (let i = 0; i < keys.length; i++) {
+    if (keys[i] === "fibonacci") {
+      val = parseFloat(vals[i]);
+    }
+  }
   const r = new Array<string[]>(1);
-  //if (x.length < 1 || !x[0] || typeof x[0] !== 'number') return r
-  //const z = parseFloat(x[0])
-  r[0] = ["duration", fibonacci(10).toString()];
+  const sum = fibonacci(val);
+  r[0] = ["result", sum.toString()];
   return r;
 }
 
