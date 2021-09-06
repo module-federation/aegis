@@ -17,7 +17,10 @@ const loader = require('@assemblyscript/loader')
 exports.wrapWasmModelSpec = async function (module, remoteEntry) {
   const adapter = WasmInterop(module)
   const {
+    __pin,
     __getString,
+    ModelSpec,
+    getModelSpec,
     modelName,
     endpoint,
     modelFactory,
@@ -29,10 +32,13 @@ exports.wrapWasmModelSpec = async function (module, remoteEntry) {
   const client = RepoClient(remoteEntry)
   let models = []
 
+  const specPtr = __pin(getModelSpec())
+  const modelSpec = ModelSpec.wrap(specPtr)
+
   // wrapped model spec
   const ModelSpecWrapper = {
-    modelName: __getString(modelName),
-    endpoint: __getString(endpoint),
+    modelName: __getString(modelSpec.modelName),
+    endpoint: __getString(modelSpec.endpoint),
 
     /**
      * Pass any dependencies, return factory function that creates model
@@ -71,7 +77,8 @@ exports.wrapWasmModelSpec = async function (module, remoteEntry) {
     },
 
     // call to unpin any memory
-    dispose: () => console.warn('dispose unimplemented')
+    dispose: () => __unpin(specPtr)
+    //console.warn('dispose unimplemented')
   }
   console.debug(ModelSpecWrapper)
 

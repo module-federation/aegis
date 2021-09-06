@@ -106,7 +106,7 @@ export async function importWebAssembly (remoteEntry, type = 'model') {
   // Check if we support streaming instantiation
   if (WebAssembly.instantiateStreaming) console.log('we can stream-compile now')
 
-  const response = await client.getModelSpec()
+  const response = await RepoClient(remoteEntry).getModelSpec()
   const wasm = await loader.instantiate(response.asBase64Buffer(), {
     aegis: {
       log: ptr => console.log(wasm.exports.__getString(ptr)),
@@ -157,7 +157,7 @@ export async function importWebAssembly (remoteEntry, type = 'model') {
   // compile with --explicitStart
   wasm.instance.exports._start()
 
-  if (type === 'model') return wrapWasmModelSpec(wasm)
+  if (type === 'model') return wrapWasmModelSpec(wasm, remoteEntry)
   if (type === 'adapter') return wrapWasmAdapter(wasm)
   if (type === 'service') return wrapWasmService(wasm)
 }
