@@ -1,14 +1,23 @@
 {
   "targets": {
     "debug": {
-      "binaryFile": "build/untouched.wasm",
-      "textFile": "build/untouched.wat",
+      "binaryFile": "build/untouched.spec.wasm",
+      "textFile": "build/untouched.spec.wat",
       "sourceMap": true,
       "debug": true
     },
     "release": {
-      "binaryFile": "build/optimized.wasm",
-      "textFile": "build/optimized.wat",
+      "binaryFile": "build/spec.wasm",
+      "textFile": "build/spec.wat",
+      "sourceMap": true,
+      "optimizeLevel": 3,
+      "shrinkLevel": 0,
+      "converge": false,
+      "noAssert": false
+    },
+    "model": {
+      "binaryFile": "build/model/model.wasm",
+      "textFile": "build/model/model.wat",
       "sourceMap": true,
       "optimizeLevel": 3,
       "shrinkLevel": 0,

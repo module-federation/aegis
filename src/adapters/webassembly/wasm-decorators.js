@@ -17,7 +17,6 @@ const loader = require('@assemblyscript/loader')
 exports.wrapWasmModelSpec = async function (module, remoteEntry) {
   const adapter = WasmInterop(module)
   const {
-    __pin,
     __getString,
     modelName,
     endpoint,
@@ -71,7 +70,7 @@ exports.wrapWasmModelSpec = async function (module, remoteEntry) {
       ...adapter.configureWasmPorts()
     },
 
-    // call to dispose of spec memory
+    // call to unpin any memory
     dispose: () => console.warn('dispose unimplemented')
   }
   console.debug(ModelSpecWrapper)

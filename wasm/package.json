@@ -2,8 +2,9 @@
   "scripts": {
     "asbuild:untouched": "asc assembly/index.ts --exportRuntime --explicitStart --target debug",
     "asbuild:optimized": "asc assembly/index.ts --exportRuntime --explicitStart --target release",
-    "asbuild": "npm run asbuild:untouched && npm run asbuild:optimized",
-    "test": "node tests"
+    "asbuild": "npm run asbuild:untouched && npm run asbuild:optimized && npm run asbuild:model",
+    "test": "node tests",
+    "asbuild:model": "asc assembly/model.ts --exportRuntime --explicitStart --target model"
   },
   "devDependencies": {
     "@assemblyscript/loader": "0.19.12",
