@@ -48,10 +48,6 @@ exports.wrapWasmModelSpec = async function (module, remoteEntry) {
     factory: dependencies => async input =>
       loader
         .instantiate(dependencies.wasmModel, {
-          ...importObject,
-          ...{
-            fn: x => x
-          }
         })
         .then(({ exports }) => {
           const model = adapter.callWasmFunction(exports.modelFacory(input))
