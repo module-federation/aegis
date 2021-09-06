@@ -1,5 +1,5 @@
 import * as aegis from "./aegis";
-
+export const modelName: string = "wasm";
 export class ModelSpec {
   modelName: string;
   endpoint: string;

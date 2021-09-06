@@ -19,7 +19,8 @@ require('..').then(async wasmInstance => {
     onUpdate,
     websocketNotify,
     portEx,
-    fibonacciRemote
+    fibonacciRemote,
+    modelName
     // Input,
     // Output,
     // getInput,
@@ -27,8 +28,8 @@ require('..').then(async wasmInstance => {
     // testClass
   } = wasmInstance.exports
 
-  //console.log(Object.entries(wasmInstance.exports))
-
+  console.log(Object.entries(wasmInstance.exports))
+  console.log(__getString(modelName))
   const adapter = WasmInterop(wasmInstance)
 
   const spec = wrapper.wrapWasmModelSpec(wasmInstance)
@@ -47,4 +48,9 @@ require('..').then(async wasmInstance => {
     adapter.callWasmFunction(fibonacci, fib)
   )
   console.log(adapter.callWasmFunction(fibonacciRemote, { fibonacci: 30.0 }))
+  console.log(__getString(modelName))
+  const obj = {
+    modelName: __getString(modelName)
+  }
+  console.log(obj)
 })
