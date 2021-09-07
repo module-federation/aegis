@@ -67,11 +67,8 @@ exports.WasmInterop = function (module) {
 
       // Provide input as two arrays of strings, one for keys, other for values
       if (retval) return __pin(wasmFn(keyArrayPtr, valArrayPtr))
-    } else {
-      if (retval) return __pin(wasmFn())
     }
-    // no return or input
-    return wasmFn()
+    return __pin(wasmFn())
   }
 
   /**
