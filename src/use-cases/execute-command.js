@@ -46,10 +46,12 @@ export default async function executeCommand (model, command, permission) {
       if (result.ok) {
         return { ...model, ...result.data }
       }
+    } else {
+      console.warn('command not found', command)
     }
-    console.warn('command not found', command)
+  } else {
+    model.emit(domainEvents.unauthorizedCommand(model), command)
   }
-  model.emit(domainEvents.unauthorizedCommand(model), command)
 
   return model
 }

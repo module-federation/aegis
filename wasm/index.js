@@ -18,7 +18,6 @@ async function importWebAssembly () {
     {
       aegis: {
         log: ptr => console.log(wasm.exports.__getString(ptr)),
-        //ptr => handleAsync(console.log, ptr),
 
         invokePort: (portName, portConsumerEvent, portData) =>
           handleAsync(console.log, portName, portConsumerEvent, portData),

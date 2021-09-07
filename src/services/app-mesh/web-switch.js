@@ -3,6 +3,7 @@
 const WebSocketServer = require('ws').Server
 const nanoid = require('nanoid').nanoid
 const uplink = process.env.WEBSWITCH_UPLINK
+const heartb = process.env.WEBSWITCH_HEARTBEATMS || 30000
 const starts = Date.now()
 const uptime = () => Math.round(Math.abs((Date.now() - starts) / 1000 / 60))
 let messagesSent = 0
@@ -44,10 +45,16 @@ exports.attachServer = function (server) {
         uptimeMinutes: uptime(),
         messagesSent,
         clientsConnected: server.clients.size,
-        uplink: server.uplink ? server.uplink.clientId : 'no uplink'
+        uplink: server.uplink
+          ? server.uplink.url || server.uplink.webswitchId
+          : 'no uplink'
       })
     )
   }
+
+  // setInterval(() =>
+  //   server.clients.forEach(client => server.sendStatus(client), heartb)
+  // )
 
   server.on('connection', function (client) {
     client.webswitchId = nanoid()
@@ -58,7 +65,7 @@ exports.attachServer = function (server) {
     })
 
     client.on('close', function () {
-      console.warn('client disconnecting', client.webswitchId)
+      console.warn('client disconnected', client.webswitchId)
     })
 
     client.on('message', function (message) {
