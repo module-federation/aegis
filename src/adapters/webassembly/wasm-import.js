@@ -46,6 +46,7 @@ export function RepoClient (entry) {
           resolve({
             toString: () => buf.toString('utf-8'),
             asBase64Buffer: () => buf,
+            arrayBuffer: () => buf.buffer,
             toUint16Array: () =>
               new Uint16Array(
                 buf.buffer,
@@ -96,7 +97,7 @@ export function RepoClient (entry) {
     getModelSpec: fetchWasm,
     getModel: async () => {
       entry = entry.model
-      fetchWasm()
+      return fetchWasm()
     }
   }
 }

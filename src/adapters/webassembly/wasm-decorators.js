@@ -21,9 +21,6 @@ exports.wrapWasmModelSpec = async function (module, remoteEntry) {
     __getString,
     ModelSpec,
     getModelSpec,
-    modelName,
-    endpoint,
-    modelFactory,
     validate,
     onUpdate,
     onDelete
@@ -39,30 +36,30 @@ exports.wrapWasmModelSpec = async function (module, remoteEntry) {
   const ModelSpecWrapper = {
     modelName: __getString(modelSpec.modelName),
     endpoint: __getString(modelSpec.endpoint),
+    wasmModule: (await client.getModel()).arrayBuffer(),
 
     /**
      * Pass any dependencies, return factory function that creates model
      * @param {*} dependencies
      * @returns {({...arg}=>Model)} factory function to generate model
      */
-    factory: dependencies => async input =>
-      loader
-        .instantiate(dependencies.wasmModel, {
-        })
-        .then(({ exports }) => {
-          const model = adapter.callWasmFunction(exports.modelFacory(input))
+    factory (_dependencies) {
+      const module = this.wasmModule
+      return async function (input) {
+        console.debug('factory input', 'input', input)
+        loader.instantiate(module, {}).then(({ exports }) => {
+          console.debug('instantiate model.exports', exports)
+          const model = adapter.callWasmFunction(exports.modelFactory(input))
           models.push(model)
           return model
-        }),
+        })
+      }
+    },
 
     onUpdate: (model, changes) =>
       adapter.callWasmFunction(onUpdate, { model, changes }),
 
     onDelete: model => adapter.callWasmFunction(onDelete, model, false),
-
-    dependencies: {
-      wasmModule: await client.getModel()
-    },
 
     commands: {
       ...adapter.configureWasmCommands()

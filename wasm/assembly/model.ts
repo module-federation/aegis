@@ -8,4 +8,4 @@ export function modelFactory(keys: string[], values: string[]): string[][] {
   arr[1] = ["key2", key2];
   arr[2] = ["key3", "alwaysThisValue"];
   return arr;
-} 
+}
