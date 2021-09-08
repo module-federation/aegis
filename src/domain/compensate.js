@@ -49,7 +49,7 @@ export default async function compensate (model) {
                 UNDOTIMEOUT
               )
 
-              breaker.invoke(model)
+              await breaker.invoke(model)
               clearTimeout(timerId)
               // success: remove from list
               return model.update({
