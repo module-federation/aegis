@@ -307,6 +307,10 @@ const CircuitBreaker = function (id, protectedCall, thresholds) {
       }
     },
 
+    error (msg) {
+      setStateOnError(id, msg, thresholds)
+    },
+
     /**
      * Listen for events that count as errors against a threashold.
      *

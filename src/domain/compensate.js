@@ -38,17 +38,18 @@ export default async function compensate (model) {
 
           try {
             return model.then(async function (model) {
-              const timerId = setTimeout(
-                () => undoAttempts[port]++,
-                UNDOTIMEOUT
-              )
-
-              CircuitBreaker(
+              const breaker = CircuitBreaker(
                 port, // undo failure counts against total errors for the port
                 ports[port].undo,
                 ports[port].circuitBreaker
-              ).invoke(model)
+              )
 
+              const timerId = setTimeout(
+                () => breaker.error('timeout'),
+                UNDOTIMEOUT
+              )
+
+              breaker.invoke(model)
               clearTimeout(timerId)
               // success: remove from list
               return model.update({
