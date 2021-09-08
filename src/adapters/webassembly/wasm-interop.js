@@ -57,7 +57,7 @@ exports.WasmInterop = function (module) {
       return wasmFn(num)
     }
 
-    if (keyPtrs.length > 0) {
+    if (keyPtrs.length > 0) {``
       const keyArrayPtr = __pin(__newArray(ArrayOfStrings_ID, keyPtrs))
       const valArrayPtr = __pin(__newArray(ArrayOfStrings_ID, valPtrs))
 

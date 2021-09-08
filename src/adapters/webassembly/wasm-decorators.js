@@ -25,7 +25,6 @@ exports.wrapWasmModelSpec = function (module) {
     onDelete
   } = module.exports
 
-
   const specPtr = __pin(getModelSpec())
   const modelSpec = ModelSpec.wrap(specPtr)
 

@@ -65,7 +65,7 @@ export function websocketCallback (keys: string[], values: string[]): void {
   aegis.log('websocket callbacked fired')
 }
 
-export function fibonacci (x: f64): f64 {
+export function fibonacci (x: number): number {
   if (x === 0) {
     return 0
   }
