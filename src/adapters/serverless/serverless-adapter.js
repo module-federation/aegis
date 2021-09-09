@@ -12,11 +12,11 @@ let invokeController
  * @param {function():Promise<{function(...args):Promise<string>}>} service - callback starts service (MicroLib)
  * @param {"aws"|"google"|"azure"|"ibm"} provider - the name of the serverless provider
  * @param {{req:{send:function(),status:function()},res:{}}} parser - messsage parsers
- * @returns {Promise<{invoke:function(...args)}>}
+ * @returns {Promise<{ServerlessAdapter:function(...args):Promise<function()>}>}
  * call `invokeController` to parse the input and call the controller
  */
-exports.makeServerlessAdapter = async function (parsers) {
-  return async function ServerlessAdapter (service, provider) {
+exports.makeServerlessAdapter = function (parsers) {
+  return async function (service, provider) {
     /**
      *
      * @param {"request"|"response"} type

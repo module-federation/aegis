@@ -1,6 +1,5 @@
 export * as StorageAdapter from './persistence-adapter'
 export * from './write-file'
 export * as controllers from './controllers'
-export * as ServerlessAdapter from './serverless'
+export { ServerlessAdapter } from './serverless'
 export * as webassembly from './webassembly'
-export * as ServerlessAadapter from './serverless'
