@@ -1,6 +1,6 @@
 'use strict'
 
-import { controllers, storageAdapter } from './adapters'
+import { controllers, storageAdapter } from '../../src/adapters'
 
 const {
   postModels,
@@ -15,9 +15,9 @@ const {
 
 const { close, find, save } = storageAdapter
 
-import { Persistence } from './services/persistence-service'
+import { Persistence } from '../../src/services/persistence-service'
 
-import ModelFactory from './domain'
+import ModelFactory from '../../src/domain'
 
 const apiRoot = process.env.API_ROOT || '/microlib/api'
 const modelPath = `${apiRoot}/models`
