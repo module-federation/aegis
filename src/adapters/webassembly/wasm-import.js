@@ -118,7 +118,7 @@ export async function importWebAssembly (remoteEntry, type = 'model') {
       websocketListen: (eventName, callbackName) => {
         console.debug('websocket listen invoked')
         observer.listen(eventName, eventData => {
-          const cmd = adapter.findWasmCommand(
+          const cmd = adapter.findWasmFunction(
             wasm.exports.__getString(callbackName)
           )
           if (typeof cmd === 'function') {

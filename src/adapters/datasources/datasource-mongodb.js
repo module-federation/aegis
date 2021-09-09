@@ -11,7 +11,7 @@ const cacheSize = Number(process.env.CACHE_SIZE) || 300
  * The cache is always updated first, which allows the system to run
  * even when the database is offline.
  */
-export class DataSourceMongoDb extends DataSourceMemory {
+export class DataSourceMongoDb extends   {
   constructor (datasource, factory, name) {
     super(datasource, factory, name)
     this.url = url

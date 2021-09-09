@@ -57,7 +57,8 @@ exports.WasmInterop = function (module) {
       return wasmFn(num)
     }
 
-    if (keyPtrs.length > 0) {``
+    if (keyPtrs.length > 0) {
+      ;``
       const keyArrayPtr = __pin(__newArray(ArrayOfStrings_ID, keyPtrs))
       const valArrayPtr = __pin(__newArray(ArrayOfStrings_ID, valPtrs))
 
@@ -104,6 +105,7 @@ exports.WasmInterop = function (module) {
      * @returns {object} see above
      */
     callWasmFunction (fn, args = {}, retval = true) {
+      if (!fn) return
       if (typeof args === 'number') return callExport({ fn, num: args, retval })
       // Parse the object into a couple string arrays, one for keys, the other values
       const { keys, vals } = parseArguments(args)
@@ -122,7 +124,7 @@ exports.WasmInterop = function (module) {
      * @param {*} name
      * @returns {function()}
      */
-    findWasmCommand (name) {
+    findWasmFunction (name) {
       const commandName = Object.keys(module.exports).find(
         k => typeof module.exports[k] === 'function' && k === name
       )
@@ -138,11 +140,11 @@ exports.WasmInterop = function (module) {
       const commandNames = this.callWasmFunction(getCommands)
       return Object.keys(commandNames)
         .map(command => {
-          const cmdFn = this.findWasmCommand(command)
+          const cmdFn = this.findWasmFunction(command)
           if (cmdFn) {
             return {
               [command]: {
-                command: input => this.callWasmFunction(cmdFn, input, false),
+                command: input => this.callWasmFunction(cmdFn, input),
                 acl: ['write']
               }
             }
@@ -160,14 +162,19 @@ exports.WasmInterop = function (module) {
       return Object.keys(ports)
         .map(port => {
           if (ports[port]) {
-            const [service, adapter, callback, type] = ports[port].split(',')
+            const [service, type, callback, undo, adapter] = ports[port].split(
+              ','
+            )
+            const cb = this.findWasmFunction(callback)
+            const undoCb = this.findWasmFunction(undo)
             return {
               /**@type {import("../../domain").ports[x]} */
               [port]: {
                 service,
-                adapter,
-                callback,
-                type
+                type,
+                callback: data => this.callWasmFunction(cb, data),
+                undo: data => this.callWasmFunction(undoCb, data),
+                adapter
               }
             }
           }
