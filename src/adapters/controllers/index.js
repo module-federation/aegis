@@ -31,6 +31,7 @@ export const getModels = () => make(listModels, getModelsFactory)
 export const getModelsById = () => make(findModels, getModelByIdFactory)
 export const deleteModels = () => make(removeModels, deleteModelFactory)
 export const getConfig = () => getConfigFactory(listConfigs())
+
 export const initCache = () => {
   const label = '\ntime to load cache'
   const models = loadModels()

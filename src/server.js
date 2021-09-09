@@ -1,18 +1,22 @@
 'use strict'
 
-import {
+import { controllers, storageAdapter } from './adapters'
+
+const {
   postModels,
   patchModels,
   getModels,
   getModelsById,
   deleteModels,
   initCache,
-  getConfig
-} from './adapters/controllers'
+  getConfig,
+  http
+} = controllers
+
+const { close, find, save } = storageAdapter
 
 import { Persistence } from './services/persistence-service'
-import { save, find, close } from './adapters/persistence-adapter'
-import http from './adapters/http-adapter'
+
 import ModelFactory from './domain'
 
 const apiRoot = process.env.API_ROOT || '/microlib/api'
@@ -130,7 +134,7 @@ const Server = (() => {
   /**
    * Call controllers directly in serverless mode.
    */
-  async function control (path, method, req, res) {
+  async function invoke (path, method, req, res) {
     if (routes.has(path)) {
       try {
         console.debug('path match: ', path)
@@ -178,7 +182,7 @@ const Server = (() => {
    * Import federated modules, see {@link getRemoteModules}. Then, generate
    * routes for each controller method and model. If running as a serverless
    * function, tore the routes and controllers for direct invocation via the
-   * {@link control} method.
+   * {@link invoke} method.
    *
    * @param {import("express").Router} router - express app/router
    * @param {boolean} serverless - set to true if running as a servless function
@@ -211,7 +215,7 @@ const Server = (() => {
 
           process.on('sigterm', () => shutdown(() => close()))
           await cache.load()
-          return control
+          return invoke
         })
       })
     })
@@ -220,7 +224,7 @@ const Server = (() => {
   return {
     clear,
     start,
-    control
+    invoke
   }
 })()
 

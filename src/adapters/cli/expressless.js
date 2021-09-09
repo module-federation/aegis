@@ -58,7 +58,7 @@ console.log(
   'type post,get,getbyid,patch,delete (:id) and press return to execute'
 )
 
-async function processLine (line) {
+export async function processLine (line) {
   let [method, modelId, command] = line.split(' ')
   method = method.toLowerCase()
 

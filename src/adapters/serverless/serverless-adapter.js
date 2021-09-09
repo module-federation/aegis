@@ -1,10 +1,10 @@
 'use strict'
 
-let controller
+let invokeController
 
 /**
- * Start `startService` if it hasn't been started
- * already, and wait for it to return the`control`
+ * Start `service` if it hasn't been started
+ * already, and wait for it to return the `invoke`
  * function, which allows us to call any controller
  * in the service. Save a reference to it so we can use
  * it agan on the next call and avoid starting the service again,
@@ -15,40 +15,42 @@ let controller
  * @returns {Promise<{invoke:function(...args)}>}
  * call `invokeController` to parse the input and call the controller
  */
-exports.ServerlessAdapter = async function (service, provider, parsers) {
-  /**
-   *
-   * @param {"request"|"response"} type
-   * @param  {...any} args
-   * @returns
-   */
-  function parseMessage (type, ...args) {
-    const parse = parsers[provider][type]
+exports.makeServerlessAdapter = async function (parsers) {
+  return async function ServerlessAdapter (service, provider) {
+    /**
+     *
+     * @param {"request"|"response"} type
+     * @param  {...any} args
+     * @returns
+     */
+    function parseMessage (type, ...args) {
+      const parse = parsers[provider][type]
 
-    if (typeof parse === 'function') {
-      const output = parse(...args)
-      console.debug({ func: parse.name, output })
-      return output
+      if (typeof parse === 'function') {
+        const output = parse(...args)
+        console.debug({ func: parse.name, output })
+        return output
+      }
+      console.warn('no parser found for provider')
     }
-    console.warn('no parser found for provider')
-  }
 
-  /**
-   * invokes the controller for a given route
-   * @param  {...any} args
-   */
-  async function invoke (...args) {
-    const { req, res } = parseMessage('request', ...args)
-    const response = await controller(req.path, req.method, req, res)
-    return parseMessage('response', response)
-  }
+    /**
+     * invokes the controller for a given route
+     * @param  {...any} args
+     */
+    async function invoke (...args) {
+      const { req, res } = parseMessage('request', ...args)
+      const response = await invokeController(req.path, req.method, req, res)
+      return parseMessage('response', response)
+    }
 
-  if (!controller) {
-    // Call MicroLib and wait for controller
-    controller = await service()
-  }
+    if (!invokeController) {
+      // start MicroLib and wait for controller
+      invokeController = await service()
+    }
 
-  return {
-    invokeController: invoke
+    return {
+      invokeController: invoke
+    }
   }
 }

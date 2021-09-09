@@ -6,7 +6,7 @@ console.log('zackwashere', path.resolve(process.cwd(), './auth/key-set.json'))
 const keySet = require(path.resolve(process.cwd(), './auth/key-set.json'))
 const authEnabled = /true/i.test(process.env.AUTH_ENABLED)
 
-module.exports = function (app, path) {
+exports.protectRoutes = function (app, path) {
   if (!authEnabled) return app
 
   const jwtCheck = jwt({

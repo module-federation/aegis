@@ -308,7 +308,7 @@ const CircuitBreaker = function (id, protectedCall, thresholds) {
     },
 
     error (msg) {
-      setStateOnError(id, msg, thresholds)
+      logError(id, msg, thresholds)
     },
 
     /**
