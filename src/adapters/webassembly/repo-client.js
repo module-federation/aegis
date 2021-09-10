@@ -84,7 +84,7 @@ export const RepoClient = {
    * @returns
    */
   async fetch (entry) {
-    if (/github/i.test(entry.url)) return octoGet(entry)
-    return httpGet(entry.url)
+    if (/github/i.test(entry.url)) return this.octoGet(entry)
+    return this.httpGet(entry.url)
   }
 }
