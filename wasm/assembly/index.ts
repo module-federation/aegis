@@ -49,13 +49,13 @@ export function getCommands(): string[][] {
 }
 
 export function websocketListen(keys: string[], values: string[]): void {
-  aegis.websocketListen("wasmWebListen", "websocketCallback");
+  aegis.addListener("wasmWebListen", "websocketCallback");
   aegis.log("wasm listening on websocket");
 }
 
 export function websocketNotify(eventName: string, eventData: string): void {
   aegis.log("wasm invoked websocket notify");
-  aegis.websocketNotify("wasmWebNotify", "test");
+  aegis.fireEvent("wasmWebNotify", "test");
 }
 
 export function websocketCallback(keys: string[], values: string[]): void {
@@ -66,7 +66,7 @@ export function inboundPort(keys: string[], vals: string[]): string[][] {
   aegis.log("inbound port called");
   const outval = new Array<string[]>(1);
   outval[0] = ["key1", "val1"];
-  aegis.invokePort("task1", "task data", "task1Event");
+  aegis.invokePort("task1", "task data", "task1Event", "", "");
   return outval;
 }
 
@@ -90,11 +90,11 @@ export function fibonacciRemote(keys: string[], vals: string[]): string[][] {
       val = parseFloat(vals[i]);
     }
   }
-  const r = new Array<string[]>(1);
+  const ret = new Array<string[]>(1);
   const sum = fibonacci(val);
   aegis.log("fib = " + sum.toString());
-  r[0] = ["result", sum.toString()];
-  return r;
+  ret[0] = ["result", sum.toString()];
+  return ret;
 }
 
 export function getPorts(keys: string[], vals: string[]): string[][] {

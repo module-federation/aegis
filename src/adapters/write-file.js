@@ -1,6 +1,6 @@
-import fs, { fstat } from 'fs'
+import fs from 'fs'
 
-export function provisonCert (_service) {
+export function writeFile (_service) {
   return async function (options) {
     const {
       model,
