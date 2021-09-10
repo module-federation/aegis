@@ -19,39 +19,83 @@ async function importWebAssembly () {
       aegis: {
         log: ptr => console.log(wasm.exports.__getString(ptr)),
 
-        invokePort: (portName, portConsumerEvent, portData) =>
-          handleAsync(console.log, portName, portConsumerEvent, portData),
+        /**
+         * invoke a port on the model instance
+         * @param {string} portName - name of the port
+         * @param {string} portConsumerEvent - value of `port.consumesEvent`
+         * @param {string} portData - data to send through the port
+         */
+        invokePort (portName, portConsumerEvent, portData, cb, undo) {
+          console.log(
+            'js invokePort called by wasm',
+            wasm.exports.__getString(portName),
+            wasm.exports.__getString(portConsumerEvent),
+            wasm.exports.__getString(portData),
+            wasm.exports.__getString(cb),
+            wasm.exports.__getString(undo)
+          )
+        },
 
-        invokeMethod: (methodName, methodData, moduleName) =>
-          handleAsync(console.log, moduleName, methodName, methodData),
+        /**
+         * invoke a method on the model instance
+         * @param {string} methodName
+         * @param {string} methodData
+         * @param {string} moduleName
+         */
+        invokeMethod (methodName, methodData, moduleName) {
+          console.log(
+            'js invokeMethod called by wasm',
+            wasm.exports.__getString(methodName),
+            wasm.exports.__getString(methodData),
+            wasm.exports.__getString(moduleName)
+          )
+        },
 
-        websocketListen: (eventName, callbackName) => {
+        /**
+         * listen for event `eventName` and call a wasm exported
+         * function by the name of `callbackName`.
+         *
+         * @param {string} eventName - name of event
+         * @param {string} callbackName - name of exported function to run when event fires
+         */
+        addListener (eventName, callbackName) {
           console.debug('websocket listen invoked')
+          const adapter = WasmInterop(wasm)
 
-          // observer.on(wasm.exports.__getString(eventName), eventData => {
-          //   const cmd = adapter.findWasmCommand(
+          // observer.on(eventName, eventData => {
+          //   const fn = adapter.findWasmFunction(
           //     wasm.exports.__getString(callbackName)
           //   )
-          //   if (typeof cmd === 'function') {
-          //     adapter.callWasmFunction(cmd, eventData, false)
-          //   } else {
-          //     console.log('cmd is not a function')
+          //   if (typeof fn === 'function') {
+          //     adapter.callWasmFunction(fn, eventData, false)
+          //     return
           //   }
+          //   console.log('no command found')
           // })
         },
 
-        websocketNotify: (eventName, eventData) =>
+        /**
+         *
+         * @param {string} eventName
+         * @param {string} eventData
+         */
+        fireEvent (eventName, eventData) {
           console.log(
-            'websocketNotify eventName',
+            'wasm called js to emit an event',
             wasm.exports.__getString(eventName)
-          ),
-        // observer.notify(
-        //   wasm.exports.__getString(eventName),
-        //   wasm.exports.__getString(eventData)
-        // ),
+          )
+          // observer.notify(
+          //   wasm.exports.__getString(eventName),
+          //   wasm.exports.__getString(eventData)
+          // )
+        },
 
-        requestDeployment: (webswitchId, remoteEntry) =>
-          handleAsync(console.log, webswitchId, remoteEntry)
+        /**
+         *
+         * @param {string} remoteEntry - name of remote entry
+         */
+        requestDeployment: remoteEntry =>
+          console.log('deploy', wasm.exports.__getString(remoteEntry))
       }
     }
   )

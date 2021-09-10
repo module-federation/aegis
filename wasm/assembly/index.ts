@@ -1,5 +1,8 @@
 import * as aegis from "./aegis";
 
+const key: i32 = 0;
+const val: i32 = 1;
+
 export class ModelSpec {
   modelName: string;
   endpoint: string;
@@ -14,6 +17,7 @@ export function getModelSpec(): ModelSpec {
 }
 
 export const ArrayOfStrings_ID = idof<string[]>();
+export const ArrayOfTuples_ID = idof<string[][]>();
 
 export function modelFactory(keys: string[], values: string[]): string[][] {
   const key1 = keys[0] == "key1" ? values[0] : "default";
@@ -28,6 +32,18 @@ export function modelFactory(keys: string[], values: string[]): string[][] {
 export function test(keys: string[], values: string[]): string[][] {
   const key1 = keys[0] == "key1" ? values[0] : "default";
   const key2 = keys[1] == "key2" ? values[1] : "default";
+  const arr = new Array<string[]>(3);
+  arr[0] = ["key1", key1];
+  arr[1] = ["key2", key2];
+  arr[2] = ["key3", "alwaysThisValue"];
+  aegis.log("test called");
+  return arr;
+}
+
+export function test2(kv: string[][]): string[][] {
+  const key1: string = kv[0][key] === "key1" ? kv[0][val] : "default";
+  const key2: string = kv[1][key] === "key2" ? kv[1][val] : "default";
+
   const arr = new Array<string[]>(3);
   arr[0] = ["key1", key1];
   arr[1] = ["key2", key2];
@@ -85,14 +101,15 @@ export function fibonacci(x: number): number {
 export function fibonacciRemote(keys: string[], vals: string[]): string[][] {
   let val: number = 0;
 
-  for (let i = 0; i < keys.length; i++) {
-    if (keys[i] === "fibonacci") {
+  for (let i = 0; i < keys.length + 1; i++) {
+    if (keys[i] == "fibonacci") {
       val = parseFloat(vals[i]);
+      aegis.log("parseFloat " + val.toString());
+      break;
     }
   }
   const ret = new Array<string[]>(1);
   const sum = fibonacci(val);
-  aegis.log("fib = " + sum.toString());
   ret[0] = ["result", sum.toString()];
   return ret;
 }

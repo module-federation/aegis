@@ -9,6 +9,7 @@ exports.WasmInterop = function (module) {
     getCommands,
     getPorts,
     ArrayOfStrings_ID,
+    ArrayOfTuples_ID,
     __pin,
     __unpin,
     __getString,
@@ -24,11 +25,11 @@ exports.WasmInterop = function (module) {
    * @returns {{keys:string[],vals:string[]}} pointer arrays
    */
   function parseArguments (args) {
-    const filtered = Object.entries(args).filter(([k, v]) =>
+    const filtered = Object.entries(args).filter(([, v]) =>
       ['string', 'number'].includes(typeof v)
     )
-    const keyPtrs = filtered.map(([k, v]) => __pin(__newString(k)))
-    const valPtrs = filtered.map(([k, v]) => __pin(__newString(v)))
+    const keyPtrs = filtered.map(([k]) => __pin(__newString(k)))
+    const valPtrs = filtered.map(([, v]) => __pin(__newString(v.toString())))
 
     return {
       keys: keyPtrs,
@@ -58,7 +59,6 @@ exports.WasmInterop = function (module) {
     }
 
     if (keyPtrs.length > 0) {
-      ;``
       const keyArrayPtr = __pin(__newArray(ArrayOfStrings_ID, keyPtrs))
       const valArrayPtr = __pin(__newArray(ArrayOfStrings_ID, valPtrs))
 
@@ -96,8 +96,10 @@ exports.WasmInterop = function (module) {
     /**
      * For any function that accepts and returns an object,
      * we parse the input object into 2 string arrays, one for keys,
-     * the other for values and return a multidemnsional array of
-     * key-value pairs. This way we avoid having to declare classes.
+     * the other for values, and return a multidemnsional array of
+     * key-value pairs. Declaring a custom class for each exported
+     * function seems inefficient and overly complex for what we
+     * are doing.
      *
      * @param {function()} fn exported wasm function
      * @param {object} [args] data from request, see above
@@ -105,11 +107,14 @@ exports.WasmInterop = function (module) {
      * @returns {object} see above
      */
     callWasmFunction (fn, args = {}, retval = true) {
-      if (!fn) return
+      if (!fn) {
+        console.warn(this.callWasmFunction.name, 'no function provided')
+        return
+      }
       if (typeof args === 'number') return callExport({ fn, num: args, retval })
       // Parse the object into a couple string arrays, one for keys, the other values
       const { keys, vals } = parseArguments(args)
-      // Call the exported function, return a multidimensional array
+      // Call the exported function with the key-value arrays
       const obj = callExport({ fn, keys, vals, retval })
       // Construct an object from the key value pairs
       if (retval) return returnObject(obj)
