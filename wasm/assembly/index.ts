@@ -49,7 +49,7 @@ export function getCommands(): string[][] {
 }
 
 export function websocketListen(keys: string[], values: string[]): void {
-  //aegis.webSocketListen("wasmWebListen", "webSocketCallback");
+  aegis.websocketListen("wasmWebListen", "websocketCallback");
   aegis.log("wasm listening on websocket");
 }
 
