@@ -64,7 +64,8 @@ async function updateForeignKeys (model, event, relation, ds) {
  * Find an existing, or create a new, remote object from
  * the distributed cache and store it in the local cache.
  *
- * Sends a request message to, and receives a response from, the cache manager.
+ * Sends a request message to, and receives a response from,
+ * the local cache manager.
  *
  * @param {import(".").relations[x]} relation
  * @param {import("./observer").Observer} observer

@@ -123,9 +123,9 @@ export function getPorts(keys: string[], vals: string[]): string[][] {
 
 export function commandEx(keys: string[], vals: string[]): string[][] {
   aegis.log("\ncommandEx called");
-  const outval = new Array<string[]>(1);
-  outval[0] = ["key1", "update1"];
-  return outval;
+  const retval = new Array<string[]>(1);
+  retval[0] = ["key1", "update1"];
+  return retval;
 }
 
 export function portEx(keys: string[], vals: string[]): void {

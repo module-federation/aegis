@@ -9,12 +9,11 @@
  * @property {string} [owner] if using gitbub, owner of the repo
  * @property {string} [filedir] if using gitub, path to the remoteEntry.js file
  * @property {string} [branch] if using github, branch of the repo to use, e.g. "master" or "main"
- * @property {string} path local path where compiled files are written
+ * @property {boolean} [wasm] is this a WebAssembly module? assume false
+ * @property {string} path local path where compiled files / generated runtime are written
  * @property {"model"|"adapter"|"service"} type the type of components in the module
  * @property {function():Promise<object>} importRemote the function to call to import
- * @property {boolean} wasm is this a WebAssembly module?
- * @property {remoteEntry} model location of the model for webAssembly modules
- * - `await import("microservices/models")` imports models based on the below webpack.config.js
+ *- `await import("microservices/models")` imports models based on the below webpack.config.js
  * ```js
  * new ModuleFederationPlugin({
  *  name: "microservices",

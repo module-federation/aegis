@@ -2,7 +2,6 @@
 
 const fs = require('fs')
 const loader = require('@assemblyscript/loader')
-const adapter = require('../src/adapters/webassembly/wasm-interop').WasmInterop
 // const { default: ObserverFactory } = require('../src/domain/observer')
 // const observer = ObserverFactory.getInstance()
 
@@ -60,8 +59,7 @@ async function importWebAssembly () {
          */
         addListener (eventName, callbackName) {
           console.debug('websocket listen invoked')
-          const adapter = WasmInterop(wasm)
-
+          //const adapter = WasmInterop(wasm)
           // observer.on(eventName, eventData => {
           //   const fn = adapter.findWasmFunction(
           //     wasm.exports.__getString(callbackName)
