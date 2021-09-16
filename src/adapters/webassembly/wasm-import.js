@@ -36,6 +36,8 @@ export async function importWebAssembly (remoteEntry, type = 'model') {
        * @param {string} portName - name of the port
        * @param {string} portConsumerEvent - value of `port.consumesEvent`
        * @param {string} portData - data to send through the port
+       * @param {string} cb - name of callback called when data arrives on port
+       * @param {string} [undo] - name of callback called when downstream transaction fails
        */
       invokePort (portName, portConsumerEvent, portData, cb, undo) {
         console.log(
@@ -79,7 +81,7 @@ export async function importWebAssembly (remoteEntry, type = 'model') {
             wasm.exports.__getString(callbackName)
           )
           if (typeof fn === 'function') {
-            adapter.callWasmFunction(fn, eventData, false)
+            adapter.callWasmFunction(fn, wasm.exports.__getString(eventData))
             return
           }
           console.log('no command found')
@@ -87,7 +89,7 @@ export async function importWebAssembly (remoteEntry, type = 'model') {
       },
 
       /**
-       *
+       * Emit an event. Event listeners are invoked.
        * @param {string} eventName
        * @param {string} eventData
        */

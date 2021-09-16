@@ -4,7 +4,15 @@ import { Octokit } from '@octokit/rest'
 const token = process.env.GITHUB_TOKEN
 const octokit = new Octokit({ auth: token })
 
+/**
+ * Fetches WASM bytecode from a Github repo or any HTTP endpoint
+ */
 export const RepoClient = {
+  /**
+   * Fetch WASM bytecode (.wasm file) from Github repo
+   * @param {import('../../../webpack/remote-entries-type').remoteEntry} entry
+   * @returns {Buffer|String|Uint16Array}
+   */
   octoGet (entry) {
     console.info('github url', entry.url)
     const owner = entry.owner
@@ -25,7 +33,6 @@ export const RepoClient = {
           return file.sha
         })
         .then(function (sha) {
-          console.log(sha)
           return octokit.request('GET /repos/{owner}/{repo}/git/blobs/{sha}', {
             owner,
             repo,
@@ -49,6 +56,11 @@ export const RepoClient = {
     })
   },
 
+  /**
+   * Fetch data from http endpoint
+   * @param {*} params
+   * @returns
+   */
   httpGet (params) {
     return new Promise(function (resolve, reject) {
       var req = require(params.protocol.slice(
@@ -79,8 +91,8 @@ export const RepoClient = {
   },
 
   /**
-   *
-   * @param {*} entry
+   * Fetch wasm bytecode (.wasm file) from general URL or Github repo
+   * @param {import('../../../webpack/remote-entries-type').remoteEntry} entry
    * @returns
    */
   async fetch (entry) {

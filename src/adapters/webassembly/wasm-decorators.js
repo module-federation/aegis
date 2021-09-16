@@ -33,6 +33,7 @@ exports.wrapWasmModelSpec = function (module) {
   const wrappedSpec = {
     modelName: __getString(modelSpec.modelName),
     endpoint: __getString(modelSpec.endpoint),
+
     /**
      * Pass any dependencies, return factory function that creates model
      * @param {*} dependencies
@@ -47,14 +48,14 @@ exports.wrapWasmModelSpec = function (module) {
     onUpdate: (model, changes) =>
       adapter.callWasmFunction(onUpdate, { model, changes }),
 
-    onDelete: model => adapter.callWasmFunction(onDelete, model, false),
+    onDelete: model => adapter.callWasmFunction(onDelete, model),
 
     commands: {
-      ...adapter.configureWasmCommands()
+      ...adapter.exportWasmCommands()
     },
 
     ports: {
-      ...adapter.configureWasmPorts()
+      ...adapter.exportWasmPorts()
     },
 
     // call to dispose of spec memory
