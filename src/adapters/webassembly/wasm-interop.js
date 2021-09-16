@@ -9,8 +9,8 @@
  * WASM adapter functions
  * - find exported functions
  * - call exported functions
- * - export Aegis command configuration
- * - export Aegis port configuration
+ * - import command configuration
+ * - import port configuration
  * @param {WebAssembly.Instance} module
  * @returns adapter functions
  */
@@ -154,7 +154,7 @@ exports.WasmInterop = function (module) {
      * For every command in {@link getCommands} create a
      * `commands` entry pointing to the exported function
      */
-    exportWasmCommands () {
+    importWasmCommands () {
       const commandNames = this.callWasmFunction(getCommands)
       return Object.keys(commandNames)
         .map(command => {
@@ -174,7 +174,7 @@ exports.WasmInterop = function (module) {
     /**
      * Generate port entries. Calls {@link getPorts}.
      */
-    exportWasmPorts () {
+    importWasmPorts () {
       const ports = this.callWasmFunction(getPorts)
       return Object.keys(ports)
         .map(port => {

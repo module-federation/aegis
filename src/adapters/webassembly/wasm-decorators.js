@@ -1,6 +1,6 @@
 'use strict'
 
-const WasmInterop = require('./wasm-interop').WasmInterop
+const { WasmInterop } = require('./wasm-interop')
 
 /**@typedef {import("../../domain").ModelSpecification} ModelSpecification */
 /**@typedef {import("../../domain").Model} Model */
@@ -8,12 +8,11 @@ const WasmInterop = require('./wasm-interop').WasmInterop
 /**@typedef {function(Service):function(*):Promise} Adapter*/
 
 /**
- * Wrap the WASM Module  {@link ModelSpecification}
- * @param {import("node:module")} module WebAssembly module
+ * Wrap the WASM Module as a {@link ModelSpecification}
+ * @param {WebAssembly.Instance} module WebAssembly module instance
  * @returns {ModelSpecification}
  */
 exports.wrapWasmModelSpec = function (module) {
-  const adapter = WasmInterop(module)
   const {
     __unpin,
     __pin,
@@ -26,6 +25,7 @@ exports.wrapWasmModelSpec = function (module) {
     onDelete
   } = module.exports
 
+  const adapter = WasmInterop(module)
   const specPtr = __pin(getModelSpec())
   const modelSpec = ModelSpec.wrap(specPtr)
 
@@ -37,7 +37,7 @@ exports.wrapWasmModelSpec = function (module) {
     /**
      * Pass any dependencies, return factory function that creates model
      * @param {*} dependencies
-     * @returns {({...arg}=>Model)} factory function to generate model
+     * @returns {({...arg} => Model)} factory function to generate model
      */
     factory: dependencies => async input =>
       adapter.callWasmFunction(modelFactory, { ...dependencies, ...input }),
@@ -51,11 +51,11 @@ exports.wrapWasmModelSpec = function (module) {
     onDelete: model => adapter.callWasmFunction(onDelete, model),
 
     commands: {
-      ...adapter.exportWasmCommands()
+      ...adapter.importWasmCommands()
     },
 
     ports: {
-      ...adapter.exportWasmPorts()
+      ...adapter.importWasmPorts()
     },
 
     // call to dispose of spec memory
@@ -68,14 +68,30 @@ exports.wrapWasmModelSpec = function (module) {
 
 /**
  *
- * @param {import("node:module")} module
+ * @param {WebAssembly.Instance} module
  * @returns {Adapter}
  */
-exports.wrapWasmAdapter = function (module) {}
+exports.wrapWasmAdapter = function (module) {
+  const { __getString, getAdapterName, execAdapter } = module.exports
+  const adapter = WasmInterop(module)
+  const adapterName = __getString(getAdapterName())
+
+  return ([adapterName] = service => async options => {
+    let serviceOut
+    if (service) serviceOut = await service[adapterName](options)
+    const adapterOut = await adapter.callWasmFunction(execAdapter, serviceOut)
+    if (options.args.callback) await options.args.callback(options, adapterOut)
+  })
+}
 
 /**
  *
- * @param {import("node:module")} module
+ * @param {WebAssembly.Instance} module
  * @returns {Service}
  */
-exports.wrapWasmService = function (module) {}
+exports.wrapWasmService = function (module) {
+  const { makeService } = module.exports
+  const adapter = WasmInterop(module)
+
+  return Object.freeze(adapter.callWasmFunction(makeService))
+}
