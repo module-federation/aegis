@@ -18,6 +18,7 @@ exports.WasmInterop = function (module) {
   const {
     getCommands,
     getPorts,
+    getFuncPtrs,
     ArrayOfStrings_ID,
     __pin,
     __unpin,
@@ -148,6 +149,12 @@ exports.WasmInterop = function (module) {
         k => typeof module.exports[k] === 'function' && k === name
       )
       if (commandName) return module.exports[commandName]
+    },
+
+    getWasmFuncPtr (name) {
+      const key = 0
+      const val = 1
+      return getFuncPtrs().find(ptr => ptr[key] === name)[val]
     },
 
     /**
