@@ -117,7 +117,6 @@ exports.WasmInterop = function (module) {
      *
      * - `args` can also be a number, in which case, so is the return value.
      *
-     *
      * @param {function()} fn exported wasm function
      * @param {object|number} [args] object or number, see above
      * @returns {object|number} object or number, see above
@@ -151,12 +150,6 @@ exports.WasmInterop = function (module) {
       if (commandName) return module.exports[commandName]
     },
 
-    getWasmFuncPtr (name) {
-      const key = 0
-      const val = 1
-      return getFuncPtrs().find(ptr => ptr[key] === name)[val]
-    },
-
     /**
      * For every command in {@link getCommands} create a
      * `commands` entry pointing to the exported function
@@ -170,7 +163,7 @@ exports.WasmInterop = function (module) {
             return {
               [command]: {
                 command: input => this.callWasmFunction(cmdFn, input),
-                acl: ['read']
+                acl: ['read', 'write']
               }
             }
           }

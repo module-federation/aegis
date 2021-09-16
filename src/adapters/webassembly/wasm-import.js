@@ -46,7 +46,7 @@ export async function importWebAssembly (remoteEntry, type = 'model') {
           wasm.exports.__getString(portConsumerEvent),
           wasm.exports.__getString(portData),
           wasm.exports.__getString(cb),
-          wasm.exports.__getString(undo)
+          wasm.exports.__getFunction(getFuncPtrs('undo'))
         )
       },
 
