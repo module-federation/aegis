@@ -9,8 +9,8 @@
  * WASM adapter functions
  * - find exported functions
  * - call exported functions
- * - export Aegis commands
- * - export Aegis ports
+ * - export Aegis command configuration
+ * - export Aegis port configuration
  * @param {WebAssembly.Instance} module
  * @returns adapter functions
  */
@@ -56,7 +56,7 @@ exports.WasmInterop = function (module) {
    * }} param0
    * @returns {string[][]|number|void}
    */
-  function callExport ({
+  function callExportedFunction ({
     fn: wasmFn,
     keys: keyPtrs = [],
     vals: valPtrs = [],
@@ -70,7 +70,7 @@ exports.WasmInterop = function (module) {
       const keyArrayPtr = __pin(__newArray(ArrayOfStrings_ID, keyPtrs))
       const valArrayPtr = __pin(__newArray(ArrayOfStrings_ID, valPtrs))
 
-      // The arrays keeps values alive from now on
+      // The arrays keep values alive from now on
       keyPtrs.forEach(__unpin)
       valPtrs.forEach(__unpin)
 
@@ -81,9 +81,9 @@ exports.WasmInterop = function (module) {
   }
 
   /**
-   * Construct an object from the key-value pairs
-   * @param {*} ptr
-   * @returns
+   * Construct an object from the key-value pairs in the multidimensional array
+   * @param {number} ptr - pointer to the address of the array of string arrays
+   * @returns {Readonly<{object}>}
    */
   function constructObject (ptr) {
     if (!ptr) return
@@ -101,27 +101,37 @@ exports.WasmInterop = function (module) {
   return {
     /**
      * For any function that accepts and returns an object,
-     * we parse the input object into 2 string arrays, one for keys,
-     * the other for values, and pass that to the exported WASM function
-     * The WASM function returns a multidemnsional array of
-     * key-value pairs, which we convert to an object and return.
+     * we parse the input object into two string arrays, one for keys,
+     * the other for values, and pass them to the exported function as
+     * arguments. The exported function returns a multidemnsional array
+     * of key-value pairs, which we convert to an object and return.
+     *
      * Handling objects in this way, versus declaring a custom class
      * for each exported function, is more efficient.
      *
+     * Notes:
+     *
+     * - for the moment, we only support strings and numbers in the input
+     * and output objects. Otherwise, a custom parser is required.
+     *
+     * - `args` can also be a number, in which case, so is the return value.
+     *
+     *
      * @param {function()} fn exported wasm function
      * @param {object|number} [args] object or number, see above
-     * @returns {object|number} see above
+     * @returns {object|number} object or number, see above
      */
     callWasmFunction (fn, args = {}) {
       if (!fn) {
         console.warn(this.callWasmFunction.name, 'no function provided')
         return
       }
-      if (typeof args === 'number') return callExport({ fn, num: args })
+      if (typeof args === 'number')
+        return callExportedFunction({ fn, num: args })
       // Parse the object into a couple string arrays, one for keys, the other values
       const { keys, vals } = parseArguments(args)
       // Call the exported function with the key-value arrays
-      const obj = callExport({ fn, keys, vals })
+      const obj = callExportedFunction({ fn, keys, vals })
       // Construct an object from the key-value pairs
       return constructObject(obj)
     },
@@ -143,7 +153,6 @@ exports.WasmInterop = function (module) {
     /**
      * For every command in {@link getCommands} create a
      * `commands` entry pointing to the exported function
-     * @returns
      */
     exportWasmCommands () {
       const commandNames = this.callWasmFunction(getCommands)
@@ -163,8 +172,7 @@ exports.WasmInterop = function (module) {
     },
 
     /**
-     * Generate port entries
-     * @returns {import('../../domain').ports}
+     * Generate port entries. Calls {@link getPorts}.
      */
     exportWasmPorts () {
       const ports = this.callWasmFunction(getPorts)
