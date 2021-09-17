@@ -101,7 +101,7 @@ export function fibonacci(x: number): number {
 export function runFibonacci(keys: string[], vals: string[]): string[][] {
   let val: number = 0;
 
-  for (let i = 0; i < keys.length+1; i++) {
+  for (let i = 0; i < keys.length; i++) {
     if ("fibonacci" == keys[i]) {
       aegis.log("val" + keys[i]);
       val = parseFloat(vals[i]);

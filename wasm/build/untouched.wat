@@ -8258,8 +8258,6 @@
     local.get $3
     local.get $0
     call $~lib/array/Array<~lib/string/String>#get:length
-    i32.const 1
-    i32.add
     i32.lt_s
     local.set $4
     local.get $4
