@@ -25,7 +25,7 @@ export function modelFactory(keys: string[], values: string[]): string[][] {
   const arr = new Array<string[]>(3);
   arr[0] = ["key1", key1];
   arr[1] = ["key2", key2];
-  arr[2] = ["ssn", "123-456-7890"];
+  arr[2] = ["fibonacci", "0"];
   return arr;
 }
 
