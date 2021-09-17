@@ -22,10 +22,11 @@ export const ArrayOfTuples_ID = idof<string[][]>();
 export function modelFactory(keys: string[], values: string[]): string[][] {
   const key1 = keys[0] == "key1" ? values[0] : "default";
   const key2 = keys[1] == "key2" ? values[1] : "default";
+  const key3 = keys[2] == "fibonacci" ? values[2] : "default";
   const arr = new Array<string[]>(3);
   arr[0] = ["key1", key1];
   arr[1] = ["key2", key2];
-  arr[2] = ["fibonacci", "0"];
+  arr[2] = ["fibonacci", key3];
   return arr;
 }
 
