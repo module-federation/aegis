@@ -56,9 +56,9 @@ export function getCommands(): string[][] {
   const commands = new Array<string[]>(7);
   commands[0] = ["websocketListen", "tell wasm module to begin listening"];
   commands[1] = ["websocketNotify", "tell wasm module to send broadcast"];
-  commands[2] = ["websocketCallback", "subscribed event fired"];
-  commands[3] = ["fibonacci", "calculate fibonacci for a number"];
-  commands[4] = ["runFibonacci", "remote calculate fibonacci for a number"];
+  commands[2] = ["runFibonacci", "remote calculate fibonacci for a number"];
+  commands[3] = ["websocketCallback", "subscribed event fired"];
+  commands[4] = ["fibonacci", "calculate fibonacci for a number"];
   commands[5] = ["deployModule", "request deployment of a module"];
   commands[6] = ["commandEx", "command example"];
   return commands;
@@ -101,10 +101,11 @@ export function fibonacci(x: number): number {
 export function runFibonacci(keys: string[], vals: string[]): string[][] {
   let val: number = 0;
 
-  for (let i: number = 0; i < keys.length + 1; i++) {
-    if (keys[i] === "fibonacci") {
+  for (let i = 0; i < keys.length+1; i++) {
+    if ("fibonacci" == keys[i]) {
+      aegis.log("val" + keys[i]);
       val = parseFloat(vals[i]);
-      aegis.log("parseFloat " + val.toString());
+      //aegis.log("parseFloat " + val.toString());
       break;
     }
   }
@@ -124,7 +125,7 @@ export function getPorts(keys: string[], vals: string[]): string[][] {
 export function commandEx(keys: string[], vals: string[]): string[][] {
   aegis.log("\ncommandEx called");
   const retval = new Array<string[]>(1);
-  retval[0] = ["key1", "update1"];
+  retval[0] = ["key1", "commandEx_update!"];
   return retval;
 }
 
