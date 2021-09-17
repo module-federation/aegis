@@ -58,7 +58,7 @@ export function getCommands(): string[][] {
   commands[1] = ["websocketNotify", "tell wasm module to send broadcast"];
   commands[2] = ["websocketCallback", "subscribed event fired"];
   commands[3] = ["fibonacci", "calculate fibonacci for a number"];
-  commands[4] = ["runFibonacci", "calculate fibonacci for a number"];
+  commands[4] = ["runFibonacci", "remote calculate fibonacci for a number"];
   commands[5] = ["deployModule", "request deployment of a module"];
   commands[6] = ["commandEx", "command example"];
   return commands;
@@ -101,8 +101,8 @@ export function fibonacci(x: number): number {
 export function runFibonacci(keys: string[], vals: string[]): string[][] {
   let val: number = 0;
 
-  for (let i = 0; i < keys.length + 1; i++) {
-    if (keys[i] == "fibonacci") {
+  for (let i: number = 0; i < keys.length + 1; i++) {
+    if (keys[i] === "fibonacci") {
       val = parseFloat(vals[i]);
       aegis.log("parseFloat " + val.toString());
       break;

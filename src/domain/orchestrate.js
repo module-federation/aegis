@@ -56,7 +56,7 @@ export async function resumeWorkflow (list) {
           const lastPort = history.length - 1
           const nextPort = ports[history[lastPort]].producesEvent
 
-          if (nextPort && nextPort !== 'workflowComplete') {
+          if (nextPort && history[lastPort] !== 'workflowComplete') {
             await async(model.emit(nextPort, resumeWorkflow.name))
           }
         }

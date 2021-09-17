@@ -99,6 +99,35 @@ exports.WasmInterop = function (module) {
     return immutableClone
   }
 
+  /**
+   * Resolve and check argument types, where `resolve` means
+   * invoke `args` if it is a function, then check the return value.
+   * @param {function()} fn - the exported function to call
+   * @param {object|number|function} args - object or number
+   * ...or a function that returns an object or number
+   * @returns
+   */
+  function resolveArguments (fn, args) {
+    if (typeof fn !== 'function') {
+      console.warn(this.callWasmFunction.name, 'invalid function', fn)
+      return null
+    }
+
+    const resolved = typeof args === 'function' ? args() : args
+    if (resolved) {
+      if (typeof resolved === 'string') {
+        return { [`${resolved.split(' ').join('-')}`]: resolved }
+      }
+      if (!['number', 'object'].includes(typeof resolved)) {
+        console.warn(this.callWasmFunction.name, 'invalid argument', args)
+        return null
+      }
+      return resolved
+    }
+
+    return {}
+  }
+
   return {
     /**
      * For any function that accepts and returns an object,
@@ -122,18 +151,18 @@ exports.WasmInterop = function (module) {
      * @returns {object|number} object or number, see above
      */
     callWasmFunction (fn, args = {}) {
-      if (!fn) {
-        console.warn(this.callWasmFunction.name, 'no function provided')
-        return
-      }
-      if (typeof args === 'number')
-        return callExportedFunction({ fn, num: args })
+      console.debug(this.callWasmFunction.name, fn.name+': '+fn.toString(), args)
+      const resolvedArgs = resolveArguments(fn, args)
+      if (!resolvedArgs) return
+      // handle numeric arg
+      if (typeof resolvedArgs === 'number')
+        return callExportedFunction({ fn, num: resolvedArgs })
       // Parse the object into a couple string arrays, one for keys, the other values
-      const { keys, vals } = parseArguments(args)
-      // Call the exported function with the key-value arrays
-      const obj = callExportedFunction({ fn, keys, vals })
-      // Construct an object from the key-value pairs
-      return constructObject(obj)
+      const { keys, vals } = parseArguments(resolvedArgs)
+      // Call the exported function with the key and val arrays
+      const ptr = callExportedFunction({ fn, keys, vals })
+      // Construct an object from the key-value pairs array pointer
+      return constructObject(ptr)
     },
 
     /**
@@ -162,7 +191,7 @@ exports.WasmInterop = function (module) {
           if (cmdFn) {
             return {
               [command]: {
-                command: input => this.callWasmFunction(cmdFn, input),
+                command: model => this.callWasmFunction(cmdFn, model),
                 acl: ['read', 'write']
               }
             }

@@ -11,11 +11,9 @@ require('..').then(async wasmInstance => {
   const adapter = WasmInterop(wasmInstance)
 
   const spec = wrapper.wrapWasmModelSpec(wasmInstance)
-
-  // console.log(spec)
-  const model = await spec.factory({ a: 'b' })({ c: 'd' })
+  const model = await spec.factory({ key1: 'key1' })({ a: 'b' })
   console.log(model)
-  adapter.callWasmFunction(onUpdate, model, false)
-  adapter.callWasmFunction(websocketNotify, 'testing', false)
+  adapter.callWasmFunction(onUpdate, model)
+  adapter.callWasmFunction(websocketNotify, 'testing')
   console.log(adapter.callWasmFunction(runFibonacci, { fibonacci: 20, a: 'b' }))
 })
