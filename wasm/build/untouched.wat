@@ -1766,7 +1766,6 @@
  )
  (func $~lib/rt/itcms/interrupt
   (local $0 i32)
-  (local $1 i32)
   i32.const 0
   drop
   i32.const 0
@@ -1777,7 +1776,7 @@
   i32.const 100
   i32.div_u
   local.set $0
-  loop $do-continue|0
+  loop $do-loop|0
    local.get $0
    call $~lib/rt/itcms/step
    i32.sub
@@ -1805,9 +1804,7 @@
    local.get $0
    i32.const 0
    i32.gt_s
-   local.set $1
-   local.get $1
-   br_if $do-continue|0
+   br_if $do-loop|0
   end
   i32.const 0
   drop
@@ -2656,7 +2653,7 @@
   end
   if
    block $do-break|0
-    loop $do-continue|0
+    loop $do-loop|0
      local.get $5
      i64.load
      local.get $6
@@ -2680,9 +2677,7 @@
      local.get $4
      i32.const 4
      i32.ge_u
-     local.set $7
-     local.get $7
-     br_if $do-continue|0
+     br_if $do-loop|0
     end
    end
   end
@@ -4142,7 +4137,7 @@
    if
     i32.const 800
     i32.const 464
-    i32.const 17
+    i32.const 18
     i32.const 48
     call $~lib/builtins/abort
     unreachable
@@ -4242,7 +4237,7 @@
    if
     i32.const 128
     i32.const 464
-    i32.const 122
+    i32.const 123
     i32.const 22
     call $~lib/builtins/abort
     unreachable
@@ -7445,7 +7440,6 @@
   (local $4 i64)
   (local $5 i64)
   (local $6 i64)
-  (local $7 i32)
   local.get $3
   i64.extend_i32_s
   local.set $4
@@ -7467,7 +7461,7 @@
    i64.const 1
    i64.sub
    local.set $6
-   loop $do-continue|0
+   loop $do-loop|0
     local.get $2
     i32.const 1
     i32.sub
@@ -7494,12 +7488,10 @@
     local.get $1
     i64.const 0
     i64.ne
-    local.set $7
-    local.get $7
-    br_if $do-continue|0
+    br_if $do-loop|0
    end
   else
-   loop $do-continue|1
+   loop $do-loop|1
     local.get $2
     i32.const 1
     i32.sub
@@ -7530,9 +7522,7 @@
     local.get $1
     i64.const 0
     i64.ne
-    local.set $7
-    local.get $7
-    br_if $do-continue|1
+    br_if $do-loop|1
    end
   end
  )
@@ -7665,7 +7655,7 @@
   i32.div_s
  )
  (func $assembly/index/onDelete (param $0 i32) (param $1 i32)
-  return
+  nop
  )
  (func $~lib/rt/itcms/__pin (param $0 i32) (result i32)
   (local $1 i32)
@@ -9235,7 +9225,6 @@
   i32.const 4
   i32.add
   global.set $~lib/memory/__stack_pointer
-  return
  )
  (func $~lib/date/Date#toUTCString (param $0 i32) (result i32)
   (local $1 i32)
@@ -9648,7 +9637,6 @@
   i32.const 4
   i32.add
   global.set $~lib/memory/__stack_pointer
-  return
  )
  (func $assembly/index/ModelSpec#constructor (param $0 i32) (param $1 i32) (param $2 i32) (result i32)
   (local $3 i32)
@@ -9708,7 +9696,7 @@
   if
    i32.const 128
    i32.const 464
-   i32.const 106
+   i32.const 107
    i32.const 42
    call $~lib/builtins/abort
    unreachable
@@ -9733,7 +9721,7 @@
   if
    i32.const 512
    i32.const 464
-   i32.const 110
+   i32.const 111
    i32.const 40
    call $~lib/builtins/abort
    unreachable
@@ -9790,7 +9778,7 @@
   if
    i32.const 800
    i32.const 464
-   i32.const 64
+   i32.const 65
    i32.const 60
    call $~lib/builtins/abort
    unreachable
@@ -9906,7 +9894,7 @@
   if
    i32.const 128
    i32.const 464
-   i32.const 106
+   i32.const 107
    i32.const 42
    call $~lib/builtins/abort
    unreachable
@@ -9931,7 +9919,7 @@
   if
    i32.const 512
    i32.const 464
-   i32.const 110
+   i32.const 111
    i32.const 40
    call $~lib/builtins/abort
    unreachable
