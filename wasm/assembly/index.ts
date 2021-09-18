@@ -136,9 +136,8 @@ export function portEx(keys: string[], vals: string[]): void {
   return;
 }
 
-export function onUpdate(keys: string[], vals: string[]): void {
-  aegis.log("onUpdate called");
-  return;
+export function onUpdate(keys: string[], vals: string[]): string[][] {
+  return [["updatedByWasm", new Date(Date.now()).toUTCString()]];
 }
 
 export function onDelete(keys: string[], vals: string): void {
