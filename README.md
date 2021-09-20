@@ -37,20 +37,21 @@ yarn demo
 Enable polyglot, WASM-powered compute 
 
 ### Overview:
-- Support WASM domain, adapter, and services components
-- Port Aegis to AssemblyScript for WASM standalone runtimes
-- Refactor Aegis to run in the browser
-- User option to attempt to run their existing TypeScript components in WASM stack machine
+- Support WASM modules as domain, adapter, and service components
+- Linter and compiler transform supports compiling existing TypeScript to AssemblyScript
+- Support in browser and on any WASM runtime (No Node.js dependency)
 
 ## AppMesh 
 Decentralized network for transparent integration and dynamic redistribution of federated software
 
 ### Overview:
 - Distributed object cache over switched mesh network 
-- Operations analytics / MLops (capture performance at switch nodes, recommend deployment changes)
+- Gracefully degrade or upgrade based on available middleware (plug-in NATs, Kafka, etc).
+- No assumption of container networking or provisioning automation, compute delivery nethod abstracted
+- Operations analytics / AIOps capture performance at switch nodes, recommends deployment changes)
 - Operations automation (implement recommended changes, including basic orchestration)
-- Dynamic redeployment (e.g. of 2 chatty services to same instance, run closer to users and data )
-- Use Cases: DataMesh / Federated Learning
+- Dynamic redeployment (e.g. of 2 chatty services to same instance, run closer to users and data)
+- Use Cases: DataMesh, Federated Learning, transparent integration, low-config, 
 
 ### Based on:
 - Web3 / blockchain / Solid
