@@ -14,7 +14,7 @@ require('..').then(async wasmInstance => {
   const model = await spec.factory({})({
     key1: '1',
     key2: '2',
-    fibonacci: '20'
+    fibonacci: '45'
   })
   console.log(model)
   adapter.callWasmFunction(onUpdate, model)

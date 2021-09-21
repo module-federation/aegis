@@ -101,6 +101,7 @@ export function fibonacci(x: number): number {
 
 export function runFibonacci(keys: string[], vals: string[]): string[][] {
   let val: number = 0;
+  let startTime: i64 = Date.now();
 
   for (let i = 0; i < keys.length; i++) {
     if ("fibonacci" == keys[i]) {
@@ -110,9 +111,10 @@ export function runFibonacci(keys: string[], vals: string[]): string[][] {
       break;
     }
   }
-  const ret = new Array<string[]>(1);
+  const ret = new Array<string[]>(2);
   const sum = fibonacci(val);
   ret[0] = ["result", sum.toString()];
+  ret[1] = ["time", (Date.now() - startTime).toString()];
   return ret;
 }
 
