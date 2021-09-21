@@ -12,23 +12,25 @@ const MLOps = {
   endpoint: 'mlops',
   ports: {
     defineModel: {
-      service: 'mlopsModelMgmt',
+      service: 'MLOpsManager',
       type: 'outbound',
       keys: ['', ''],
-      consumesEvent: 'mlopsDefineMmodel',
+      consumesEvent: 'mlopsDefineModel',
       producesEvent: 'mlopsModelVerified'
     },
     findModel: {
+      service: 'MLOpsManager',
       keys: ['trainingDataLocation']
     },
     fetchTrainingData: {
+      service: 'MLOpsManager',
       service: 'repoClient',
       type: 'inbound',
       consumesEvent: 'mlopsRetrieveTrainingData',
       producesEvent: 'mlopsTrainingDataRetrieved'
     },
     deployModel: {
-      service: 'mlopsModelMgmt',
+      service: 'MLOpsManager',
       type: 'outbound',
       consumesEvent: 'mlopsDeployModel',
       producesEvent: 'mlopsModelDeployed'
@@ -38,8 +40,8 @@ const MLOps = {
       timeout: 600000
     },
     compareResults: {},
-    reportResults:{},
-    implementRecommendations:{},
+    reportResults: {},
+    implementRecommendations: {}
   }
 }
 
