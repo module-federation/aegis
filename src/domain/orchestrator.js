@@ -1,9 +1,9 @@
 'use strict'
 
 import async from './util/async-error'
-import ModelFactory from '../domain'
-import DataSourceFactory from '../domain/datasource-factory'
-import ObserverFactory from '../domain/observer'
+import ModelFactory from '.'
+import DataSourceFactory from './datasource-factory'
+import ObserverFactory from './observer'
 import EventEmitter from 'events'
 
 export async function generateWorkflow (options) {
@@ -16,7 +16,7 @@ export async function generateWorkflow (options) {
 
   /**
    * General workflow
-   * @type {import("../domain").ModelSpecification}
+   * @type {import(".").ModelSpecification}
    */
   const workflow = {
     modelName: wfName,
@@ -43,7 +43,7 @@ export async function runWorkflow ({ wfName }) {
  * Check `portFlow` history and resume any workflow
  * that was running before we shut down.
  *
- * @param {Array<import("../domain").Model>} list
+ * @param {Array<import(".").Model>} list
  */
 export async function resumeWorkflow (list) {
   if (list?.length > 0) {

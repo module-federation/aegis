@@ -1,7 +1,7 @@
 'use strict'
 
 import Serializer from '../domain/serializer'
-import { resumeWorkflow } from '../domain/orchestrate'
+import { resumeWorkflow } from '../domain/orchestrator'
 
 /**
  * @param {function(import("../domain").Model)} loadModel
