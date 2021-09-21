@@ -97,11 +97,10 @@ const Model = (() => {
   }
 
   const defaultOnUpdate = (model, changes) => ({ ...model, ...changes })
-
   const defaultOnDelete = model => withTimestamp('deleteTime')(model)
+  const defaultValidate = (model, changes) => defaultOnUpdate(model, changes)
 
-  const defaultValidate = (model, changes) => model
-
+  // caller can skip vadlidation, which is on by default
   const optionalValidation = (model, changes, option = true) => {
     if (option) return model[VALIDATE](changes, eventMask.update)
     return {
@@ -114,6 +113,7 @@ const Model = (() => {
    * Add data and functions that support framework services.
    * @param {{
    *  model:Model,
+   *  args:*,
    *  spec:import('./index').ModelSpecification
    * }} modelInfo
    */
@@ -164,7 +164,7 @@ const Model = (() => {
       },
 
       /**
-       * Run validation logic
+       * Run validation logic - called on create, load, updated and delete
        * @param {*} changes - updated values
        * @param {eventMask} event - event type, see {@link eventMask}.
        * @returns {Model} - updated model
@@ -177,7 +177,7 @@ const Model = (() => {
        * Return the `eventMask` key name of the value of `event`.
        * Could potentially return multiple key names. See {@link eventMask}.
        * @param {number} event
-       * @returns {string|string[]} key name: update, change, onload
+       * @returns {string[]} key name/s: create, update, onload, delete
        */
       getEventName (event) {
         if (typeof event !== 'number') return
@@ -186,7 +186,8 @@ const Model = (() => {
       },
 
       /**
-       * Back out port transactions
+       * Compensate for downstream transaction failures.
+       * Back out all previous port transactions
        */
       async undo () {
         return compensate(this)
@@ -346,9 +347,9 @@ const Model = (() => {
   }
 
   /**
-   * Call the model's factory function to generate a model instance.
+   * Call {@link modelInfo/spec/factory} to generate a model instance.
    * Pass the caller's input as arguments to the function. Then call
-   * `make` to enrich the model with ports, relations, commands, user
+   * {@link make} to enrich the model with ports, relations, commands,
    * mixins, etc.
    *
    * @lends Model

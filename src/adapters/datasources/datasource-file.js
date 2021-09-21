@@ -2,7 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import { DataSourceMemory } from './datasource-memory'
 
-const dirPath = process.env.DATASOURCE_FILE_DIRECTORY
+const dirPath = process.env.DATASOURCE_DIRECTORY
 
 /**
  * Persistent storage on filesystem

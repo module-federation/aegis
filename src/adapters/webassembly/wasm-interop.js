@@ -18,7 +18,6 @@ exports.WasmInterop = function (module) {
   const {
     getCommands,
     getPorts,
-    getFuncPtrs,
     ArrayOfStrings_ID,
     __pin,
     __unpin,
@@ -136,8 +135,8 @@ exports.WasmInterop = function (module) {
      * arguments. The exported function returns a multidemnsional array
      * of key-value pairs, which we convert to an object and return.
      *
-     * Handling objects in this way, versus declaring a custom class
-     * for each exported function, is more efficient.
+     * We can handle objects this way or declare a custom class for each
+     * function - or use the same class if it contains two string arrays :)
      *
      * Notes:
      *
@@ -151,7 +150,6 @@ exports.WasmInterop = function (module) {
      * @returns {object|number} object or number, see above
      */
     callWasmFunction (fn, args = {}) {
-      console.debug(this.callWasmFunction.name, fn.name+': '+fn.toString(), args)
       const resolvedArgs = resolveArguments(fn, args)
       if (!resolvedArgs) return
       // handle numeric arg
@@ -166,22 +164,23 @@ exports.WasmInterop = function (module) {
     },
 
     /**
-     * Commands can be invoked from the REST API. Return
-     * a list of commands to invoke in this way. The name
-     * must match the name of an exported function.
-     * @param {*} name
+     * Find a function called `name` in the {@link module.exports}
+     * and return it.
+     *
+     * @param {string} name
      * @returns {function()} exported function
      */
     findWasmFunction (name) {
-      const commandName = Object.keys(module.exports).find(
+      const fn = Object.keys(module.exports).find(
         k => typeof module.exports[k] === 'function' && k === name
       )
-      if (commandName) return module.exports[commandName]
+      if (fn) return module.exports[fn]
     },
 
     /**
      * For every command in {@link getCommands} create a
-     * `commands` entry pointing to the exported function
+     * `commands` entry that will invoke the specified
+     *  exported function when executed
      */
     importWasmCommands () {
       const commandNames = this.callWasmFunction(getCommands)
