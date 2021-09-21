@@ -6,9 +6,9 @@ let invokeController
  * Start `service` if it hasn't been started
  * already, and wait for it to return the `invoke`
  * function, which allows us to call any controller
- * in the service. Save a reference to it so we can use
- * it agan on the next call and avoid starting the service again,
- * which is what would happen if we were warm-started.
+ * in the service. Save a reference to it, so if we
+ * we are warm-started, we can use it again on the
+ * next call without reloading the service.
  * @param {function():Promise<{function(...args):Promise<string>}>} service - callback starts service (MicroLib)
  * @param {"aws"|"google"|"azure"|"ibm"} provider - the name of the serverless provider
  * @param {{req:{send:function(),status:function()},res:{}}} parser - messsage parsers

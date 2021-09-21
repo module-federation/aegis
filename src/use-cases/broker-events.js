@@ -2,8 +2,8 @@
 
 import DistributedCache from '../domain/distributed-cache'
 import EventBus from '../services/event-bus'
-import AppMesh from '../services/app-mesh/web-node'
-import { handlePortEvents } from './forward-ports'
+import AppMesh from '../services/service-mesh/web-node'
+import { forwardPortEvents } from './forward-events'
 import uuid from '../domain/util/uuid'
 
 const BROADCAST = process.env.TOPIC_BROADCAST || 'broadcastChannel'
@@ -49,8 +49,8 @@ export default function brokerEvents (observer, datasources, models) {
     broker.start()
   }
 
-  handlePortEvents({ observer, models, publish, subscribe })
-  
+  forwardPortEvents({ observer, models, publish, subscribe })
+
   // register wasm comm events
   observer.on('wasmWebNotify', eventData =>
     publish('wasmWebsocketEvent', eventData)

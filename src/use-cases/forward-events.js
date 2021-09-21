@@ -23,32 +23,27 @@ function getLocallyUnhandledEvents (specs) {
 }
 
 /**
- * Subscribe to remote consumer port events
- * and publish local producer port events,
- * provided:
+ * The idea is to forward local port events to
+ * remote instances, in the event they are
+ * participants in a distributed workflow.
  *
- * - there is no local service handling
- * the event
+ * This enables transparent integration of local and
+ * remote ports. When local, ports send events through the
+ * in-memory event broker. When remote, we forward
+ * local events from the broker to remote instances
+ * over the service mesh or event bus.
  *
- * - they are marked as `internal`, meaning there
- * is no custom adapter handling the port.
- *
- * Internal ports use the built-in mesh network,
- * which enables event-driven worklfow to function
- * whether participating components are local or
- * remote, i.e. it enables transparent integration.
- *
- * Note: the system will try to determine if there is
- * a local service to handle the event before subscribing
- * or forwarding.
+ * Subscribe to remote consumer events and publish local
+ * producer events, provided there is no local service
+ * configured to handle the event.
  *
  * @param {import("../domain/observer").Observer} observer
  * @param {import("../domain/model-factory").ModelFactory} models
  * @param {function(event,data)} publish
  * @param {function(event,function())} subscribe
  */
-export function handlePortEvents ({ observer, models, publish, subscribe }) {
-  /**@type{import('../domain/').ModelSpecification[]} */
+export function forwardPortEvents ({ observer, models, publish, subscribe }) {
+  /**@type{import('../domain').ModelSpecification[]} */
   const specs = models.getModelSpecs()
 
   const { consumerEvents, producerEvents } = getLocallyUnhandledEvents(specs)
