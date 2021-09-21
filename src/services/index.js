@@ -1,4 +1,4 @@
-export * as MeshService from './app-mesh'
+export * as MeshService from './service-mesh'
 export * as AuthorizationService from './auth'
 export * as CertificateService from './ca-cert'
 export * as ClusterService from './cluster'
