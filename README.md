@@ -4,8 +4,7 @@ See the [MicroLib](https://github.com/module-federation/MicroLib) repo for docum
 
 - title: What is GitHub?
   description: After watching this video, close the first issue in your repository.
-  video: https://youtu.be/n2qqgi3fTto
-
+  video: https://youtu.be/embed/n2qqgi3fTto
 
 ## Using ÆGIS
 
