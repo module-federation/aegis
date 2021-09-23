@@ -2,9 +2,7 @@
 
 See the [MicroLib](https://github.com/module-federation/MicroLib) repo for documentation and a working example of a federation server.
 
-- title: What is GitHub?
-  description: After watching this video, close the first issue in your repository.
-  video: https://youtu.be/embed/n2qqgi3fTto
+[![Aegis Overview](https://res.cloudinary.com/marcomontalbano/image/upload/v1632364889/video_to_markdown/images/youtube--n2qqgi3fTto-c05b58ac6eb4c4700831b2b3070cd403.jpg)](https://youtu.be/n2qqgi3fTto "Aegis Overview")
 
 ## Using ÆGIS
 
