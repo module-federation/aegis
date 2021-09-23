@@ -3,9 +3,9 @@
 const WebSocketServer = require('ws').Server
 const nanoid = require('nanoid').nanoid
 const uplink = process.env.WEBSWITCH_UPLINK
-const heartb = process.env.WEBSWITCH_HEARTBEATMS || 30000
-const starts = Date.now()
-const uptime = () => Math.round(Math.abs((Date.now() - starts) / 1000 / 60))
+const heartb = process.env.WEBSWITCH_HEARTB || 30000
+const begins = Date.now()
+const uptime = () => Math.round(Math.abs((Date.now() - begins) / 1000 / 60))
 let messagesSent = 0
 
 /**
@@ -51,10 +51,6 @@ exports.attachServer = function (server) {
       })
     )
   }
-
-  // setInterval(() =>
-  //   server.clients.forEach(client => server.sendStatus(client), heartb)
-  // )
 
   server.on('connection', function (client) {
     client.webswitchId = nanoid()

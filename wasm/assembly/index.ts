@@ -1,4 +1,5 @@
 import * as aegis from "./aegis";
+import * as nn from "./neural-net";
 
 const key: i32 = 0;
 const val: i32 = 1;
@@ -75,8 +76,12 @@ export function websocketNotify(eventName: string, eventData: string): void {
   aegis.fireEvent("wasmWebNotify", "test");
 }
 
-export function websocketCallback(keys: string[], values: string[]): void {
+export function websocketCallback(
+  keys: string[],
+  values: string[]
+): string[][] {
   aegis.log("websocket callbacked fired");
+  return [["key2"], ["websocketCallback"]];
 }
 
 export function inboundPort(keys: string[], vals: string[]): string[][] {
@@ -140,8 +145,9 @@ export function onUpdate(keys: string[], vals: string[]): string[][] {
   return [["updatedByWasm", new Date(Date.now()).toUTCString()]];
 }
 
-export function onDelete(keys: string[], vals: string): void {
-  return;
+export function onDelete(keys: string[], vals: string): i8 {
+  // return negative to stop the action
+  return -1;
 }
 
 export function validate(keys: string[], vals: string[]): void {

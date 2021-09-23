@@ -7,9 +7,11 @@
 
 const WebSocket = require('ws')
 const dns = require('dns/promises')
+const nats = require('nats')
 
 const SERVICE_NAME = 'appmesh'
 const SERVICE_HOST = 'switch.app-mesh.net'
+const NETWORK_PLUG = process.env.NETWORK_MIDDLEWARE
 
 let fqdn = process.env.WEBSWITCH_SERVER || SERVICE_HOST
 let port = process.env.WEBSWITCH_PORT || SERVICE_NAME
@@ -82,12 +84,28 @@ exports.resetHost = function () {
  * Call this method to broadcast a message on the appmesh network
  * @param {*} event
  * @param {import('../../domain/observer').Observer} observer
+ * @param {*} networkMiddlewareAdapter
  * @returns
  */
-exports.publishEvent = async function (event, observer) {
+exports.publishEvent = async function (
+  event,
+  observer,
+  networkMiddlewareAdapter = null
+) {
   if (!event) return
   if (!hostAddress) hostAddress = await getHostAddress(fqdn)
   if (!servicePort) servicePort = await getServicePort(fqdn)
+
+  if (networkMiddlewareAdapter) {
+    await networkMiddlewareAdapter({
+      event,
+      observer,
+      hostAddress,
+      servicePort
+    })
+
+    return
+  }
 
   function publish () {
     if (!ws) {
