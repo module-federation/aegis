@@ -90,11 +90,10 @@ function makeChallengeRemoveFn (path) {
   }
 }
 
-async function getMaintainerEmail (backup) {
+async function getMaintainerEmail () {
   try {
     const email = await whois(domain).getEmail()
-
-    return email || backup
+    return email
   } catch (error) {
     console.warn(getMaintainerEmail.name, error)
   }
@@ -104,7 +103,7 @@ async function getMaintainerEmail (backup) {
  * Main
  */
 
-module.exports.provisionCert = async function (domain, filePath = null) {
+module.exports.provisionCert = async function (domain, email, filePath = null) {
   /* Init client */
   const client = new acme.Client({
     directoryUrl: acme.directory.letsencrypt.staging,
@@ -119,7 +118,7 @@ module.exports.provisionCert = async function (domain, filePath = null) {
   /* Certificate */
   const cert = await client.auto({
     csr,
-    email: await getMaintainerEmail(domain),
+    email: email || (await getMaintainerEmail(domain)),
     termsOfServiceAgreed: true,
     challengeCreateFn: makeChallengeCreateFn(filePath),
     challengeRemoveFn: makeChallengeRemoveFn(filePath)
