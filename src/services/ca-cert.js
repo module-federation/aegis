@@ -116,8 +116,6 @@ module.exports.provisionCert = async function (domain, filePath = null) {
     commonName: domain
   })
 
-  try {
-  }
   /* Certificate */
   const cert = await client.auto({
     csr,
