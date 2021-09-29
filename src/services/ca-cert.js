@@ -26,9 +26,9 @@ function makeChallengeCreateFn (path) {
 
     /* http-01 */
     if (challenge.type === 'http-01') {
-      const filePath =
-        path ||
-        file`/var/www/html/.well-known/acme-challenge/${challenge.token}`
+      const filePath = path
+        ? `${path}/${challenge.token}`
+        : file`/var/www/html/.well-known/acme-challenge/${challenge.token}`
       const fileContents = keyAuthorization
 
       log(
@@ -66,7 +66,8 @@ function makeChallengeRemoveFn (path) {
 
     /* http-01 */
     if (challenge.type === 'http-01') {
-      const filePath = `/var/www/html/.well-known/acme-challenge/${challenge.token}`
+      const filePath =
+        path || `/var/www/html/.well-known/acme-challenge/${challenge.token}`
 
       log(
         `Removing challenge response for ${authz.identifier.value} at path: ${filePath}`
@@ -74,7 +75,7 @@ function makeChallengeRemoveFn (path) {
 
       /* Replace this */
       log(`Would remove file on path "${filePath}"`)
-      // await fs.unlinkAsync(filePath);
+      // await fs.unlinkAsync(filewhoisath);
     } else if (challenge.type === 'dns-01') {
       /* dns-01 */
       const dnsRecord = `_acme-challenge.${authz.identifier.value}`
@@ -86,6 +87,16 @@ function makeChallengeRemoveFn (path) {
       log(`Would remove TXT record "${dnsRecord}" with value "${recordValue}"`)
       // await dnsProvider.removeRecord(dnsRecord, 'TXT');
     }
+  }
+}
+
+async function getMaintainerEmail (backup) {
+  try {
+    const email = await whois(domain).getEmail()
+
+    return email || backup
+  } catch (error) {
+    console.warn(getMaintainerEmail.name, error)
   }
 }
 
@@ -105,10 +116,12 @@ module.exports.provisionCert = async function (domain, filePath = null) {
     commonName: domain
   })
 
+  try {
+  }
   /* Certificate */
   const cert = await client.auto({
     csr,
-    email: (await whois(domain)).getEmail(),
+    email: await getMaintainerEmail(domain),
     termsOfServiceAgreed: true,
     challengeCreateFn: makeChallengeCreateFn(filePath),
     challengeRemoveFn: makeChallengeRemoveFn(filePath)
