@@ -1,31 +1,33 @@
-"use strict";
+'use strict'
 
-var assert = require("assert");
+var assert = require('assert')
 
-import ModelFactory from "../../src/domain";
+import ModelFactory from '../../src/domain'
+import { ObserverFactory } from '../../src/domain/observer'
+import DataSourceFactory from '../../src/domain/datasource-factory'
+const fn = x => console.log(x)
+const modelName = 'abc'
 
-describe("ModelFactory", function () {
-  describe("#createModel()", function () {
-    it("should register & create model", async function () {
+describe('ModelFactory', function () {
+  describe('#createModel()', function () {
+    it('should register & create model', async function () {
       ModelFactory.registerModel({
-        modelName: "ABC",
-        factory: ({ a }) => ({ a, b: "c" }),
-        endpoint: "abcs",
-        dependencies: {},
-      });
-      const spec = ModelFactory.getModelSpec("ABC");
-      assert.strictEqual(spec.modelName, "ABC");
-    });
-    // it("should have props from args", async function () {
-    //   ModelFactory.registerModel({
-    //     modelName: "ABC",
-    //     factory: ({ a }) => ({ a: "a", b: "c" }),
-    //     endpoint: "abcs",
-    //     dependencies: {},
-    //   });
+        modelName,
+        factory: () => ({ a: fn, b: 'c' }),
+        endpoint: 'abcs',
+        dependencies: { uuid: () => Math.random(), fn }
+      })
 
-    //   const model = await ModelFactory.createModel("ABC");
-    //   assert.strictEqual(model.a, "a");
-    // });
-  });
-});
+      const spec = ModelFactory.getModelSpec(modelName)
+      assert.equal(spec.modelName, modelName)
+
+      const model = await ModelFactory.createModel({
+        observer: ObserverFactory.getInstance(),
+        datasource: DataSourceFactory.getDataSource(modelName),
+        modelName,
+        b:'cccc'
+      })
+      console.log(model.a('model'))
+    })
+  })
+})

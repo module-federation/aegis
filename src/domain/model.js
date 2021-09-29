@@ -196,9 +196,9 @@ const Model = (() => {
       /**
        * Concurrency support: strategy is to merge with
        * last update vs blindly overwriting. Concomitant
-       * strategy is to add props dynamically as needed
-       * to minimize the potential for conflict. If
-       * updating same props, last one in wins.
+       * strategy is to add props dynamically and/or as
+       * `Symbol`'s to avoid conflict. If updating same 
+       * props, last one in wins.
        *
        * @param {*} changes - object containing updated props
        * @param {boolean} validate - run validation by default

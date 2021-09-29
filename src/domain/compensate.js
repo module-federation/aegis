@@ -51,6 +51,7 @@ export default async function compensate (model) {
 
               await breaker.invoke(model)
               clearTimeout(timerId)
+
               // success: remove from list
               return model.update({
                 [model.getKey('portFlow')]: arr.splice(0, index)

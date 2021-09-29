@@ -9,11 +9,11 @@ import makeArray from './util/make-array'
  * Implements distributed object cache. Find any model
  * referenced by a relation that is not registered in
  * the model factory and listen for remote CRUD events
- * from it. On receipt of the event, import the remote
- * modules for the model and its adapters/services, if
- * they haven't been already, then rehydrate and save
- * the model instance to the cache. Listen and forward
- * on-demand requests, i.e. cache misses.
+ * from it. On receipt of the event, import its remote
+ * modules if we don't already have them, then rehydrate
+ * and save the model instance to the cache. Subscribe
+ * to external and broadcast internal on-demand requests,
+ * i.e. cache misses.
  *
  * @param {{
  *  observer:import("./observer").Observer,
@@ -137,6 +137,7 @@ export default function DistributedCache ({
       await importRemoteCache(modelName)
     }
   }
+
   /**
    * Returns the callback run by the external event service.
    *
@@ -149,7 +150,6 @@ export default function DistributedCache ({
       try {
         const event = parse(message)
         const { eventName, modelName, model, modelId } = event
-
         console.debug('handle cache event', eventName)
 
         if (!model) {
@@ -159,14 +159,12 @@ export default function DistributedCache ({
         }
 
         if (await handleDelete(eventName, modelName, event)) return
-
         console.debug('check if we have the code for this object...')
         await streamRemoteModules(modelName)
 
         console.debug('unmarshal deserialized model(s)', modelName, modelId)
         const datasource = datasources.getDataSource(modelName)
         const hydratedModel = hydrateModel(model, datasource, modelName)
-
         await saveModel(hydratedModel, datasource, m => m.getId())
 
         if (route) await route({ ...event, model: hydratedModel })
@@ -287,7 +285,7 @@ export default function DistributedCache ({
    * @param {*} responseName
    * @param {*} internalName
    */
-  function receiveResponse (responseName, internalName) {
+  function receiveSearchResponse (responseName, internalName) {
     const callback = updateCache(async event =>
       observer.notify(internalName, event)
     )
@@ -295,12 +293,20 @@ export default function DistributedCache ({
   }
 
   /**
+   * Listen for events from remote systems and update local cache.
+   *
+   * @param {string} eventName
+   * @returns
+   */
+  const receiveCacheBroadcast = eventName => subscribe(eventName, updateCache())
+
+  /**
    * Listen for search request from remote system, search and send response.
    *
    * @param {*} requestName
    * @param {*} eventName
    */
-  function answerRequest (requestName, eventName) {
+  function answerSearchRequest (requestName, eventName) {
     subscribe(
       requestName,
       searchCache(async event => publish({ ...event, eventName }))
@@ -312,21 +318,13 @@ export default function DistributedCache ({
    * @param {*} internalEvent
    * @param {*} externalEvent
    */
-  function forwardRequest (internalEvent, externalEvent) {
+  function forwardSearchRequest (internalEvent, externalEvent) {
     observer.on(internalEvent, async event =>
       publish({ ...event, eventName: externalEvent })
     )
   }
 
-  /**
-   * Listen for CRUD events from remote systems and update local cache.
-   *
-   * @param {*} eventName
-   * @returns
-   */
-  const receiveCrudEvent = eventName => subscribe(eventName, updateCache())
-
-  const broadcastCrudEvent = eventName =>
+  const broadcastCacheEvent = eventName =>
     observer.on(eventName, async event => publish(event))
 
   /**
@@ -357,36 +355,37 @@ export default function DistributedCache ({
 
     // Forward requests to, handle responses from, remote models
     remoteModels.forEach(function (modelName) {
-      // listen for internal requests and forward
-      forwardRequest(
+      // listen for internal requests and forward externally
+      forwardSearchRequest(
         domainEvents.internalCacheRequest(modelName),
         domainEvents.externalCacheRequest(modelName)
       )
-
-      receiveResponse(
+      // listen for external responses to forwarded requests
+      receiveSearchResponse(
         domainEvents.externalCacheResponse(modelName),
         domainEvents.internalCacheResponse(modelName)
       )
+      // listen for CRUD events from related, external models
       ;[
-        // Subscribe to CRUD broadcasts from related, external models
         models.getEventName(models.EventTypes.UPDATE, modelName),
         models.getEventName(models.EventTypes.CREATE, modelName),
         models.getEventName(models.EventTypes.DELETE, modelName)
-      ].forEach(receiveCrudEvent)
+      ].forEach(receiveCacheBroadcast)
     })
 
-    // Listen for cache search requests from external models.
+    // Respond to search requests and broadcast CRUD events
     localModels.forEach(function (modelName) {
-      answerRequest(
+      // Listen for external requests and respond with search results
+      answerSearchRequest(
         domainEvents.externalCacheRequest(modelName),
         domainEvents.externalCacheResponse(modelName)
       )
+      // Listen for local CRUD events and forward externally
       ;[
-        // Subcribe to local CRUD events and broadcast externally
         models.getEventName(models.EventTypes.UPDATE, modelName),
         models.getEventName(models.EventTypes.CREATE, modelName),
         models.getEventName(models.EventTypes.DELETE, modelName)
-      ].forEach(broadcastCrudEvent)
+      ].forEach(broadcastCacheEvent)
     })
   }
 

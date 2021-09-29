@@ -1,45 +1,121 @@
-'use strict'
+/**
+ * Example of acme.Client.auto()
+ */
 
-const Greenlock = require('greenlock')
-const pkg = require('../../package.json')
-const whois = require('./whois.js').default
-const writeFile = require('./')
+const acme = require('acme-client')
+const { default: whois } = require('./whois')
 
-exports.provisionCACert = async function (domain) {
-  const email = process.env.DOMAIN_EMAIL || (await whois(domain)).getEmail()
+// const Promise = require('bluebird');
+// const fs = Promise.promisifyAll(require('fs'));
 
-  const greenlock = Greenlock.create({
-    // used for the ACME client User-Agent string as per RFC 8555 and RFC 7231
-    packageAgent: pkg.name + '/' + pkg.version,
-    // used as the contact for critical bug and security notices
-    // you need to have purchased the domain before this point
-    maintainerEmail: email,
+function log (m) {
+  process.stdout.write(`${m}\n`)
+}
 
-    // used for logging background events and errors
-    notify: function (ev, args) {
-      if ('error' === ev || 'warning' === ev) {
-        console.error(ev, args)
-        return
-      }
-      console.info(ev, args)
+/**
+ * Function used to satisfy an ACME challenge
+ *
+ * @param {object} authz Authorization object
+ * @param {object} challenge Selected challenge
+ * @param {string} keyAuthorization Authorization key
+ * @returns {Promise}
+ */
+function makeChallengeCreateFn (path) {
+  return async function challengeCreateFn (authz, challenge, keyAuthorization) {
+    log('Triggered challengeCreateFn()')
+
+    /* http-01 */
+    if (challenge.type === 'http-01') {
+      const filePath =
+        path ||
+        file`/var/www/html/.well-known/acme-challenge/${challenge.token}`
+      const fileContents = keyAuthorization
+
+      log(
+        `Creating challenge response for ${authz.identifier.value} at path: ${filePath}`
+      )
+
+      /* Replace this */
+      log(`Would write "${fileContents}" to path "${filePath}"`)
+      // await fs.writeFileAsync(filePath, fileContents);
+    } else if (challenge.type === 'dns-01') {
+      /* dns-01 */
+      const dnsRecord = `_acme-challenge.${authz.identifier.value}`
+      const recordValue = keyAuthorization
+
+      log(`Creating TXT record for ${authz.identifier.value}: ${dnsRecord}`)
+
+      /* Replace this */
+      log(`Would create TXT record "${dnsRecord}" with value "${recordValue}"`)
+      // await dnsProvider.createRecord(dnsRecord, 'TXT', recordValue);
     }
+  }
+}
+
+/**
+ * Function used to remove an ACME challenge response
+ *
+ * @param {object} authz Authorization object
+ * @param {object} challenge Selected challenge
+ * @param {string} keyAuthorization Authorization key
+ * @returns {Promise}
+ */
+function makeChallengeRemoveFn (path) {
+  return async function challengeRemoveFn (authz, challenge, keyAuthorization) {
+    log('Triggered challengeRemoveFn()')
+
+    /* http-01 */
+    if (challenge.type === 'http-01') {
+      const filePath = `/var/www/html/.well-known/acme-challenge/${challenge.token}`
+
+      log(
+        `Removing challenge response for ${authz.identifier.value} at path: ${filePath}`
+      )
+
+      /* Replace this */
+      log(`Would remove file on path "${filePath}"`)
+      // await fs.unlinkAsync(filePath);
+    } else if (challenge.type === 'dns-01') {
+      /* dns-01 */
+      const dnsRecord = `_acme-challenge.${authz.identifier.value}`
+      const recordValue = keyAuthorization
+
+      log(`Removing TXT record for ${authz.identifier.value}: ${dnsRecord}`)
+
+      /* Replace this */
+      log(`Would remove TXT record "${dnsRecord}" with value "${recordValue}"`)
+      // await dnsProvider.removeRecord(dnsRecord, 'TXT');
+    }
+  }
+}
+
+/**
+ * Main
+ */
+
+module.exports.provisionCert = async function (domain,  = null) {
+  /* Init client */
+  const client = new acme.Client({
+    directoryUrl: acme.directory.letsencrypt.staging,
+    accountKey: await acme.forge.createPrivateKey()
   })
 
-  greenlock
-    .get({ servername: domain })
-    .then(async function (result) {
-      if (!result) {
-        // certificate is not on the approved list
-        return null
-      }
+  /* Create CSR */
+  const [key, csr] = await acme.forge.createCsr({
+    commonName: domain
+  })
 
-      const fullchain = result.pems.cert + '\n' + result.pems.chain + '\n'
-      const privkey = result.pems.privkey
+  /* Certificate */
+  const cert = await client.auto({
+    csr,
+    email: (await whois(domain)).getEmail(),
+    termsOfServiceAgreed: true,
+    challengeCreateFn: makeChallengeCreateFn(filePath),
+    challengeRemoveFn: makeChallengeRemoveFn(filePath)
+  })
 
-      await callback(options, { privkey, fullchain })
-    })
-    .catch(function (e) {
-      // something went wrong in the renew process
-      console.error(e)
-    })
+  /* Done */
+  log(`CSR:\n${csr.toString()}`)
+  log(`Private key:\n${key.toString()}`)
+  log(`Certificate:\n${cert.toString()}`)
 }

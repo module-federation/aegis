@@ -1,3 +1,18 @@
+/* Copyright 2016 Google Inc. All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+==============================================================================*/
+
 /**
  * A node in a neural network. Each node has a state
  * (total input, output, and their respectively derivatives) which changes
@@ -7,26 +22,28 @@ export class Node {
   id: string;
   /** List of input links. */
   inputLinks: Link[] = [];
-  bias: f64 = 0.1;
+  bias: number = 0.1;
   /** List of output links. */
   outputs: Link[] = [];
   totalInput: number;
   output: number;
   /** Error derivative with respect to this node's output. */
-  outputDer: f64 = 0;
+  outputDer: number = 0;
   /** Error derivative with respect to this node's total input. */
-  inputDer: f64 = 0;
+  inputDer: number = 0;
   /**
-   * Accumulated error deaccInputDerrivative with respect to this node's total input since
+   * Accumulated error derivative with respect to this node's total input since
    * the last update. This derivative equals dE/db where b is the node's
    * bias term.
    */
-  accInputDer: f64 = 0;
+  accInputDer: number = 0;
   /**
-   * Number of accumulated err. derivatives with respect to the total input
+   * Number of
+   *
+   * accumulated err. derivatives with respect to the total input
    * since the last update.
    */
-  numAccumulatedDers: f64 = 0;
+  numAccumulatedDers: number = 0;
   /** Activation function that takes total input and returns node's output */
   activation: ActivationFunction;
 
@@ -57,7 +74,7 @@ export class Node {
 /**
  * An error function and its derivative.
  */
-export interface ErrorFunction {
+export interface IErrorFunction {
   error: (output: number, target: number) => number;
   der: (output: number, target: number) => number;
 }
@@ -69,14 +86,14 @@ export interface ActivationFunction {
 }
 
 /** Function that computes a penalty cost for a given weight in the network. */
-export interface RegularizationFunction {
-  output: (weight: number) => number;
-  der: (weight: number) => number;
+export interface IRegularizationFunction {
+  output(weight: number): number;
+  der(weight: number): number;
 }
 
 /** Built-in error functions */
 export class Errors {
-  public static SQUARE: ErrorFunction = {
+  public static SQUARE: IErrorFunction = {
     error: (output: number, target: number) =>
       0.5 * Math.pow(output - target, 2),
     der: (output: number, target: number) => output - target,
@@ -84,35 +101,35 @@ export class Errors {
 }
 
 /** Polyfill for TANH */
-(Math as any).tanh =
-  (Math as any).tanh ||
-  function (x) {
-    if (x === Infinity) {
-      return 1;
-    } else if (x === -Infinity) {
-      return -1;
-    } else {
-      let e2x = Math.exp(2 * x);
-      return (e2x - 1) / (e2x + 1);
-    }
-  };
+// (Math as any).tanh =
+//   (Math as any).tanh ||
+function tanh(x: number): number {
+  if (x === Infinity) {
+    return 1;
+  } else if (x === -Infinity) {
+    return -1;
+  } else {
+    let e2x = Math.exp(2 * x);
+    return (e2x - 1) / (e2x + 1);
+  }
+}
 
 /** Built-in activation functions */
 export class Activations {
   public static TANH: ActivationFunction = {
-    output: (x) => (Math as any).tanh(x),
-    der: (x) => {
+    output: (x: number) => (Math as any).tanh(x),
+    der: (x: number) => {
       let output = Activations.TANH.output(x);
       return 1 - output * output;
     },
   };
   public static RELU: ActivationFunction = {
-    output: (x) => Math.max(0, x),
-    der: (x) => (x <= 0 ? 0 : 1),
+    output: (x: number) => Math.max(0, x),
+    der: (x: number) => (x <= 0 ? 0 : 1),
   };
   public static SIGMOID: ActivationFunction = {
-    output: (x) => 1 / (1 + Math.exp(-x)),
-    der: (x) => {
+    output: (x: number) => 1 / (1 + Math.exp(-x)),
+    der: (x: number) => {
       let output = Activations.SIGMOID.output(x);
       return output * (1 - output);
     },
@@ -123,15 +140,24 @@ export class Activations {
   };
 }
 
+Activations.SIGMOID.output(d
+  
+  );
+
 /** Build-in regularization functions */
 export class RegularizationFunction {
-  public static L1: RegularizationFunction = {
+  public static L1: IRegularizationFunction = {
     output: (w) => Math.abs(w),
     der: (w) => (w < 0 ? -1 : w > 0 ? 1 : 0),
   };
-  public static L2: RegularizationFunction = {
-    output: (w) => 0.5 * w * w,
-    der: (w) => w,
+  public static L2: IRegularizationFunction;
+  L2 = {
+    output(w: number) {
+      return 0.5 * w * w;
+    },
+    der(w: number) {
+      return w;
+    },
   };
 }
 
@@ -145,15 +171,15 @@ export class Link {
   id: string;
   source: Node;
   dest: Node;
-  weight: f64 = Math.random() - 0.5;
+  weight: number = Math.random() - 0.5;
   isDead: bool = false;
   /** Error derivative with respect to this weight. */
-  errorDer: f64 = 0;
+  errorDer: number = 0;
   /** Accumulated error derivative since the last update. */
-  accErrorDer: f64 = 0;
+  accErrorDer: number = 0;
   /** Number of accumulated derivatives since the last update. */
-  numAccumulatedDers: f64 = 0;
-  regularization: RegularizationFunction;
+  numAccumulatedDers: number = 0;
+  regularization: IRegularizationFunction;
 
   /**
    * Constructs a link in the neural network initialized with random weight.
@@ -166,7 +192,7 @@ export class Link {
   constructor(
     source: Node,
     dest: Node,
-    regularization: RegularizationFunction,
+    regularization: IRegularizationFunction,
     initZero?: boolean
   ) {
     this.id = source.id + "-" + dest.id;
@@ -196,7 +222,7 @@ export function buildNetwork(
   networkShape: number[],
   activation: ActivationFunction,
   outputActivation: ActivationFunction,
-  regularization: RegularizationFunction,
+  regularization: IRegularizationFunction,
   inputIds: string[],
   initZero?: boolean
 ): Node[][] {
@@ -281,7 +307,7 @@ export function forwardProp(network: Node[][], inputs: number[]): number {
 export function backProp(
   network: Node[][],
   target: number,
-  errorFunc: ErrorFunction
+  errorFunc: IErrorFunction
 ): void {
   // The output node is a special case. We use the user-defined error
   // function for the derivative.
@@ -371,7 +397,7 @@ export function updateWeights(
             link.regularization === RegularizationFunction.L1 &&
             link.weight * newLinkWeight < 0
           ) {
-            // The weight crossed 0 due to the regularization term. Set it to 0.
+            // The weight crossed 0 due to the reg ularization term. Set it to 0.
             link.weight = 0;
             link.isDead = true;
           } else {
