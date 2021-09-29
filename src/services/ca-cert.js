@@ -93,7 +93,7 @@ function makeChallengeRemoveFn (path) {
  * Main
  */
 
-module.exports.provisionCert = async function (domain,  = null) {
+module.exports.provisionCert = async function (domain, filePath = null) {
   /* Init client */
   const client = new acme.Client({
     directoryUrl: acme.directory.letsencrypt.staging,
