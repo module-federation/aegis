@@ -67,7 +67,8 @@ function makeChallengeRemoveFn (path) {
     /* http-01 */
     if (challenge.type === 'http-01') {
       const filePath =
-        path || `/var/www/html/.well-known/acme-challenge/${challenge.token}`
+        `${path}/${challenge.token}` ||
+        `/var/www/html/.well-known/acme-challenge/${challenge.token}`
 
       log(
         `Removing challenge response for ${authz.identifier.value} at path: ${filePath}`
@@ -98,10 +99,6 @@ async function getMaintainerEmail () {
     console.warn(getMaintainerEmail.name, error)
   }
 }
-
-/**
- * Main
- */
 
 module.exports.provisionCert = async function (domain, email, filePath = null) {
   /* Init client */
