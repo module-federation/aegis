@@ -1,16 +1,9 @@
-/**
- * Example of acme.Client.auto()
- */
-
 const acme = require('acme-client')
-const { default: whois } = require('./whois')
+const path = require('path')
+const fs = require('fs')
 
-// const Promise = require('bluebird');
-// const fs = Promise.promisifyAll(require('fs'));
-
-function log (m) {
-  process.stdout.write(`${m}\n`)
-}
+const challengePath = (webroot, token) =>
+  `${webroot}/.well-known/acme-challenge/${token}`
 
 /**
  * Function used to satisfy an ACME challenge
@@ -20,34 +13,35 @@ function log (m) {
  * @param {string} keyAuthorization Authorization key
  * @returns {Promise}
  */
-function makeChallengeCreateFn (path) {
+function makeChallengeCreateFn (path, dnsProvider) {
   return async function challengeCreateFn (authz, challenge, keyAuthorization) {
-    log('Triggered challengeCreateFn()')
+    console.log('Triggered challengeCreateFn()')
 
     /* http-01 */
     if (challenge.type === 'http-01') {
-      const filePath = path
-        ? `${path}/${challenge.token}`
-        : file`/var/www/html/.well-known/acme-challenge/${challenge.token}`
-      const fileContents = keyAuthorization
+      const filePath = challengePath(path, challenge.token)
 
-      log(
+      console.log(
         `Creating challenge response for ${authz.identifier.value} at path: ${filePath}`
       )
 
       /* Replace this */
-      log(`Would write "${fileContents}" to path "${filePath}"`)
-      // await fs.writeFileAsync(filePath, fileContents);
+      console.log(`writing "${keyAuthorization}" to path "${filePath}"`)
+      fs.writeFileSync(filePath, keyAuthorization)
     } else if (challenge.type === 'dns-01') {
       /* dns-01 */
       const dnsRecord = `_acme-challenge.${authz.identifier.value}`
-      const recordValue = keyAuthorization
 
-      log(`Creating TXT record for ${authz.identifier.value}: ${dnsRecord}`)
+      console.log(
+        `Creating TXT record for ${authz.identifier.value}: ${dnsRecord}`
+      )
 
       /* Replace this */
-      log(`Would create TXT record "${dnsRecord}" with value "${recordValue}"`)
-      // await dnsProvider.createRecord(dnsRecord, 'TXT', recordValue);
+      console.log(
+        `Would create TXT record "${dnsRecord}" with value "${keyAuthorization}"`
+      )
+      const provider = await dnsProvider()
+      await provider.createRecord(dnsRecord, 'TXT', keyAuthorization)
     }
   }
 }
@@ -60,69 +54,86 @@ function makeChallengeCreateFn (path) {
  * @param {string} keyAuthorization Authorization key
  * @returns {Promise}
  */
-function makeChallengeRemoveFn (path) {
+function makeChallengeRemoveFn (path, dnsProvider) {
   return async function challengeRemoveFn (authz, challenge, keyAuthorization) {
-    log('Triggered challengeRemoveFn()')
+    console.log('Triggered challengeRemoveFn()')
 
     /* http-01 */
     if (challenge.type === 'http-01') {
-      const filePath =
-        `${path}/${challenge.token}` ||
-        `/var/www/html/.well-known/acme-challenge/${challenge.token}`
+      const filePath = challengePath(path, challenge.token)
 
-      log(
+      console.log(
         `Removing challenge response for ${authz.identifier.value} at path: ${filePath}`
       )
 
       /* Replace this */
-      log(`Would remove file on path "${filePath}"`)
-      // await fs.unlinkAsync(filewhoisath);
+      console.log(`Would remove file on path "${filePath}"`)
+      fs.unlinkSync(filePath)
     } else if (challenge.type === 'dns-01') {
       /* dns-01 */
       const dnsRecord = `_acme-challenge.${authz.identifier.value}`
-      const recordValue = keyAuthorization
 
-      log(`Removing TXT record for ${authz.identifier.value}: ${dnsRecord}`)
+      console.log(
+        `Removing TXT record for ${authz.identifier.value}: ${dnsRecord}`
+      )
 
       /* Replace this */
-      log(`Would remove TXT record "${dnsRecord}" with value "${recordValue}"`)
-      // await dnsProvider.removeRecord(dnsRecord, 'TXT');
+      console.log(
+        `Would remove TXT record "${dnsRecord}" with value "${keyAuthorization}"`
+      )
+      const provider = await dnsProvider()
+      await provider.removeRecord(dnsRecord, 'TXT')
     }
   }
 }
 
-async function getMaintainerEmail () {
-  try {
-    const email = await whois(domain).getEmail()
-    return email
-  } catch (error) {
-    console.warn(getMaintainerEmail.name, error)
+const directoryUrl = !/PROD/.test(process.env.NODE_ENV)
+  ? acme.directory.letsencrypt.staging
+  : acme.directory.letsencrypt.production
+
+/**
+ *
+ * @param {import('./dns/dns-provider').DnsProvider} dnsProvider
+ * @param {function(domain):{getEmail:function()}} whois
+ * @returns {function(domain,email?,challengePath?):Promise<string>}
+ */
+module.exports.initCertificateService = function (dnsProvider, whois) {
+  /**
+   * Provision/renew CA cert
+   * @param {string} domain the domain name
+   * @param {*} [email] domain admin email address
+   * @param {*} [challengePath] path from webroot to challenge data
+   */
+  return async function provisionCert (
+    domain,
+    email = `${domain}.admin@gmail.com`,
+    challengePath = path.resolve(process.cwd(), 'public')
+  ) {
+    /* Init client */
+    const client = new acme.Client({
+      directoryUrl,
+      accountKey: await acme.forge.createPrivateKey()
+    })
+
+    /* Create CSR */
+    const [key, csr] = await acme.forge.createCsr({
+      commonName: domain
+    })
+
+    /* Certificate */
+    const cert = await client.auto({
+      csr,
+      email: email || (await whois(domain).getEmail()),
+      termsOfServiceAgreed: true,
+      challengeCreateFn: makeChallengeCreateFn(challengePath, dnsProvider),
+      challengeRemoveFn: makeChallengeRemoveFn(challengePath, dnsProvider)
+    })
+
+    /* Done */
+    console.log(`CSR:\n${csr.toString()}`)
+    console.log(`Private key:\n${key.toString()}`)
+    console.log(`Certificate:\n${cert.toString()}`)
+
+    return { key, cert, csr }
   }
-}
-
-module.exports.provisionCert = async function (domain, email, filePath = null) {
-  /* Init client */
-  const client = new acme.Client({
-    directoryUrl: acme.directory.letsencrypt.staging,
-    accountKey: await acme.forge.createPrivateKey()
-  })
-
-  /* Create CSR */
-  const [key, csr] = await acme.forge.createCsr({
-    commonName: domain
-  })
-
-  /* Certificate */
-  const cert = await client.auto({
-    csr,
-    email: email || (await getMaintainerEmail(domain)),
-    termsOfServiceAgreed: true,
-    challengeCreateFn: makeChallengeCreateFn(filePath),
-    challengeRemoveFn: makeChallengeRemoveFn(filePath)
-  })
-
-  /* Done */
-  log(`CSR:\n${csr.toString()}`)
-  log(`Private key:\n${key.toString()}`)
-  log(`Certificate:\n${cert.toString()}`)
 }

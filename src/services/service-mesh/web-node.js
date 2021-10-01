@@ -7,11 +7,9 @@
 
 const WebSocket = require('ws')
 const dns = require('dns/promises')
-const nats = require('nats')
 
 const SERVICE_NAME = 'appmesh'
 const SERVICE_HOST = 'switch.app-mesh.net'
-const NETWORK_PLUG = process.env.NETWORK_MIDDLEWARE
 
 let fqdn = process.env.WEBSWITCH_SERVER || SERVICE_HOST
 let port = process.env.WEBSWITCH_PORT || SERVICE_NAME
