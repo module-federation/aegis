@@ -118,7 +118,7 @@ export function runFibonacci(keys: string[], vals: string[]): string[][] {
 }
 
 export function getPorts(keys: string[], vals: string[]): string[][] {
-  aegis.log("getPorts called  " + keys[0] + ":" + vals[0]);
+  //aegis.log("getPorts called  " + keys[0] + ":" + vals[0]);
   const ports = new Array<string[]>(2);
   ports[0] = ["notify", "Event,0,outbound"];
   ports[1] = ["listen", "Event,0,outbound"];
