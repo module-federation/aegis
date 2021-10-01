@@ -26,8 +26,6 @@ function makeChallengeCreateFn (path, dnsProvider) {
       )
       /* Replace this */
       console.log(`writing "${keyAuthorization}" to path "${filePath}"`)
-      fs.mkdirSync('public/.well-known', 0744)
-      fs.mkdirSync('public/.well-known/acme-challenge', 0744)
       fs.writeFileSync(filePath, keyAuthorization)
       const data = fs.readFileSync(filePath, 'utf-8')
       console.log('file exists', data.toString())
