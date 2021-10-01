@@ -82,7 +82,7 @@ function makeChallengeRemoveFn (path, dnsProvider) {
   }
 }
 
-const directoryUrl = !/PROD/.test(process.env.NODE_ENV)
+const directoryUrl = !/prod/.test(process.env.NODE_ENV)
   ? acme.directory.letsencrypt.staging
   : acme.directory.letsencrypt.production
 
@@ -102,7 +102,7 @@ module.exports.initCertificateService = function (dnsProvider, whois) {
   return async function provisionCert (
     domain,
     email = `${domain}.admin@gmail.com`,
-    challengePath = path.resolve(process.cwd(), 'public')
+    challengePath = '/var/www/html/'
   ) {
     /* Init client */
     const client = new acme.Client({
