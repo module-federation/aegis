@@ -24,10 +24,13 @@ function makeChallengeCreateFn (path, dnsProvider) {
       console.log(
         `Creating challenge response for ${authz.identifier.value} at path: ${filePath}`
       )
-
       /* Replace this */
       console.log(`writing "${keyAuthorization}" to path "${filePath}"`)
+      fs.mkdirSync('public/.well-known', 0744)
+      fs.mkdirSync('public/.well-known/acme-challenge', 0744)
       fs.writeFileSync(filePath, keyAuthorization)
+      const data = fs.readFileSync(filePath, 'utf-8')
+      console.log('file exists', data.toString())
     } else if (challenge.type === 'dns-01') {
       /* dns-01 */
       const dnsRecord = `_acme-challenge.${authz.identifier.value}`
@@ -61,21 +64,15 @@ function makeChallengeRemoveFn (path, dnsProvider) {
     /* http-01 */
     if (challenge.type === 'http-01') {
       const filePath = challengePath(path, challenge.token)
-
       console.log(
         `Removing challenge response for ${authz.identifier.value} at path: ${filePath}`
       )
 
       /* Replace this */
-      console.log(`Would remove file on path "${filePath}"`)
       fs.unlinkSync(filePath)
     } else if (challenge.type === 'dns-01') {
       /* dns-01 */
       const dnsRecord = `_acme-challenge.${authz.identifier.value}`
-
-      console.log(
-        `Removing TXT record for ${authz.identifier.value}: ${dnsRecord}`
-      )
 
       /* Replace this */
       console.log(
