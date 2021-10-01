@@ -68,7 +68,7 @@ export function websocketListen(keys: string[], values: string[]): void {
 }
 
 export function websocketNotify(eventName: string, eventData: string): void {
-  aegis.log("wasm invoked websocket notify " + eventName + " " + eventData);
+  //aegis.log("wasm invoked websocket notify " + eventName + " " + eventData);
   aegis.fireEvent("wasmWebListen", "test");
 }
 
