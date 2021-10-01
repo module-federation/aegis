@@ -73,14 +73,14 @@
  (data (i32.const 1784) "\01\00\00\00\08\00\00\00k\00e\00y\002")
  (data (i32.const 1804) ",")
  (data (i32.const 1816) "\01\00\00\00\12\00\00\00f\00i\00b\00o\00n\00a\00c\00c\00i")
- (data (i32.const 1852) "\1c")
- (data (i32.const 1864) "\01\00\00\00\08\00\00\00k\00e\00y\003")
- (data (i32.const 1884) ",")
- (data (i32.const 1896) "\01\00\00\00\0e\00\00\00d\00e\00f\00a\00u\00l\00t")
+ (data (i32.const 1852) ",")
+ (data (i32.const 1864) "\01\00\00\00\0e\00\00\00d\00e\00f\00a\00u\00l\00t")
+ (data (i32.const 1900) "\1c")
+ (data (i32.const 1912) "\01\00\00\00\08\00\00\00k\00e\00y\003")
  (data (i32.const 1932) "<")
  (data (i32.const 1944) "\01\00\00\00\1e\00\00\00a\00l\00w\00a\00y\00s\00T\00h\00i\00s\00V\00a\00l\00u\00e")
  (data (i32.const 1996) "\1c")
- (data (i32.const 2012) "\08\00\00\00P\07\00\00\a0\07")
+ (data (i32.const 2012) "\08\00\00\00\80\07\00\00\a0\07")
  (data (i32.const 2028) ",")
  (data (i32.const 2040) "\01\00\00\00\16\00\00\00t\00e\00s\00t\00 \00c\00a\00l\00l\00e\00d")
  (data (i32.const 2076) "<")
@@ -7989,11 +7989,11 @@
    i32.const 1824
    call $~lib/array/Array<~lib/string/String>#__uset
    global.get $~lib/memory/__stack_pointer
-   i32.const 1872
+   i32.const 1824
    i32.store offset=16
    local.get $2
    i32.const 1
-   i32.const 1872
+   i32.const 1824
    local.get $0
    local.get $1
    call $assembly/index/findVal
@@ -8085,7 +8085,7 @@
     i32.const 0
     call $~lib/array/Array<~lib/string/String>#__get
    else
-    i32.const 1904
+    i32.const 1872
    end
    local.tee $0
    i32.store offset=8
@@ -8108,7 +8108,7 @@
     i32.const 1
     call $~lib/array/Array<~lib/string/String>#__get
    else
-    i32.const 1904
+    i32.const 1872
    end
    local.tee $3
    i32.store offset=12

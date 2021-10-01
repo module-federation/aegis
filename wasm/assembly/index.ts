@@ -35,7 +35,7 @@ export function modelFactory(keys: string[], values: string[]): string[][] {
   const arr = new Array<string[]>(3);
   arr[0] = ["key1", findVal("key1", keys, values)];
   arr[1] = ["key2", findVal("key2", keys, values)];
-  arr[2] = ["fibonacci", findVal("key3", keys, values)];
+  arr[2] = ["fibonacci", findVal("fibonacci", keys, values)];
   return arr;
 }
 
