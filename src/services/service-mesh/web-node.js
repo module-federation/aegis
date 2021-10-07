@@ -116,11 +116,15 @@ exports.publishEvent = async function (
           await observer.notify(eventData.eventName, eventData)
         }
 
+        if (eventData.proto === 'webswitch' && eventData.pid) {
+          ws.send(JSON.stringify({ proto: 'webswitch', pid: process.pid }))
+        }
+        z
         if (uplinkCallback) uplinkCallback(message)
       })
 
       ws.on('open', function () {
-        ws.send(JSON.stringify('webswitch'))
+        ws.send(JSON.stringify({ proto: 'webswitch', pid: process.pid }))
       })
 
       ws.on('error', function (error) {
