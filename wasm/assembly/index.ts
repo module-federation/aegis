@@ -21,14 +21,12 @@ export function getModelSpec(): ModelSpec {
 export const ArrayOfStrings_ID = idof<string[]>();
 
 function findVal(key: string, keys: string[], vals: string[]): string {
-  let val: string = "unknown";
   for (let i: i32 = 0; i < keys.length; i++) {
     if (keys[i] == key) {
-      val = vals[i];
-      break;
+      return vals[i].toString();
     }
   }
-  return val;
+  return "";
 }
 
 export function modelFactory(keys: string[], values: string[]): string[][] {
@@ -67,9 +65,14 @@ export function websocketListen(keys: string[], values: string[]): void {
   aegis.addListener("wasmWebListen", "websocketCallback");
 }
 
-export function websocketNotify(eventName: string, eventData: string): void {
+export function websocketNotify(keys: string[], vals: string[]): void {
   //aegis.log("wasm invoked websocket notify " + eventName + " " + eventData);
-  aegis.fireEvent("wasmWebListen", "test");
+  const eventName = findVal("eventName", keys, vals);
+  const modelId = findVal("modelId", keys, vals);
+  const eventData = new Array<string[]>(2);
+  eventData[0] = ["eventName", eventName];
+  eventData[1] = ["modelId", modelId];
+  aegis.fireEvent("wasmWebListen", eventData);
 }
 
 export function websocketCallback(
@@ -84,7 +87,7 @@ export function inboundPort(keys: string[], vals: string[]): string[][] {
   aegis.log("inbound port called" + keys[0] + " " + vals[0]);
   const outval = new Array<string[]>(1);
   outval[0] = ["key1", "val1"];
-  aegis.invokePort("task1", "task data", "task1Event", "", "");
+  aegis.invokePort("task1", "task data", "task1Event", 1, 2);
   return outval;
 }
 
@@ -143,11 +146,11 @@ export function onUpdate(keys: string[], vals: string[]): string[][] {
 
 export function onDelete(keys: string[], vals: string[]): i8 {
   // return negative to stop the action
-  aegis.log("onDelete called " + keys[0] + ":" + vals[0]);
+  aegis.log("onDelete called");
   return -1;
 }
 
 export function validate(keys: string[], vals: string[]): void {
-  aegis.log("onUpdate called " + keys[0] + ":" + vals[0]);
+  aegis.log("onUpdate called");
   return;
 }

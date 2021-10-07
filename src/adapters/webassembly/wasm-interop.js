@@ -47,6 +47,11 @@ exports.WasmInterop = function (module) {
   }
 
   /**
+   * Call the exported function {@link wasmFn} with
+   * two string arrays, one for keys {@link keyPtrs},
+   * the other for values {@link valPtrs} of a
+   * deconstructed object, or a number {@link num}
+   * or neither.
    *
    * @param {{
    *  fn:function(number[],number[]),
@@ -63,7 +68,7 @@ exports.WasmInterop = function (module) {
     num = null
   }) {
     if (typeof num === 'number') {
-      return wasmFn(num)
+      return __pin(wasmFn(num))
     }
 
     if (keyPtrs.length > 0) {
@@ -75,7 +80,13 @@ exports.WasmInterop = function (module) {
       valPtrs.forEach(__unpin)
 
       // Provide input as two arrays of strings, one for keys, other for values
-      return __pin(wasmFn(keyArrayPtr, valArrayPtr))
+      const ptr = __pin(wasmFn(keyArrayPtr, valArrayPtr))
+
+      // release arrays
+      __unpin(keyArrayPtr)
+      __unpin(valArrayPtr)
+
+      return ptr
     }
     return __pin(wasmFn())
   }
@@ -85,22 +96,30 @@ exports.WasmInterop = function (module) {
    * @param {number} ptr - pointer to the address of the array of string arrays
    * @returns {Readonly<{object}>}
    */
-  function constructObject (ptr) {
-    if (!ptr) return
+  function constructObject (ptr, unpin = true) {
+    if (!ptr) {
+      console.warn(constructObject.name, 'null pointer')
+      return {}
+    }
 
-    const obj = __getArray(ptr)
-      .map(inner => __getArray(inner))
-      .map(tuple => ({ [__getString(tuple[0])]: __getString(tuple[1]) }))
-      .reduce((prop1, prop2) => ({ ...prop1, ...prop2 }))
+    try {
+      const obj = __getArray(ptr)
+        .map(inner => __getArray(inner))
+        .map(tuple => ({ [__getString(tuple[0])]: __getString(tuple[1]) }))
+        .reduce((prop1, prop2) => ({ ...prop1, ...prop2 }))
 
-    const immutableClone = Object.freeze({ ...obj })
-    __unpin(ptr)
-    return immutableClone
+      const immutableClone = Object.freeze({ ...obj })
+      !unpin || __unpin(ptr)
+      return immutableClone
+    } catch (e) {
+      console.error(constructObject.name, e.message)
+      return {}
+    }
   }
 
   /**
    * Resolve and check argument types, where `resolve` means
-   * invoke `args` if it is a function, then check the return value.
+   * invoke {@link args} if it is a function, then check the return value.
    * @param {function()} fn - the exported function to call
    * @param {object|number|function} args - object or number
    * ...or a function that returns an object or number
@@ -115,10 +134,10 @@ exports.WasmInterop = function (module) {
     const resolved = typeof args === 'function' ? args() : args
     if (resolved) {
       if (typeof resolved === 'string') {
-        return { [`${resolved.split(' ').join('-')}`]: resolved }
+        return { key: resolved }
       }
       if (!['number', 'object'].includes(typeof resolved)) {
-        console.warn(this.callWasmFunction.name, 'invalid argument', args)
+        console.warn(resolveArguments.name, 'invalid argument', args)
         return null
       }
       return resolved
@@ -127,12 +146,12 @@ exports.WasmInterop = function (module) {
     return {}
   }
 
-  return {
+  return Object.freeze({
     /**
      * For any function that accepts and returns an object,
      * we parse the input object into two string arrays, one for keys,
      * the other for values, and pass them to the exported function as
-     * arguments. The exported function returns a multidemnsional array
+     * arguments. The exported function returns a multidimensional array
      * of key-value pairs, which we convert to an object and return.
      *
      * We can handle objects this way or declare a custom class for each
@@ -143,7 +162,7 @@ exports.WasmInterop = function (module) {
      * - for the moment, we only support strings and numbers in the input
      * and output objects. Otherwise, a custom parser is required.
      *
-     * - `args` can also be a number, in which case, so is the return value.
+     * - {@link args} can also be a number, in which case, so is the return value.
      *
      * @param {function()} fn exported wasm function
      * @param {object|number} [args] object or number, see above
@@ -220,6 +239,8 @@ exports.WasmInterop = function (module) {
           }
         })
         .reduce((p, c) => ({ ...p, ...c }))
-    }
-  }
+    },
+
+    constructObject: ptr => constructObject(ptr, false)
+  })
 }

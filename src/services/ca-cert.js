@@ -102,7 +102,7 @@ module.exports.initCertificateService = function (dnsProvider, whois) {
   return async function provisionCert (
     domain,
     email = `${domain}.admin@gmail.com`,
-    challengePath = '/var/www/html/'
+    challengePath = '/var/www/html'
   ) {
     /* Init client */
     const client = new acme.Client({
