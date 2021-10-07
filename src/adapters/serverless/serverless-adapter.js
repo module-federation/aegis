@@ -15,8 +15,9 @@ let invokeController
  * @returns {Promise<{ServerlessAdapter:function(...args):Promise<function()>}>}
  * call `invokeController` to parse the input and call the controller
  */
-exports.makeServerlessAdapter = function (parsers) {
+exports.makeServerlessAdapter = function (getParsers) {
   return async function (service, provider) {
+    const parsers = getParsers()
     /**
      *
      * @param {"request"|"response"} type

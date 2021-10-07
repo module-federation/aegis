@@ -3,7 +3,7 @@ import * as localParsers from './parsers'
 
 const getRemoteParsers = async () => import('aegis-services/parsers')
 
-export const parsers = async function () {
+export const getParsers = async function () {
   try {
     const remoteParsers = await getRemoteParsers()
     if (!remoteParsers) return localParsers
@@ -14,4 +14,4 @@ export const parsers = async function () {
   return localParsers
 }
 
-export const ServerlessAdapter = makeServerlessAdapter(parsers())
+export const ServerlessAdapter = () => makeServerlessAdapter(getParsers)                             

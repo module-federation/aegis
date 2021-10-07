@@ -119,7 +119,7 @@ exports.publishEvent = async function (
         if (eventData.proto === 'webswitch' && eventData.pid) {
           ws.send(JSON.stringify({ proto: 'webswitch', pid: process.pid }))
         }
-        z
+
         if (uplinkCallback) uplinkCallback(message)
       })
 
