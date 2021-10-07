@@ -69,9 +69,11 @@ export function websocketNotify(keys: string[], vals: string[]): void {
   //aegis.log("wasm invoked websocket notify " + eventName + " " + eventData);
   const eventName = findVal("eventName", keys, vals);
   const modelId = findVal("modelId", keys, vals);
-  const eventData = new Array<string[]>(2);
-  eventData[0] = ["eventName", eventName];
-  eventData[1] = ["modelId", modelId];
+  const eventData = new Array<string[]>(3);
+  aegis.log("wasm called with args " + eventName + " " + modelId);
+  eventData[0] = ["attribute", "value"];
+  eventData[1] = ["eventName", eventName];
+  eventData[2] = ["modelId", modelId];
   aegis.fireEvent("wasmWebListen", eventData);
 }
 
