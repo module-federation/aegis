@@ -13,6 +13,12 @@ let messagesSent = 0
  * @param {WebSocketServer} server
  */
 exports.attachServer = function (server) {
+  function sameHost (client) {
+    const serverHost = server.options.host
+    const clientHost = client._socket.address().address
+    return serverHost.includes(clientHost)
+  }
+
   /**
    *
    * @param {object} data
@@ -23,8 +29,7 @@ exports.attachServer = function (server) {
       if (
         client.OPEN &&
         client.webswitchId !== sender.webswitchId &&
-        (client.processId !== process.pid ||
-          client._socket.address().address.contains(server.options.host))
+        (client.processId !== process.pid || !sameHost(client))
       ) {
         console.debug('sending to client', client.webswitchId)
         client.send(data)
@@ -83,7 +88,6 @@ exports.attachServer = function (server) {
       try {
         const msg = JSON.parse(message.toString())
 
-        console.debug('received client msg:', msg)
         if (client.webswitchInit) {
           if (msg == 'status') {
             return server.sendStatus(client)
@@ -94,13 +98,14 @@ exports.attachServer = function (server) {
 
         if (msg.proto === 'webswitch' && msg.pid) {
           client.processId = msg.pid
+          client.webswitchInit = true
           client.send(JSON.stringify({ proto: 'webswitch', pid: process.pid }))
+
           console.log('client initialized', {
             id: client.webswitchId,
             pid: client.processId,
             address: client._socket.address()
           })
-          client.webswitchInit = true
           return
         }
       } catch (e) {
