@@ -285,9 +285,9 @@
  (export "ModelSpec#constructor" (func $export:assembly/index/ModelSpec#constructor))
  (export "modelFactory" (func $export:assembly/index/modelFactory))
  (export "test" (func $export:assembly/index/test))
- (export "websocketListen" (func $export:assembly/index/websocketListen))
- (export "websocketNotify" (func $export:assembly/index/websocketNotify))
- (export "websocketCallback" (func $export:assembly/index/websocketCallback))
+ (export "serviceMeshListen" (func $export:assembly/index/serviceMeshListen))
+ (export "serviceMeshNotify" (func $export:assembly/index/serviceMeshNotify))
+ (export "serviceMeshCallback" (func $export:assembly/index/serviceMeshCallback))
  (export "inboundPort" (func $export:assembly/index/inboundPort))
  (export "runFibonacci" (func $export:assembly/index/runFibonacci))
  (export "getPorts" (func $export:assembly/index/getPorts))
@@ -8208,7 +8208,7 @@
   call $~lib/builtins/abort
   unreachable
  )
- (func $export:assembly/index/websocketListen (param $0 i32) (param $1 i32)
+ (func $export:assembly/index/serviceMeshListen (param $0 i32) (param $1 i32)
   (local $2 i32)
   global.get $~lib/memory/__stack_pointer
   i32.const 8
@@ -8316,7 +8316,7 @@
   call $~lib/builtins/abort
   unreachable
  )
- (func $export:assembly/index/websocketNotify (param $0 i32) (param $1 i32)
+ (func $export:assembly/index/serviceMeshNotify (param $0 i32) (param $1 i32)
   (local $2 i32)
   (local $3 i32)
   global.get $~lib/memory/__stack_pointer
@@ -8501,7 +8501,7 @@
   call $~lib/builtins/abort
   unreachable
  )
- (func $export:assembly/index/websocketCallback (param $0 i32) (param $1 i32) (result i32)
+ (func $export:assembly/index/serviceMeshCallback (param $0 i32) (param $1 i32) (result i32)
   (local $2 i32)
   global.get $~lib/memory/__stack_pointer
   i32.const 8

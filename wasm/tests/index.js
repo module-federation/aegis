@@ -4,7 +4,7 @@ const WasmInterop = require('../../src/adapters/webassembly/wasm-interop')
 const wrapper = require('../../src/adapters/webassembly/wasm-decorators')
 
 require('..').then(async wasmInstance => {
-  const { onUpdate, websocketNotify, runFibonacci } = wasmInstance.exports
+  const { onUpdate, serviceMeshNotify, runFibonacci } = wasmInstance.exports
 
   //console.log(Object.entries(wasmInstance.exports))
 
@@ -18,6 +18,6 @@ require('..').then(async wasmInstance => {
   })
   console.log(model)
   adapter.callWasmFunction(onUpdate, model)
-  adapter.callWasmFunction(websocketNotify, 'testing')
+  adapter.callWasmFunction(serviceMeshNotify, 'testing')
   console.log(adapter.callWasmFunction(runFibonacci, model))
 })

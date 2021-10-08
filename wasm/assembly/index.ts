@@ -50,22 +50,22 @@ export function test(keys: string[], values: string[]): string[][] {
 
 export function getCommands(): string[][] {
   const commands = new Array<string[]>(7);
-  commands[0] = ["websocketListen", "tell wasm module to begin listening"];
-  commands[1] = ["websocketNotify", "tell wasm module to send broadcast"];
+  commands[0] = ["serviceMeshListen", "tell wasm module to begin listening"];
+  commands[1] = ["serviceMeshNotify", "tell wasm module to send broadcast"];
   commands[2] = ["runFibonacci", "remote calculate fibonacci for a number"];
-  commands[3] = ["websocketCallback", "subscribed event fired"];
+  commands[3] = ["serviceMeshCallback", "subscribed event fired"];
   commands[4] = ["fibonacci", "calculate fibonacci for a number"];
   commands[5] = ["deployModule", "request deployment of a module"];
   commands[6] = ["commandEx", "command example"];
   return commands;
 }
 
-export function websocketListen(keys: string[], values: string[]): void {
-  aegis.log("websocketListen" + keys[0] + ":" + values[0]);
-  aegis.addListener("wasmWebListen", "websocketCallback");
+export function serviceMeshListen(keys: string[], values: string[]): void {
+  aegis.log("serviceMeshListen" + keys[0] + ":" + values[0]);
+  aegis.addListener("wasmWebListen", "serviceMeshCallback");
 }
 
-export function websocketNotify(keys: string[], vals: string[]): void {
+export function serviceMeshNotify(keys: string[], vals: string[]): void {
   //aegis.log("wasm invoked websocket notify " + eventName + " " + eventData);
   const eventName = findVal("eventName", keys, vals);
   const modelId = findVal("modelId", keys, vals);
@@ -77,12 +77,12 @@ export function websocketNotify(keys: string[], vals: string[]): void {
   aegis.fireEvent("wasmWebListen", eventData);
 }
 
-export function websocketCallback(
+export function serviceMeshCallback(
   keys: string[],
   values: string[]
 ): string[][] {
   aegis.log("websocket callbacked fired" + keys[0] + " " + values[0]);
-  return [["key1", "websocketCallback"]];
+  return [["key1", "serviceMeshCallback"]];
 }
 
 export function inboundPort(keys: string[], vals: string[]): string[][] {

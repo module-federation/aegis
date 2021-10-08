@@ -200,9 +200,9 @@
  (export "ModelSpec#constructor" (func $export:assembly/index/ModelSpec#constructor))
  (export "modelFactory" (func $export:assembly/index/modelFactory))
  (export "test" (func $export:assembly/index/test))
- (export "websocketListen" (func $export:assembly/index/websocketListen))
- (export "websocketNotify" (func $export:assembly/index/websocketNotify))
- (export "websocketCallback" (func $export:assembly/index/websocketCallback))
+ (export "serviceMeshListen" (func $export:assembly/index/serviceMeshListen))
+ (export "serviceMeshNotify" (func $export:assembly/index/serviceMeshNotify))
+ (export "serviceMeshCallback" (func $export:assembly/index/serviceMeshCallback))
  (export "inboundPort" (func $export:assembly/index/inboundPort))
  (export "runFibonacci" (func $export:assembly/index/runFibonacci))
  (export "getPorts" (func $export:assembly/index/getPorts))
@@ -8802,7 +8802,7 @@
   global.set $~lib/memory/__stack_pointer
   local.get $3
  )
- (func $assembly/index/websocketListen (param $0 i32) (param $1 i32)
+ (func $assembly/index/serviceMeshListen (param $0 i32) (param $1 i32)
   (local $2 i32)
   global.get $~lib/memory/__stack_pointer
   i32.const 28
@@ -8886,7 +8886,7 @@
   i32.add
   global.set $~lib/memory/__stack_pointer
  )
- (func $assembly/index/websocketNotify (param $0 i32) (param $1 i32)
+ (func $assembly/index/serviceMeshNotify (param $0 i32) (param $1 i32)
   (local $2 i32)
   (local $3 i32)
   (local $4 i32)
@@ -9062,7 +9062,7 @@
   i32.add
   global.set $~lib/memory/__stack_pointer
  )
- (func $assembly/index/websocketCallback (param $0 i32) (param $1 i32) (result i32)
+ (func $assembly/index/serviceMeshCallback (param $0 i32) (param $1 i32) (result i32)
   (local $2 i32)
   (local $3 i32)
   (local $4 i32)
@@ -11196,7 +11196,7 @@
   global.set $~lib/memory/__stack_pointer
   local.get $2
  )
- (func $export:assembly/index/websocketListen (param $0 i32) (param $1 i32)
+ (func $export:assembly/index/serviceMeshListen (param $0 i32) (param $1 i32)
   global.get $~lib/memory/__stack_pointer
   i32.const 8
   i32.sub
@@ -11210,13 +11210,13 @@
   i32.store offset=4
   local.get $0
   local.get $1
-  call $assembly/index/websocketListen
+  call $assembly/index/serviceMeshListen
   global.get $~lib/memory/__stack_pointer
   i32.const 8
   i32.add
   global.set $~lib/memory/__stack_pointer
  )
- (func $export:assembly/index/websocketNotify (param $0 i32) (param $1 i32)
+ (func $export:assembly/index/serviceMeshNotify (param $0 i32) (param $1 i32)
   global.get $~lib/memory/__stack_pointer
   i32.const 8
   i32.sub
@@ -11230,13 +11230,13 @@
   i32.store offset=4
   local.get $0
   local.get $1
-  call $assembly/index/websocketNotify
+  call $assembly/index/serviceMeshNotify
   global.get $~lib/memory/__stack_pointer
   i32.const 8
   i32.add
   global.set $~lib/memory/__stack_pointer
  )
- (func $export:assembly/index/websocketCallback (param $0 i32) (param $1 i32) (result i32)
+ (func $export:assembly/index/serviceMeshCallback (param $0 i32) (param $1 i32) (result i32)
   (local $2 i32)
   global.get $~lib/memory/__stack_pointer
   i32.const 8
@@ -11251,7 +11251,7 @@
   i32.store offset=4
   local.get $0
   local.get $1
-  call $assembly/index/websocketCallback
+  call $assembly/index/serviceMeshCallback
   local.set $2
   global.get $~lib/memory/__stack_pointer
   i32.const 8

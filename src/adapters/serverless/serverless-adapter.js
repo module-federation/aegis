@@ -17,7 +17,8 @@ let invokeController
  */
 exports.makeServerlessAdapter = function (getParsers) {
   return async function (service, provider) {
-    const parsers = getParsers()
+    // get remote parsers from aegis-services repo
+    const parsers = await getParsers()
     /**
      *
      * @param {"request"|"response"} type
