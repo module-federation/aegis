@@ -13,12 +13,6 @@ let messagesSent = 0
  * @param {WebSocketServer} server
  */
 exports.attachServer = function (server) {
-  function sameHost (client) {
-    const serverHost = server.options.host
-    const clientHost = client._socket.address().address
-    return serverHost.includes(clientHost)
-  }
-
   /**
    *
    * @param {object} data
@@ -29,7 +23,7 @@ exports.attachServer = function (server) {
       if (
         client.OPEN &&
         client.webswitchId !== sender.webswitchId &&
-        (client.processId !== process.pid || !sameHost(client))
+        client.processId !== sender.processId
       ) {
         console.debug('sending to client', client.webswitchId)
         client.send(data)
@@ -67,11 +61,6 @@ exports.attachServer = function (server) {
 
   server.on('connection', function (client) {
     client.webswitchId = nanoid()
-
-    console.log('client connected', {
-      id: client.webswitchId,
-      address: client._socket.address()
-    })
 
     client.addListener('ping', function () {
       client.pong()

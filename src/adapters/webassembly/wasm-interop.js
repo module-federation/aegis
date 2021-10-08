@@ -97,10 +97,8 @@ exports.WasmInterop = function (module) {
    * @returns {Readonly<{object}>}
    */
   function constructObject (ptr, unpin = true) {
-    if (!ptr) {
-      console.warn(constructObject.name, 'null pointer')
-      return {}
-    }
+    console.debug(constructObject.name, ptr)
+    if (!ptr) return {}
 
     try {
       const obj = __getArray(ptr)
@@ -209,7 +207,12 @@ exports.WasmInterop = function (module) {
           if (cmdFn) {
             return {
               [command]: {
-                command: model => this.callWasmFunction(cmdFn, model),
+                command: model =>
+                  this.callWasmFunction(cmdFn, {
+                    ...model,
+                    modelId: model.getId(),
+                    modelName: model.getName()
+                  }),
                 acl: ['read', 'write']
               }
             }

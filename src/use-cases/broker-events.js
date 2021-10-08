@@ -3,7 +3,7 @@
 import DistributedCache from '../domain/distributed-cache'
 import EventBus from '../services/event-bus'
 import ServiceMesh from '../services/service-mesh/web-node'
-import { forwardPortEvents } from './forward-events'
+import { forwardEvents } from './forward-events'
 import uuid from '../domain/util/uuid'
 
 const BROADCAST = process.env.TOPIC_BROADCAST || 'broadcastChannel'
@@ -19,7 +19,6 @@ const useSvcMesh = /true/i.test(process.env.WEBSWITCH_ENABLED)
  * @param {import("../domain/datasource-factory")} datasources
  */
 export default function brokerEvents (observer, datasources, models) {
-  //observer.on(/.*/, async event => webswitch(event, observer));
   const svcPub = event => ServiceMesh.publishEvent(event, observer)
   const busPub = event => EventBus.notify(BROADCAST, JSON.stringify(event))
   const svcSub = (eventName, callback) => observer.on(eventName, callback)
@@ -49,11 +48,11 @@ export default function brokerEvents (observer, datasources, models) {
     broker.start()
   }
 
-  forwardPortEvents({ observer, models, publish, subscribe })
+  forwardEvents({ observer, models, publish, subscribe })
 
   // register wasm comm events
-  observer.on('wasmWebNotify', eventData =>
-    publish('wasmWebsocketEvent', eventData)
+  observer.on('wasmWebListen', eventData =>
+    publish({ ...eventData, eventName: 'wasmMeshEvent' })
   )
 
   /**

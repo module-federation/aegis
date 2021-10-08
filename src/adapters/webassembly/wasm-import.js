@@ -85,7 +85,7 @@ export async function importWebAssembly (remoteEntry, type = 'model') {
           return
         }
 
-        observer.on(eventName, eventData =>
+        observer.on(wasm.exports.__getString(eventName), eventData =>
           adapter.callWasmFunction(fn, eventData)
         )
       },
@@ -99,7 +99,7 @@ export async function importWebAssembly (remoteEntry, type = 'model') {
         const adapter = WasmInterop(wasm)
         const event = wasm.exports.__getString(eventName)
         const data = adapter.constructObject(eventData)
-        console.log('wasm called js to emit an event', event, data)
+        console.debug('wasm called js to emit an event: ', event, 'data:', data)
         observer.notify(event, data)
       },
 
