@@ -92,7 +92,7 @@ const directoryUrl = !/prod/.test(process.env.NODE_ENV)
  * @param {function(domain):{getEmail:function()}} whois
  * @returns {function(domain,email?,challengePath?):Promise<string>}
  */
-module.exports.initCertificateService = function (dnsProvider, whois) {
+exports.initCertificateService = function (dnsProvider, whois) {
   /**
    * Provision/renew CA cert
    * @param {string} domain the domain name
