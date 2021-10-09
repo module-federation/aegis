@@ -51,9 +51,9 @@ export default function brokerEvents (observer, datasources, models) {
   forwardEvents({ observer, models, publish, subscribe })
 
   // register wasm comm events
-  observer.on('wasmWebListen', eventData =>
-    publish({ ...eventData, eventName: 'wasmMeshEvent' })
-  )
+  // observer.on('wasmWebListen2', eventData =>
+  //   publish({ ...eventData, eventName: 'wasmMeshEvent' })
+  // )
 
   /**
    * This is the cluster cache sync listener - when data is
