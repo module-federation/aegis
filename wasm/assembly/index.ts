@@ -82,7 +82,6 @@ export function serviceMeshCallback(
   values: string[]
 ): string[][] {
   aegis.log("websocket callback fired: " + keys[0] + " " + values[0]);
-  aegis.fireEvent("fromCallback", [["key1", "serviceMeshCallback"]]);
   return [["key1", "serviceMeshCallback"]];
 }
 
