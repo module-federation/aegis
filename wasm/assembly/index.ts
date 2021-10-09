@@ -60,8 +60,8 @@ export function getCommands(): string[][] {
   return commands;
 }
 
-export function serviceMeshListen(keys: string[], values: string[]): void {
-  aegis.log("serviceMeshListen" + keys[0] + ":" + values[0]);
+export function serviceMeshListen(keys: string[], vals: string[]): void {
+  aegis.log("serviceMeshListen: " + keys[0] + ": " + vals[0]);
   aegis.addListener("wasmWebListen", "serviceMeshCallback");
 }
 
@@ -70,8 +70,8 @@ export function serviceMeshNotify(keys: string[], vals: string[]): void {
   const eventName = findVal("eventName", keys, vals);
   const modelId = findVal("modelId", keys, vals);
   const eventData = new Array<string[]>(3);
-  aegis.log("wasm called with args " + eventName + " " + modelId);
-  eventData[0] = ["attribute", "value"];
+  aegis.log("wasm called with args: " + eventName + ": " + modelId);
+  eventData[0] = [keys[0], vals[0]];
   eventData[1] = ["eventName", eventName];
   eventData[2] = ["modelId", modelId];
   aegis.fireEvent("wasmWebListen", eventData);
@@ -79,14 +79,14 @@ export function serviceMeshNotify(keys: string[], vals: string[]): void {
 
 export function serviceMeshCallback(
   keys: string[],
-  values: string[]
+  vals: string[]
 ): string[][] {
-  aegis.log("websocket callback fired: " + keys[0] + " " + values[0]);
+  aegis.log("websocket callback fired: " + keys[0] + ": " + vals[0]);
   return [["key1", "serviceMeshCallback"]];
 }
 
 export function inboundPort(keys: string[], vals: string[]): string[][] {
-  aegis.log("inbound port called: " + keys[0] + " " + vals[0]);
+  aegis.log("inbound port called: " + keys[0] + ": " + vals[0]);
   const outval = new Array<string[]>(1);
   outval[0] = ["key1", "val1"];
   aegis.invokePort("task1", "task data", "task1Event", 1, 2);

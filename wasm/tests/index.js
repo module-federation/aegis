@@ -6,7 +6,7 @@ const wrapper = require('../../src/adapters/webassembly/wasm-decorators')
 require('..').then(async wasmInstance => {
   const { onUpdate, serviceMeshNotify, runFibonacci } = wasmInstance.exports
 
-  //console.log(Object.entries(wasmInstance.exports))
+  console.log(Object.entries(wasmInstance.exports))
 
   const adapter = WasmInterop(wasmInstance)
 

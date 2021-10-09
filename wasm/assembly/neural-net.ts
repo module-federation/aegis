@@ -140,9 +140,7 @@ export class Activations {
   };
 }
 
-Activations.SIGMOID.output(d
-  
-  );
+Activations.SIGMOID.output(d);
 
 /** Build-in regularization functions */
 export class RegularizationFunction {
@@ -151,11 +149,11 @@ export class RegularizationFunction {
     der: (w) => (w < 0 ? -1 : w > 0 ? 1 : 0),
   };
   public static L2: IRegularizationFunction;
-  L2 = {
-    output(w: number) {
+  L2: IRegularizationFunction = {
+    output: (w: number) => {
       return 0.5 * w * w;
     },
-    der(w: number) {
+    der: (w: number): number => {
       return w;
     },
   };

@@ -13,7 +13,7 @@ async function importWebAssembly () {
 
   //const response = await fetchWasm(remoteEntry)
   const wasm = await loader.instantiate(
-    fs.readFileSync(__dirname + '/build/optimized.wasm'),
+    fs.readFileSync(__dirname + '/break-to-return.wasm'),  //'/build/optimized.wasm'),
     {
       aegis: {
         log: ptr => console.log(wasm.exports.__getString(ptr)),
@@ -107,6 +107,6 @@ async function importWebAssembly () {
 }
 
 module.exports = importWebAssembly().then(instance => {
-  instance.exports._start() // allow imports access to memory before starting
+  //instance.exports._start() // allow imports access to memory before starting
   return instance
 })
