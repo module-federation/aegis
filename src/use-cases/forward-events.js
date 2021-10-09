@@ -60,7 +60,7 @@ export function forwardEvents ({ observer, models, publish, subscribe }) {
     console.info(
       'listen for unhandled consumer events\n',
       consumerEvents,
-      'forward unhandled producer events\n',
+      '\nforward unhandled producer events\n',
       producerEvents
     )
 

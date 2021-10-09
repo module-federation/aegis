@@ -81,12 +81,13 @@ export function serviceMeshCallback(
   keys: string[],
   values: string[]
 ): string[][] {
-  aegis.log("websocket callbacked fired" + keys[0] + " " + values[0]);
+  aegis.log("websocket callback fired: " + keys[0] + " " + values[0]);
+  aegis.fireEvent("wasmWebListen", [["key1", "serviceMeshCallback"]]);
   return [["key1", "serviceMeshCallback"]];
 }
 
 export function inboundPort(keys: string[], vals: string[]): string[][] {
-  aegis.log("inbound port called" + keys[0] + " " + vals[0]);
+  aegis.log("inbound port called: " + keys[0] + " " + vals[0]);
   const outval = new Array<string[]>(1);
   outval[0] = ["key1", "val1"];
   aegis.invokePort("task1", "task data", "task1Event", 1, 2);
