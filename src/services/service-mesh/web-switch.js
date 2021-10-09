@@ -23,7 +23,7 @@ exports.attachServer = function (server) {
       if (
         client.OPEN &&
         client.webswitchId !== sender.webswitchId &&
-        client.processId !== sender.processId
+        client.processId !== process.pid
       ) {
         console.debug('sending to client', client.webswitchId)
         client.send(data)

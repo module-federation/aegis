@@ -6,8 +6,6 @@ function roughSizeOfObject (...objects) {
   objects.forEach(object => {
     const objectList = []
     const stack = [object]
-    console.log(objects)
-    console.log(stack.length)
     while (stack.length) {
       var value = stack.pop()
 
