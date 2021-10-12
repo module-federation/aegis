@@ -86,7 +86,7 @@ export async function importWebAssembly (remoteEntry, type = 'model') {
         }
 
         observer.on(wasm.exports.__getString(eventName), eventData =>
-          adapter.callWasmFunction(fn, eventData)
+          adapter.callWasmFunction(fn, adapter.constructObject(eventData))
         )
       },
 

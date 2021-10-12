@@ -13,7 +13,7 @@ async function importWebAssembly () {
 
   //const response = await fetchWasm(remoteEntry)
   const wasm = await loader.instantiate(
-    fs.readFileSync(__dirname + '/break-to-return.wasm'),  //'/build/optimized.wasm'),
+    fs.readFileSync(__dirname + '/break-to-return.wasm'), //'/build/optimized.wasm'),
     {
       aegis: {
         log: ptr => console.log(wasm.exports.__getString(ptr)),
@@ -59,17 +59,19 @@ async function importWebAssembly () {
          */
         addListener (eventName, callbackName) {
           console.debug('websocket listen invoked')
-          //const adapter = WasmInterop(wasm)
-          // observer.on(eventName, eventData => {
-          //   const fn = adapter.findWasmFunction(
-          //     wasm.exports.__getString(callbackName)
-          //   )
-          //   if (typeof fn === 'function') {
-          //     adapter.callWasmFunction(fn, eventData, false)
-          //     return
-          //   }
-          //   console.log('no command found')
-          // })
+          const adapter = WasmInterop(wasm)
+
+          observer.on(eventName, eventData => {
+            const fn = adapter.findWasmFunction(
+              wasm.exports.__getString(callbackName)
+            )
+
+            if (typeof fn === 'function') {
+              adapter.callWasmFunction(fn, eventData, false)
+              return
+            }
+            console.log('no command found')
+          })
         },
 
         /**
@@ -78,14 +80,11 @@ async function importWebAssembly () {
          * @param {string} eventData
          */
         fireEvent (eventName, eventData) {
-          console.log(
-            'wasm called js to emit an event',
-            wasm.exports.__getString(eventName)
-          )
-          // observer.notify(
-          //   wasm.exports.__getString(eventName),
-          //   wasm.exports.__getString(eventData)
-          // )
+          const adapter = WasmInterop(wasm)
+          const name = adapter.__getString(eventName)
+          const data = adapter.constructObject(eventData)
+          console.log('wasm called js to emit an event + ', name, ': ', data)
+          observer.notify(name, data)
         },
 
         /**
