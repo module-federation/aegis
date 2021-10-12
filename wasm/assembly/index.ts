@@ -70,15 +70,15 @@ export function serviceMeshListen(keys: string[], vals: string[]): void {
 }
 
 export function serviceMeshNotify(keys: string[], vals: string[]): void {
-  //aegis.log("wasm invoked websocket notify " + eventName + " " + eventData);
   const modelName = findVal("modelName", keys, vals);
   const modelId = findVal("modelId", keys, vals);
+  const eventName = findVal("eventName", keys, vals);
   const eventData = new Array<string[]>(3);
-  aegis.log("wasm called with args: " + modelName + ": " + modelId);
+  aegis.log("wasm notify called with args: " + modelName + ": " + modelId);
   eventData[0] = [keys[0], vals[0]];
   eventData[1] = ["modelName", modelName];
   eventData[2] = ["modelId", modelId];
-  aegis.fireEvent("wasmWebListen", eventData);
+  aegis.fireEvent(eventName || "wasmWebListen", eventData);
 }
 
 export function serviceMeshCallback(
@@ -117,7 +117,6 @@ export function runFibonacci(keys: string[], vals: string[]): string[][] {
   ret[1] = ["time", (Date.now() - startTime).toString()];
   return ret;
 }
-
 
 export function portEx(keys: string[], vals: string[]): void {
   aegis.log("portEx calling port wasmTestPort" + keys[0] + ":" + vals[0]);

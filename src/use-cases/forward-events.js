@@ -1,5 +1,5 @@
 'use strict'
-import domainEvents from '../domain/domain-events'
+import { listEventsToForward } from '../domain/domain-events'
 
 function listUnhandledPortEvents (specs) {
   const cons = specs
@@ -66,37 +66,29 @@ export function forwardEvents ({ observer, models, publish, subscribe }) {
 
     consumerEvents.forEach(consumerEvent =>
       subscribe(consumerEvent, eventData =>
-        observer.notify(eventData.eventName, eventData)
+        observer.notify(consumerEvent, eventData || 'no data')
       )
     )
 
     producerEvents.forEach(producerEvent =>
       observer.on(producerEvent, eventData =>
-        publish(eventData.eventName, eventData)
+        publish(producerEvent, eventData || 'no data')
       )
     )
   }
 
   /**
-   * Forward all domain events for maximum observability.
+   * Forward domain events for maximum observability.
    */
   function forwardDomainEvents () {
-    Object.keys(domainEvents).forEach(k =>
-      observer.on(new RegExp(k), eventData =>
-        publish(eventData.eventName, eventData)
+    listEventsToForward().forEach(eventName =>
+      observer.on(new RegExp(`^${eventName}`), eventData =>
+        publish(eventName, eventData || 'no data')
       )
     )
   }
 
-  try {
-    forwardPortEvents()
-  } catch (e) {
-    console.error(forwardEvents.name, e.message)
-  }
+  forwardPortEvents()
 
-  try {
-    forwardDomainEvents()
-  } catch (e) {
-    console.error(forwardEvents.name, e.message)
-  }
+  forwardDomainEvents()
 }

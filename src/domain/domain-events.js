@@ -16,7 +16,20 @@ const domainEvents = {
   portTimeout: (model, port) => `portTimeout_${port}_${model.getName()}`,
   portRetryFailed: (model, port) =>
     `portRetryFailed_${port}_${model.getName()}`,
-  portRetryWorked: (model, port) => `portRetryWorked_${port}_${model.getName()}`
+  portRetryWorked: (model, port) =>
+    `portRetryWorked_${port}_${model.getName()}`,
+  wasmPublishEvent: modelName => `wasmPublishEvent_${modelName}`
+}
+
+const doNotFwd = [
+  domainEvents.internalCacheRequest.name,
+  domainEvents.externalCacheRequest.name,
+  domainEvents.externalCacheResponse.name,
+  domainEvents.internalCacheResponse.name
+]
+
+export function listEventsToForward () {
+  return Object.keys(domainEvents).filter(k => !doNotFwd.includes(k))
 }
 
 export default domainEvents
