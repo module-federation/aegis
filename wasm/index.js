@@ -60,13 +60,15 @@ async function importWebAssembly () {
         addListener (eventName, callbackName) {
           console.debug('websocket listen invoked')
           const adapter = WasmInterop(wasm)
+          const fn = adapter.findWasmFunction(
+            wasm.exports.__getString(callbackName)
+          )
 
-          observer.on(eventName, eventData => {
-            const fn = adapter.findWasmFunction(
-              wasm.exports.__getString(callbackName)
-            )
+        
 
             if (typeof fn === 'function') {
+              observer.on(eventName, eventData => {
+
               adapter.callWasmFunction(fn, eventData, false)
               return
             }
