@@ -1,9 +1,15 @@
 'use strict'
 
+import makeArray from './util/make-array'
 import { relationType } from './make-relations'
 import { importRemoteCache } from '.'
-import domainEvents from './domain-events'
-import makeArray from './util/make-array'
+import domainEvents from '../domain/domain-events'
+const {
+  internalCacheRequest,
+  internalCacheResponse,
+  externalCacheRequest,
+  externalCacheResponse
+} = domainEvents
 
 /**
  * Implements distributed object cache. Find any model
@@ -258,6 +264,7 @@ export default function DistributedCache ({
    */
   function searchCache (route) {
     return async function (message) {
+      console.debug(searchCache.name, message)
       try {
         const event = parse(message)
 
@@ -357,13 +364,13 @@ export default function DistributedCache ({
     remoteModels.forEach(function (modelName) {
       // listen for internal requests and forward externally
       forwardSearchRequest(
-        domainEvents.internalCacheRequest(modelName),
-        domainEvents.externalCacheRequest(modelName)
+        internalCacheRequest(modelName),
+        externalCacheRequest(modelName)
       )
       // listen for external responses to forwarded requests
       receiveSearchResponse(
-        domainEvents.externalCacheResponse(modelName),
-        domainEvents.internalCacheResponse(modelName)
+        externalCacheResponse(modelName),
+        internalCacheResponse(modelName)
       )
       // listen for CRUD events from related, external models
       ;[
@@ -377,8 +384,8 @@ export default function DistributedCache ({
     localModels.forEach(function (modelName) {
       // Listen for external requests and respond with search results
       answerSearchRequest(
-        domainEvents.externalCacheRequest(modelName),
-        domainEvents.externalCacheResponse(modelName)
+        externalCacheRequest(modelName),
+        externalCacheResponse(modelName)
       )
       // Listen for local CRUD events and forward externally
       ;[

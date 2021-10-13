@@ -1,6 +1,6 @@
 'use strict'
-
 import domainEvents from './domain-events'
+const { internalCacheRequest, internalCacheResponse } = domainEvents
 
 const maxwait = process.env.REMOTE_OBJECT_MAXWAIT || 10000
 
@@ -72,8 +72,8 @@ async function updateForeignKeys (model, event, relation, ds) {
  * @returns {Promise<import(".").Model>} source model
  */
 export function requireRemoteObject (model, relation, observer, ...args) {
-  const request = domainEvents.internalCacheRequest(relation.modelName)
-  const response = domainEvents.internalCacheResponse(relation.modelName)
+  const request = internalCacheRequest(relation.modelName)
+  const response = internalCacheResponse(relation.modelName)
   const execute = resolve => event => resolve(event)
 
   const requestData = {
