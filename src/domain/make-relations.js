@@ -74,7 +74,10 @@ async function updateForeignKeys (model, event, relation, ds) {
 export function requireRemoteObject (model, relation, observer, ...args) {
   const request = internalCacheRequest(relation.modelName)
   const response = internalCacheResponse(relation.modelName)
-  const execute = resolve => event => resolve(event)
+  const execute = resolve => {
+    event => resolve(event)
+    console.log('resolve')
+  }
 
   const requestData = {
     relation,
