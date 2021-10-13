@@ -41,7 +41,7 @@ export function forwardEvents ({ observer, models, publish, subscribe }) {
 
   /**
    * The idea is to forward local port events to
-   * remote instances, in the event they are
+   * remote instances, in the event the ports are
    * participants in a distributed workflow.
    *
    * This enables transparent integration of local and
@@ -81,7 +81,9 @@ export function forwardEvents ({ observer, models, publish, subscribe }) {
    * Forward domain events for maximum observability.
    */
   function forwardDomainEvents () {
-    listEventsToForward().forEach(eventName =>
+    const fwdEvents = listEventsToForward()
+    console.info('domain events to fwd', fwdEvents)
+    fwdEvents.forEach(eventName =>
       observer.on(new RegExp(`^${eventName}`), eventData =>
         publish(eventName, eventData || 'no data')
       )

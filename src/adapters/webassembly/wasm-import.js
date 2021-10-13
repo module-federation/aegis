@@ -32,42 +32,6 @@ export async function importWebAssembly (remoteEntry, type = 'model') {
       log: ptr => console.log(wasm.exports.__getString(ptr)),
 
       /**
-       * invoke a port on the model instance
-       * @todo finish impl
-       * @param {string} portName - name of the port
-       * @param {string} portConsumerEvent - value of `port.consumesEvent`
-       * @param {string} portData - data to send through the port
-       * @param {string} cb - name of callback called when data arrives on port
-       * @param {string} [undo] - name of callback called when downstream transaction fails
-       */
-      invokePort (portName, portConsumerEvent, portData, cb, undo) {
-        console.log(
-          'js invokePort called by wasm',
-          wasm.exports.__getString(portName),
-          wasm.exports.__getString(portConsumerEvent),
-          wasm.exports.__getString(portData),
-          wasm.exports.__getFunction(cb),
-          wasm.exports.__getFunction(undo)
-        )
-      },
-
-      /**
-       * invoke a method on the model instance
-       * @param {string} methodName
-       * @param {string} methodData
-       * @param {string} moduleName
-       */
-      invokeMethod (methodName, methodData, model) {
-        const adapter = WasmInterop(wasm)
-        console.log(
-          'js invokeMethod called by wasm',
-          wasm.exports.__getString(methodName),
-          wasm.exports.__getString(methodData),
-          adapter.constructObject(model)
-        )
-      },
-
-      /**
        * listen for event `eventName` and call a wasm exported
        * function by the name of `callbackName`.
        *
@@ -99,7 +63,7 @@ export async function importWebAssembly (remoteEntry, type = 'model') {
         const adapter = WasmInterop(wasm)
         const event = wasm.exports.__getString(eventName)
         const data = adapter.constructObject(eventData)
-        console.debug('wasm called js to emit an event: ', event, 'data:', data)
+        console.debug('wasm called js to emit an event:', event, 'data:', data)
         observer.notify(event, data)
       },
 

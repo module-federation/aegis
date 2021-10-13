@@ -21,7 +21,6 @@
  (type $f64_i32_=>_i32 (func (param f64 i32) (result i32)))
  (type $i32_i64_i32_i32_=>_none (func (param i32 i64 i32 i32)))
  (type $i32_i64_=>_none (func (param i32 i64)))
- (type $i32_i32_i32_f64_f64_=>_none (func (param i32 i32 i32 f64 f64)))
  (type $i32_i32_i32_i32_=>_i32 (func (param i32 i32 i32 i32) (result i32)))
  (type $f64_=>_i32 (func (param f64) (result i32)))
  (type $i32_i64_=>_i32 (func (param i32 i64) (result i32)))
@@ -30,7 +29,6 @@
  (import "aegis" "addListener" (func $assembly/aegis/addListener (param i32 i32)))
  (import "aegis" "fireEvent" (func $assembly/aegis/fireEvent (param i32 i32)))
  (import "Date" "now" (func $~lib/bindings/Date/now (result f64)))
- (import "aegis" "invokePort" (func $assembly/aegis/invokePort (param i32 i32 i32 f64 f64)))
  (global $assembly/index/key i32 (i32.const 0))
  (global $assembly/index/val i32 (i32.const 1))
  (global $assembly/index/ArrayOfStrings_ID i32 (i32.const 3))
@@ -57,10 +55,10 @@
  (global $~lib/date/_day (mut i32) (i32.const 0))
  (global $~lib/date/_month (mut i32) (i32.const 0))
  (global $assembly/index/ModelSpec i32 (i32.const 4))
- (global $~lib/rt/__rtti_base i32 (i32.const 7808))
- (global $~lib/memory/__data_end i32 (i32.const 7884))
- (global $~lib/memory/__stack_pointer (mut i32) (i32.const 24268))
- (global $~lib/memory/__heap_base i32 (i32.const 24268))
+ (global $~lib/rt/__rtti_base i32 (i32.const 7552))
+ (global $~lib/memory/__data_end i32 (i32.const 7628))
+ (global $~lib/memory/__stack_pointer (mut i32) (i32.const 24012))
+ (global $~lib/memory/__heap_base i32 (i32.const 24012))
  (global $~started (mut i32) (i32.const 0))
  (memory $0 1)
  (data (i32.const 12) "<\00\00\00\00\00\00\00\00\00\00\00\01\00\00\00 \00\00\00~\00l\00i\00b\00/\00r\00t\00/\00i\00t\00c\00m\00s\00.\00t\00s\00\00\00\00\00\00\00\00\00\00\00\00\00")
@@ -165,20 +163,14 @@
  (data (i32.const 7036) "\1c\00\00\00\00\00\00\00\00\00\00\00\01\00\00\00\08\00\00\00 \00G\00M\00T\00\00\00\00\00")
  (data (i32.const 7068) "<\00\00\00\00\00\00\00\00\00\00\00\01\00\00\00\1e\00\00\00o\00n\00D\00e\00l\00e\00t\00e\00 \00c\00a\00l\00l\00e\00d\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00")
  (data (i32.const 7132) "<\00\00\00\00\00\00\00\00\00\00\00\01\00\00\00\1e\00\00\00o\00n\00U\00p\00d\00a\00t\00e\00 \00c\00a\00l\00l\00e\00d\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00")
- (data (i32.const 7196) "<\00\00\00\00\00\00\00\00\00\00\00\01\00\00\00*\00\00\00i\00n\00b\00o\00u\00n\00d\00 \00p\00o\00r\00t\00 \00c\00a\00l\00l\00e\00d\00:\00 \00\00\00")
- (data (i32.const 7260) "\1c\00\00\00\00\00\00\00\00\00\00\00\01\00\00\00\08\00\00\00v\00a\00l\001\00\00\00\00\00")
- (data (i32.const 7292) "\1c\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\08\00\00\000\02\00\00p\1c\00\00\00\00\00\00")
- (data (i32.const 7324) "\1c\00\00\00\00\00\00\00\00\00\00\00\01\00\00\00\n\00\00\00t\00a\00s\00k\001\00\00\00")
- (data (i32.const 7356) ",\00\00\00\00\00\00\00\00\00\00\00\01\00\00\00\12\00\00\00t\00a\00s\00k\00 \00d\00a\00t\00a\00\00\00\00\00\00\00\00\00\00\00")
- (data (i32.const 7404) ",\00\00\00\00\00\00\00\00\00\00\00\01\00\00\00\14\00\00\00t\00a\00s\00k\001\00E\00v\00e\00n\00t\00\00\00\00\00\00\00\00\00")
- (data (i32.const 7452) ",\00\00\00\00\00\00\00\00\00\00\00\01\00\00\00\0e\00\00\00d\00e\00f\00a\00u\00l\00t\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00")
- (data (i32.const 7500) "\1c\00\00\00\00\00\00\00\00\00\00\00\01\00\00\00\08\00\00\00k\00e\00y\003\00\00\00\00\00")
- (data (i32.const 7532) "<\00\00\00\00\00\00\00\00\00\00\00\01\00\00\00\1e\00\00\00a\00l\00w\00a\00y\00s\00T\00h\00i\00s\00V\00a\00l\00u\00e\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00")
- (data (i32.const 7596) "\1c\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\08\00\00\00`\1d\00\00\80\1d\00\00\00\00\00\00")
- (data (i32.const 7628) ",\00\00\00\00\00\00\00\00\00\00\00\01\00\00\00\16\00\00\00t\00e\00s\00t\00 \00c\00a\00l\00l\00e\00d\00\00\00\00\00\00\00")
- (data (i32.const 7676) "<\00\00\00\00\00\00\00\00\00\00\00\01\00\00\00*\00\00\00O\00b\00j\00e\00c\00t\00 \00a\00l\00r\00e\00a\00d\00y\00 \00p\00i\00n\00n\00e\00d\00\00\00")
- (data (i32.const 7740) "<\00\00\00\00\00\00\00\00\00\00\00\01\00\00\00(\00\00\00O\00b\00j\00e\00c\00t\00 \00i\00s\00 \00n\00o\00t\00 \00p\00i\00n\00n\00e\00d\00\00\00\00\00")
- (data (i32.const 7808) "\t\00\00\00 \00\00\00\00\00\00\00 \00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\02A\00\00\00\00\00\00\00\00\00\00\00\00\00\00\02A\00\00\00\00\00\00\02\t\00\00\00\00\00\00 \00\00\00\00\00\00\00\04A\00\00\00\00\00\00")
+ (data (i32.const 7196) ",\00\00\00\00\00\00\00\00\00\00\00\01\00\00\00\0e\00\00\00d\00e\00f\00a\00u\00l\00t\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00")
+ (data (i32.const 7244) "\1c\00\00\00\00\00\00\00\00\00\00\00\01\00\00\00\08\00\00\00k\00e\00y\003\00\00\00\00\00")
+ (data (i32.const 7276) "<\00\00\00\00\00\00\00\00\00\00\00\01\00\00\00\1e\00\00\00a\00l\00w\00a\00y\00s\00T\00h\00i\00s\00V\00a\00l\00u\00e\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00")
+ (data (i32.const 7340) "\1c\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\08\00\00\00`\1c\00\00\80\1c\00\00\00\00\00\00")
+ (data (i32.const 7372) ",\00\00\00\00\00\00\00\00\00\00\00\01\00\00\00\16\00\00\00t\00e\00s\00t\00 \00c\00a\00l\00l\00e\00d\00\00\00\00\00\00\00")
+ (data (i32.const 7420) "<\00\00\00\00\00\00\00\00\00\00\00\01\00\00\00*\00\00\00O\00b\00j\00e\00c\00t\00 \00a\00l\00r\00e\00a\00d\00y\00 \00p\00i\00n\00n\00e\00d\00\00\00")
+ (data (i32.const 7484) "<\00\00\00\00\00\00\00\00\00\00\00\01\00\00\00(\00\00\00O\00b\00j\00e\00c\00t\00 \00i\00s\00 \00n\00o\00t\00 \00p\00i\00n\00n\00e\00d\00\00\00\00\00")
+ (data (i32.const 7552) "\t\00\00\00 \00\00\00\00\00\00\00 \00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\02A\00\00\00\00\00\00\00\00\00\00\00\00\00\00\02A\00\00\00\00\00\00\02\t\00\00\00\00\00\00 \00\00\00\00\00\00\00\04A\00\00\00\00\00\00")
  (table $0 1 funcref)
  (elem $0 (i32.const 1))
  (export "ModelSpec" (global $assembly/index/ModelSpec))
@@ -209,7 +201,6 @@
  (export "onUpdate" (func $export:assembly/index/onUpdate))
  (export "onDelete" (func $export:assembly/index/onDelete))
  (export "validate" (func $export:assembly/index/validate))
- (export "inboundPort" (func $export:assembly/index/inboundPort))
  (export "test" (func $export:assembly/index/test))
  (func $~lib/rt/itcms/Object#get:color (param $0 i32) (result i32)
   local.get $0
@@ -7858,7 +7849,7 @@
    i32.const 3
    i32.eq
    if
-    i32.const 7696
+    i32.const 7440
     i32.const 32
     i32.const 337
     i32.const 7
@@ -7890,7 +7881,7 @@
   i32.const 3
   i32.ne
   if
-   i32.const 7760
+   i32.const 7504
    i32.const 32
    i32.const 351
    i32.const 5
@@ -7976,10 +7967,10 @@
   i32.const 240
   local.get $0
   call $~lib/rt/itcms/__visit
-  i32.const 7696
+  i32.const 7440
   local.get $0
   call $~lib/rt/itcms/__visit
-  i32.const 7760
+  i32.const 7504
   local.get $0
   call $~lib/rt/itcms/__visit
   i32.const 6144
@@ -8265,8 +8256,8 @@
   global.get $~lib/memory/__data_end
   i32.lt_s
   if
-   i32.const 24288
-   i32.const 24336
+   i32.const 24032
+   i32.const 24080
    i32.const 1
    i32.const 1
    call $~lib/builtins/abort
@@ -9853,123 +9844,6 @@
   i32.add
   global.set $~lib/memory/__stack_pointer
  )
- (func $assembly/index/inboundPort (param $0 i32) (param $1 i32) (result i32)
-  (local $2 i32)
-  (local $3 i32)
-  (local $4 i32)
-  (local $5 i32)
-  global.get $~lib/memory/__stack_pointer
-  i32.const 32
-  i32.sub
-  global.set $~lib/memory/__stack_pointer
-  call $~stack_check
-  global.get $~lib/memory/__stack_pointer
-  i64.const 0
-  i64.store
-  global.get $~lib/memory/__stack_pointer
-  i64.const 0
-  i64.store offset=8
-  global.get $~lib/memory/__stack_pointer
-  i64.const 0
-  i64.store offset=16
-  global.get $~lib/memory/__stack_pointer
-  i64.const 0
-  i64.store offset=24
-  i32.const 7216
-  local.set $5
-  global.get $~lib/memory/__stack_pointer
-  local.get $5
-  i32.store offset=20
-  local.get $5
-  local.get $0
-  i32.const 0
-  call $~lib/array/Array<~lib/string/String>#__get
-  local.set $5
-  global.get $~lib/memory/__stack_pointer
-  local.get $5
-  i32.store offset=24
-  local.get $5
-  call $~lib/string/String.__concat
-  local.set $5
-  global.get $~lib/memory/__stack_pointer
-  local.get $5
-  i32.store offset=12
-  local.get $5
-  i32.const 2416
-  local.set $5
-  global.get $~lib/memory/__stack_pointer
-  local.get $5
-  i32.store offset=16
-  local.get $5
-  call $~lib/string/String.__concat
-  local.set $5
-  global.get $~lib/memory/__stack_pointer
-  local.get $5
-  i32.store offset=4
-  local.get $5
-  local.get $1
-  i32.const 0
-  call $~lib/array/Array<~lib/string/String>#__get
-  local.set $5
-  global.get $~lib/memory/__stack_pointer
-  local.get $5
-  i32.store offset=8
-  local.get $5
-  call $~lib/string/String.__concat
-  local.set $5
-  global.get $~lib/memory/__stack_pointer
-  local.get $5
-  i32.store
-  local.get $5
-  call $assembly/aegis/log
-  global.get $~lib/memory/__stack_pointer
-  i32.const 0
-  i32.const 1
-  call $~lib/array/Array<~lib/array/Array<~lib/string/String>>#constructor
-  local.tee $2
-  i32.store offset=28
-  local.get $2
-  i32.const 0
-  i32.const 2
-  i32.const 2
-  i32.const 3
-  i32.const 7312
-  call $~lib/rt/__newArray
-  local.set $5
-  global.get $~lib/memory/__stack_pointer
-  local.get $5
-  i32.store offset=8
-  local.get $5
-  call $~lib/array/Array<~lib/array/Array<~lib/string/String>>#__set
-  i32.const 7344
-  local.set $5
-  global.get $~lib/memory/__stack_pointer
-  local.get $5
-  i32.store
-  local.get $5
-  i32.const 7376
-  local.set $5
-  global.get $~lib/memory/__stack_pointer
-  local.get $5
-  i32.store offset=4
-  local.get $5
-  i32.const 7424
-  local.set $5
-  global.get $~lib/memory/__stack_pointer
-  local.get $5
-  i32.store offset=8
-  local.get $5
-  f64.const 1
-  f64.const 2
-  call $assembly/aegis/invokePort
-  local.get $2
-  local.set $5
-  global.get $~lib/memory/__stack_pointer
-  i32.const 32
-  i32.add
-  global.set $~lib/memory/__stack_pointer
-  local.get $5
- )
  (func $assembly/index/test (param $0 i32) (param $1 i32) (result i32)
   (local $2 i32)
   (local $3 i32)
@@ -10015,7 +9889,7 @@
    i32.const 0
    call $~lib/array/Array<~lib/string/String>#__get
   else
-   i32.const 7472
+   i32.const 7216
   end
   local.tee $2
   i32.store offset=8
@@ -10040,7 +9914,7 @@
    i32.const 1
    call $~lib/array/Array<~lib/string/String>#__get
   else
-   i32.const 7472
+   i32.const 7216
   end
   local.tee $3
   i32.store offset=12
@@ -10115,7 +9989,7 @@
   i32.const 2
   i32.const 2
   i32.const 3
-  i32.const 7616
+  i32.const 7360
   call $~lib/rt/__newArray
   local.set $7
   global.get $~lib/memory/__stack_pointer
@@ -10123,7 +9997,7 @@
   i32.store offset=20
   local.get $7
   call $~lib/array/Array<~lib/array/Array<~lib/string/String>>#__set
-  i32.const 7648
+  i32.const 7392
   local.set $7
   global.get $~lib/memory/__stack_pointer
   local.get $7
@@ -11432,29 +11306,6 @@
   i32.const 8
   i32.add
   global.set $~lib/memory/__stack_pointer
- )
- (func $export:assembly/index/inboundPort (param $0 i32) (param $1 i32) (result i32)
-  (local $2 i32)
-  global.get $~lib/memory/__stack_pointer
-  i32.const 8
-  i32.sub
-  global.set $~lib/memory/__stack_pointer
-  call $~stack_check
-  global.get $~lib/memory/__stack_pointer
-  local.get $0
-  i32.store
-  global.get $~lib/memory/__stack_pointer
-  local.get $1
-  i32.store offset=4
-  local.get $0
-  local.get $1
-  call $assembly/index/inboundPort
-  local.set $2
-  global.get $~lib/memory/__stack_pointer
-  i32.const 8
-  i32.add
-  global.set $~lib/memory/__stack_pointer
-  local.get $2
  )
  (func $export:assembly/index/test (param $0 i32) (param $1 i32) (result i32)
   (local $2 i32)

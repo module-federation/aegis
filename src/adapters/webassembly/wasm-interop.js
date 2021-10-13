@@ -97,8 +97,10 @@ exports.WasmInterop = function (module) {
    * @returns {Readonly<{object}>}
    */
   function constructObject (ptr, unpin = true) {
-    console.debug(constructObject.name, ptr)
-    if (!ptr) return {}
+    if (!ptr) {
+      console.debug(constructObject.name, 'null pointer', ptr)
+      return
+    }
 
     try {
       const obj = __getArray(ptr)
@@ -108,9 +110,10 @@ exports.WasmInterop = function (module) {
 
       const immutableClone = Object.freeze({ ...obj })
       !unpin || __unpin(ptr)
+      console.debug(constructObject.name, ptr)
       return immutableClone
     } catch (e) {
-      console.error(constructObject.name, e.message)
+      console.error(constructObject.name, 'error:', e.message)
       return {}
     }
   }

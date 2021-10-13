@@ -25,7 +25,7 @@ exports.wrapWasmModelSpec = function (module) {
     onDelete
   } = module.exports
 
-  const adapter = WasmInterop(module)
+  const interop = WasmInterop(module)
   const specPtr = __pin(getModelSpec())
   const modelSpec = ModelSpec.wrap(specPtr)
 
@@ -40,22 +40,22 @@ exports.wrapWasmModelSpec = function (module) {
      * @returns {({...arg} => Model)} factory function to generate model
      */
     factory: dependencies => async input =>
-      adapter.callWasmFunction(modelFactory, { ...dependencies, ...input }),
+      interop.callWasmFunction(modelFactory, { ...dependencies, ...input }),
 
     // validate: (model, changes) =>
     //   adapter.callWasmFunction(validate, { model, changes }, false),
 
     onUpdate: (model, changes) =>
-      adapter.callWasmFunction(onUpdate, { model, changes }),
+      interop.callWasmFunction(onUpdate, { model, changes }),
 
-    onDelete: model => adapter.callWasmFunction(onDelete, model),
+    onDelete: model => interop.callWasmFunction(onDelete, model),
 
     commands: {
-      ...adapter.importWasmCommands()
+      ...interop.importWasmCommands()
     },
 
     ports: {
-      ...adapter.importWasmPorts()
+      ...interop.importWasmPorts()
     },
 
     // call to dispose of spec memory
@@ -72,16 +72,19 @@ exports.wrapWasmModelSpec = function (module) {
  * @returns {Adapter}
  */
 exports.wrapWasmAdapter = function (module) {
-  const { __getString, getAdapterName, execAdapter } = module.exports
-  const adapter = WasmInterop(module)
-  const adapterName = __getString(getAdapterName())
+  const { invoke } = module.exports
+  const interop = WasmInterop(module)
 
-  return ([adapterName] = service => async options => {
-    let serviceOut
-    if (service) serviceOut = await service[adapterName](options)
-    const adapterOut = await adapter.callWasmFunction(execAdapter, serviceOut)
-    if (options.args.callback) await options.args.callback(options, adapterOut)
-  })
+  return function (service) {
+    return async function (options) {
+      const { model } = options
+      const adapter = interop.callWasmFunction(invoke, model)
+
+      if (service) {
+        interop.callWasmFunction(service[adapter.serviceFn], model)
+      }
+    }
+  }
 }
 
 /**

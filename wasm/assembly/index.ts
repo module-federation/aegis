@@ -138,13 +138,13 @@ export function validate(keys: string[], vals: string[]): void {
   return;
 }
 
-export function inboundPort(keys: string[], vals: string[]): string[][] {
-  aegis.log("inbound port called: " + keys[0] + ": " + vals[0]);
-  const outval = new Array<string[]>(1);
-  outval[0] = ["key1", "val1"];
-  aegis.invokePort("task1", "task data", "task1Event", 1, 2);
-  return outval;
-}
+// export function inboundPort(keys: string[], vals: string[]): string[][] {
+//   aegis.log("inbound port called: " + keys[0] + ": " + vals[0]);
+//   const outval = new Array<string[]>(1);
+//   outval[0] = ["key1", "val1"];
+//   aegis.invokePort("task1", "task data", "task1Event", 1, 2);
+//   return outval;
+// }
 
 export function test(keys: string[], values: string[]): string[][] {
   const key1 = keys[0] == "key1" ? values[0] : "default";
