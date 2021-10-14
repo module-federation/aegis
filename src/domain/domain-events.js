@@ -21,7 +21,7 @@ const domainEvents = {
   wasmPublishEvent: modelName => `wasmPublishEvent_${modelName}`
 }
 
-const doNotFwd = [
+const doNotAutoFwd = [
   domainEvents.internalCacheRequest.name,
   domainEvents.externalCacheRequest.name,
   domainEvents.externalCacheResponse.name,
@@ -29,7 +29,7 @@ const doNotFwd = [
 ]
 
 export function listEventsToForward () {
-  return Object.keys(domainEvents).filter(k => !doNotFwd.includes(k))
+  return Object.keys(domainEvents).filter(k => !doNotAutoFwd.includes(k))
 }
 
 export default domainEvents

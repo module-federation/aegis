@@ -165,6 +165,7 @@ export default function DistributedCache ({
         }
 
         if (await handleDelete(eventName, modelName, event)) return
+
         console.debug('check if we have the code for this object...')
         await streamRemoteModules(modelName)
 
@@ -233,7 +234,7 @@ export default function DistributedCache ({
   }
 
   /**
-   *
+   *s
    * @param {Event} event
    * @param {import(".").Model|import(".").Model[]} related
    * @returns {Event} w/ updated model, modelId, modelName
@@ -274,6 +275,7 @@ export default function DistributedCache ({
           return
         }
 
+        console.debug(event)
         // find the requested object(s)
         const related = await relationType[event.relation.type](
           event.model,
@@ -293,10 +295,10 @@ export default function DistributedCache ({
    * @param {*} internalName
    */
   function receiveSearchResponse (responseName, internalName) {
-    const callback = updateCache(async event =>
-      observer.notify(internalName, event)
+    subscribe(
+      responseName,
+      updateCache(async event => observer.notify(internalName, event))
     )
-    subscribe(responseName, callback)
   }
 
   /**
@@ -310,13 +312,15 @@ export default function DistributedCache ({
   /**
    * Listen for search request from remote system, search and send response.
    *
-   * @param {*} requestName
-   * @param {*} eventName
+   * @param {*} requestEvent
+   * @param {*} responseEvent
    */
-  function answerSearchRequest (requestName, eventName) {
+  function answerSearchRequest (requestEvent, responseEvent) {
     subscribe(
-      requestName,
-      searchCache(async event => publish({ ...event, eventName }))
+      requestEvent,
+      searchCache(async event =>
+        publish({ ...event, eventName: responseEvent })
+      )
     )
   }
 

@@ -69,8 +69,8 @@ class ObserverImpl extends Observer {
    */
   on (eventName, handler, allowMultiple = true) {
     if (!eventName || typeof handler !== 'function') {
-      console.debug(eventName, handler.toString())
-      throw new Error('eventName or handler invalid')
+      console.debug(ObserverImpl.name, 'invalid arg', eventName, handler)
+      return false
     }
     if (this.handlers.has(eventName)) {
       if (allowMultiple) {
@@ -79,6 +79,7 @@ class ObserverImpl extends Observer {
     } else {
       this.handlers.set(eventName, [handler])
     }
+    return true
   }
 
   /**
