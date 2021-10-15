@@ -3,6 +3,8 @@
  * @typedef {import('.').Model} Model
  */
 
+import domainEvents from './domain-events'
+
 /**
  * @callback eventHandler
  * @param {Event | Model | {eventName:string, Model}} eventData
@@ -82,21 +84,33 @@ class ObserverImpl extends Observer {
     return true
   }
 
+  runHandler (eventName, eventData = {}, handler, forward) {
+    const data = { ...eventData, eventName }
+    handler(data)
+    !forward || this.notify(domainEvents.forwardEvent, data)
+  }
+
   /**
    * @override
    */
-  async notify (eventName, eventData) {
+  async notify (eventName, eventData, forward) {
     try {
       if (this.handlers.has(eventName)) {
         await Promise.allSettled(
-          this.handlers.get(eventName).map(handler => handler(eventData))
+          this.handlers
+            .get(eventName)
+            .map(handler =>
+              this.runHandler(eventName, eventData, handler, forward)
+            )
         )
       }
 
       await Promise.allSettled(
         [...this.handlers]
           .filter(([k, v]) => k instanceof RegExp && k.test(eventName))
-          .map(([k, v]) => v.map(f => f(eventData)))
+          .map(([k, v]) =>
+            v.map(f => this.runHandler(eventName, eventData, f, forward))
+          )
       )
     } catch (error) {
       handleError(error)

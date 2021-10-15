@@ -1,12 +1,13 @@
 'use strict'
-import { listEventsToForward } from '../domain/domain-events'
+
+import domainEvents from '../domain/domain-events'
 
 function listUnhandledPortEvents (specs) {
   const cons = specs
     .filter(spec => spec.ports)
     .map(spec =>
       Object.values(spec.ports)
-        .filter(v => v.consumesEvent && !v.local)
+        .filter(v => v.consumesEvent && v.forward)
         .map(v => v.consumesEvent)
     )
     .flat(2)
@@ -15,7 +16,7 @@ function listUnhandledPortEvents (specs) {
     .filter(spec => spec.ports)
     .map(spec =>
       Object.values(spec.ports)
-        .filter(v => v.producesEvent && !v.local)
+        .filter(v => v.producesEvent && v.forward)
         .map(v => v.producesEvent)
     )
     .flat(2)
@@ -78,19 +79,15 @@ export function forwardEvents ({ observer, models, publish, subscribe }) {
   }
 
   /**
-   * Forward domain events for maximum observability.
+   * Forward events so marked.
    */
-  function forwardDomainEvents () {
-    const fwdEvents = listEventsToForward()
-    console.info('domain events to fwd', fwdEvents)
-    fwdEvents.forEach(eventName =>
-      observer.on(new RegExp(`^${eventName}`), eventData =>
-        publish(eventName, eventData || 'no data')
-      )
+  function forwardUserEvents () {
+    observer.on(domainEvents.forwardEvent, eventData =>
+      publish(eventData.eventName, eventData)
     )
   }
 
   forwardPortEvents()
 
-  forwardDomainEvents()
+  forwardUserEvents()
 }

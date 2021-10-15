@@ -5,6 +5,7 @@ const domainEvents = {
   externalCacheRequest: modelName => `externalCacheRequest_${modelName}`,
   internalCacheResponse: modelName => `internalCacheResponse_${modelName}`,
   externalCacheResponse: modelName => `externalCacheResponse_${modelName}`,
+  externalCrudEvent: eventName => `externalCrudEvent_${eventName}`,
   cacheCreateEvent: modelName => `cacheCreateEvent_${modelName}`,
   cacheUpdateEvent: modelName => `cacheUpdateEvent_${modelName}`,
   unauthorizedCommand: model => `unauthorizedCommand_${model.getName()}`,
@@ -18,18 +19,9 @@ const domainEvents = {
     `portRetryFailed_${port}_${model.getName()}`,
   portRetryWorked: (model, port) =>
     `portRetryWorked_${port}_${model.getName()}`,
-  wasmPublishEvent: modelName => `wasmPublishEvent_${modelName}`
-}
-
-const doNotAutoFwd = [
-  domainEvents.internalCacheRequest.name,
-  domainEvents.externalCacheRequest.name,
-  domainEvents.externalCacheResponse.name,
-  domainEvents.internalCacheResponse.name
-]
-
-export function listEventsToForward () {
-  return Object.keys(domainEvents).filter(k => !doNotAutoFwd.includes(k))
+  wasmPublishEvent: modelName => `wasmPublishEvent_${modelName}`,
+  forwardEvent: () => '__FWD_EVENT__',
+  webswitchTimeout: () => `webswitchTimeout`
 }
 
 export default domainEvents

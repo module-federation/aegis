@@ -3,7 +3,6 @@
 const WebSocketServer = require('ws').Server
 const nanoid = require('nanoid').nanoid
 const uplink = process.env.WEBSWITCH_UPLINK
-const heartb = process.env.WEBSWITCH_HEARTB || 30000
 const begins = Date.now()
 const uptime = () => Math.round(Math.abs((Date.now() - begins) / 1000 / 60))
 let messagesSent = 0
@@ -20,18 +19,14 @@ exports.attachServer = function (server) {
    */
   server.broadcast = function (data, sender) {
     server.clients.forEach(function (client) {
-      if (
-        client.OPEN &&
-        client.webswitchId !== sender.webswitchId &&
-        client.processId !== process.pid
-      ) {
-        console.debug('sending to client', client.webswitchId)
+      if (client.OPEN && client.info.id !== sender.info.id) {
+        console.debug('sending to client', client.info, data.toString())
         client.send(data)
         messagesSent++
       }
     })
 
-    if (server.uplink && server.uplink.webswitchId !== sender.webswitchId) {
+    if (server.uplink && server.uplink.info.id !== sender.info.id) {
       server.uplink.publishEvent(data)
       messagesSent++
     }
@@ -60,24 +55,22 @@ exports.attachServer = function (server) {
   }
 
   server.on('connection', function (client) {
-    client.webswitchId = nanoid()
+    client.info = { address: client._socket.address(), id: nanoid() }
 
     client.addListener('ping', function () {
-      client.pong()
+      console.debug('responding to ping')
+      client.pong(0xa)
     })
 
     client.on('close', function () {
-      console.warn('client disconnected', {
-        id: client.webswitchId,
-        address: client._socket.address()
-      })
+      console.warn('client disconnecting', client.info)
     })
 
     client.on('message', function (message) {
       try {
         const msg = JSON.parse(message.toString())
 
-        if (client.webswitchInit) {
+        if (client.info.initialized) {
           if (msg == 'status') {
             return server.sendStatus(client)
           }
@@ -86,19 +79,17 @@ exports.attachServer = function (server) {
         }
 
         if (msg.proto === 'webswitch' && msg.pid) {
-          client.processId = msg.pid
-          client.webswitchInit = true
-          client.send(JSON.stringify({ proto: 'webswitch', pid: process.pid }))
-
-          console.log('client initialized', {
-            id: client.webswitchId,
-            pid: client.processId,
-            address: client._socket.address()
-          })
+          client.info = {
+            ...client.info,
+            pid: msg.pid,
+            role: msg.role,
+            initialized: true
+          }
+          console.log('client initialized', client.info)
           return
         }
       } catch (e) {
-        console.error(e)
+        console.error(client.on.name, 'on message', e)
       }
 
       client.terminate()
@@ -108,7 +99,7 @@ exports.attachServer = function (server) {
 
   if (uplink) {
     server.uplink = require('./web-node')
-    server.uplink.webswitchId = nanoid()
+    server.uplink.info = { id: nanoid(), role: 'uplink' }
     server.uplink.setDestinationHost(uplink)
     server.uplink.onMessage(msg => server.broadcast(msg, server.uplink))
     server.uplink.publishEvent({ proto: 'webswitch', pid: process.pid })

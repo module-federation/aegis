@@ -43,11 +43,6 @@ export default function makeEditModel ({
     try {
       const updated = models.updateModel(model, changes)
 
-      const event = await models.createEvent(eventType, modelName, {
-        updated,
-        changes
-      })
-
       try {
         await repository.save(id, updated)
       } catch (error) {
@@ -55,7 +50,13 @@ export default function makeEditModel ({
       }
 
       try {
-        await observer.notify(event.eventName, event)
+        if (!updated.isCached()) {
+          const event = await models.createEvent(eventType, modelName, {
+            updated,
+            changes
+          })
+          await observer.notify(event.eventName, event)
+        }
       } catch (error) {
         await repository.save(id, model)
         throw new Error(error)

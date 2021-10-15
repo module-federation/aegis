@@ -8,7 +8,8 @@ const {
   internalCacheRequest,
   internalCacheResponse,
   externalCacheRequest,
-  externalCacheResponse
+  externalCacheResponse,
+  externalCrudEvent
 } = domainEvents
 
 /**
@@ -213,8 +214,8 @@ export default function DistributedCache ({
    * ```
    *
    * @param {Event} event
-   * @returns {Promise<import("./model").Model | import("./model").Model[]>} Updated source model
-   * (model that defines the relation)
+   * @returns {Promise<import("./model").Model | import("./model").Model[]>}
+   * Updated source model (model that defines the relation)
    * @throws
    */
   async function createRelatedObject (event) {
@@ -261,7 +262,8 @@ export default function DistributedCache ({
    * Returns function to search the cache.
    * @param {function(string):string} parser
    * @param {function(object)} route
-   * @returns {function(message):Promise<void>} function that searches the cache
+   * @returns {function(message):Promise<void>}
+   * function that searches the cache
    */
   function searchCache (route) {
     return async function (message) {
@@ -275,7 +277,6 @@ export default function DistributedCache ({
           return
         }
 
-        console.debug(event)
         // find the requested object(s)
         const related = await relationType[event.relation.type](
           event.model,
@@ -294,49 +295,49 @@ export default function DistributedCache ({
    * @param {*} responseName
    * @param {*} internalName
    */
-  function receiveSearchResponse (responseName, internalName) {
+  const receiveSearchResponse = (responseName, internalName) =>
     subscribe(
       responseName,
       updateCache(async event => observer.notify(internalName, event))
     )
-  }
-
-  /**
-   * Listen for events from remote systems and update local cache.
-   *
-   * @param {string} eventName
-   * @returns
-   */
-  const receiveCacheBroadcast = eventName => subscribe(eventName, updateCache())
 
   /**
    * Listen for search request from remote system, search and send response.
    *
-   * @param {*} requestEvent
-   * @param {*} responseEvent
+   * @param {*} request
+   * @param {*} response
    */
-  function answerSearchRequest (requestEvent, responseEvent) {
+  const answerSearchRequest = (request, response) =>
     subscribe(
-      requestEvent,
-      searchCache(async event =>
-        publish({ ...event, eventName: responseEvent })
-      )
+      request,
+      searchCache(async event => publish({ ...event, eventName: response }))
     )
-  }
 
   /**
    * Listen for internal events requesting cache search and send to remote systems.
    * @param {*} internalEvent
    * @param {*} externalEvent
    */
-  function forwardSearchRequest (internalEvent, externalEvent) {
+  const forwardSearchRequest = (internalEvent, externalEvent) =>
     observer.on(internalEvent, async event =>
       publish({ ...event, eventName: externalEvent })
     )
-  }
 
-  const broadcastCacheEvent = eventName =>
-    observer.on(eventName, async event => publish(event))
+  /**
+   * Listen for events from remote systems and update local cache.
+   * @param {string} eventName
+   */
+  const receiveCrudBroadcast = eventName =>
+    subscribe(externalCrudEvent(eventName), updateCache())
+
+  /**
+   *
+   * @param {string} eventName
+   */
+  const broadcastCrudEvent = eventName =>
+    observer.on(eventName, async event =>
+      publish({ ...event, eventName: externalCrudEvent(eventName) })
+    )
 
   /**
    * Subcribe to external CRUD events for related models.
@@ -381,7 +382,7 @@ export default function DistributedCache ({
         models.getEventName(models.EventTypes.UPDATE, modelName),
         models.getEventName(models.EventTypes.CREATE, modelName),
         models.getEventName(models.EventTypes.DELETE, modelName)
-      ].forEach(receiveCacheBroadcast)
+      ].forEach(receiveCrudBroadcast)
     })
 
     // Respond to search requests and broadcast CRUD events
@@ -396,7 +397,7 @@ export default function DistributedCache ({
         models.getEventName(models.EventTypes.UPDATE, modelName),
         models.getEventName(models.EventTypes.CREATE, modelName),
         models.getEventName(models.EventTypes.DELETE, modelName)
-      ].forEach(broadcastCacheEvent)
+      ].forEach(broadcastCrudEvent)
     })
   }
 

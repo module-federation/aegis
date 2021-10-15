@@ -197,7 +197,7 @@ const Model = (() => {
        * Concurrency support: strategy is to merge with
        * last update vs blindly overwriting. Concomitant
        * strategy is to add props dynamically and/or as
-       * `Symbol`'s to avoid conflict. If updating same 
+       * `Symbol`'s to avoid conflict. If updating same
        * props, last one in wins.
        *
        * @param {*} changes - object containing updated props
@@ -264,13 +264,19 @@ const Model = (() => {
        *
        * @param {string} eventName - event identifier, unique string
        * @param {Model|Event} eventData - any, but typically `Model`
+       * @param {boolean} [forward] - forward event to service mesh,
+       * defaults to `false`
        */
-      async emit (eventName, eventData) {
-        await observer.notify(eventName, {
+      async emit (eventName, eventData, forward = false) {
+        await observer.notify(
           eventName,
-          eventData,
-          model: this
-        })
+          {
+            eventName,
+            eventData,
+            model: this
+          },
+          forward
+        )
       },
 
       /**
@@ -296,6 +302,10 @@ const Model = (() => {
        */
       getSpec () {
         return modelInfo.spec
+      },
+
+      isCached () {
+        return modelInfo.spec.isCached
       },
 
       /**

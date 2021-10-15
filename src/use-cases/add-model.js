@@ -37,7 +37,6 @@ export default function makeAddModel ({
       modelName,
       input
     )
-    const event = await models.createEvent(eventType, modelName, model)
 
     try {
       await repository.save(model.getId(), model)
@@ -46,7 +45,10 @@ export default function makeAddModel ({
     }
 
     try {
-      await observer.notify(event.eventName, event)
+      if (!model.isCached()) {
+        const event = await models.createEvent(eventType, modelName, model)
+        await observer.notify(event.eventName, event)
+      }
     } catch (error) {
       // remote the object if not processed
       await repository.delete(model.getId())
