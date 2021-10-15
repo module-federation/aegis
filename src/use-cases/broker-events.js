@@ -35,7 +35,7 @@ export default function brokerEvents (observer, datasources, models) {
 
   if (useObjectCache) {
     // use appmesh network
-    !useSvcMesh || publish()
+    !useSvcMesh || publish('webswitch')
 
     const broker = DistributedCache({
       observer,

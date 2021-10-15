@@ -11,6 +11,7 @@ const { default: domainEvents } = require('../../domain/domain-events')
 
 const SERVICE_NAME = 'appmesh'
 const SERVICE_HOST = 'switch.app-mesh.net'
+const DEBUG = process.env.WEBSWITCH_DEBUG || false
 
 let fqdn = process.env.WEBSWITCH_SERVER || SERVICE_HOST
 let port = process.env.WEBSWITCH_PORT || SERVICE_NAME
@@ -48,15 +49,22 @@ async function getServicePort (hostname) {
   try {
     if (port === SERVICE_NAME) {
       const services = await dns.resolveSrv(hostname)
-      return services.filter(s => s.name === SERVICE_NAME).reduce(s => s.port)
+      if (services) {
+        const prt = services
+          .filter(s => s.name === SERVICE_NAME)
+          .reduce(s => s.port)
+        if (prt) {
+          return prt
+        }
+      }
+      throw new Error('cant find port')
     }
   } catch (error) {
     console.error(getServicePort.name, error)
     // should default to 80
-    port = /true/.test(process.env.SSL_ENABLED)
+    return /true/.test(process.env.SSL_ENABLED)
       ? process.env.SSL_PORT || 443
       : process.env.PORT || 80
-    return port
   }
   return port
 }
@@ -103,25 +111,23 @@ exports.publishEvent = async function (event, observer) {
     if (!ws) {
       ws = new WebSocket(`ws://${hostAddress}:${servicePort}`)
 
-      setInterval(() => ws.ping(), heartbeat)
-
       ws.addListener('pong', function () {
-        console.debug('received pong, clearing timer')
+        !DEBUG || console.debug('received pong')
         clearTimeout(timerId)
-        
-        timerId = setTimeout(function () {
+
+        timerId = setTimeout(() => {
           observer.notify(
-            domainEvents.webswithTimeout(),
-            'webswitch timeout',
+            domainEvents.webswitchTimeout(),
+            'webswitch server timeout',
             true
           )
-          console.error('cannot contact webswitch server')
+          console.error('webswitch server timed out')
         }, heartbeat + heartbeat / 8)
       })
 
       ws.on('message', async function (message) {
         const eventData = JSON.parse(message)
-        console.debug('received event:', eventData)
+        !DEBUG || console.debug('received event:', eventData)
 
         if (eventData.eventName) {
           await observer.notify(eventData.eventName, eventData)
@@ -137,7 +143,7 @@ exports.publishEvent = async function (event, observer) {
 
       ws.on('open', function () {
         ws.send(protocol())
-        ws.ping(0x9)
+        setInterval(() => ws.ping(0x9), heartbeat)
       })
 
       ws.on('error', function (error) {

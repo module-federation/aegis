@@ -6,6 +6,7 @@ const uplink = process.env.WEBSWITCH_UPLINK
 const begins = Date.now()
 const uptime = () => Math.round(Math.abs((Date.now() - begins) / 1000 / 60))
 let messagesSent = 0
+const DEBUG = process.env.WEBSWITCH_DEBUG || false
 
 /**
  *
@@ -20,7 +21,8 @@ exports.attachServer = function (server) {
   server.broadcast = function (data, sender) {
     server.clients.forEach(function (client) {
       if (client.OPEN && client.info.id !== sender.info.id) {
-        console.debug('sending to client', client.info, data.toString())
+        !DEBUG ||
+          console.debug('sending to client', client.info, data.toString())
         client.send(data)
         messagesSent++
       }
@@ -58,7 +60,7 @@ exports.attachServer = function (server) {
     client.info = { address: client._socket.address(), id: nanoid() }
 
     client.addListener('ping', function () {
-      console.debug('responding to ping')
+      !DEBUG || console.debug('responding to ping from client', client.info)
       client.pong(0xa)
     })
 
