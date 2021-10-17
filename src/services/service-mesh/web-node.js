@@ -78,10 +78,11 @@ exports.onMessage = function (callback) {
 }
 
 /** server sets uplink host */
-exports.setDestinationHost = function (host, servicePort = port) {
+exports.setDestinationHost = function (host) {
   hostAddress = null
-  fqdn = host
-  port = servicePort
+  const [hst, prt] = host.split(':')
+  fqdn = hst
+  port = prt
 }
 
 exports.resetHost = function () {

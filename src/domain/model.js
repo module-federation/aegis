@@ -212,13 +212,13 @@ const Model = (() => {
         // by default merge the incoming model with the last one saved
         const merge = overwrite ? model : { ...saved, ...model }
 
-        const final = datasource.save(model[ID], {
+        const final = await datasource.save(model[ID], {
           ...merge,
           [UPDATETIME]: Date.now()
         })
 
-        await observer.notify('UPDATE' + model.modelName, {
-          modelName: model.modelName,
+        await observer.notify('UPDATE' + model[MODELNAME], {
+          modelName: model[MODELNAME],
           model: final
         })
 
