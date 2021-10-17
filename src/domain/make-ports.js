@@ -2,9 +2,10 @@
 
 import portHandler from './port-handler'
 import async from './util/async-error'
-import domainEvents from './domain-events'
 import CircuitBreaker from './circuit-breaker'
+import domainEvents from './domain-events'
 
+const { portRetryFailed, portRetryWorked, portTimeout } = domainEvents
 const TIMEOUTSECONDS = 60
 const MAXRETRY = 5
 
@@ -55,7 +56,7 @@ function setPortTimeout (options) {
   }
 
   if (expired()) {
-    model.emit(domainEvents.portRetryFailed(model), options)
+    model.emit(portRetryFailed(model), options)
     return {
       ...timer,
       enabled: true
@@ -65,7 +66,7 @@ function setPortTimeout (options) {
   // Retry the port on timeout
   const timerId = setTimeout(async () => {
     // Notify interested parties
-    await model.emit(domainEvents.portTimeout(model), options)
+    await model.emit(portTimeout(model), options)
 
     // Invoke optional custom handler
     if (handler) handler(options)
@@ -74,7 +75,7 @@ function setPortTimeout (options) {
     await async(model[portName](...timerArgs.nextArg))
 
     // Retry worked
-    model.emit(domainEvents.portRetryWorked(model), options)
+    model.emit(portRetryWorked(model), options)
   }, timeout)
 
   return {
@@ -256,8 +257,8 @@ export default function makePorts (ports, adapters, observer) {
           const breaker = CircuitBreaker(port, portFn, thresholds)
 
           // Listen for errors
-          breaker.errorListener(domainEvents.portRetryFailed(this))
-          breaker.errorListener(domainEvents.portTimeout(this, port))
+          breaker.errorListener(portRetryFailed(this))
+          breaker.errorListener(portTimeout(this, port))
 
           // invoke port with circuit breaker failsafe
           return breaker.invoke.apply(this, args)
