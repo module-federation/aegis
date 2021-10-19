@@ -1,5 +1,5 @@
 import * as aegis from "./aegis";
-//import * as nn from "./neural-net";
+import * as nn from "./neural-net";
 //import * as tst from "./test";
 
 const key: i32 = 0;

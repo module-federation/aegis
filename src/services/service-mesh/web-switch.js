@@ -5,7 +5,7 @@ const nanoid = require('nanoid').nanoid
 const uplink = process.env.WEBSWITCH_UPLINK
 const begins = Date.now()
 const uptime = () => Math.round(Math.abs((Date.now() - begins) / 1000 / 60))
-const DEBUG = process.env.WEBSWITCH_DEBUG || false
+const DEBUG = /true/i.test(process.env.WEBSWITCH_DEBUG) 
 let messagesSent = 0
 
 /**

@@ -171,7 +171,7 @@ export default function DistributedCache ({
         await streamRemoteModules(modelName)
 
         console.debug('unmarshal deserialized model(s)', modelName, modelId)
-        const datasource = datasources.getDataSource(modelName)
+        const datasource = datasources.getDataSource(modelName, true)
         const hydratedModel = hydrateModel(model, datasource, modelName)
         await saveModel(hydratedModel, datasource, m => m.getId())
 

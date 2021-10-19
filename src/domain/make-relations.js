@@ -42,12 +42,14 @@ export const relationType = {
  * @param {*} ds
  */
 async function updateForeignKeys (model, event, relation, ds) {
+  console.debug(updateForeignKeys.name, event)
   if (
     [relationType.manyToOne.name, relationType.oneToOne.name].includes(
       relation.type
     )
   ) {
-    await model.update({ [relation.foreignKey]: event.modelId }, false)
+    console.debug(updateForeignKeys.name, 'found', event)
+    return model.update({ [relation.foreignKey]: event.modelId }, false)
   } else if (
     relation.type === relationType.oneToMany.name &&
     model instanceof Array
@@ -133,7 +135,9 @@ export default function makeRelations (relations, datasource, observer) {
 
               // each arg contains input to create a new object
               if (event && event.args.length > 0) {
-                await updateForeignKeys(this, event, rel, ds)
+                const updated = await updateForeignKeys(this, event, rel, ds)
+                setTimeout(updateForeignKeys, 3000, this, event, rel, ds)
+                return relationType[rel.type](updated, ds, rel)
               }
 
               return relationType[rel.type](this, ds, rel)
