@@ -2,13 +2,13 @@
 
 import DistributedCache from '../domain/distributed-cache'
 import EventBus from '../services/event-bus'
-import ServiceMesh from '../services/service-mesh/web-node'
+import ServiceMesh from '../services/service-mesh'
 import { forwardEvents } from './forward-events'
 import uuid from '../domain/util/uuid'
 
 const BROADCAST = process.env.TOPIC_BROADCAST || 'broadcastChannel'
 const useObjectCache = /true/i.test(process.env.DISTRIBUTED_CACHE_ENABLED)
-const useSvcMesh = /true/i.test(process.env.WEBSWITCH_ENABLED)
+const useSvcMesh = /true/i.test(process.env.SERVICEMESH_ENABLED) || true
 
 /** @typedef {import("../domain/datasource").default} DataSource */
 /** @typedef {import('../domain/observer').Observer} Observer */
@@ -19,24 +19,23 @@ const useSvcMesh = /true/i.test(process.env.WEBSWITCH_ENABLED)
  * @param {import("../domain/datasource-factory")} datasources
  */
 export default function brokerEvents (observer, datasources, models) {
-  const svcPub = event => ServiceMesh.publishEvent(event, observer)
+  const svcPub = event => ServiceMesh.publish(event, observer)
+  const svcSub = (event, cb) => ServiceMesh.subscribe(event, cb, observer)
+
   const busPub = event => EventBus.notify(BROADCAST, JSON.stringify(event))
-  const svcSub = (eventName, callback) => observer.on(eventName, callback)
-  const busSub = (eventName, cb) =>
+  const busSub = (event, cb) =>
     EventBus.listen({
       topic: BROADCAST,
       id: uuid(),
       once: false,
-      filters: [eventName],
+      filters: [event],
       callback: msg => cb(JSON.parse(msg))
     })
+
   const publish = useSvcMesh ? svcPub : busPub
   const subscribe = useSvcMesh ? svcSub : busSub
 
   if (useObjectCache) {
-    // use appmesh network
-    !useSvcMesh || publish('webswitch')
-
     const broker = DistributedCache({
       observer,
       datasources,

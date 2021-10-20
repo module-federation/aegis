@@ -1,5 +1,6 @@
 export * from './file-system'
 export * as StorageAdapter from './persistence'
+export * as ServiceMeshAdapter from './service-mesh'
 export { ServerlessAdapter } from './serverless'
 export * as controllers from './controllers'
 export * as webassembly from './webassembly'

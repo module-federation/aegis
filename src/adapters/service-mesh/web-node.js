@@ -11,7 +11,7 @@ const { default: domainEvents } = require('../../domain/domain-events')
 
 const SERVICE_NAME = 'appmesh'
 const SERVICE_HOST = 'switch.app-mesh.net'
-const DEBUG = process.env.WEBSWITCH_DEBUG || false
+const DEBUG = /true|yes|y/i.test(process.env.WEBSWITCH_DEBUG)
 
 let fqdn = process.env.WEBSWITCH_SERVER || SERVICE_HOST
 let port = process.env.WEBSWITCH_PORT || SERVICE_NAME
@@ -96,19 +96,22 @@ const protocol = () =>
     pid: process.pid
   })
 
+exports.subscribe = function (eventName, callback, observer) {
+  observer.on(eventName, callback)
+}
+
 /**
  * Call this method to broadcast a message on the appmesh network
  * @param {*} event
  * @param {import('../../domain/observer').Observer} observer
- * @param {*} networkMiddlewareAdapter
  * @returns
  */
-exports.publishEvent = async function (event, observer) {
+exports.publish = async function (event, observer) {
   if (!event) return
   if (!hostAddress) hostAddress = await getHostAddress(fqdn)
   if (!servicePort) servicePort = await getServicePort(fqdn)
 
-  function publish () {
+  function sendEvent () {
     if (!ws) {
       ws = new WebSocket(`ws://${hostAddress}:${servicePort}`)
 
@@ -166,8 +169,8 @@ exports.publishEvent = async function (event, observer) {
   }
 
   try {
-    publish()
+    sendEvent()
   } catch (e) {
-    console.warn('publishEvent', e)
+    console.warn('publish', e)
   }
 }
