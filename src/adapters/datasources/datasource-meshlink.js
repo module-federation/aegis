@@ -3,9 +3,10 @@
 import mlink, { sharedObject } from 'mesh-link'
 import { DataSourceMemory } from '.'
 
-async function createShardObject (name) {
-  mlink.sharedObject.create({ name, ds: { value: '' } })
+async function createSharedObject (name) {
+  mlink.sharedObject.create({ name: { value: name }, modelId: { value: null } })
 }
+
 async function fetchSharedObject (name) {
   const so = await mlink.sharedObject.get(name)
   const rv = so || (await createSharedObject(name))

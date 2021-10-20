@@ -1,4 +1,4 @@
-export { ServiceMesh } from './service-mesh'
+export { MeshService } from './service-mesh'
 export * as AuthorizationService from './auth'
 export * as ClusterService from './cluster'
 export * as EventService from './event-bus'

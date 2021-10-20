@@ -1,6 +1,7 @@
 'use strict'
 
 const mlink = require('mesh-link')
+const { StringEncoder } = require('../../domain/util/encoder')
 
 const defaultConfig = {
   redis: {
@@ -39,6 +40,7 @@ function start (config = defaultConfig) {
 }
 
 function publish (event, observer) {
+  start()
   mlink.send(
     event.eventName,
     mlink.getNodeEndPoints(),
@@ -54,7 +56,8 @@ function publish (event, observer) {
   )
 }
 
-const subscribe = (eventName, callback) => mlink.handler(eventName, callback)
+const subscribe = (eventName, callback) =>
+  mlink.handler(StringEncoder.encode(eventName), callback)
 
 exports = { start, uplink, publish, subscribe }
 
