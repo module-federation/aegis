@@ -8,10 +8,16 @@
 const WebSocket = require('ws')
 const dns = require('dns/promises')
 const { default: domainEvents } = require('../../domain/domain-events')
+const path = require('path')
+const config = require(path.resolve(
+  process.cwd(),
+  'public',
+  'aegis-config.json'
+))
 
-const SERVICE_NAME = 'appmesh'
-const SERVICE_HOST = 'switch.app-mesh.net'
-const DEBUG = /true|yes|y/i.test(process.env.WEBSWITCH_DEBUG)
+const SERVICE_NAME = config.serviceMesh.serviceName || 'appmesh'
+const SERVICE_HOST = config.serviceMesh.servicePort || 'switch.app-mesh.net'
+const DEBUG = /true|yes|y/i.test(config.webswitchDebug || false)
 
 let fqdn = process.env.WEBSWITCH_SERVER || SERVICE_HOST
 let port = process.env.WEBSWITCH_PORT || SERVICE_NAME
@@ -22,6 +28,8 @@ let uplinkCallback
 /** @type import("ws/lib/websocket") */
 let ws
 let timerId
+
+export function loadConfig () {}
 
 async function dnsResolve (hostname) {
   try {

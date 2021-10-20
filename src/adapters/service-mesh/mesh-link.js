@@ -20,7 +20,7 @@ const defaultConfig = {
 let started = false
 
 function uplink (config = defaultConfig) {
-  // register uplink
+  console.debug('register uplink', config.uplink)
 }
 
 function start (config = defaultConfig) {
@@ -31,14 +31,14 @@ function start (config = defaultConfig) {
     .start(config)
     .then(() => {
       // connect to uplink if configured
-      uplink(config.uplink)
+      !config.uplink.host || uplink(config)
     })
     .catch(error => {
-      // error...
+      console.error(start.name, error)
     })
 }
 
-function publishEvent (event, observer) {
+function publish (event, observer) {
   mlink.send(
     event.eventName,
     mlink.getNodeEndPoints(),
@@ -54,6 +54,8 @@ function publishEvent (event, observer) {
   )
 }
 
-function subscribe (eventName, callback, observer) {}
+const subscribe = (eventName, callback) => mlink.handler(eventName, callback)
 
-exports = { start, uplink, publishEvent, subscribe }
+exports = { start, uplink, publish, subscribe }
+
+start()
