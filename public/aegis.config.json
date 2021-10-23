@@ -11,22 +11,33 @@
         "enabled": false
       },
       "DataSourceMongoDb": {
-        "desc": "Persistent NoSQL, JSON document storage",
+        "desc": "Persistent storage in NoSQL, JSON document db",
         "enabled": false
       },
-      "DataSourceMesh": {
+      "DataSourceMeshLink": {
         "desc": "Data distributed across service mesh network",
         "enabled": true
       }
     },
-    "service-mesh": {
+    "serviceMesh": {
       "WebSwitch": {
-        "desc": "Default implementation. Switched mesh over web sockets.",
+        "desc": "Default implementation: switched mesh over web sockets.",
         "enabled": false
       },
       "MeshLink": {
         "desc": "Fast, UDP-based, peer-to-peer mesh, with shared Redis cache.",
-        "enabled": true
+        "enabled": true,
+        "config": {
+          "redis": {
+            "host": "127.0.0.1",
+            "port": 6379
+          },
+          "prefix": "aegis",
+          "strict": false,
+          "relayLimit": 1,
+          "relayDelay": 0,
+          "updateInterval": 1000
+        }
       },
       "QuicMesh": {
         "desc": "Mesh over QUIC transport protocol. Replaces TCP in HTTP/3. Optimized for streaming.",

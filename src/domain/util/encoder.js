@@ -1,9 +1,5 @@
 'use strict'
 
-function stringToUtf8Bytes (string) {
-  return new TextEncoder().encode(string)
-}
-
 function bytesToHex (bytes) {
   return Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('')
 }
@@ -18,13 +14,13 @@ function hexToBytes (hex) {
 
 export const StringEncoder = {
   /**
-   * Get the integer value of a string
+   * Get the integer value of the string
    * @param {string} str string to encode
    * @returns
    */
-  encode: str => parseInt(bytesToHex(stringToUtf8Bytes(str)), 16),
+  encode: str => parseInt(bytesToHex(new TextEncoder().encode(str)), 16),
   /**
-   * Get the UTF8-encoded string value from the integer
+   * Get the UTF8 string value of the previously encoded integer
    * @param {number} num previously encoded value
    * @returns
    */

@@ -7,8 +7,8 @@ export function publish (service) {
 }
 
 export function subscribe (service) {
-  return async function (event, callback) {
-    service.subscribe(event, callback)
+  return async function (event, callback, observer = null) {
+    service.subscribe(event, callback, observer)
   }
 }
 

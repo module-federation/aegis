@@ -1,16 +1,18 @@
 'use strict'
 
+const { sharedObject } = require('mesh-link')
 const mlink = require('mesh-link')
-const { StringEncoder } = require('../../domain/util/encoder')
+const path = require('path')
+const userCfg = require(path.resolve(
+  process.cwd(),
+  'public',
+  'aegis.config.json'
+))
 
-const defaultConfig = {
+const defaultCfg = {
   redis: {
     host: '127.0.0.1',
     port: 6379
-  },
-  uplink: {
-    host: null,
-    port: null
   },
   prefix: 'aegis',
   strict: false,
@@ -18,47 +20,143 @@ const defaultConfig = {
   relayDelay: 0,
   updateInterval: 1000
 }
+
+const cfg = userCfg.env.serviceMesh.MeshLink.config || defaultCfg
+
 let started = false
 
-function uplink (config = defaultConfig) {
+function numericHash (str) {
+  let hash = 0
+  let i
+  let chr
+  if (str.length === 0) return hash
+  for (i = 0; i < str.length; i++) {
+    chr = str.charCodeAt(i)
+    hash = (hash << 5) - hash + chr
+    hash |= 0 // Convert to 32bit integer
+  }
+  return Math.abs(parseInt(hash % 10000)) //keep under 0xffff
+}
+
+export function uplink (config = defaultCfg) {
   console.debug('register uplink', config.uplink)
 }
 
-function start (config = defaultConfig) {
+const sharedObjects = new Map()
+
+/**
+ *
+ * @param {*} eventData
+ * @returns
+ */
+function createSharedObject (eventData) {
+  const { eventTime, modelName } = eventData
+
+  if (sharedObjects.has(modelName)) {
+    console.debug('sharedObjects', modelName, 'exists')
+    return sharedObjects.get(modelName).mid
+  }
+
+  const ttl = 10000000000
+  const backup = mlink.getBackupNodes(modelName)
+  const nodes = mlink.getNodeEndPoints()
+  const node = backup[0] || nodes[0] || mlink.info()
+  const so = mlink.sharedObject.create(
+    {
+      name: { value: modelName },
+      members: { value: {} }
+    },
+    ttl,
+    node
+  )
+
+  console.debug('created sharedObject', so)
+
+  sharedObjects.set(modelName, { eventTime, mid: so.mid, node })
+  return so.mid
+}
+
+const SharedObjActions = {
+  CREATE: async eventData => {
+    const mid = createSharedObject(eventData)
+    return mlink.sharedObject
+      .get(mid)
+      .then(so => {
+        so.add('members', eventData.model.getId(), {
+          ...JSON.parse(JSON.stringify(eventData.model))
+        })
+        so.inc('total', 1)
+      })
+      .catch(e => console.error('mlink', e))
+  },
+  UPDATE: eventData =>
+    mlink.sharedObject
+      .get(sharedObjects.get(eventData.modelName).mid)
+      .then(so =>
+        so.set('members', eventData.model.getId(), {
+          ...JSON.parse(JSON.stringify(eventData.model))
+        })
+      ),
+  DELETE: async () => console.log('delete called, no-op')
+}
+
+const registerSharedObjEvents = observer =>
+  observer.on(/^externalCrudEvent_.*/, async (eventName, eventData) =>
+    SharedObjActions[eventName.split('_')[1].substr(0, 6)](eventData)
+  )
+
+/**
+ *
+ * @param {cfg} config
+ * @returns
+ */
+export async function start (config = defaultCfg, observer = null) {
   if (started) return
   started = true
+
+  if (observer) registerSharedObjEvents(observer)
 
   mlink
     .start(config)
     .then(() => {
       // connect to uplink if configured
-      !config.uplink.host || uplink(config)
+      !config.uplink || uplink(config)
+
+      console.info('meshlink started')
     })
     .catch(error => {
       console.error(start.name, error)
     })
 }
 
-function publish (event, observer) {
-  start()
-  mlink.send(
-    event.eventName,
-    mlink.getNodeEndPoints(),
-    JSON.stringify(event),
-    response => {
-      if (response) {
-        const eventData = JSON.parse(response)
-        if (eventData?.eventName) {
-          observer.notify(eventData.eventName, eventData)
+export async function publish (event, observer) {
+  const handlerId = numericHash(event.eventName)
+  console.debug('mlink publish', handlerId)
+
+  start(cfg, observer).then(() => {
+    return mlink.send(
+      handlerId,
+      mlink.getNodeEndPoints(),
+      { message: JSON.stringify(event) },
+      response => {
+        if (response) {
+          const eventData = JSON.parse(response.message)
+
+          if (eventData?.eventName) {
+            observer.notify(eventData.eventName, eventData)
+          }
         }
       }
-    }
-  )
+    )
+  })
 }
 
-const subscribe = (eventName, callback) =>
-  mlink.handler(StringEncoder.encode(eventName), callback)
-
-exports = { start, uplink, publish, subscribe }
-
-start()
+export const subscribe = async (eventName, callback, observer) => {
+  const handlerId = numericHash(eventName)
+  console.debug('mlink subscribe', eventName, handlerId)
+  start(cfg).then(() =>
+    mlink.handler(handlerId, response =>
+      callback(eventName, response.message, observer)
+    )
+  )
+}

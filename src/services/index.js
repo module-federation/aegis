@@ -5,7 +5,7 @@ export * as EventService from './event-bus'
 export * as StorageService from './persistence'
 
 import { dns } from './dns'
-import whois from './whois'
+import whois from './dns/whois'
 export const DnsService = dns
 export const WhoIsService = whois
 
