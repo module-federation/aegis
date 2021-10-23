@@ -1,6 +1,1 @@
-export * as MeshLink from './mesh-link'
-export * as NatsMesh from './nats-mesh'
-export * as QuicMesh from './quic-mesh'
-export * as WebSwitch from './web-node'
-export * as MeshAdapter from './adapter'
-export { attachServer } from './web-switch'
+export * from './adapter'

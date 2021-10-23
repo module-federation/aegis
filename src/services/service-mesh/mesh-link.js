@@ -1,6 +1,5 @@
 'use strict'
 
-const { sharedObject } = require('mesh-link')
 const mlink = require('mesh-link')
 const path = require('path')
 const userCfg = require(path.resolve(
@@ -38,7 +37,7 @@ function numericHash (str) {
   return Math.abs(parseInt(hash % 10000)) //keep under 0xffff
 }
 
-export function uplink (config = defaultCfg) {
+exports.uplink = function (config = defaultCfg) {
   console.debug('register uplink', config.uplink)
 }
 
@@ -110,7 +109,7 @@ const registerSharedObjEvents = observer =>
  * @param {cfg} config
  * @returns
  */
-export async function start (config = defaultCfg, observer = null) {
+exports.start = async function (config = defaultCfg, observer = null) {
   if (started) return
   started = true
 
@@ -129,7 +128,7 @@ export async function start (config = defaultCfg, observer = null) {
     })
 }
 
-export async function publish (event, observer) {
+exports.publish = async function (event, observer) {
   const handlerId = numericHash(event.eventName)
   console.debug('mlink publish', handlerId)
 
@@ -151,7 +150,7 @@ export async function publish (event, observer) {
   })
 }
 
-export const subscribe = async (eventName, callback, observer) => {
+exports.subscribe = function (eventName, callback, observer) {
   const handlerId = numericHash(eventName)
   console.debug('mlink subscribe', eventName, handlerId)
   start(cfg).then(() =>
