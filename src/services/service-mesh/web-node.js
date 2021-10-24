@@ -5,17 +5,12 @@
  */
 'use strict'
 
-const WebSocket = require('ws')
-const dns = require('dns/promises')
-const domainEvents = require('../../domain/domain-events')
-const path = require('path')
-const configFile = require(path.resolve(
-  process.cwd(),
-  'public',
-  'aegis.config.json'
-))
-const config = configFile.env.serviceMesh.WebSwitch
-const DEBUG = /true|yes|y/i.test(config.debug || false)
+import WebSocket from 'ws'
+import dns from 'dns/promises'
+import domainEvents from '../../domain/domain-events'
+import configFile from '../../../public/aegis.config.json'
+const config = configFile.services.serviceMesh.WebSwitch
+const DEBUG = /true|yes|y/i.test(config.debug) || false
 const SERVICE_NAME = 'webswitch'
 
 let heartbeat = config.heartbeat || 10000
@@ -27,8 +22,6 @@ let uplinkCallback
 /** @type import("ws/lib/websocket") */
 let ws
 let timerId
-
-export function loadConfig () {}
 
 async function dnsResolve (hostname) {
   try {
@@ -80,19 +73,19 @@ async function getServicePort (hostname) {
  * Set callback for uplink.
  * @param {*} callback
  */
-exports.onMessage = function (callback) {
+export function onMessage (callback) {
   uplinkCallback = callback
 }
 
 /** server sets uplink host */
-exports.setDestinationHost = function (host) {
+export function setDestinationHost (host) {
   hostAddress = null
   const [hst, prt] = host.split(':')
   fqdn = hst
   port = prt
 }
 
-exports.resetHost = function () {
+export function resetHost () {
   hostAddress = null
 }
 
@@ -103,7 +96,7 @@ const protocol = () =>
     pid: process.pid
   })
 
-exports.subscribe = function (eventName, callback, observer) {
+export async function subscribe (eventName, callback, observer) {
   observer.on(eventName, callback)
 }
 
@@ -113,7 +106,7 @@ exports.subscribe = function (eventName, callback, observer) {
  * @param {import('../../domain/observer').Observer} observer
  * @returns
  */
-exports.publish = async function (event, observer) {
+export async function publish (event, observer) {
   if (!event) return
   if (!hostAddress) hostAddress = await getHostAddress(fqdn)
   if (!servicePort) servicePort = await getServicePort(fqdn)
@@ -180,4 +173,8 @@ exports.publish = async function (event, observer) {
   } catch (e) {
     console.warn('publish', e)
   }
+}
+
+export function attachServer (server) {
+  require('./web-switch').attachServer(server)
 }

@@ -2,28 +2,31 @@
 
 import * as MeshLink from './mesh-link'
 import * as WebSwitch from './web-node'
-import * as QuicMesh from './quic-mesh'
-import * as NatsMesh from './nats-mesh'
+//import * as QuicMesh from './quic-mesh'
+//import * as NatsMesh from './nats-mesh'
+import { ServiceMeshAdapter } from '../../adapters'
 import { attachServer } from './web-switch'
-import { MeshAdapter } from '../../adapters'
+import config from '../../../public/aegis.config.json'
 
+const options = {
+  WebSwitch,
+  MeshLink
+  //QuicMesh,
+  //NatsMesh
+}
 
-import configFile from '../../../public/aegis.config.json'
-const options = { MeshLink, WebSwitch, QuicMesh, NatsMesh, attachServer }
-console.log('options', options)
+const service =
+  Object.entries(config.services.serviceMesh)
+    .filter(([, v]) => v.enabled)
+    .map(([k]) => k)
+    .reduce(k => k) || 'WebSwitch'
 
-const config = configFile.env.serviceMesh
-const enabled = Object.entries(config)
-  .filter(([, v]) => v.enabled)
-  .map(([k]) => k)
-  .reduce(k => k)
-const service = enabled || 'WebSwitch'
+console.log(options)
+console.log(options[service])
 
 export const MeshService = {
-  ...Object.keys(MeshAdapter)
-    .map(k => ({ [k]: MeshAdapter[k](options[service]) }))
+  ...Object.keys(ServiceMeshAdapter)
+    .map(k => ({ [k]: ServiceMeshAdapter[k](options[service]) }))
     .reduce((a, b) => ({ ...a, ...b })),
   attachServer
 }
-
-console.debug(MeshService)

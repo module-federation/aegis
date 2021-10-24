@@ -1,5 +1,5 @@
 {
-  "env": {
+  "adapters": {
     "desc": "Example .env file",
     "datasources": {
       "DataSourceMemory": {
@@ -18,7 +18,9 @@
         "desc": "Data distributed across service mesh network",
         "enabled": true
       }
-    },
+    }
+  },
+  "services": {
     "serviceMesh": {
       "WebSwitch": {
         "desc": "Default implementation: switched mesh over web sockets.",

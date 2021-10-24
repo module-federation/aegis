@@ -1,1 +1,1 @@
-export * from './adapter'
+export * as ServiceMeshAdapter from './adapter'

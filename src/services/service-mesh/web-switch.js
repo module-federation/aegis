@@ -1,6 +1,6 @@
 'use strict'
 
-const nanoid = require('nanoid').nanoid
+import { nanoid } from 'nanoid'
 const uplink = process.env.WEBSWITCH_UPLINK
 const begins = Date.now()
 const uptime = () => Math.round(Math.abs((Date.now() - begins) / 1000 / 60))
@@ -11,7 +11,7 @@ let messagesSent = 0
  *
  * @param {import('ws').Server} server
  */
-exports.attachServer = function (server) {
+export function attachServer (server) {
   /**
    *
    * @param {object} data
