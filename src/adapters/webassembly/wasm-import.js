@@ -59,13 +59,13 @@ export async function importWebAssembly (remoteEntry, type = 'model') {
        * @param {string} eventName
        * @param {string} eventData
        */
-      fireEvent (eventName, eventData) {
+      fireEvent (eventName, eventData, forward) {
         const adapter = WasmInterop(wasm)
         const event = wasm.exports.__getString(eventName)
         const data = adapter.constructObject(eventData)
         console.debug('wasm called js to emit an event:', event, 'data:', data)
-        observer.notify(event, data)
-      },
+        observer.notify(event, data, Boolean(forward))
+      }, 
 
       /**
        *

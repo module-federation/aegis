@@ -5,5 +5,6 @@ export declare function addListener(
 ): void;
 export declare function fireEvent(
   eventName: string,
-  eventData: string[][]
+  eventData: string[][],
+  forward: number
 ): void;

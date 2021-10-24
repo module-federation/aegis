@@ -1,5 +1,5 @@
 import * as aegis from "./aegis";
-import * as nn from "./neural-net";
+//import * as nn from "./neural-net";
 //import * as tst from "./test";
 
 const key: i32 = 0;
@@ -66,7 +66,8 @@ export function commandEx(keys: string[], vals: string[]): string[][] {
 
 export function serviceMeshListen(keys: string[], vals: string[]): void {
   aegis.log("serviceMeshListen: " + keys[0] + ": " + vals[0]);
-  aegis.addListener("wasmWebListen", "serviceMeshCallback");
+  const eventName = findVal("eventName", keys, vals);
+  aegis.addListener(eventName, "serviceMeshCallback");
 }
 
 export function serviceMeshNotify(keys: string[], vals: string[]): void {
@@ -78,7 +79,7 @@ export function serviceMeshNotify(keys: string[], vals: string[]): void {
   eventData[0] = [keys[0], vals[0]];
   eventData[1] = ["modelName", modelName];
   eventData[2] = ["modelId", modelId];
-  aegis.fireEvent(eventName || "wasmWebListen", eventData);
+  aegis.fireEvent(eventName || "wasmWebListen", eventData, 1);
 }
 
 export function serviceMeshCallback(
@@ -86,6 +87,11 @@ export function serviceMeshCallback(
   vals: string[]
 ): string[][] {
   aegis.log("websocket callback fired: " + keys[0] + ": " + vals[0]);
+  const eventName = findVal("eventName", keys, vals);
+  const eventData = new Array<string[]>(2);
+  eventData[0] = [keys[0], vals[0]];
+  eventData[1] = [keys[1], vals[1]];
+  aegis.fireEvent(eventName, eventData, 1);
   return [["key1", "serviceMeshCallback"]];
 }
 
@@ -107,7 +113,7 @@ export function runFibonacci(keys: string[], vals: string[]): string[][] {
 
   for (let i = 0; i < keys.length; i++) {
     if ("fibonacci" == keys[i]) {
-      val = parseFloat(vals[i]);
+      val = parseInt(vals[i]);
       break;
     }
   }
