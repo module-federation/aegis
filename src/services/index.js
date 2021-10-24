@@ -14,5 +14,3 @@ import { MeshService } from './service-mesh'
 export const CertificateService = {
   provisionCert: initCertificateService(dns, whois)
 }
-
-

@@ -7,8 +7,8 @@
 
 import WebSocket from 'ws'
 import dns from 'dns/promises'
-import domainEvents from '../../domain/domain-events'
-import configFile from '../../../public/aegis.config.json'
+import domainEvents from '../../../domain/domain-events'
+import configFile from '../../../../public/aegis.config.json'
 const config = configFile.services.serviceMesh.WebSwitch
 const DEBUG = /true|yes|y/i.test(config.debug) || false
 const SERVICE_NAME = 'webswitch'
@@ -103,7 +103,7 @@ export async function subscribe (eventName, callback, observer) {
 /**
  * Call this method to broadcast a message on the appmesh network
  * @param {*} event
- * @param {import('../../domain/observer').Observer} observer
+ * @param {import('../../../domain/observer').Observer} observer
  * @returns
  */
 export async function publish (event, observer) {
@@ -173,8 +173,4 @@ export async function publish (event, observer) {
   } catch (e) {
     console.warn('publish', e)
   }
-}
-
-export function attachServer (server) {
-  require('./web-switch').attachServer(server)
 }
