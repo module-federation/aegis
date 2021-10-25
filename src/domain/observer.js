@@ -5,19 +5,13 @@
 
 import domainEvents from './domain-events'
 
+const { forwardEvent } = domainEvents
+
 /**
  * @callback eventHandler
  * @param {Event | Model | {eventName:string, Model}} eventData
  * @returns {Promise<void>}
  */
-
-/**
- *
- * @param {Error} error
- */
-const handleError = error => {
-  console.error({ file: __filename, error })
-}
 
 /**
  * Abstract observer
@@ -52,6 +46,45 @@ export class Observer {
 }
 
 /**
+ *
+ * @param {Error} error
+ */
+ const handleError = error => {
+  console.error({ file: __filename, error })
+}
+
+
+function runHandler (eventName, eventData = {}, handle, forward) {
+  const data = { ...eventData, eventName }
+  handle(data)
+  forward && eventName !== forwardEvent && this.notify(forwardEvent, data)
+}
+
+function notify (runHandler) {
+  return async function (eventName, eventData, forward) {
+    const handle = runHandler.bind(this)
+
+    try {
+      if (this.handlers.has(eventName)) {
+        await Promise.allSettled(
+          this.handlers
+            .get(eventName)
+            .map(handler => handle(eventName, eventData, handler, forward))
+        )
+      }
+
+      await Promise.allSettled(
+        [...this.handlers]
+          .filter(([k, v]) => k instanceof RegExp && k.test(eventName))
+          .map(([k, v]) => v.map(f => handle(eventName, eventData, f, forward)))
+      )
+    } catch (error) {
+      handleError(error)
+    }
+  }
+}
+
+/**
  * @type {Observer}
  * @extends Observer
  */
@@ -61,6 +94,7 @@ class ObserverImpl extends Observer {
    */
   constructor (eventHandlers) {
     super(eventHandlers)
+    this.notify = notify(runHandler).bind(this)
   }
 
   /**
@@ -84,38 +118,38 @@ class ObserverImpl extends Observer {
     return true
   }
 
-  runHandler (eventName, eventData = {}, handler, forward) {
-    const data = { ...eventData, eventName }
-    handler(data)
-    !forward || this.notify(domainEvents.forwardEvent, data)
-  }
+  // runHandler (eventName, eventData = {}, handler, forward) {
+  //   const data = { ...eventData, eventName }
+  //   handler(data)
+  //   forward && eventName !== forwardEvent && this.notify(forwardEvent, data)
+  // }
 
   /**
    * @override
    */
-  async notify (eventName, eventData, forward) {
-    try {
-      if (this.handlers.has(eventName)) {
-        await Promise.allSettled(
-          this.handlers
-            .get(eventName)
-            .map(handler =>
-              this.runHandler(eventName, eventData, handler, forward)
-            )
-        )
-      }
+  // async notify (eventName, eventData, forward) {
+  //   try {
+  //     if (this.handlers.has(eventName)) {
+  //       await Promise.allSettled(
+  //         this.handlers
+  //           .get(eventName)
+  //           .map(handler =>
+  //             this.runHandler(eventName, eventData, handler, forward)
+  //           )
+  //       )
+  //     }
 
-      await Promise.allSettled(
-        [...this.handlers]
-          .filter(([k, v]) => k instanceof RegExp && k.test(eventName))
-          .map(([k, v]) =>
-            v.map(f => this.runHandler(eventName, eventData, f, forward))
-          )
-      )
-    } catch (error) {
-      handleError(error)
-    }
-  }
+  //     await Promise.allSettled(
+  //       [...this.handlers]
+  //         .filter(([k, v]) => k instanceof RegExp && k.test(eventName))
+  //         .map(([k, v]) =>
+  //           v.map(f => this.runHandler(eventName, eventData, f, forward))
+  //         )
+  //     )
+  //   } catch (error) {
+  //     handleError(error)
+  //   }
+  // }
 }
 
 /**

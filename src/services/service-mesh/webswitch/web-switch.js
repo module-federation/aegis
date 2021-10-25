@@ -1,18 +1,17 @@
 'use strict'
 
-const WebSocketServer = require('ws').Server
-const nanoid = require('nanoid').nanoid
+import { nanoid } from 'nanoid'
 const uplink = process.env.WEBSWITCH_UPLINK
 const begins = Date.now()
 const uptime = () => Math.round(Math.abs((Date.now() - begins) / 1000 / 60))
-const DEBUG = /true/i.test(process.env.WEBSWITCH_DEBUG) 
+const DEBUG = /true/i.test(process.env.WEBSWITCH_DEBUG)
 let messagesSent = 0
 
 /**
  *
- * @param {WebSocketServer} server
+ * @param {import('ws').Server} server
  */
-exports.attachServer = function (server) {
+export function attachServer (server) {
   /**
    *
    * @param {object} data
@@ -22,6 +21,7 @@ exports.attachServer = function (server) {
     server.clients.forEach(function (client) {
       if (client.OPEN && client.info.id !== sender.info.id) {
         !DEBUG || console.debug('sending client', client.info, data.toString())
+
         client.send(data)
         messagesSent++
       }
@@ -45,12 +45,7 @@ exports.attachServer = function (server) {
         uptimeMinutes: uptime(),
         messagesSent,
         clientsConnected: server.clients.size,
-        uplink: server.uplink
-          ? {
-              id: server.uplink.webswitchId,
-              address: server.uplink._socket.address()
-            }
-          : 'no uplink'
+        uplink: server.uplink ? uplink : 'no uplink'
       })
     )
   }
@@ -79,7 +74,7 @@ exports.attachServer = function (server) {
           return
         }
 
-        if (msg.proto === 'webswitch' && msg.pid) {
+        if (msg.proto === 'webswitch' && msg.pid && msg.role) {
           client.info = {
             ...client.info,
             pid: msg.pid,
@@ -94,15 +89,23 @@ exports.attachServer = function (server) {
       }
 
       client.terminate()
-      console.log('terminated client', client.webswitchId)
+      console.warn('terminated client', client.info)
     })
   })
 
-  if (uplink) {
-    server.uplink = require('./web-node')
-    server.uplink.info = { id: nanoid(), role: 'uplink' }
-    server.uplink.setDestinationHost(uplink)
-    server.uplink.onMessage(msg => server.broadcast(msg, server.uplink))
-    server.uplink.publishEvent({ proto: 'webswitch', pid: process.pid })
+  try {
+    if (uplink) {
+      server.uplink = require('./web-node')
+      server.uplink.info = { id: nanoid(), role: 'uplink' }
+      server.uplink.setDestinationHost(uplink)
+      server.uplink.onMessage(msg => server.broadcast(msg, server.uplink))
+      server.uplink.publishEvent({
+        proto: 'webswitch',
+        pid: process.pid,
+        role: 'uplink'
+      })
+    }
+  } catch (e) {
+    console.error('uplink', e)
   }
 }

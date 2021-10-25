@@ -60,6 +60,7 @@ export default function DistributedCache ({
    */
   function parse (payload) {
     try {
+      console.log('parse', payload)
       const event = payload
       const eventName = event.eventName
       const modelName = event.modelName.toLowerCase()

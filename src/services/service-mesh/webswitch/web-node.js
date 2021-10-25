@@ -5,17 +5,23 @@
  */
 'use strict'
 
-const WebSocket = require('ws')
-const dns = require('dns/promises')
-const { default: domainEvents } = require('../../domain/domain-events')
+import WebSocket from 'ws'
+import dns from 'dns/promises'
+import domainEvents from '../../../domain/domain-events'
+import path from 'path'
 
-const SERVICE_NAME = 'appmesh'
-const SERVICE_HOST = 'switch.app-mesh.net'
-const DEBUG = process.env.WEBSWITCH_DEBUG || false
+const SERVICE_NAME = 'webswitch'
+const configFile = require(path.resolve(
+  process.cwd(),
+  'public',
+  'aegis.config.json'
+))
+const config = configFile.services.serviceMesh.WebSwitch
+const DEBUG = /true|yes|y/i.test(config.debug) || false
 
-let fqdn = process.env.WEBSWITCH_SERVER || SERVICE_HOST
-let port = process.env.WEBSWITCH_PORT || SERVICE_NAME
-let heartbeat = process.env.WEBSWITCH_HEARTBEAT || 10000
+let heartbeat = config.heartbeat || 10000
+let port = config.port || SERVICE_NAME
+let fqdn = config.host || 'switch.app-mesh.net'
 let hostAddress
 let servicePort
 let uplinkCallback
@@ -73,19 +79,19 @@ async function getServicePort (hostname) {
  * Set callback for uplink.
  * @param {*} callback
  */
-exports.onMessage = function (callback) {
+export function onMessage (callback) {
   uplinkCallback = callback
 }
 
 /** server sets uplink host */
-exports.setDestinationHost = function (host) {
+export function setDestinationHost (host) {
   hostAddress = null
   const [hst, prt] = host.split(':')
   fqdn = hst
   port = prt
 }
 
-exports.resetHost = function () {
+export function resetHost () {
   hostAddress = null
 }
 
@@ -96,19 +102,22 @@ const protocol = () =>
     pid: process.pid
   })
 
+export async function subscribe (eventName, callback, observer) {
+  observer.on(eventName, callback)
+}
+
 /**
  * Call this method to broadcast a message on the appmesh network
  * @param {*} event
- * @param {import('../../domain/observer').Observer} observer
- * @param {*} networkMiddlewareAdapter
+ * @param {import('../../../domain/observer').Observer} observer
  * @returns
  */
-exports.publishEvent = async function (event, observer) {
+export async function publish (event, observer) {
   if (!event) return
   if (!hostAddress) hostAddress = await getHostAddress(fqdn)
   if (!servicePort) servicePort = await getServicePort(fqdn)
 
-  function publish () {
+  function sendEvent () {
     if (!ws) {
       ws = new WebSocket(`ws://${hostAddress}:${servicePort}`)
 
@@ -166,8 +175,8 @@ exports.publishEvent = async function (event, observer) {
   }
 
   try {
-    publish()
+    sendEvent()
   } catch (e) {
-    console.warn('publishEvent', e)
+    console.warn('publish', e)
   }
 }

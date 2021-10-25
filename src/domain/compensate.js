@@ -1,13 +1,15 @@
 import CircuitBreaker from './circuit-breaker'
 import domainEvents from './domain-events'
 
+const { undoStarted, undoWorked, undoFailed } = domainEvents
+
 const MAXRETRY = process.env.MAXUNDORETRY || 3
 const UNDOTIMEOUT = process.env.UNDOTIMEOUT || 60000
 
 async function reportStatus (status, eventFn, model) {
   const result = { compensateResult: status }
-  await model.emit(eventFn(model), result)
-  await model.update(result)
+  await model.emit(eventFn(model.getName()), result)
+  return model.update(result)
 }
 
 /**
@@ -28,7 +30,7 @@ export default async function compensate (model) {
       .map(port => ({ [port]: 0 }))
       .reduce((a, b) => ({ ...a, ...b }))
 
-    await model.emit(domainEvents.undoStarted(model), 'undo starting')
+    await model.emit(undoStarted(model.getName()), 'undo starting')
 
     const undoModel = await Promise.resolve(
       portFlow.reduceRight(async function (model, port, index, arr) {
@@ -70,13 +72,13 @@ export default async function compensate (model) {
     )
 
     if (undoModel.getPortFlow().length > 0) {
-      await reportStatus('INCOMPLETE', domainEvents.undoFailed, undoModel)
+      await reportStatus('INCOMPLETE', undoFailed, undoModel)
       return
     }
 
-    await reportStatus('COMPLETE', domainEvents.undoWorked, undoModel)
+    await reportStatus('COMPLETE', undoWorked, undoModel)
   } catch (error) {
-    await model.emit(domainEvents.undoFailed(model), error.message)
+    await model.emit(undoFailed(model.getName()), error.message)
     console.error(compensate.name, error.message)
   }
 }

@@ -3,8 +3,9 @@
 const MongoClient = require('mongodb').MongoClient
 const DataSourceMemory = require('./datasource-memory').DataSourceMemory
 
+global.aegisAdapters = require('../../../public/aegis.config.json').adapters
 const url = process.env.MONGODB_URL || 'mongodb://localhost:27017'
-const cacheSize = Number(process.env.CACHE_SIZE) || 300
+const cacheSize = Number(aegisAdapters.datasources.cacheSize) || 300
 
 /**
  * MongoDB adapter extends in-memory datasource to support caching.
