@@ -49,38 +49,37 @@ export class Observer {
  *
  * @param {Error} error
  */
- const handleError = error => {
+const handleError = error => {
   console.error({ file: __filename, error })
 }
 
-
-function runHandler (eventName, eventData = {}, handle, forward) {
+async function runHandler (eventName, eventData = {}, handle, forward) {
   const data = { ...eventData, eventName }
-  handle(data)
-  forward && eventName !== forwardEvent && this.notify(forwardEvent, data)
+  await handle(data)
+  forward &&
+    eventName !== forwardEvent &&
+    (await this.notify(forwardEvent, data))
 }
 
-function notify (runHandler) {
-  return async function (eventName, eventData, forward) {
-    const handle = runHandler.bind(this)
+async function notify (eventName, eventData, forward = false) {
+  const run = runHandler.bind(this)
 
-    try {
-      if (this.handlers.has(eventName)) {
-        await Promise.allSettled(
-          this.handlers
-            .get(eventName)
-            .map(handler => handle(eventName, eventData, handler, forward))
-        )
-      }
-
+  try {
+    if (this.handlers.has(eventName)) {
       await Promise.allSettled(
-        [...this.handlers]
-          .filter(([k, v]) => k instanceof RegExp && k.test(eventName))
-          .map(([k, v]) => v.map(f => handle(eventName, eventData, f, forward)))
+        this.handlers
+          .get(eventName)
+          .map(handler => run(eventName, eventData, handler, forward))
       )
-    } catch (error) {
-      handleError(error)
     }
+
+    await Promise.allSettled(
+      [...this.handlers]
+        .filter(([k, v]) => k instanceof RegExp && k.test(eventName))
+        .map(([k, v]) => v.map(f => run(eventName, eventData, f, forward)))
+    )
+  } catch (error) {
+    handleError(error)
   }
 }
 
@@ -94,7 +93,7 @@ class ObserverImpl extends Observer {
    */
   constructor (eventHandlers) {
     super(eventHandlers)
-    this.notify = notify(runHandler).bind(this)
+    this.notify = notify.bind(this)
   }
 
   /**

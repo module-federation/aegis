@@ -145,6 +145,7 @@
  * @property {command} [commands] - define functions to execute when specified in a
  * URL parameter or query of the auto-generated REST API
  * @property {accessControlList} [accessControlList] - configure authorization
+ * @property {number} [start] - create `start` instances of the model
  */
 
 /**
