@@ -5,6 +5,8 @@
 
 import domainEvents from './domain-events'
 
+const { forwardEvent } = domainEvents
+
 /**
  * @callback eventHandler
  * @param {Event | Model | {eventName:string, Model}} eventData
@@ -87,7 +89,7 @@ class ObserverImpl extends Observer {
   runHandler (eventName, eventData = {}, handler, forward) {
     const data = { ...eventData, eventName }
     handler(data)
-    !forward || this.notify(domainEvents.forwardEvent, data)
+    forward && eventName !== forwardEvent && this.notify(forwardEvent, data)
   }
 
   /**
