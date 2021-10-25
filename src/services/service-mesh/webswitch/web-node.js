@@ -8,10 +8,16 @@
 import WebSocket from 'ws'
 import dns from 'dns/promises'
 import domainEvents from '../../../domain/domain-events'
-import configFile from '../../../../public/aegis.config.json'
+import path from 'path'
+
+const SERVICE_NAME = 'webswitch'
+const configFile = require(path.resolve(
+  process.cwd(),
+  'public',
+  'aegis.config.json'
+))
 const config = configFile.services.serviceMesh.WebSwitch
 const DEBUG = /true|yes|y/i.test(config.debug) || false
-const SERVICE_NAME = 'webswitch'
 
 let heartbeat = config.heartbeat || 10000
 let port = config.port || SERVICE_NAME

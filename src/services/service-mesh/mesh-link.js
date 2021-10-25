@@ -1,7 +1,12 @@
 'use strict'
 
 const mlink = require('mesh-link')
-const userConfig = require('../../../public/aegis.config.json')
+const path = require('path')
+const userConfig = require(path.resolve(
+  process.cwd(),
+  'public',
+  'aegis.config.json'
+))
 
 const defaultCfg = {
   redis: {
@@ -16,7 +21,7 @@ const defaultCfg = {
   updateInterval: 1000
 }
 
-const cfg = userConfig.services.serviceMesh.MeshLink || defaultCfg
+const cfg = userConfig.services.serviceMesh.MeshLink.config || defaultCfg
 
 let started = false
 
