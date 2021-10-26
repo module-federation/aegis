@@ -132,11 +132,9 @@ async function start (config = defaultCfg, observer = null) {
 async function publish (event, observer) {
   const handlerId = numericHash(event.eventName)
   console.debug('mlink publish', handlerId, event)
-
   start(cfg, observer).then(() => {
     return mlink.send(handlerId, mlink.getNodeEndPoints(), event, response => {
       const eventData = JSON.parse(response)
-
       if (eventData?.eventName) {
         observer.notify(eventData.eventName, eventData)
       }
@@ -144,20 +142,18 @@ async function publish (event, observer) {
   })
 }
 
-async function subscribe (eventName, callback, observer) {
+async function subscribe (eventName, callback) {
   const handlerId = numericHash(eventName)
   console.debug('mlink subscribe', eventName, handlerId)
-
   start(cfg, observer).then(() =>
     mlink.handler(handlerId, (data, cb) => {
-      callback(eventName, data)
-      observer.notify(eventName, data)
-
-      cb(data)
+      cb(callback(eventName, data))
     })
   )
 }
 
-function attachServer (server) {}
+function attachServer (server) {
+  console.log('attachServer MeshLink')
+}
 
 module.exports = { publish, subscribe, attachServer }

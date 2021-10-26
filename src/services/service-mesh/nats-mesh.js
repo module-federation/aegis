@@ -1,14 +1,11 @@
 const { connect, StringCodec } = require('nats')
 
-// to create a connection to a nats-server:
-const nc = await connect({ servers: 'demo.nats.io:4222' })
+const sc = StringCodec
 
-const StringCodec = require('nats')
+exports.subscribe = async function (eventName, callback) {
+  // to create a connection to a nats-server:
+  const nc = await connect({ servers: 'demo.nats.io:4222' })
 
-// create a codec
-const sc = StringCodec()
-
-exports.subscribe = function (eventName, callback) {
   // create a simple subscriber and iterate over messages
   // matching the subscription
   const sub = nc.subscribe(eventName)
