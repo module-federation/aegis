@@ -33,9 +33,8 @@ const enabled =
 const service =
   enabled === config.services.activeServiceMesh ? enabled : 'WebSwitch'
 
-
-  export const MeshService = {
+export const MeshService = {
   ...Object.keys(MeshAdapter)
-    .map(k => ({ [k]: MeshAdapter[k](MeshServices['WebSwitch']) }))
+    .map(k => ({ [k]: MeshAdapter[k](MeshServices[k]) }))
     .reduce((a, b) => ({ ...a, ...b }))
 }
