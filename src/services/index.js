@@ -35,6 +35,6 @@ const service =
 
 export const MeshService = {
   ...Object.keys(MeshAdapter)
-    .map(k => ({ [k]: MeshAdapter[k](MeshServices[k]) }))
+    .map(k => ({ [k]: MeshAdapter[k](MeshServices[service]) }))
     .reduce((a, b) => ({ ...a, ...b }))
 }
