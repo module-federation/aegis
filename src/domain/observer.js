@@ -53,6 +53,13 @@ const handleError = error => {
   console.error({ file: __filename, error })
 }
 
+/**
+ *
+ * @param {string} eventName
+ * @param {*} eventData
+ * @param {eventHandler} handle
+ * @param {boolean} forward
+ */
 async function runHandler (eventName, eventData = {}, handle, forward) {
   const data = { ...eventData, eventName }
   await handle(data)
@@ -61,6 +68,12 @@ async function runHandler (eventName, eventData = {}, handle, forward) {
     (await this.notify(forwardEvent, data))
 }
 
+/**
+ *
+ * @param {string} eventName
+ * @param {*} eventData
+ * @param {boolean} forward
+ */
 async function notify (eventName, eventData, forward = false) {
   const run = runHandler.bind(this)
 
@@ -116,39 +129,6 @@ class ObserverImpl extends Observer {
     }
     return true
   }
-
-  // runHandler (eventName, eventData = {}, handler, forward) {
-  //   const data = { ...eventData, eventName }
-  //   handler(data)
-  //   forward && eventName !== forwardEvent && this.notify(forwardEvent, data)
-  // }
-
-  /**
-   * @override
-   */
-  // async notify (eventName, eventData, forward) {
-  //   try {
-  //     if (this.handlers.has(eventName)) {
-  //       await Promise.allSettled(
-  //         this.handlers
-  //           .get(eventName)
-  //           .map(handler =>
-  //             this.runHandler(eventName, eventData, handler, forward)
-  //           )
-  //       )
-  //     }
-
-  //     await Promise.allSettled(
-  //       [...this.handlers]
-  //         .filter(([k, v]) => k instanceof RegExp && k.test(eventName))
-  //         .map(([k, v]) =>
-  //           v.map(f => this.runHandler(eventName, eventData, f, forward))
-  //         )
-  //     )
-  //   } catch (error) {
-  //     handleError(error)
-  //   }
-  // }
 }
 
 /**

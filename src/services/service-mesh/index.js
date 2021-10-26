@@ -14,9 +14,6 @@ const options = {
   NatsMesh
 }
 
-console.log('mesh adapter', MeshAdapter)
-console.log('options', options)
-
 const enabled =
   Object.entries(config.services.serviceMesh)
     .filter(([, v]) => v.enabled)
