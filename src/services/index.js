@@ -38,3 +38,5 @@ export const MeshService = {
     .map(k => ({ [k]: MeshAdapter[k](MeshServices[service]) }))
     .reduce((a, b) => ({ ...a, ...b }))
 }
+
+console.log(MeshServices[service])

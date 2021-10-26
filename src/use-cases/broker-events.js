@@ -10,6 +10,7 @@ const BROADCAST = process.env.TOPIC_BROADCAST || 'broadcastChannel'
 const useObjectCache = /true/i.test(process.env.DISTRIBUTED_CACHE_ENABLED)
 const useSvcMesh = /true/i.test(process.env.SERVICEMESH_ENABLED) || true
 
+
 /**
  * Handle internal and external events.
  * @param {import('../domain/observer').Observer} observer
