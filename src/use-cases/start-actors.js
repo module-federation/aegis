@@ -108,18 +108,24 @@ function startWorker (model, observer, respository) {
 }
 
 /**
- * Create {@link ModelSpecification}.`start` number of model
- * instances, unless instances have already been loaded from
- * storage. This is for models that need to run for the life
- * of the program. N.B. such models are run in worker threads
+ * Create and/or start {@link ModelSpecification}.`start` number
+ * of model instances. This is for models that need to run for
+ * the life of the program as actors. N.B. such models are run
+ * in worker threads for concurrency as actors. Default models
+ * are part of the server actor, but are not actors in and of
+ * themselves as they are not concurrent, but part of a
+ * single-threaded event loop. Note the server actor can create
+ * new model actors through the REST API.
+ *
+ * Cf. https://en.wikipedia.org/wiki/Actor_model
  *
  * @param {{
  *  models:import('../domain/model-factory').ModelFactory,
  *  repository:import('../domain/datasource-factory').DataSourceFactory
  * }}
  */
-const makeStartModels = ({ models, repository, observer }) =>
-  async function startModels () {
+const makeStartActors = ({ models, repository, observer }) =>
+  async function startActors () {
     const specs = models.getModelSpecs()
 
     const list = specs
@@ -140,4 +146,4 @@ const makeStartModels = ({ models, repository, observer }) =>
     )
   }
 
-export default makeStartModels
+export default makeStartActors

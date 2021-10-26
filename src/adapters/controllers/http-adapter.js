@@ -22,7 +22,7 @@ export default function buildCallback (controller) {
       body: req.body,
       query: req.query,
       params: req.params,
-      //ip: req.ip,
+      ip: req.ip,
       method: req.method,
       path: req.path,
       // headers: {
@@ -42,10 +42,10 @@ export default function buildCallback (controller) {
 
         console.info({
           function: func,
+          ip: httpRequest.ip,
           method: httpRequest.method,
           params: httpRequest.params,
           query: httpRequest.query,
-          //source,
           ...httpRequest.body
         })
       }
