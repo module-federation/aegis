@@ -1,5 +1,4 @@
 const acme = require('acme-client')
-const path = require('path')
 const fs = require('fs')
 
 const challengePath = (webroot, token) =>
@@ -17,20 +16,21 @@ function makeChallengeCreateFn (path, dnsProvider) {
   return async function challengeCreateFn (authz, challenge, keyAuthorization) {
     console.log('Triggered challengeCreateFn()')
 
-    /* http-01 */
+    // http-01
     if (challenge.type === 'http-01') {
       const filePath = challengePath(path, challenge.token)
 
       console.log(
         `Creating challenge response for ${authz.identifier.value} at path: ${filePath}`
       )
-      /* Replace this */
       console.log(`writing "${keyAuthorization}" to path "${filePath}"`)
+
       fs.writeFileSync(filePath, keyAuthorization)
       const data = fs.readFileSync(filePath, 'utf-8')
+
       console.log('file exists', data.toString())
     } else if (challenge.type === 'dns-01') {
-      /* dns-01 */
+      // dns-01
       const dnsRecord = `_acme-challenge.${authz.identifier.value}`
 
       console.log(
@@ -39,7 +39,7 @@ function makeChallengeCreateFn (path, dnsProvider) {
 
       /* Replace this */
       console.log(
-        `Would create TXT record "${dnsRecord}" with value "${keyAuthorization}"`
+        `Create TXT record "${dnsRecord}" with value "${keyAuthorization}"`
       )
       const provider = await dnsProvider()
       await provider.createRecord(dnsRecord, 'TXT', keyAuthorization)
@@ -59,20 +59,18 @@ function makeChallengeRemoveFn (path, dnsProvider) {
   return async function challengeRemoveFn (authz, challenge, keyAuthorization) {
     console.log('Triggered challengeRemoveFn()')
 
-    /* http-01 */
+    // http-01
     if (challenge.type === 'http-01') {
       const filePath = challengePath(path, challenge.token)
       console.log(
         `Removing challenge response for ${authz.identifier.value} at path: ${filePath}`
       )
 
-      /* Replace this */
       fs.unlinkSync(filePath)
     } else if (challenge.type === 'dns-01') {
-      /* dns-01 */
+      // dns-01
       const dnsRecord = `_acme-challenge.${authz.identifier.value}`
 
-      /* Replace this */
       console.log(
         `Would remove TXT record "${dnsRecord}" with value "${keyAuthorization}"`
       )
@@ -87,7 +85,7 @@ const directoryUrl = !/prod/.test(process.env.NODE_ENV)
   : acme.directory.letsencrypt.production
 
 /**
- *
+ * Provide DNS client and WHOIS implementations
  * @param {import('./dns/dns-provider').DnsProvider} dnsProvider
  * @param {function(domain):{getEmail:function()}} whois
  * @returns {function(domain,email?,challengePath?):Promise<string>}
@@ -104,18 +102,18 @@ exports.initCertificateService = function (dnsProvider, whois) {
     email = `${domain}.admin@gmail.com`,
     challengePath = '/var/www/html'
   ) {
-    /* Init client */
+    // Init client
     const client = new acme.Client({
       directoryUrl,
       accountKey: await acme.forge.createPrivateKey()
     })
 
-    /* Create CSR */
+    // Create CSR
     const [key, csr] = await acme.forge.createCsr({
       commonName: domain
     })
 
-    /* Certificate */
+    // Get certificate
     const cert = await client.auto({
       csr,
       email: email || (await whois(domain).getEmail()),
@@ -124,7 +122,6 @@ exports.initCertificateService = function (dnsProvider, whois) {
       challengeRemoveFn: makeChallengeRemoveFn(challengePath, dnsProvider)
     })
 
-    /* Done */
     console.log(`CSR:\n${csr.toString()}`)
     console.log(`Private key:\n${key.toString()}`)
     console.log(`Certificate:\n${cert.toString()}`)
