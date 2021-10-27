@@ -60,7 +60,6 @@ export default function DistributedCache ({
    */
   function parse (payload) {
     try {
-      console.log('parse', payload)
       const event = payload
       const eventName = event.eventName
       const modelName = event.modelName.toLowerCase()
@@ -286,7 +285,7 @@ export default function DistributedCache ({
         )
         await route(formatResponse(event, related))
       } catch (error) {
-        console.error(searchCache.name, error.message)
+        console.error(searchCache.name, error)
       }
     }
   }

@@ -2,6 +2,9 @@
 
 import DataSource from '../domain/datasource-factory'
 
+/**
+ * Bind adapter to service.
+ */
 export const Persistence = {
   async save (model) {
     return DataSource.getDataSource(model.getName()).save(model.getId(), model)

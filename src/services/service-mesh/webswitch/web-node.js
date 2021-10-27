@@ -7,7 +7,6 @@
 
 import WebSocket from 'ws'
 import dns from 'dns/promises'
-import domainEvents from '../../../domain/domain-events'
 import path from 'path'
 
 const SERVICE_NAME = 'webswitch'
@@ -18,16 +17,18 @@ const configFile = require(path.resolve(
 ))
 const config = configFile.services.serviceMesh.WebSwitch
 const DEBUG = /true|yes|y/i.test(config.debug) || false
+const heartbeat = config.heartbeat || 10000
 
-let heartbeat = config.heartbeat || 10000
+/**
+ * @type import("ws/lib/websocket")
+ */
+let ws
+
 let port = config.port || SERVICE_NAME
 let fqdn = config.host || 'switch.app-mesh.net'
 let hostAddress
 let servicePort
 let uplinkCallback
-/** @type import("ws/lib/websocket") */
-let ws
-let timerId
 
 async function dnsResolve (hostname) {
   try {
@@ -83,31 +84,56 @@ export function onMessage (callback) {
   uplinkCallback = callback
 }
 
-/** server sets uplink host */
+/**
+ * server sets uplink host
+ */
 export function setDestinationHost (host) {
   hostAddress = null
-  const [hst, prt] = host.split(':')
-  fqdn = hst
-  port = prt
+  const [FQDN, PORT] = host.split(':')
+  fqdn = FQDN
+  port = PORT
 }
 
-export function resetHost () {
-  hostAddress = null
-}
-
-const protocol = () =>
+const protocol = type =>
   JSON.stringify({
     proto: 'webswitch',
     role: 'node',
+    type,
     pid: process.pid
   })
+
+/**
+ * 
+ * @param {WebSocket} ws 
+ */
+function setupHeartBeat (ws) {
+  let receivedPong = false
+
+  ws.addListener('pong', function () {
+    !DEBUG || console.debug('received pong')
+    receivedPong = true
+  })
+
+  ws.ping(0x9)
+
+  setInterval(function () {
+    if (receivedPong) {
+      receivedPong = false
+      ws.ping(0x9)
+    } else {
+      observer.notify('webswitchTimeout', 'webswitch server timeout', true)
+      console.error('webswitch server timeout, try new conn')
+      ws = null
+    }
+  }, heartbeat)
+}
 
 export async function subscribe (eventName, callback, observer) {
   observer.on(eventName, callback)
 }
 
 /**
- * Call this method to broadcast a message on the appmesh network
+ * Call this method to broadcast a message on the webswitch network
  * @param {*} event
  * @param {import('../../../domain/observer').Observer} observer
  * @returns
@@ -121,18 +147,14 @@ export async function publish (event, observer) {
     if (!ws) {
       ws = new WebSocket(`ws://${hostAddress}:${servicePort}`)
 
-      ws.addListener('pong', function () {
-        !DEBUG || console.debug('received pong')
-        clearTimeout(timerId)
+      ws.on('open', function () {
+        ws.send(protocol())
+        setupHeartBeat(ws)
+      })
 
-        timerId = setTimeout(() => {
-          observer.notify(
-            domainEvents.webswitchTimeout(),
-            'webswitch server timeout',
-            true
-          )
-          console.error('webswitch server timed out')
-        }, heartbeat + heartbeat / 8)
+      ws.on('error', function (error) {
+        console.error(ws.on, 'opening new conn after error', error)
+        ws = null
       })
 
       ws.on('message', async function (message) {
@@ -149,15 +171,6 @@ export async function publish (event, observer) {
         }
 
         if (uplinkCallback) uplinkCallback(message)
-      })
-
-      ws.on('open', function () {
-        ws.send(protocol())
-        setInterval(() => ws.ping(0x9), heartbeat)
-      })
-
-      ws.on('error', function (error) {
-        console.error(ws.on, error)
       })
 
       return
