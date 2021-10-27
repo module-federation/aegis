@@ -5,13 +5,9 @@ const path = require('path')
 const nanoid = require('nanoid').nanoid
 const begins = Date.now()
 const uptime = () => Math.round(Math.abs((Date.now() - begins) / 1000 / 60))
-const userConfig = require(path.resolve(
-  process.cwd(),
-  'public',
-  'aegis.config.json'
-))
-
-const DEBUG = /true/i.test(userConfig.services.MeshLink.debug)
+const userConfig = require('../../../../microlib/public/aegis.config.json')
+const DEBUG =
+  /true/i.test(userConfig.services.serviceMesh.MeshLink.debug) || false
 
 const defaultCfg = {
   redis: {
