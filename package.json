@@ -28,7 +28,7 @@
     "express": "4.17.1",
     "express-jwt": "6.1.0",
     "import-fresh": "3.3.0",
-    "ipfs": "0.58.6",
+    "ipfs": "0.59.1",
     "jwks-rsa": "2.0.5",
     "mesh-link": "0.13.6",
     "mongodb": "4.1.3",
