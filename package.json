@@ -53,7 +53,7 @@
     "express-cli": "0.0.1",
     "jest": "27.1.0",
     "mocha": "9.1.3",
-    "nodemon": "2.0.12",
+    "nodemon": "2.0.14",
     "rimraf": "3.0.2",
     "split": "1.0.1",
     "webpack": "5.52.0",
