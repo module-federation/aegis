@@ -2,11 +2,16 @@
 
 const mlink = require('mesh-link')
 const path = require('path')
+const nanoid = require('nanoid').nanoid
+const begins = Date.now()
+const uptime = () => Math.round(Math.abs((Date.now() - begins) / 1000 / 60))
 const userConfig = require(path.resolve(
   process.cwd(),
   'public',
   'aegis.config.json'
 ))
+
+const DEBUG = /true/i.test(userConfig.services.MeshLink.debug)
 
 const defaultCfg = {
   redis: {
@@ -24,6 +29,7 @@ const defaultCfg = {
 const cfg = userConfig.services.serviceMesh.MeshLink.config || defaultCfg
 
 let started = false
+let server
 
 function numericHash (str) {
   let hash = 0
@@ -36,10 +42,6 @@ function numericHash (str) {
     hash |= 0 // Convert to 32bit integer
   }
   return Math.abs(parseInt(hash % 10000)) //keep under 0xffff
-}
-
-function uplink (config = defaultCfg) {
-  console.debug('register uplink', config.uplink)
 }
 
 const sharedObjects = new Map()
@@ -114,8 +116,7 @@ const registerSharedObjEvents = observer =>
 async function start (config = defaultCfg, observer = null) {
   if (started) return
   started = true
-
-  if (observer) registerSharedObjEvents(observer)
+  observer && registerSharedObjEvents(observer)
 
   mlink
     .start(config)
@@ -130,30 +131,117 @@ async function start (config = defaultCfg, observer = null) {
 }
 
 async function publish (event, observer) {
+  const deserEvent = JSON.parse(JSON.stringify(event))
   const handlerId = numericHash(event.eventName)
-  console.debug('mlink publish', handlerId, event)
+  DEBUG && console.debug('mlink publish', handlerId, deserEvent)
+
   start(cfg, observer).then(() => {
-    return mlink.send(handlerId, mlink.getNodeEndPoints(), event, response => {
-      const eventData = JSON.parse(response)
-      if (eventData?.eventName) {
-        observer.notify(eventData.eventName, eventData)
+    return mlink.send(
+      handlerId,
+      mlink.getNodeEndPoints(),
+      deserEvent,
+      response => {
+        console.debug('response to publish ', handlerId, response)
+        const eventData = JSON.parse(response)
+        if (eventData?.eventName) {
+          observer.notify(eventData.eventName, eventData)
+        }
       }
-    })
+    )
+  })
+  server.broadcast(JSON.stringify(event), {
+    info: { id: 2, role: 'MeshLink', pid: process.pid }
   })
 }
 
 async function subscribe (eventName, callback) {
   const handlerId = numericHash(eventName)
-  console.debug('mlink subscribe', eventName, handlerId)
-  start(cfg, observer).then(() =>
+  DEBUG && console.debug('mlink subscribe', eventName, handlerId)
+  start(cfg).then(() =>
     mlink.handler(handlerId, (data, cb) => {
-      cb(callback(eventName, data))
+      console.log('mlink.handler called with data', handlerId, data)
+      cb(callback(data))
     })
   )
 }
 
-function attachServer (server) {
-  console.log('attachServer MeshLink')
+function attachServer (wss) {
+  server = wss
+  let messagesSent = 0
+
+  /**
+   *
+   * @param {object} data
+   * @param {WebSocket} sender
+   */
+  server.broadcast = function (data, sender) {
+    server.clients.forEach(function (client) {
+      if (client.OPEN && client.info.id !== sender.info.id) {
+        !DEBUG || console.debug('sending client', client.info, data.toString())
+        client.send(data)
+        messagesSent++
+      }
+    })
+  }
+
+  /**
+   * @todo
+   * @param {*} client
+   */
+  server.setRateLimit = function (client) {}
+
+  server.sendStatus = function (client) {
+    client.send(
+      JSON.stringify({
+        uptimeMinutes: uptime(),
+        messagesSent,
+        clientsConnected: server.clients.size
+      })
+    )
+  }
+
+  server.on('connection', function (client) {
+    client.info = { address: client._socket.address(), id: nanoid() }
+
+    client.addListener('ping', function () {
+      !DEBUG || console.debug('responding to client ping', client.info)
+      client.pong(0xa)
+    })
+
+    client.on('close', function () {
+      console.warn('client disconnecting', client.info)
+    })
+
+    client.on('message', function (message) {
+      try {
+        const msg = JSON.parse(message.toString())
+
+        if (client.info.initialized) {
+          if (msg == 'status') {
+            return server.sendStatus(client)
+          }
+          server.broadcast(message, client)
+          return
+        }
+
+        if (msg.proto === 'webswitch' && msg.pid && msg.role) {
+          client.info = {
+            ...client.info,
+            pid: msg.pid,
+            role: msg.role,
+            initialized: true
+          }
+          console.log('client initialized', client.info)
+          return
+        }
+      } catch (e) {
+        console.error(client.on.name, 'on message', e)
+      }
+
+      client.terminate()
+      console.warn('terminated client', client.info)
+    })
+  })
 }
 
 module.exports = { publish, subscribe, attachServer }

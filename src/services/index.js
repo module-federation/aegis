@@ -23,22 +23,23 @@ const config = require(path.resolve(
   'aegis.config.json'
 ))
 
+const designatedService = config.services.activeServiceMesh
+
 /**
  * Which mesh service implementations are enabled?
  */
-const enabled =
-  Object.entries(config.services.serviceMesh)
-    .filter(([, v]) => v.enabled)
-    .map(([k]) => k)
-    .reduce(k => k) || 'WebSwitch'
+const enabledServices = Object.entries(config.services.serviceMesh)
+  .filter(([, v]) => v.enabled)
+  .map(([k]) => k) || ['WebSwitch']
 
 /**
  * Which mesh service do we use?
  */
-const service =
-  enabled === config.services.activeServiceMesh ? enabled : 'WebSwitch'
+const service = enabledServices.includes(designatedService)
+  ? designatedService
+  : 'WebSwitch'
 
-/** 
+/**
  * Bind service to adapter.
  */
 export const MeshService = {
