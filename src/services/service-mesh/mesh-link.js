@@ -1,7 +1,6 @@
 'use strict'
 
 const mlink = require('mesh-link')
-const path = require('path')
 const nanoid = require('nanoid').nanoid
 const begins = Date.now()
 const uptime = () => Math.round(Math.abs((Date.now() - begins) / 1000 / 60))
@@ -25,9 +24,10 @@ const defaultCfg = {
 const cfg = userConfig.services.serviceMesh.MeshLink.config || defaultCfg
 
 let started = false
-let server
+const subscriptions = new Map()
 
 function numericHash (str) {
+  if (subscriptions.has(str)) return null
   let hash = 0
   let i
   let chr
@@ -37,7 +37,8 @@ function numericHash (str) {
     hash = (hash << 5) - hash + chr
     hash |= 0 // Convert to 32bit integer
   }
-  return Math.abs(parseInt(hash % 10000)) //keep under 0xffff
+  const handleId = Math.abs(parseInt(hash % 10000)) //keep under 0xffff
+  subscriptions.set(str, handleId)
 }
 
 const sharedObjects = new Map()
@@ -145,13 +146,18 @@ async function publish (event, observer) {
       }
     )
   })
-  server.broadcast(JSON.stringify(event), {
-    info: { id: 2, role: 'MeshLink', pid: process.pid }
-  })
+  try {
+    global.broadcast(JSON.stringify(event), {
+      info: { id: 2, role: 'MeshLink', pid: process.pid }
+    })
+  } catch (e) {
+    console.error('error calling global.broadcast', e)
+  }
 }
 
 async function subscribe (eventName, callback) {
   const handlerId = numericHash(eventName)
+  if (!handlerId) return // we've already registered a callback for this event
   DEBUG && console.debug('mlink subscribe', eventName, handlerId)
   start(cfg).then(() =>
     mlink.handler(handlerId, (data, cb) => {
@@ -161,8 +167,7 @@ async function subscribe (eventName, callback) {
   )
 }
 
-function attachServer (wss) {
-  server = wss
+function attachServer (server) {
   let messagesSent = 0
 
   /**
@@ -179,6 +184,8 @@ function attachServer (wss) {
       }
     })
   }
+
+  global.broadcast = server.broadcast
 
   /**
    * @todo
