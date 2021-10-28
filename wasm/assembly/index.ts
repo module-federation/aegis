@@ -75,6 +75,7 @@ export function serviceMeshNotify(keys: string[], vals: string[]): void {
   const modelId = findVal("modelId", keys, vals);
   const eventName = findVal("eventName", keys, vals);
   const eventData = new Array<string[]>(3);
+
   aegis.log(
     "wasm notify called with args: eventName:" +
       eventName +
