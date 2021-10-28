@@ -39,19 +39,18 @@ export async function importWebAssembly (remoteEntry, type = 'model') {
        * @param {string} callbackName - name of exported function to run when event fires
        */
       addListener (eventName, callbackName) {
-        console.debug('websocket listen invoked')
         const adapter = WasmInterop(wasm)
+        const event = wasm.exports.__getString(eventName)
         const callback = wasm.exports.__getString(callbackName)
+        console.debug('wasm listen: callback', callback, 'eventName', event)
 
         const fn = adapter.findWasmFunction(callback)
         if (typeof fn !== 'function') {
-          console.warn('addListener fn is not a function', callback)
+          console.warn('callback is not a function', callback)
           return
         }
 
-        observer.on(wasm.exports.__getString(eventName), eventData =>
-          adapter.callWasmFunction(fn, eventData)
-        )
+        observer.on(event, eventData => adapter.callWasmFunction(fn, eventData))
       },
 
       /**
@@ -65,7 +64,7 @@ export async function importWebAssembly (remoteEntry, type = 'model') {
         const data = adapter.constructObject(eventData)
         console.debug('wasm called js to emit an event:', event, 'data:', data)
         observer.notify(event, data, Boolean(forward))
-      }, 
+      },
 
       /**
        *
