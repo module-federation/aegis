@@ -1,6 +1,5 @@
 # ÆGIS
 
-PKG IS UNPUBLISHED FROM NPM UNTIL Oct 28th, 6AM CDT (Chicago US) time.
 
 See the [MicroLib](https://github.com/module-federation/MicroLib) repo for documentation and a working example of a federation server.
 
