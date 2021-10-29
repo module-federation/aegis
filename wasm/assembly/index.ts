@@ -53,7 +53,9 @@ export function port1Cb(keys: string[], vals: string[]): string[][] {
     ["consumesEvent", "dFlow_start"],
     ["producesEvent", "port1_done"],
   ];
-  aegis.log("porf invokced" + cfg[0][0]+" "+cfg[0][1]+" "+cfg[0][2]+cfg[0][3])
+  aegis.log(
+    "porf invokced" + cfg[0][0] + " " + cfg[0][1] + " " + cfg[0][2] + cfg[0][3]
+  );
   return cfg;
 }
 
@@ -64,7 +66,9 @@ export function port2Cb(keys: string[], vals: string[]): string[][] {
     ["consumesEvent", "port1_done"],
     ["producesEvent", "port2_done"],
   ];
-  aegis.log("porf invokced" + cfg[0][0]+" "+cfg[0][1]+" "+cfg[0][2]+cfg[0][3])
+  aegis.log(
+    "porf invokced" + cfg[0][0] + " " + cfg[0][1] + " " + cfg[0][2] + cfg[0][3]
+  );
   return cfg;
 }
 
