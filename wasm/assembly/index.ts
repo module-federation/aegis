@@ -65,8 +65,8 @@ export function commandEx(keys: string[], vals: string[]): string[][] {
 }
 
 export function serviceMeshListen(keys: string[], vals: string[]): void {
-  aegis.log("serviceMeshListen: " + keys[0] + ": " + vals[0]);
   const eventName = findVal("eventName", keys, vals);
+  aegis.log("serviceMeshListen: " + eventName);
   aegis.addListener(eventName, "serviceMeshCallback");
 }
 
@@ -75,7 +75,15 @@ export function serviceMeshNotify(keys: string[], vals: string[]): void {
   const modelId = findVal("modelId", keys, vals);
   const eventName = findVal("eventName", keys, vals);
   const eventData = new Array<string[]>(3);
-  aegis.log("wasm notify called with args: " + modelName + ": " + modelId);
+
+  aegis.log(
+    "wasm notify called with args: eventName:" +
+      eventName +
+      " modelName:" +
+      modelName +
+      " modelId:" +
+      modelId
+  );
   eventData[0] = [keys[0], vals[0]];
   eventData[1] = ["modelName", modelName];
   eventData[2] = ["modelId", modelId];

@@ -1,7 +1,7 @@
 'use strict'
 
 import * as localClients from './providers'
-const getRemoteClients = async () => import('aegis-services/dns')
+const getRemoteClients = async () => null //import('aegis-services/dns')
 
 const dns = async function () {
   const name = process.env.DNS_SERVICE

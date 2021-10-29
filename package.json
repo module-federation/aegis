@@ -1,8 +1,8 @@
 {
-  "name": "@module-federation/aegis",
+  "name": "module-federation/aegis",
   "version": "0.0.0-beta.39",
   "module": "esm/",
-  "repository": "git@github.com:module-federation/aegis.git",
+  "repository": "git@github.com:tysonrm/aegis.git",
   "author": "Tyson Midboe <tyson.midboe@gmail.com>",
   "license": "MIT",
   "scripts": {
