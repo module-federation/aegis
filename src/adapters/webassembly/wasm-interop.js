@@ -231,7 +231,14 @@ exports.WasmInterop = function (module) {
       const ports = this.callWasmFunction(getPorts)
       return Object.keys(ports)
         .map(port => {
-          const [service, type, callback, undo] = ports[port].split(',')
+          const [
+            service,
+            type,
+            consumesEvent,
+            producesEvent,
+            callback,
+            undo
+          ] = ports[port].split(',')
           const cb = this.findWasmFunction(callback)
           const undoCb = this.findWasmFunction(undo)
           return {
@@ -239,6 +246,8 @@ exports.WasmInterop = function (module) {
             [port]: {
               service,
               type,
+              consumesEvent,
+              producesEvent,
               callback: data => this.callWasmFunction(cb, data),
               undo: data => this.callWasmFunction(undoCb, data)
             }

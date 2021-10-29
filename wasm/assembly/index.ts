@@ -40,9 +40,32 @@ export function modelFactory(keys: string[], values: string[]): string[][] {
 export function getPorts(keys: string[], vals: string[]): string[][] {
   //aegis.log("getPorts called  " + keys[0] + ":" + vals[0]);
   const ports = new Array<string[]>(2);
-  ports[0] = ["notify", "Event,0,outbound"];
-  ports[1] = ["listen", "Event,0,outbound"];
+  //service,type,consumesEvent,producesEvent,callback,undo
+  ports[0] = ["port1", "dFlow,outbound,dFlow_start,port1_done,port1Cb"];
+  ports[1] = ["port2", "dFlow,outbound,port1_done,port2_done,port2Cb"];
   return ports;
+}
+
+export function port1Cb(keys: string[], vals: string[]): string[][] {
+  const cfg = [
+    ["port", "port1"],
+    ["callback", "port1Cb"],
+    ["consumesEvent", "dFlow_start"],
+    ["producesEvent", "port1_done"],
+  ];
+  aegis.log("porf invokced" + cfg[0][0]+" "+cfg[0][1]+" "+cfg[0][2]+cfg[0][3])
+  return cfg;
+}
+
+export function port2Cb(keys: string[], vals: string[]): string[][] {
+  const cfg = [
+    ["port", "port2"],
+    ["callback", "port2Cb"],
+    ["consumesEvent", "port1_done"],
+    ["producesEvent", "port2_done"],
+  ];
+  aegis.log("porf invokced" + cfg[0][0]+" "+cfg[0][1]+" "+cfg[0][2]+cfg[0][3])
+  return cfg;
 }
 
 export function getCommands(): string[][] {
