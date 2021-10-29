@@ -3,7 +3,7 @@ const path = require('path')
 const jwt = require('express-jwt')
 const jwks = require('jwks-rsa')
 console.log('zackwashere', path.resolve(process.cwd(), './auth/key-set.json'))
-const keySet = require(path.resolve(process.cwd(), './auth/key-set.json'))
+const keySet = require('../../../microlib/auth/key-set.json')
 const authEnabled = /true/i.test(process.env.AUTH_ENABLED)
 
 exports.protectRoutes = function (app, path) {

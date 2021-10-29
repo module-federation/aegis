@@ -108,4 +108,6 @@ export function attachServer (server) {
   } catch (e) {
     console.error('uplink', e)
   }
+
+  return server
 }
