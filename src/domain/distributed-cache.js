@@ -319,8 +319,10 @@ export default function DistributedCache ({
    * @param {*} externalEvent
    */
   const forwardSearchRequest = (internalEvent, externalEvent) =>
-    observer.on(internalEvent, async event =>
-      publish({ ...event, eventName: externalEvent })
+    observer.on(
+      internalEvent,
+      async event => publish({ ...event, eventName: externalEvent }),
+      true
     )
 
   /**
@@ -336,7 +338,7 @@ export default function DistributedCache ({
    */
   const broadcastCrudEvent = eventName =>
     observer.on(eventName, async event =>
-      publish({ ...event, eventName: externalCrudEvent(eventName) })
+      publish({ ...event, eventName: externalCrudEvent(eventName) }, true)
     )
 
   /**

@@ -89,7 +89,7 @@ export function requireRemoteObject (model, relation, observer, ...args) {
 
   return new Promise(async function (resolve) {
     setTimeout(resolve, maxwait)
-    observer.on(response, execute(resolve))
+    observer.on(response, execute(resolve), true)
     await observer.notify(request, requestData)
   })
 }

@@ -106,7 +106,7 @@ exports.WasmInterop = function (module) {
       const obj = __getArray(ptr)
         .map(inner => __getArray(inner))
         .map(tuple => ({ [__getString(tuple[0])]: __getString(tuple[1]) }))
-        .reduce((prop1, prop2) => ({ ...prop1, ...prop2 }))
+        .reduce((obj1, obj2) => ({ ...obj1, ...obj2 }))
 
       const immutableClone = Object.freeze({ ...obj })
       !unpin || __unpin(ptr)

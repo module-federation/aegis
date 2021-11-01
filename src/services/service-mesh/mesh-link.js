@@ -5,7 +5,7 @@ const nanoid = require('nanoid').nanoid
 const begins = Date.now()
 const uptime = () => Math.round(Math.abs((Date.now() - begins) / 1000 / 60))
 const userConfig = require('../../../../microlib/public/aegis.config.json')
-const DEBUG =
+const debug =
   /true/i.test(userConfig.services.serviceMesh.MeshLink.debug) || false
 
 const defaultCfg = {
@@ -23,11 +23,7 @@ const defaultCfg = {
 
 const cfg = userConfig.services.serviceMesh.MeshLink.config || defaultCfg
 
-let started = false
-const subscriptions = new Map()
-
 function numericHash (str) {
-  if (subscriptions.has(str)) return null
   let hash = 0
   let i
   let chr
@@ -37,8 +33,7 @@ function numericHash (str) {
     hash = (hash << 5) - hash + chr
     hash |= 0 // Convert to 32bit integer
   }
-  const handleId = Math.abs(parseInt(hash % 10000)) //keep under 0xffff
-  subscriptions.set(str, handleId)
+  return Math.abs(parseInt(hash % 10000)) //keep under 0xffff
 }
 
 const sharedObjects = new Map()
@@ -101,8 +96,11 @@ const SharedObjEvent = {
 }
 
 const registerSharedObjEvents = observer =>
-  observer.on(/^externalCrudEvent_.*/, async (eventName, eventData) =>
-    SharedObjEvent[eventName.split('_')[1].substr(0, 6)](eventData)
+  observer.on(
+    /^externalCrudEvent_.*/,
+    async (eventName, eventData) =>
+      SharedObjEvent[eventName.split('_')[1].substr(0, 6)](eventData),
+    true
   )
 
 /**
@@ -110,16 +108,10 @@ const registerSharedObjEvents = observer =>
  * @param {cfg} config
  * @returns
  */
-async function start (config = defaultCfg, observer = null) {
-  if (started) return
-  started = true
-  observer && registerSharedObjEvents(observer)
-
+async function start (config = cfg) {
   mlink
     .start(config)
     .then(() => {
-      // connect to uplink if configured
-      !config.uplink || uplink(config)
       console.info('meshlink started')
     })
     .catch(error => {
@@ -128,23 +120,18 @@ async function start (config = defaultCfg, observer = null) {
 }
 
 async function publish (event, observer) {
+  console.debug('publish called', event.eventName, event, observer)
   const deserEvent = JSON.parse(JSON.stringify(event))
   const handlerId = numericHash(event.eventName)
-  DEBUG && console.debug('mlink publish', handlerId, deserEvent)
+  console.debug('mlink stringify', handlerId, JSON.stringify(event))
+  console.debug('mlink parse', handlerId, JSON.parse(JSON.stringify(event)))
 
-  start(cfg, observer).then(() => {
-    return mlink.send(
-      handlerId,
-      mlink.getNodeEndPoints(),
-      deserEvent,
-      response => {
-        console.debug('response to publish ', handlerId, response)
-        const eventData = JSON.parse(response)
-        if (eventData?.eventName) {
-          observer.notify(eventData.eventName, eventData)
-        }
-      }
-    )
+  mlink.send(handlerId, mlink.getNodeEndPoints(), deserEvent, response => {
+    console.debug('response to publish ', handlerId, response)
+    const eventData = JSON.parse(response)
+    if (eventData?.eventName) {
+      observer.notify(eventData.eventName, eventData)
+    }
   })
   try {
     global.broadcast(JSON.stringify(event), {
@@ -158,18 +145,18 @@ async function publish (event, observer) {
 async function subscribe (eventName, callback) {
   const handlerId = numericHash(eventName)
   if (!handlerId) return // we've already registered a callback for this event
-  DEBUG && console.debug('mlink subscribe', eventName, handlerId)
-  start(cfg).then(() =>
-    mlink.handler(handlerId, (data, cb) => {
-      console.log('mlink.handler called with data', handlerId, data)
-      cb(callback(data))
-    })
-  )
+  debug && console.debug('mlink subscribe', eventName, handlerId)
+
+  mlink.handler(handlerId, (data, cb) => {
+    console.log('mlink.handler called with data', handlerId, data)
+    callback(data)
+    cb(data)
+  })
 }
 
 function attachServer (server) {
   let messagesSent = 0
-
+  start()
   /**
    *
    * @param {object} data
@@ -178,7 +165,7 @@ function attachServer (server) {
   server.broadcast = function (data, sender) {
     server.clients.forEach(function (client) {
       if (client.OPEN && client.info.id !== sender.info.id) {
-        !DEBUG || console.debug('sending client', client.info, data.toString())
+        debug && console.debug('sending client', client.info, data.toString())
         client.send(data)
         messagesSent++
       }
@@ -196,9 +183,11 @@ function attachServer (server) {
   server.sendStatus = function (client) {
     client.send(
       JSON.stringify({
+        servicePlugin: 'MeshLink',
         uptimeMinutes: uptime(),
         messagesSent,
-        clientsConnected: server.clients.size
+        clientsConnected: server.clients.size,
+        meshLinkNodes: mlink.getNodeEndPoints()
       })
     )
   }
@@ -207,7 +196,7 @@ function attachServer (server) {
     client.info = { address: client._socket.address(), id: nanoid() }
 
     client.addListener('ping', function () {
-      !DEBUG || console.debug('responding to client ping', client.info)
+      debug && console.debug('responding to client ping', client.info)
       client.pong(0xa)
     })
 

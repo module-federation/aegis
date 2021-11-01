@@ -80,9 +80,13 @@ async function notify (eventName, eventData, forward = false) {
   try {
     if (this.handlers.has(eventName)) {
       await Promise.allSettled(
-        this.handlers
-          .get(eventName)
-          .map(handler => run(eventName, eventData, handler, forward))
+        this.handlers.get(eventName).map(handler => {
+          console.debug('hander running', {
+            eventName,
+            handler: handlers.toString()
+          })
+          run(eventName, eventData, handler, forward)
+        })
       )
     }
 
@@ -128,6 +132,18 @@ class ObserverImpl extends Observer {
       this.handlers.set(eventName, [handler])
     }
     return true
+  }
+
+  serialize () {
+    return JSON.stringify(
+      [...this.handlers].map(([k, v]) => ({ [k]: v.map(fn => fn.toString()) })),
+      null,
+      2
+    )
+  }
+
+  toString () {
+    console.log('toString', this.serialize())
   }
 }
 

@@ -72,8 +72,10 @@ export function forwardEvents ({ observer, models, publish, subscribe }) {
     )
 
     producerEvents.forEach(producerEvent =>
-      observer.on(producerEvent, eventData =>
-        publish(producerEvent, eventData || 'no data')
+      observer.on(
+        producerEvent,
+        eventData => publish(producerEvent, eventData || 'no data'),
+        true
       )
     )
   }
@@ -82,8 +84,10 @@ export function forwardEvents ({ observer, models, publish, subscribe }) {
    * Forward events so marked.
    */
   function forwardUserEvents () {
-    observer.on(domainEvents.forwardEvent, eventData =>
-      publish(eventData.eventName, eventData)
+    observer.on(
+      domainEvents.forwardEvent(),
+      eventData => publish(eventData.eventName, eventData),
+      false
     )
   }
 

@@ -64,16 +64,13 @@ async function importWebAssembly () {
             wasm.exports.__getString(callbackName)
           )
 
-        
-
-            if (typeof fn === 'function') {
-              observer.on(eventName, eventData => {
-
+          if (typeof fn === 'function') {
+            observer.on(eventName, eventData => {
               adapter.callWasmFunction(fn, eventData, false)
               return
-            }
+            })
             console.log('no command found')
-          })
+          }
         },
 
         /**

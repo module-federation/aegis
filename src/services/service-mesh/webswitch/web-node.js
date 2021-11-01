@@ -15,6 +15,8 @@ const config = configFile.services.serviceMesh.WebSwitch
 const DEBUG = /true|yes|y/i.test(config.debug) || false
 const heartbeat = config.heartbeat || 10000
 
+if (!configFile) console.error('WebSwitch', 'cannot access config file')
+
 /**
  * @type import("ws/lib/websocket")
  */
@@ -125,7 +127,7 @@ function setupHeartBeat (ws) {
 }
 
 export async function subscribe (eventName, callback, observer) {
-  observer.on(eventName, callback)
+  observer.on(eventName, callback, true)
 }
 
 /**

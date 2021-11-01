@@ -28,7 +28,7 @@ export default function removeModelFactory ({
 } = {}) {
   const eventType = models.EventTypes.DELETE
   const eventName = models.getEventName(eventType, modelName)
-  handlers.forEach(handler => observer.on(eventName, handler))
+  handlers.forEach(handler => observer.on(eventName, handler, false))
 
   return async function removeModel (id) {
     const model = await repository.find(id)

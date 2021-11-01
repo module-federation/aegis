@@ -28,10 +28,10 @@ export default function makeEditModel ({
 } = {}) {
   const eventType = models.EventTypes.UPDATE
   const eventName = models.getEventName(eventType, modelName)
-  handlers.forEach(handler => observer.on(eventName, handler))
+  handlers.forEach(handler => observer.on(eventName, handler, false))
 
   // Add an event that can be used to edit this model
-  observer.on(domainEvents.editModel(modelName), editModelHandler)
+  observer.on(domainEvents.editModel(modelName), editModelHandler, false)
 
   async function editModel (id, changes, command) {
     const model = await repository.find(id)
