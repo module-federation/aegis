@@ -46,5 +46,3 @@ export const removeModels = () => make(makeRemoveModel)
 export const loadModels = () => make(makeLoadModels)
 export const listConfigs = () =>
   makeListConfig({ models: ModelFactory, data: DataSourceFactory })
-
-global.aegisConfig = require('../../public/aegis.config.json')

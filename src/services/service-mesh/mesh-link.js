@@ -95,13 +95,7 @@ const SharedObjEvent = {
   DELETE: async () => console.log('delete called, no-op')
 }
 
-let registerSharedObjEvents = observer =>
-  observer.on(
-    /^externalCrudEvent_.*/,
-    async (eventName, eventData) =>
-      SharedObjEvent[eventName.split('_')[1].substr(0, 6)](eventData),
-    true
-  )
+let registerSharedObjEvents
 
 /**
  *
@@ -126,13 +120,13 @@ async function publish (event, observer) {
   console.debug('mlink stringify', handlerId, JSON.stringify(event))
   console.debug('mlink parse', handlerId, JSON.parse(JSON.stringify(event)))
 
-  mlink.send(handlerId, mlink.getNodeEndPoints(), deserEvent, response => {
-    console.debug('response to publish ', handlerId, response)
-    const eventData = JSON.parse(response)
-    if (eventData?.eventName) {
-      observer.notify(eventData.eventName, eventData)
-    }
-  })
+  mlink.send(handlerId, mlink.getNodeEndPoints(), deserEvent) //response => {
+  //   console.debug('response to publish ', handlerId, response)
+  //   const eventData = JSON.parse(response)
+  //   if (eventData?.eventName) {
+  //     observer.notify(eventData.eventName, eventData)
+  //   }
+  // })
   try {
     global.broadcast(JSON.stringify(event), {
       info: { id: 2, role: 'MeshLink', pid: process.pid }
@@ -162,6 +156,7 @@ async function subscribe (eventName, callback, observer) {
     cb(callback(data))
   })
 }
+;``
 
 function attachServer (server) {
   let messagesSent = 0
