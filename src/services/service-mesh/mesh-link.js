@@ -95,7 +95,7 @@ const SharedObjEvent = {
   DELETE: async () => console.log('delete called, no-op')
 }
 
-const registerSharedObjEvents = observer =>
+let registerSharedObjEvents = observer =>
   observer.on(
     /^externalCrudEvent_.*/,
     async (eventName, eventData) =>
@@ -142,15 +142,24 @@ async function publish (event, observer) {
   }
 }
 
-async function subscribe (eventName, callback) {
+async function subscribe (eventName, callback, observer) {
+  if (!registerSharedObjEvents) {
+    registerSharedObjEvents = observer =>
+      observer.on(
+        /^externalCrudEvent_.*/,
+        async (eventName, eventData) =>
+          SharedObjEvent[eventName.split('_')[1].substr(0, 6)](eventData),
+        true
+      )
+    registerSharedObjEvents(observer)
+  }
   const handlerId = numericHash(eventName)
   if (!handlerId) return // we've already registered a callback for this event
   debug && console.debug('mlink subscribe', eventName, handlerId)
 
   mlink.handler(handlerId, (data, cb) => {
     console.log('mlink.handler called with data', handlerId, data)
-    callback(data)
-    cb(data)
+    cb(callback(data))
   })
 }
 

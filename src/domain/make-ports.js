@@ -56,7 +56,7 @@ function setPortTimeout (options) {
   }
 
   if (expired()) {
-    model.emit(portRetryFailed(model), options)
+    model.emit(portRetryFailed(model.getName(), portName), options)
     return {
       ...timer,
       enabled: true
@@ -66,7 +66,7 @@ function setPortTimeout (options) {
   // Retry the port on timeout
   const timerId = setTimeout(async () => {
     // Notify interested parties
-    await model.emit(portTimeout(model), options)
+    await model.emit(portTimeout(model.getName(), portName), options)
 
     // Invoke optional custom handler
     if (handler) handler(options)
@@ -75,7 +75,7 @@ function setPortTimeout (options) {
     await async(model[portName](...timerArgs.nextArg))
 
     // Retry worked
-    model.emit(portRetryWorked(model), options)
+    model.emit(portRetryWorked(model.getName(), port), options)
   }, timeout)
 
   return {
@@ -257,8 +257,8 @@ export default function makePorts (ports, adapters, observer) {
           const breaker = CircuitBreaker(port, portFn, thresholds)
 
           // Listen for errors
-          breaker.errorListener(portRetryFailed(this))
-          breaker.errorListener(portTimeout(this, port))
+          breaker.errorListener(portRetryFailed(this.getName(), port))
+          breaker.errorListener(portTimeout(this.getName(), port))
 
           // invoke port with circuit breaker failsafe
           return breaker.invoke.apply(this, args)

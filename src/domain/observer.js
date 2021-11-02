@@ -83,7 +83,7 @@ async function notify (eventName, eventData, forward = false) {
         this.handlers.get(eventName).map(handler => {
           console.debug('hander running', {
             eventName,
-            handler: handlers.toString()
+            handler: handler.toString()
           })
           run(eventName, eventData, handler, forward)
         })
