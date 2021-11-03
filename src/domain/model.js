@@ -255,8 +255,8 @@ const Model = (() => {
        * @param {boolean} [multi] - allow multiple listeners for event,
        * defaults to `true`
        */
-      addListener (eventName, callback, multi = true) {
-        observer.on(eventName, callback, multi)
+      addListener (eventName, callback, options) {
+        observer.on(eventName, callback, options)
       },
 
       /**

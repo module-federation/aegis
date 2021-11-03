@@ -9,7 +9,7 @@ import WebSocket from 'ws'
 import dns from 'dns/promises'
 import path from 'path'
 
-const SERVICE_NAME = 'webswitch'
+const SERVICENAME = 'webswitch'
 const configFile = require('../../../../../microlib/public/aegis.config.json')
 const config = configFile.services.serviceMesh.WebSwitch
 const DEBUG = /true|yes|y/i.test(config.debug) || false
@@ -22,7 +22,7 @@ if (!configFile) console.error('WebSwitch', 'cannot access config file')
  */
 let ws
 
-let port = config.port || SERVICE_NAME
+let port = config.port || SERVICENAME
 let fqdn = config.host || 'switch.app-mesh.net'
 let hostAddress
 let servicePort
@@ -52,11 +52,11 @@ async function getHostAddress (hostname) {
 
 async function getServicePort (hostname) {
   try {
-    if (port === SERVICE_NAME) {
+    if (port === SERVICENAME) {
       const services = await dns.resolveSrv(hostname)
       if (services) {
         const prt = services
-          .filter(s => s.name === SERVICE_NAME)
+          .filter(s => s.name === SERVICENAME)
           .reduce(s => s.port)
         if (prt) {
           return prt
@@ -67,7 +67,7 @@ async function getServicePort (hostname) {
   } catch (error) {
     console.error(getServicePort.name, error)
     // should default to 80
-    return /true/.test(process.env.SSL_ENABLED)
+    return /true/i.test(process.env.SSL_ENABLED)
       ? process.env.SSL_PORT || 443
       : process.env.PORT || 80
   }
@@ -104,11 +104,11 @@ const protocol = type =>
  *
  * @param {WebSocket} ws
  */
-function setupHeartBeat (ws) {
+function startHeartBeat (ws) {
   let receivedPong = false
 
   ws.addListener('pong', function () {
-    !DEBUG || console.debug('received pong')
+    DEBUG && console.debug('received pong')
     receivedPong = true
   })
 
@@ -120,14 +120,26 @@ function setupHeartBeat (ws) {
       ws.ping(0x9)
     } else {
       observer.notify('webswitchTimeout', 'webswitch server timeout', true)
-      console.error('webswitch server timeout, try new conn')
-      ws = null
+      console.error('webswitch server timeout, will try new connection')
+      ws = null // get a new socket
     }
   }, heartbeat)
 }
 
-export async function subscribe (eventName, callback, observer) {
-  observer.on(eventName, callback, true)
+/**
+ * @callback subscription
+ * @param {{eventName:string, model:import('../../../domain/index').Model}} eventData
+ */
+
+/**
+ * @param {*} eventName
+ * @param {subscription} callback
+ * @param {*} observer
+ * @param {{allowMultiple:boolean, once:boolean}} [options]
+ */
+export async function subscribe (eventName, callback, observer, options) {
+  const { allowMultiple = true, once = false } = options
+  observer.on(eventName, callback, { allowMultiple, once })
 }
 
 /**
@@ -147,7 +159,7 @@ export async function publish (event, observer) {
 
       ws.on('open', function () {
         ws.send(protocol())
-        setupHeartBeat(ws)
+        startHeartBeat(ws)
       })
 
       ws.on('error', function (error) {
@@ -157,7 +169,7 @@ export async function publish (event, observer) {
 
       ws.on('message', async function (message) {
         const eventData = JSON.parse(message)
-        !DEBUG || console.debug('received event:', eventData)
+        DEBUG && console.debug('received event:', eventData)
 
         if (eventData.eventName) {
           await observer.notify(eventData.eventName, eventData)

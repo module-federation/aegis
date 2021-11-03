@@ -1,9 +1,10 @@
 'use strict'
 
 import { nanoid } from 'nanoid'
+
+const startTime = Date.now()
+const uptime = () => Math.round(Math.abs((Date.now() - startTime) / 1000 / 60))
 const uplink = process.env.WEBSWITCH_UPLINK
-const begins = Date.now()
-const uptime = () => Math.round(Math.abs((Date.now() - begins) / 1000 / 60))
 const DEBUG = /true/i.test(process.env.WEBSWITCH_DEBUG)
 let messagesSent = 0
 
@@ -20,15 +21,14 @@ export function attachServer (server) {
   server.broadcast = function (data, sender) {
     server.clients.forEach(function (client) {
       if (client.OPEN && client.info.id !== sender.info.id) {
-        !DEBUG || console.debug('sending client', client.info, data.toString())
-
+        DEBUG && console.debug('sending client', client.info, data.toString())
         client.send(data)
         messagesSent++
       }
     })
 
     if (server.uplink && server.uplink.info.id !== sender.info.id) {
-      server.uplink.publishEvent(data)
+      server.uplink.publish(data)
       messagesSent++
     }
   }
@@ -54,7 +54,7 @@ export function attachServer (server) {
     client.info = { address: client._socket.address(), id: nanoid() }
 
     client.addListener('ping', function () {
-      !DEBUG || console.debug('responding to client ping', client.info)
+      DEBUG && console.debug('responding to client ping', client.info)
       client.pong(0xa)
     })
 

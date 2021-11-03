@@ -73,9 +73,6 @@ function setPortTimeout (options) {
 
     // Count retries by adding to an array passed on the stack
     await async(model[portName](...timerArgs.nextArg))
-
-    // Retry worked
-    model.emit(portRetryWorked(model.getName(), port), options)
   }, timeout)
 
   return {
@@ -133,7 +130,7 @@ function addPortListener (portName, portConf, observer, disabled) {
         // invoke this port
         await async(model[portName](callback))
       },
-      false
+      { allowMultiple: false }
     )
     return true
   }

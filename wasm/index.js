@@ -57,7 +57,8 @@ async function importWebAssembly () {
          * @param {string} eventName - name of event
          * @param {string} callbackName - name of exported function to run when event fires
          */
-        addListener (eventName, callbackName) {
+        addListener (eventName, callbackName, options) {
+          const { allowMultiple = true, once = true } = options
           console.debug('websocket listen invoked')
           const adapter = WasmInterop(wasm)
           const fn = adapter.findWasmFunction(
@@ -66,7 +67,7 @@ async function importWebAssembly () {
 
           if (typeof fn === 'function') {
             observer.on(eventName, eventData => {
-              adapter.callWasmFunction(fn, eventData, false)
+              adapter.callWasmFunction(fn, eventData, { allowMultiple, once })
               return
             })
             console.log('no command found')
@@ -83,7 +84,7 @@ async function importWebAssembly () {
           const name = adapter.__getString(eventName)
           const data = adapter.constructObject(eventData)
           console.log('wasm called js to emit an event + ', name, ': ', data)
-          observer.notify(name, data)
+          observer.notify(name, data, true)
         },
 
         /**

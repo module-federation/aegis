@@ -6,6 +6,7 @@
 import domainEvents from './domain-events'
 
 const { forwardEvent } = domainEvents
+const DEBUG = process.env.DEBUG
 
 /**
  * @callback eventHandler
@@ -29,9 +30,10 @@ export class Observer {
    * Register callback `handler` to fire on event `eventName`
    * @param {String | RegExp} eventName
    * @param {eventHandler} handler
-   * @param {boolean} [allowMultiple] - true by default; if false, event can be handled by only one callback
+   * @param {{allowMultiple?:boolean, once?:boolean}} [options]
+   * `allowMultiple` true by default; if false, event can be handled by only one callback
    */
-  on (eventName, handler, allowMultiple = true) {
+  on (eventName, handler, { allowMultiple = true, once = false }) {
     throw new Error('unimplemented abstract method')
   }
 
@@ -61,11 +63,19 @@ const handleError = error => {
  * @param {boolean} forward
  */
 async function runHandler (eventName, eventData = {}, handle, forward) {
+  DEBUG &&
+    console.debug('hander running', {
+      eventName,
+      handle: handle.toString(),
+      model: eventData?.modelName,
+      modelId: eventData?.modleId,
+      forward
+    })
   const data = { ...eventData, eventName }
   await handle(data)
-  forward &&
-    eventName !== forwardEvent &&
-    (await this.notify(forwardEvent, data))
+  if (forward && eventName !== forwardEvent) {
+    await this.notify(forwardEvent, data)
+  }
 }
 
 /**
@@ -77,23 +87,27 @@ async function runHandler (eventName, eventData = {}, handle, forward) {
 async function notify (eventName, eventData, forward = false) {
   const run = runHandler.bind(this)
 
+  if (!eventData) {
+    console.warn('no data to publish', eventName)
+    return
+  }
+  console.debug({ handlers: this.handlers })
+
   try {
     if (this.handlers.has(eventName)) {
       await Promise.allSettled(
-        this.handlers.get(eventName).map(handler => {
-          console.debug('hander running', {
-            eventName,
-            handler: handler.toString()
-          })
-          run(eventName, eventData, handler, forward)
+        this.handlers.get(eventName).map(async handler => {
+          await run(eventName, eventData, handler, forward)
         })
       )
     }
 
     await Promise.allSettled(
       [...this.handlers]
-        .filter(([k, v]) => k instanceof RegExp && k.test(eventName))
-        .map(([k, v]) => v.map(f => run(eventName, eventData, f, forward)))
+        .filter(([k]) => k instanceof RegExp && k.test(eventName))
+        .map(([, v]) =>
+          v.map(async f => await run(eventName, eventData, f, forward))
+        )
     )
   } catch (error) {
     handleError(error)
@@ -117,21 +131,48 @@ class ObserverImpl extends Observer {
    * @override
    * @param {string | RegExp} eventName
    * @param {eventHandler} handler
-   * @param {boolean} [allowMultiple]
+   * @param {{allowMultiple?:boolean, once?:boolean}} [options]
    */
-  on (eventName, handler, allowMultiple = true) {
+  on (eventName, handler, options = {}) {
+    const { allowMultiple = true, once = false } = options
+
     if (!eventName || typeof handler !== 'function') {
-      console.debug(ObserverImpl.name, 'invalid arg', eventName, handler)
+      console.error(ObserverImpl.name, 'invalid arg', eventName, handler)
       return false
     }
-    if (this.handlers.has(eventName)) {
-      if (allowMultiple) {
-        this.handlers.get(eventName).push(handler)
+
+    const onceWrapper = data => {
+      this.off(eventName, handler)
+      return handler(data)
+    }
+
+    const fn = once ? onceWrapper : handler
+    const handlers = this.handlers.get(eventName)
+
+    if (handlers) {
+      if (allowMultiple || handlers.length < 1) {
+        handlers.push(fn)
+        return true
       }
     } else {
-      this.handlers.set(eventName, [handler])
+      this.handlers.set(eventName, [fn])
+      return true
     }
-    return true
+    return false
+  }
+
+  off (eventName, fn) {
+    const handlers = this.handlers.get(eventName)
+    let retval = false
+    if (handlers) {
+      handlers.forEach((h, i, a) => {
+        if (h === fn) {
+          a.splice(i - 1, 1)
+          retval = true
+        }
+      })
+    }
+    return retval
   }
 
   serialize () {
@@ -144,6 +185,7 @@ class ObserverImpl extends Observer {
 
   toString () {
     console.log('toString', this.serialize())
+    return this.serialize()
   }
 }
 

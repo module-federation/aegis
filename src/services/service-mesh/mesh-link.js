@@ -21,6 +21,14 @@ const defaultCfg = {
   updateInterval: 1000
 }
 
+mlink.onLogging((level, args) => {
+  console.log.apply(console, args)
+})
+
+mlink.onNewNodes(nodes => {
+  console.log('New mesh nodes detected:', nodes)
+})
+
 const cfg = userConfig.services.serviceMesh.MeshLink.config || defaultCfg
 
 function numericHash (str) {
@@ -102,31 +110,43 @@ let registerSharedObjEvents
  * @param {cfg} config
  * @returns
  */
-async function start (config = cfg) {
+async function start (config = cfg, wss) {
   mlink
     .start(config)
     .then(() => {
       console.info('meshlink started')
     })
     .catch(error => {
-      console.error(start.name, error)
+      console.error('MeshLink', start.name, error)
     })
+
+  try {
+    wss.broadcast(
+      JSON.stringify({ msg: 'MeshLink up', nodes: mlink.getNodeEndPoints() })
+    )
+  } catch (e) {
+    console.log(e)
+  }
 }
 
 async function publish (event, observer) {
-  console.debug('publish called', event.eventName, event, observer)
+  console.debug('publish called', event.eventName)
   const deserEvent = JSON.parse(JSON.stringify(event))
   const handlerId = numericHash(event.eventName)
-  console.debug('mlink stringify', handlerId, JSON.stringify(event))
-  console.debug('mlink parse', handlerId, JSON.parse(JSON.stringify(event)))
 
-  mlink.send(handlerId, mlink.getNodeEndPoints(), deserEvent) //response => {
-  //   console.debug('response to publish ', handlerId, response)
-  //   const eventData = JSON.parse(response)
-  //   if (eventData?.eventName) {
-  //     observer.notify(eventData.eventName, eventData)
-  //   }
-  // })
+  mlink.send(handlerId, mlink.getNodeEndPoints(), deserEvent, (error, res) => {
+    console.debug('response to publish ', handlerId, res)
+    const eventData = JSON.parse(res)
+
+    if (eventData?.eventName) {
+      observer.notify(eventData.eventName, eventData)
+    }
+    if (error) {
+      console.log(error)
+      return
+    }
+  })
+
   try {
     global.broadcast(JSON.stringify(event), {
       info: { id: 2, role: 'MeshLink', pid: process.pid }
@@ -136,7 +156,7 @@ async function publish (event, observer) {
   }
 }
 
-async function subscribe (eventName, callback, observer) {
+function initSharedObject (observer) {
   if (!registerSharedObjEvents) {
     registerSharedObjEvents = observer =>
       observer.on(
@@ -147,6 +167,11 @@ async function subscribe (eventName, callback, observer) {
       )
     registerSharedObjEvents(observer)
   }
+}
+
+async function subscribe (eventName, callback, observer) {
+  initSharedObject(observer)
+
   const handlerId = numericHash(eventName)
   if (!handlerId) return // we've already registered a callback for this event
   debug && console.debug('mlink subscribe', eventName, handlerId)
@@ -156,11 +181,9 @@ async function subscribe (eventName, callback, observer) {
     cb(callback(data))
   })
 }
-;``
 
 function attachServer (server) {
   let messagesSent = 0
-  start()
   /**
    *
    * @param {object} data
@@ -238,6 +261,8 @@ function attachServer (server) {
       console.warn('terminated client', client.info)
     })
   })
+
+  start(cfg, server)
 }
 
 module.exports = { publish, subscribe, attachServer }
