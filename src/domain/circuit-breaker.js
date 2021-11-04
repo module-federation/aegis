@@ -113,6 +113,8 @@ function thresholdBreached (log, error, thresholds) {
 
   console.debug({
     debug: 'threshold values',
+    error: error && error.name,
+    errmsg: error && error.message,
     errorRate,
     callVolume,
     threshold,
@@ -159,6 +161,7 @@ export function logError (id, error, thresholds) {
  * @returns {boolean}
  */
 function readyToTest (log) {
+  console.debug('testing circuit')
   if (log.length < 1) return true
   const lastEntry = log[log.length - 1]
   return Date.now() - lastEntry.time > lastEntry.testDelay
@@ -201,12 +204,14 @@ const Switch = function (id, thresholds) {
      */
     trip () {
       this.state = State.Open
+      this.appendLog()
     },
     /**
      * Reset the breaker. Close switch.
      */
     reset () {
       this.state = State.Closed
+      this.appendLog()
     },
     /**
      * Test the breaker. Open switch half way. Let next transation thru.
@@ -214,6 +219,7 @@ const Switch = function (id, thresholds) {
      */
     test () {
       this.state = State.HalfOpen
+      this.appendLog()
     },
     /**
      * Check error-specific threshold.
@@ -309,6 +315,7 @@ const CircuitBreaker = function (id, protectedCall, thresholds) {
       // check breaker status
       if (breaker.closed()) {
         try {
+          // all is well, call the function
           return await protectedCall.apply(this, args)
         } catch (error) {
           breaker.appendLog(error)
@@ -320,8 +327,9 @@ const CircuitBreaker = function (id, protectedCall, thresholds) {
       }
 
       if (breaker.open()) {
-        console.warn('circuit open', protectedCall.name)
+        console.warn('circuit open', id)
         if (breaker.readyToTest()) {
+          console.warn('testing circuit', id)
           breaker.test()
         } else {
           // try fallback
@@ -334,10 +342,10 @@ const CircuitBreaker = function (id, protectedCall, thresholds) {
         try {
           const result = await protectedCall.apply(this, args)
           if (breaker.thresholdBreached('breakerTest')) {
-            console.warn('breaker test failed', protectedCall.name)
+            console.warn('breaker test failed', id)
             breaker.trip()
           } else {
-            console.warn('breaker test passed', protectedCall.name)
+            console.warn('resetting breaker', id)
             breaker.reset()
           }
           return result
@@ -348,7 +356,7 @@ const CircuitBreaker = function (id, protectedCall, thresholds) {
         }
       }
 
-      console.warn('aborting call', protectedCall.name)
+      console.warn('aborting call', id)
     },
 
     error (msg) {
