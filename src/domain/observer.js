@@ -63,14 +63,22 @@ const handleError = error => {
  * @param {boolean} forward
  */
 async function runHandler (eventName, eventData = {}, handle, forward) {
-  DEBUG &&
-    console.debug('hander running', {
-      eventName,
-      handle: handle.toString(),
-      model: eventData?.modelName,
-      modelId: eventData?.modleId,
-      forward
-    })
+  const abort = eventData ? false : true
+
+  console.debug('handler running', {
+    eventName,
+    handle: handle.toString(),
+    model: eventData?.modelName,
+    modelId: eventData?.modleId,
+    abort,
+    forward
+  })
+
+  if (abort) {
+    console.warn('no data provided, abort')
+    return
+  }
+
   const data = { ...eventData, eventName }
   await handle(data)
   if (forward && eventName !== forwardEvent) {
@@ -91,7 +99,6 @@ async function notify (eventName, eventData, forward = false) {
     console.warn('no data to publish', eventName)
     return
   }
-  console.debug({ handlers: this.handlers })
 
   try {
     if (this.handlers.has(eventName)) {
@@ -161,14 +168,20 @@ class ObserverImpl extends Observer {
     return false
   }
 
+  /**
+   *
+   * @param {string} eventName
+   * @param {()=>void} fn
+   * @returns
+   */
   off (eventName, fn) {
     const handlers = this.handlers.get(eventName)
     let retval = false
     if (handlers) {
-      handlers.forEach((h, i, a) => {
-        if (h === fn) {
-          a.splice(i - 1, 1)
+      handlers.forEach((handler, index, arr) => {
+        if (handler === fn) {
           retval = true
+          arr.splice(index, 1)
         }
       })
     }

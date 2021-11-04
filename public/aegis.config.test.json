@@ -50,7 +50,7 @@
         "uplink": null
       },
       "MeshLink": {
-        "desc": "Fast UDP-based, peer-to-peer mesh, with shared Redis cache.",
+        "desc": "Fast UDP-based, peer-to-peer mesh with shared Redis cache.",
         "enabled": true,
         "config": {
           "redis": {
@@ -73,6 +73,13 @@
         "desc": "Uses QUIC transport protocol (replacing TCP in HTTP/3). Optimized for streaming.",
         "enabled": false
       }
+    }
+  },
+  "domain": {
+    "defaultCircuitBreaker": {
+      "errorRate": 25,
+      "callVolume": 100,
+      "intervalMs": 6000
     }
   }
 }

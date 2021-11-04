@@ -6,7 +6,7 @@ import CircuitBreaker from './circuit-breaker'
 import domainEvents from './domain-events'
 
 const { portRetryFailed, portRetryWorked, portTimeout } = domainEvents
-const TIMEOUTSECONDS = 60
+const TIMEOUTSECONDS = 10
 const MAXRETRY = 5
 
 function getTimerArgs (args) {
@@ -71,14 +71,19 @@ function setPortTimeout (options) {
     // Invoke optional custom handler
     if (handler) handler(options)
 
-    // Count retries by adding to an array passed on the stack
+    // Count retries by adding to an array passed as an arg on the stack
     await async(model[portName](...timerArgs.nextArg))
   }, timeout)
 
   return {
     ...timer,
     enabled: true,
-    stopTimer: () => clearTimeout(timerId)
+    stopTimer: () => {
+      clearTimeout(timerId)
+      if (timerArgs.count > 0) {
+        model.emit(portRetryWorked(model.getName(), portName), options)
+      }
+    }
   }
 }
 
@@ -121,7 +126,7 @@ function addPortListener (portName, portConf, observer, disabled) {
     observer.on(
       portConf.consumesEvent,
       async function ({ eventName, model }) {
-        // Don't call any more ports if we are reversing a transaction.
+        // Don't call any more ports if undoing.
         if (await isUndoRunning(model)) {
           console.warn('undo running, canceling port operation')
           return
@@ -211,6 +216,8 @@ export default function makePorts (ports, adapters, observer) {
         if (timer.enabled && timer.expired()) {
           // This means we hit max retries
           console.error('max retries exceeded', port, this)
+          // Try to back out
+          await async(this.undo())
           return this
         }
 
@@ -233,9 +240,9 @@ export default function makePorts (ports, adapters, observer) {
         } catch (error) {
           console.error({ func: port, args, error })
 
-          // Is the timer still running?
+          // Timer still running?
           if (timer.expired()) {
-            // Try to back out previous transactions.
+            // Try to back out transactions.
             await async(this.undo())
             return this
           }
@@ -249,8 +256,10 @@ export default function makePorts (ports, adapters, observer) {
         async [port] (...args) {
           // check if the port defines breaker thresholds
           const thresholds = portConf.circuitBreaker
-
-          // wrap port call in circuit breaker
+          /**
+           * the circuit breaker instance
+           * @type {import('./circuit-breaker').breaker}
+           */
           const breaker = CircuitBreaker(port, portFn, thresholds)
 
           // Listen for errors

@@ -179,7 +179,7 @@ const Model = (() => {
        * @param {number} event
        * @returns {string[]} key name/s: create, update, onload, delete
        */
-      getEventName (event) {
+      getEventMaskName (event) {
         if (typeof event !== 'number') return
         const keys = Object.keys(eventMask).filter(k => eventMask[k] & event)
         return keys
@@ -217,9 +217,12 @@ const Model = (() => {
           [UPDATETIME]: Date.now()
         })
 
-        await observer.notify('UPDATE' + model[MODELNAME], {
-          modelName: model[MODELNAME],
-          model: final
+        const eventName = 'UPDATE' + final[MODELNAME];
+        await observer.notify(eventName, {
+          modelName: final[MODELNAME],
+          model: final,
+          modelId: final[ID],
+          eventName
         })
 
         return final
