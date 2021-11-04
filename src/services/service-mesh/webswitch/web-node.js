@@ -137,9 +137,8 @@ function startHeartBeat (ws) {
  * @param {*} observer
  * @param {{allowMultiple:boolean, once:boolean}} [options]
  */
-export async function subscribe (eventName, callback, observer, options) {
-  const { allowMultiple = true, once = false } = options
-  observer.on(eventName, callback, { allowMultiple, once })
+export async function subscribe (eventName, callback, observer, options = {}) {
+  observer.on(eventName, callback, options)
 }
 
 /**
