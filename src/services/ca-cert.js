@@ -100,7 +100,7 @@ exports.initCertificateService = function (dnsProvider, whois) {
   return async function provisionCert (
     domain,
     email = `${domain}.admin@gmail.com`,
-    challengePath = '/var/www/html'
+    challengePath = '/home/ec2-user/microlib/public'
   ) {
     // Init client
     const client = new acme.Client({
