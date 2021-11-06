@@ -113,8 +113,8 @@ function thresholdBreached (log, error, thresholds) {
 
   console.debug({
     debug: 'threshold values',
-    error: error && error.name,
-    errmsg: error && error.message,
+    error: error?.name,
+    errmsg: error?.message,
     errorRate,
     callVolume,
     threshold,

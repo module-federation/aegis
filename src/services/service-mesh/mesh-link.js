@@ -5,7 +5,7 @@ const nanoid = require('nanoid').nanoid
 const begins = Date.now()
 const uptime = () => Math.round(Math.abs((Date.now() - begins) / 1000 / 60))
 const userConfig = require('../../../../microlib/public/aegis.config.json')
-const debug =
+const DEBUG =
   /true/i.test(userConfig.services.serviceMesh.MeshLink.debug) || false
 
 const defaultCfg = {
@@ -103,8 +103,6 @@ const SharedObjEvent = {
   DELETE: async () => console.log('delete called, no-op')
 }
 
-let registerSharedObjEvents
-
 /**
  *
  * @param {cfg} config
@@ -156,6 +154,8 @@ async function publish (event, observer) {
   }
 }
 
+let registerSharedObjEvents
+
 function initSharedObject (observer) {
   if (!registerSharedObjEvents) {
     registerSharedObjEvents = observer =>
@@ -171,15 +171,17 @@ function initSharedObject (observer) {
 
 async function subscribe (eventName, callback, observer) {
   initSharedObject(observer)
-
   const handlerId = numericHash(eventName)
   if (!handlerId) return // we've already registered a callback for this event
-  debug && console.debug('mlink subscribe', eventName, handlerId)
-
-  mlink.handler(handlerId, (data, cb) => {
-    console.log('mlink.handler called with data', handlerId, data)
-    cb(callback(data))
-  })
+  DEBUG && console.debug('mlink subscribe', eventName, handlerId)
+  try {
+    mlink.handler(handlerId, (data, cb) => {
+      console.log('handler called with data', handlerId, data)
+      cb(callback(data))
+    })
+  } catch (e) {
+    console.log(e)
+  }
 }
 
 function attachServer (server) {
@@ -192,7 +194,7 @@ function attachServer (server) {
   server.broadcast = function (data, sender) {
     server.clients.forEach(function (client) {
       if (client.OPEN && client.info.id !== sender.info.id) {
-        debug && console.debug('sending client', client.info, data.toString())
+        DEBUG && console.debug('sending client', client.info, data.toString())
         client.send(data)
         messagesSent++
       }
@@ -223,7 +225,7 @@ function attachServer (server) {
     client.info = { address: client._socket.address(), id: nanoid() }
 
     client.addListener('ping', function () {
-      debug && console.debug('responding to client ping', client.info)
+      DEBUG && console.debug('responding to client ping', client.info)
       client.pong(0xa)
     })
 

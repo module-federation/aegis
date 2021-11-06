@@ -42,6 +42,7 @@ export function attachServer (server) {
   server.sendStatus = function (client) {
     client.send(
       JSON.stringify({
+        servicePlugin: 'WebSwitch',
         uptimeMinutes: uptime(),
         messagesSent,
         clientsConnected: server.clients.size,
@@ -99,7 +100,7 @@ export function attachServer (server) {
       server.uplink.info = { id: nanoid(), role: 'uplink' }
       server.uplink.setDestinationHost(uplink)
       server.uplink.onMessage(msg => server.broadcast(msg, server.uplink))
-      server.uplink.publishEvent({
+      server.uplink.publish({
         proto: 'webswitch',
         pid: process.pid,
         role: 'uplink'
