@@ -7,7 +7,6 @@
 
 import WebSocket from 'ws'
 import dns from 'dns/promises'
-import path from 'path'
 
 const SERVICENAME = 'webswitch'
 const configFile = require('../../../../../microlib/public/aegis.config.json')

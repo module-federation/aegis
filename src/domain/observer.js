@@ -65,14 +65,15 @@ const handleError = error => {
 async function runHandler (eventName, eventData = {}, handle, forward) {
   const abort = eventData ? false : true
 
-  console.debug('handler running', {
-    eventName,
-    handle: handle.toString(),
-    model: eventData?.modelName,
-    modelId: eventData?.modleId,
-    abort,
-    forward
-  })
+  DEBUG &&
+    console.debug('handler running', {
+      eventName,
+      handle: handle.toString(),
+      model: eventData?.modelName,
+      modelId: eventData?.modleId,
+      abort,
+      forward
+    })
 
   if (abort) {
     console.warn('no data provided, abort')
@@ -154,11 +155,11 @@ class ObserverImpl extends Observer {
     }
 
     const fn = once ? onceWrapper : handler
-    const handlers = this.handlers.get(eventName)
+    const funcs = this.handlers.get(eventName)
 
-    if (handlers) {
-      if (allowMultiple || handlers.length < 1) {
-        handlers.push(fn)
+    if (funcs) {
+      if (allowMultiple || funcs.length < 1) {
+        funcs.push(fn)
         return true
       }
     } else {
@@ -175,11 +176,11 @@ class ObserverImpl extends Observer {
    * @returns
    */
   off (eventName, fn) {
-    const handlers = this.handlers.get(eventName)
     let retval = false
-    if (handlers) {
-      handlers.forEach((handler, index, arr) => {
-        if (handler === fn) {
+    const funcs = this.handlers.get(eventName)
+    if (funcs) {
+      funcs.forEach((func, index, arr) => {
+        if (func === fn) {
           retval = true
           arr.splice(index, 1)
         }

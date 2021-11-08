@@ -54,7 +54,7 @@ async function updateForeignKeys (model, event, relation, ds) {
     relation.type === relationType.oneToMany.name &&
     model instanceof Array
   ) {
-    await Promise.all(
+    await Promise.allSettled(
       event.model.map(async m =>
         (await ds.find(m.id)).update({ [relation.foreignKey]: model.modelId })
       )

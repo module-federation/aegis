@@ -47,7 +47,7 @@ export default async function compensate (model) {
               )
 
               const timerId = setTimeout(
-                () => breaker.error('timeout'),
+                () => breaker.error('undoTimeout'),
                 UNDOTIMEOUT
               )
 

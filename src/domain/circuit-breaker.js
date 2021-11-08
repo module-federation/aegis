@@ -26,7 +26,7 @@ const DefaultThreshold = {
   /** Milliseconds to wait after tripping breaker before retesting */
   retryDelay: process.env.CIRCUITBREAKER_RETRYDELAY || 1000,
   /** alternative function to execute in place of failed function */
-  fallbackFn: data => console.warn('default circuitbreaker fallback', data)
+  fallbackFn: args => console.warn('default circuitbreaker fallback', args)
 }
 
 /**
@@ -202,9 +202,9 @@ const Switch = function (id, thresholds) {
     /**
      * Trip the breaker. Open switch.
      */
-    trip () {
+    trip (error = null) {
       this.state = State.Open
-      this.appendLog()
+      this.appendLog(error)
     },
     /**
      * Reset the breaker. Close switch.
@@ -253,10 +253,11 @@ const Switch = function (id, thresholds) {
 
     async fallbackFn (error, arg) {
       try {
-        return getThreshold(error, thresholds).fallbackFn(arg)
+        return getThreshold(error, thresholds).fallbackFn.apply(this, arg)
       } catch (e) {
         console.log('problem calling fallback', e)
       }
+      return this
     }
   }
 }
@@ -309,8 +310,8 @@ const CircuitBreaker = function (id, protectedCall, thresholds) {
     // wrap client call
     async invoke (...args) {
       const breaker = Switch(id, thresholds)
-      breaker.appendLog()
       errorEvents.forEach(countError.bind(this))
+      breaker.appendLog()
 
       // check breaker status
       if (breaker.closed()) {
@@ -321,6 +322,7 @@ const CircuitBreaker = function (id, protectedCall, thresholds) {
           breaker.appendLog(error)
           if (breaker.thresholdBreached(error)) {
             breaker.trip()
+            return breaker.fallbackFn.apply(this, error, args)
           }
           return this
         }
@@ -333,8 +335,7 @@ const CircuitBreaker = function (id, protectedCall, thresholds) {
           breaker.test()
         } else {
           // try fallback
-          await breaker.fallbackFn(this)
-          return this
+          return breaker.fallbackFn.apply(this, error, args)
         }
       }
 
@@ -350,9 +351,8 @@ const CircuitBreaker = function (id, protectedCall, thresholds) {
           }
           return result
         } catch (error) {
-          breaker.trip()
-          breaker.appendLog(error)
-          breaker.fallbackFn(this)
+          breaker.trip(error)
+          return breaker.fallbackFn.apply(this, error, args)
         }
       }
 

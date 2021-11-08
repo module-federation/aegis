@@ -80,7 +80,7 @@ function setPortTimeout (options) {
     enabled: true,
     stopTimer: () => {
       clearTimeout(timerId)
-      if (timerArgs.count > 0) {
+      if (timerArgs.count > 1) {
         model.emit(portRetryWorked(model.getName(), portName), options)
       }
     }
