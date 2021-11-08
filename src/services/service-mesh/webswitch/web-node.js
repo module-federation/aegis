@@ -137,7 +137,11 @@ function startHeartBeat (ws) {
  * @param {{allowMultiple:boolean, once:boolean}} [options]
  */
 export async function subscribe (eventName, callback, observer, options = {}) {
-  observer.on(eventName, callback, options)
+  try {
+    observer.on(eventName, callback, options)
+  } catch (e) {
+    console.error('subscribe', e)
+  }
 }
 
 /**
@@ -147,58 +151,62 @@ export async function subscribe (eventName, callback, observer, options = {}) {
  * @returns
  */
 export async function publish (event, observer) {
-  if (!event) return
-  if (!hostAddress) hostAddress = await getHostAddress(fqdn)
-  if (!servicePort) servicePort = await getServicePort(fqdn)
+  try {
+    if (!event) return
+    if (!hostAddress) hostAddress = await getHostAddress(fqdn)
+    if (!servicePort) servicePort = await getServicePort(fqdn)
 
-  function sendEvent () {
-    if (!ws) {
-      const proto = process.env.SSL_ENABLED ? 'wss' : 'ws'
-      ws = new WebSocket(`${proto}://${hostAddress}:${servicePort}`)
+    function sendEvent () {
+      if (!ws) {
+        const proto = process.env.SSL_ENABLED ? 'wss' : 'ws'
+        ws = new WebSocket(`${proto}://${hostAddress}:${servicePort}`)
 
-      ws.on('open', function () {
-        ws.send(protocol())
-        startHeartBeat(ws)
-      })
-
-      ws.on('error', function (error) {
-        console.error(ws.on, 'opening new conn after error', error)
-        ws = null
-      })
-
-      ws.on('message', async function (message) {
-        const eventData = JSON.parse(message)
-        DEBUG && console.debug('received event:', eventData)
-
-        if (eventData.eventName) {
-          await observer.notify(eventData.eventName, eventData)
-        }
-
-        if (eventData.proto === 'webswitch' && eventData.pid) {
+        ws.on('open', function () {
           ws.send(protocol())
-          return
-        }
+          startHeartBeat(ws)
+        })
 
-        if (uplinkCallback) uplinkCallback(message)
-      })
+        ws.on('error', function (error) {
+          console.error(ws.on, 'opening new conn after error', error)
+          ws = null
+        })
 
-      return
-    }
+        ws.on('message', async function (message) {
+          const eventData = JSON.parse(message)
+          DEBUG && console.debug('received event:', eventData)
 
-    function send () {
-      if (ws.readyState) {
-        ws.send(JSON.stringify(event))
+          if (eventData.eventName) {
+            await observer.notify(eventData.eventName, eventData)
+          }
+
+          if (eventData.proto === 'webswitch' && eventData.pid) {
+            ws.send(protocol())
+            return
+          }
+
+          if (uplinkCallback) uplinkCallback(message)
+        })
+
         return
       }
-      setTimeout(send, 1000)
+
+      function send () {
+        if (ws?.readyState) {
+          ws.send(JSON.stringify(event))
+          return
+        }
+        setTimeout(send, 1000)
+      }
+
+      send()
     }
 
-    send()
-  }
-
-  try {
-    sendEvent()
+    try {
+      sendEvent()
+    } catch (e) {
+      console.warn('publish', e)
+    }
   } catch (e) {
-    console.warn('publish', e)
+    console.error('publish', e)
   }
 }
