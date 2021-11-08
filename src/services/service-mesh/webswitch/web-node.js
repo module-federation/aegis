@@ -153,7 +153,8 @@ export async function publish (event, observer) {
 
   function sendEvent () {
     if (!ws) {
-      ws = new WebSocket(`ws://${hostAddress}:${servicePort}`)
+      const proto = process.env.SSL_ENABLED ? 'wss' : 'ws'
+      ws = new WebSocket(`${proto}://${hostAddress}:${servicePort}`)
 
       ws.on('open', function () {
         ws.send(protocol())
