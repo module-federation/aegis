@@ -56,7 +56,7 @@ export default async function compensate (model) {
 
               // success: remove from list
               return model.update({
-                [model.getKey('portFlow')]: arr.slice(0, index)
+                [model.getKey('portFlow')]: arr.splice(0, index + 1)
               })
             })
           } catch (error) {
@@ -68,10 +68,10 @@ export default async function compensate (model) {
           }
         }
         return model
-      }, model.update({ compensate: true }))
+      }, Promise.resolve(model.update({ compensate: true })))
     )
 
-    if (undoModel.getPortFlow().length > 1) {
+    if (undoModel.getPortFlow().length > 0) {
       await reportStatus('INCOMPLETE', undoFailed, undoModel)
       return
     }

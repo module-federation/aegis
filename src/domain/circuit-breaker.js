@@ -18,13 +18,13 @@ const State = {
  */
 const DefaultThreshold = {
   /** Percentage of requests that failed within `intervalMs`. */
-  errorRate: process.env.CIRCUITBREAKER_ERRORRATE || 1,
+  errorRate: process.env.CIRCUITBREAKER_ERRORRATE || 20,
   /** Total number of requests within `intervalMs` */
-  callVolume: process.env.CIRCUITBREAKER_CALLVOLUME || 1,
+  callVolume: process.env.CIRCUITBREAKER_CALLVOLUME || 8,
   /** Milliseconds in which to measure threshold*/
-  intervalMs: process.env.CIRCUITBREAKER_INTERVALMS || 60000,
+  intervalMs: process.env.CIRCUITBREAKER_INTERVALMS || 9000,
   /** Milliseconds to wait after tripping breaker before retesting */
-  retryDelay: process.env.CIRCUITBREAKER_RETRYDELAY || 1000,
+  retryDelay: process.env.CIRCUITBREAKER_RETRYDELAY || 10000,
   /** alternative function to execute in place of failed function */
   fallbackFn: args => console.warn('default circuitbreaker fallback', args)
 }
@@ -335,7 +335,7 @@ const CircuitBreaker = function (id, protectedCall, thresholds) {
           breaker.test()
         } else {
           // try fallback
-          return breaker.fallbackFn.apply(this, error, args)
+          return breaker.fallbackFn.apply(this, null, args)
         }
       }
 
@@ -373,5 +373,7 @@ const CircuitBreaker = function (id, protectedCall, thresholds) {
     }
   }
 }
+
+export const getErrorLogs = () => logs
 
 export default CircuitBreaker
