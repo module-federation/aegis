@@ -23,8 +23,8 @@ let ws
 
 let port = config.port || SERVICENAME
 let fqdn = config.host || 'switch.app-mesh.net'
-let hostAddress
-let servicePort
+let hostAddress = config.host || null
+let servicePort = config.port || null
 let uplinkCallback
 
 async function dnsResolve (hostname) {
