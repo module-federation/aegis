@@ -77,6 +77,7 @@ export default async function compensate (model) {
     }
 
     await reportStatus('COMPLETE', undoWorked, undoModel)
+    return undoModel
   } catch (error) {
     await model.emit(undoFailed(model.getName()), error.message)
     console.error(compensate.name, error.message)

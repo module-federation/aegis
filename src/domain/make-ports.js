@@ -217,8 +217,7 @@ export default function makePorts (ports, adapters, observer) {
           // This means we hit max retries
           console.error('max retries exceeded', port, this)
           // Try to back out
-          await async(this.undo())
-          return this
+          return this.undo()
         }
 
         try {
@@ -242,9 +241,8 @@ export default function makePorts (ports, adapters, observer) {
 
           // Timer still running?
           if (timer.expired()) {
-            // Try to back out transactions.
-            await async(this.undo())
-            return this
+            // Try to back out.
+            return this.undo()
           }
 
           throw new Error('error calling port', error, port)
