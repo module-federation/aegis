@@ -52,7 +52,7 @@
     "express-cli": "0.0.1",
     "jest": "27.3.1",
     "mocha": "9.1.3",
-    "nodemon": "2.0.14",
+    "nodemon": "2.0.15",
     "rimraf": "3.0.2",
     "split": "1.0.1"
   }
