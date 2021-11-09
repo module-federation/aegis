@@ -8,7 +8,6 @@ import config from '../adapters/datasources'
 
 const defaultAdapter = process.env.DATASOURCE_ADAPTER || config.MEMORYADAPTER
 const DefaultDataSource = adapters[defaultAdapter]
-const defaultCacheAlgo = (factory, name) => 0
 
 /**
  * @todo handle all state same way
@@ -45,13 +44,11 @@ const DataSourceFactory = (() => {
     if (spec && spec.datasource) {
       const url = spec.datasource.url
       const cacheSize = spec.datasource.cacheSize
-      const cacheAlgo = spec.datasource.cacheAlgo || defaultCacheAlgo
       const adapterFactory = spec.datasource.factory
       const BaseClass = config.getBaseClass(spec.datasource.baseClass)
 
       try {
         const DataSource = adapterFactory(url, cacheSize, BaseClass)
-        DataSource.cacheAlgo = cacheAlgo
         return new DataSource(ds, factory, name)
       } catch (error) {
         console.error(error)
