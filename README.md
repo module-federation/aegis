@@ -1,5 +1,6 @@
 # ÆGIS
 
+# NOTE: due to an issue with NPM, clone both aegis and microlib to the same directory, build aegis then microlib. No need to yarn link as microlib currently points directly to the local copy, not NPM.
 
 See the [MicroLib](https://github.com/module-federation/MicroLib) repo for documentation and a working example of a federation server.
 
