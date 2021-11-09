@@ -30,7 +30,10 @@ function getRetries (args) {
 }
 
 /**
- * Recursively retry if the adapter times out.
+ * Call ourselves recursively each time the adapter times out.
+ * Count the number of retries by passing a counter to ourselves
+ * on the stack. Better than a counter: make it a log w/ timestamps.
+ *
  * @param {{
  *  portName: string,
  *  portConf: import('.').ports,
@@ -46,9 +49,8 @@ function setPortTimeout (options) {
   const expired = () => timerArgs.count > maxRetry
 
   const timer = {
-    enabled: false,
-    stopTimer: id => id,
-    expired
+    stopTimer: () => 0,
+    expired: () => false
   }
 
   if (noTimer) {
@@ -56,10 +58,9 @@ function setPortTimeout (options) {
   }
 
   if (expired()) {
-    model.emit(portRetryFailed(model.getName(), portName), options)
     return {
       ...timer,
-      enabled: true
+      expired: () => true
     }
   }
 
@@ -71,15 +72,17 @@ function setPortTimeout (options) {
     // Invoke optional custom handler
     if (handler) handler(options)
 
-    // Count retries by adding to an array passed as an arg on the stack
+    // Count retries by passing `timerArgs` to ourselves on the stack
     await async(model[portName](...timerArgs.nextArg))
   }, timeout)
 
   return {
-    ...timer,
-    enabled: true,
+    // real expired
+    expired,
+    // real stop timer
     stopTimer: () => {
       clearTimeout(timerId)
+      // did we retry?
       if (timerArgs.count > 1) {
         model.emit(portRetryWorked(model.getName(), portName), options)
       }
@@ -98,7 +101,7 @@ function getPortCallback (cb) {
 }
 
 /**
- * Are we compensating for a failed or canceled transaction?
+ * Are we compensating for a canceled transaction?
  * @param {import(".").Model} model
  * @returns {Promise<boolean>}
  */
@@ -213,9 +216,11 @@ export default function makePorts (ports, adapters, observer) {
           args
         })
 
-        if (timer.enabled && timer.expired()) {
+        if (timer.expired()) {
           // This means we hit max retries
-          console.error('max retries exceeded', port, this)
+          console.warn('max retries reached', port)
+          // fire event for circuit breaker / instrumentation
+          this.emit(portRetryFailed(this.getName(), port))
           // Try to back out
           return this.undo()
         }
@@ -227,7 +232,7 @@ export default function makePorts (ports, adapters, observer) {
           // Stop the timer
           timer.stopTimer()
 
-          // Remember what ports we called for undo and restart
+          // Remember what ports we called in case of restart or undo
           const saved = await updatePortFlow(model, port, rememberPort)
 
           // Signal the next port to run.

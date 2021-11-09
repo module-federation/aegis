@@ -67,7 +67,7 @@ export default async function compensate (model) {
               throw new Error('max undo retries', error.message)
           }
         }
-        return model
+        return Promise.resolve(model)
       }, Promise.resolve(model.update({ compensate: true })))
     )
 

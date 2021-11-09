@@ -92,6 +92,7 @@ function getThreshold (error, thresholds) {
  */
 function thresholdBreached (log, error, thresholds) {
   console.log(thresholdBreached.name, thresholds)
+  
   if (log.length < 1) {
     console.log('no log')
     return false

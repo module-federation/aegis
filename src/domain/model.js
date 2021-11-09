@@ -60,6 +60,7 @@ import asyncPipe from './util/async-pipe'
 import compose from './util/compose'
 import pipe from './util/pipe'
 import uuid from './util/uuid'
+import { time } from 'console'
 
 /**
  * @namespace
@@ -107,6 +108,17 @@ const Model = (() => {
       ...model,
       ...changes
     }
+  }
+
+  function queueNotice (model) {
+    setTimeout(
+      async function () {
+        const eventName = 'UPDATE' + model.getName().toUpperCase()
+        await model.emit(eventName, { desc: 'domain update', time: Date.now() })
+      },
+      3000,
+      model
+    )
   }
 
   /**
@@ -193,6 +205,39 @@ const Model = (() => {
         return compensate(this)
       },
 
+
+      /**
+       * Listen for domain events.
+       *
+       * @param {string} eventName - name of event
+       * @param {function(Model)} callback - called when event is heard
+       * @param {boolean} [multi] - allow multiple listeners for event,
+       * defaults to `true`
+       */
+       addListener (eventName, callback, options) {
+        observer.on(eventName, callback, options)
+      },
+
+      /**
+       * Fire domain events.
+       *
+       * @param {string} eventName - event identifier, unique string
+       * @param {Model|Event} eventData - any, but typically `Model`
+       * @param {boolean} [forward] - forward event to service mesh,
+       * defaults to `false`
+       */
+      async emit (eventName, eventData, forward = false) {
+        await observer.notify(
+          eventName,
+          {
+            eventName,
+            eventData,
+            model: this
+          },
+          forward
+        )
+      },
+
       /**
        * Concurrency support: strategy is to merge with
        * last update vs blindly overwriting. Concomitant
@@ -217,14 +262,7 @@ const Model = (() => {
           [UPDATETIME]: Date.now()
         })
 
-        const eventName = 'UPDATE' + final[MODELNAME];
-        await observer.notify(eventName, {
-          modelName: final[MODELNAME],
-          model: final,
-          modelId: final[ID],
-          eventName
-        })
-
+        queueNotice(final)
         return final
       },
 
@@ -248,38 +286,6 @@ const Model = (() => {
        */
       async list (filter, cache = false) {
         return datasource.list(filter, cache)
-      },
-
-      /**
-       * Listen for domain events.
-       *
-       * @param {string} eventName - name of event
-       * @param {function(Model)} callback - called when event is heard
-       * @param {boolean} [multi] - allow multiple listeners for event,
-       * defaults to `true`
-       */
-      addListener (eventName, callback, options) {
-        observer.on(eventName, callback, options)
-      },
-
-      /**
-       * Fire domain events.
-       *
-       * @param {string} eventName - event identifier, unique string
-       * @param {Model|Event} eventData - any, but typically `Model`
-       * @param {boolean} [forward] - forward event to service mesh,
-       * defaults to `false`
-       */
-      async emit (eventName, eventData, forward = false) {
-        await observer.notify(
-          eventName,
-          {
-            eventName,
-            eventData,
-            model: this
-          },
-          forward
-        )
       },
 
       /**
