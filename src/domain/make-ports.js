@@ -14,6 +14,8 @@ function getTimerArgs (args) {
   if (args) return [...args, timerArg]
   return [timerArg]
 }
+/**@typedef {import('./model-factory').ModelFactory} ModelFactory*/
+/**@typedef {import('.').ModelSpecification} ModelSpecification */
 
 /**
  *
@@ -60,7 +62,7 @@ function setPortTimeout (options) {
   if (expired()) {
     return {
       ...timer,
-      expired: () => true
+      expired
     }
   }
 
@@ -68,10 +70,8 @@ function setPortTimeout (options) {
   const timerId = setTimeout(async () => {
     // Notify interested parties
     await model.emit(portTimeout(model.getName(), portName), options)
-
     // Invoke optional custom handler
     if (handler) handler(options)
-
     // Count retries by passing `timerArgs` to ourselves on the stack
     await async(model[portName](...timerArgs.nextArg))
   }, timeout)
@@ -167,12 +167,18 @@ async function updatePortFlow (model, port, remember) {
  * Generate functions to handle I/O between the domain
  * and application layers. Each port is assigned an adapter,
  * which either invokes the port (inbound) or is invoked by
- * it (outbound). Ports can be instrumented for exceptions
- * and timeouts. They can also be piped together in a control
- * flow by specifying the output event of one port as the input
- * or triggering event of another.
+ * it (outbound).
  *
- * See the `ModelSpecification` for port configuration options.
+ * Ports can be instrumented for exceptions and timeouts. They
+ * can also be piped together in control flows by specifying
+ * the output event of one port as the input or triggering event
+ * of another.
+ *
+ * N.B.: Creational ports are mainly handled by the
+ * {@link ModelFactory}, but inbound ports can be implemented
+ * by binding domain code in place of the adapter (see below).
+ *
+ * See the {@link ModelSpecification} for port configuration options.
  *
  * @param {import('./index').ports} ports - object containing domain interfaces
  * @param {object} adapters - object containing application adapters
@@ -250,7 +256,7 @@ export default function makePorts (ports, adapters, observer) {
             return this.undo()
           }
 
-          throw new Error('error calling port', error, port)
+          throw new Error('port error', port, error)
         }
       }
 
