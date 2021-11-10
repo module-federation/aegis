@@ -50,19 +50,10 @@ function setPortTimeout (options) {
   const timerArgs = getRetries(args)
   const expired = () => timerArgs.count > maxRetry
 
-  const timer = {
-    stopTimer: () => 0,
-    expired: () => false
-  }
-
   if (noTimer) {
-    return timer
-  }
-
-  if (expired()) {
     return {
-      ...timer,
-      expired
+      expired: () => false,
+      stopTimer: () => void 0
     }
   }
 
@@ -77,12 +68,9 @@ function setPortTimeout (options) {
   }, timeout)
 
   return {
-    // real expired
     expired,
-    // real stop timer
     stopTimer: () => {
       clearTimeout(timerId)
-      // did we retry?
       if (timerArgs.count > 1) {
         model.emit(portRetryWorked(model.getName(), portName), options)
       }
