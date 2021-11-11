@@ -1,5 +1,8 @@
 'use strict'
 
+/** @typedef {import('./model-factory').ModelFactory} ModelFactory */
+/** @typedef {import('.').ModelSpecification} ModelSpecification */
+
 import portHandler from './port-handler'
 import async from './util/async-error'
 import CircuitBreaker from './circuit-breaker'
@@ -14,8 +17,6 @@ function getTimerArgs (args) {
   if (args) return [...args, timerArg]
   return [timerArg]
 }
-/**@typedef {import('./model-factory').ModelFactory} ModelFactory*/
-/**@typedef {import('.').ModelSpecification} ModelSpecification */
 
 /**
  *
