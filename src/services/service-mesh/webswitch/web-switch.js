@@ -2,6 +2,7 @@
 
 import { nanoid } from 'nanoid'
 
+const SERVICENAME = 'webswitch'
 const startTime = Date.now()
 const uptime = () => Math.round(Math.abs((Date.now() - startTime) / 1000 / 60))
 const configRoot = require('../../../config').aegisConfig
@@ -43,7 +44,7 @@ export function attachServer (server) {
   server.sendStatus = function (client) {
     client.send(
       JSON.stringify({
-        servicePlugin: 'WebSwitch',
+        servicePlugin: SERVICENAME,
         uptimeMinutes: uptime(),
         messagesSent,
         clientsConnected: server.clients.size,
@@ -76,7 +77,7 @@ export function attachServer (server) {
           return
         }
 
-        if (msg.proto === 'webswitch' && msg.pid && msg.role) {
+        if (msg.proto === SERVICENAME && msg.pid && msg.role) {
           client.info = {
             ...client.info,
             pid: msg.pid,
@@ -102,7 +103,7 @@ export function attachServer (server) {
       server.uplink.setDestinationHost(uplink)
       server.uplink.onMessage(msg => server.broadcast(msg, server.uplink))
       server.uplink.publish({
-        proto: 'webswitch',
+        proto: SERVICENAME,
         pid: process.pid,
         role: 'uplink'
       })
