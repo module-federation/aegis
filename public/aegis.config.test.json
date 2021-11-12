@@ -15,6 +15,7 @@
   },
   "adapters": {
     "desc": "adapter config",
+    "cacheSize": 3000,
     "defaultDatasource": "DataSourceFile",
     "datasources": {
       "DataSourceMemory": {
