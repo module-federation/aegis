@@ -9,12 +9,12 @@ import WebSocket from 'ws'
 import dns from 'dns/promises'
 
 const SERVICENAME = 'webswitch'
-const configFile = require('../../../../../microlib/public/aegis.config.json')
-const config = configFile.services.serviceMesh.WebSwitch
+const configRoot = require('../../../config').aegisConfg
+const config = configRoot.services.serviceMesh.WebSwitch
 const DEBUG = /true|yes|y/i.test(config.debug) || false
 const heartbeat = config.heartbeat || 10000
 
-if (!configFile) console.error('WebSwitch', 'cannot access config file')
+if (!configRoot) console.error('WebSwitch', 'cannot access config file')
 
 /**
  * @type import("ws/lib/websocket")

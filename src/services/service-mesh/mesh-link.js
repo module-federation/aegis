@@ -4,9 +4,9 @@ const mlink = require('mesh-link')
 const nanoid = require('nanoid').nanoid
 const begins = Date.now()
 const uptime = () => Math.round(Math.abs((Date.now() - begins) / 1000 / 60))
-const userConfig = require('../../../../microlib/public/aegis.config.json')
+const userConfig = require('../../config').aegisConfg
 const DEBUG =
-  /true/i.test(userConfig.services.serviceMesh.MeshLink.debug) || false
+  /true/i.test(userConfig.services.serviceMesh.MeshLink.config) || false
 
 const defaultCfg = {
   redis: {
