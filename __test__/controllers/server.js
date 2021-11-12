@@ -1,6 +1,6 @@
 'use strict'
 
-import { controllers, storageAdapter } from '../../src/adapters'
+import { controllers, storageAdapter } from '@module-federation/adapters'
 
 const {
   postModels,
