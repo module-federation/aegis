@@ -92,7 +92,7 @@ function getThreshold (error, thresholds) {
  */
 function thresholdBreached (log, error, thresholds) {
   console.log(thresholdBreached.name, thresholds)
-  
+
   if (log.length < 1) {
     console.log('no log')
     return false
@@ -134,7 +134,6 @@ function thresholdBreached (log, error, thresholds) {
  */
 function setStateOnError (log, error, options) {
   const state = getState(log)
-  console.debug(setStateOnError.name, log, error)
   if (
     state === State.HalfOpen ||
     (state === State.Closed && thresholdBreached(log, error, options))
