@@ -4,8 +4,9 @@ import { nanoid } from 'nanoid'
 
 const startTime = Date.now()
 const uptime = () => Math.round(Math.abs((Date.now() - startTime) / 1000 / 60))
-const uplink = process.env.WEBSWITCH_UPLINK
-const DEBUG = /true/i.test(process.env.WEBSWITCH_DEBUG)
+const configRoot = require('../../../config').aegisConfig
+const uplink = configRoot.services.serviceMesh.WebSwitch.uplink
+const DEBUG = /true/i.test(configRoot.services.serviceMesh.WebSwitch.debug)
 let messagesSent = 0
 
 /**

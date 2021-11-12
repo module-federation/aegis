@@ -16,7 +16,7 @@ export const CertificateService = {
 import * as MeshAdapter from '../adapters/service-mesh'
 import * as MeshServices from './service-mesh'
 
-const config = require('../config').aegisConfg
+const config = require('../config').aegisConfig
 const designatedService = config.services.activeServiceMesh
 
 /**

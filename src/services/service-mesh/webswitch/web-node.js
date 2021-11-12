@@ -9,7 +9,7 @@ import WebSocket from 'ws'
 import dns from 'dns/promises'
 
 const SERVICENAME = 'webswitch'
-const configRoot = require('../../../config').aegisConfg
+const configRoot = require('../../../config').aegisConfig
 const config = configRoot.services.serviceMesh.WebSwitch
 const DEBUG = /true|yes|y/i.test(config.debug) || false
 const heartbeat = config.heartbeat || 10000
@@ -91,9 +91,9 @@ export function setDestinationHost (host) {
   port = PORT
 }
 
-const protocol = type =>
+const handshake = type =>
   JSON.stringify({
-    proto: 'webswitch',
+    proto: SERVICENAME,
     role: 'node',
     type,
     pid: process.pid
@@ -162,7 +162,7 @@ export async function publish (event, observer) {
         ws = new WebSocket(`${proto}://${hostAddress}:${servicePort}`)
 
         ws.on('open', function () {
-          ws.send(protocol())
+          ws.send(handshake())
           startHeartBeat(ws)
         })
 
@@ -179,8 +179,8 @@ export async function publish (event, observer) {
             await observer.notify(eventData.eventName, eventData)
           }
 
-          if (eventData.proto === 'webswitch' && eventData.pid) {
-            ws.send(protocol())
+          if (eventData.proto === SERVICENAME && eventData.pid) {
+            ws.send(handshake())
             return
           }
 
