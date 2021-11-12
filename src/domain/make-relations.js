@@ -31,7 +31,18 @@ export const relationType = {
    */
   oneToOne (model, ds, rel) {
     return this.manyToOne(model, ds, rel)
-  }
+  },
+  /**
+   * Assumes the model contains an array of the related ohject.
+   * @param {import(".").Model} model
+   * @param {import("./datasource").default} ds
+   * @param {import("./index").relations[relation]} config
+   * @returns
+   */
+  containsMany: async (model, ds, rel) =>
+    await Promise.allSettled(
+      model[rel.key].map(key => ds.find(key[rel.foreignKey]))
+    )
 }
 
 /**
