@@ -113,7 +113,7 @@ function startHeartBeat (ws) {
 
   ws.ping(0x9)
 
-  setInterval(function () {
+  const intervalId = setInterval(function () {
     if (receivedPong) {
       receivedPong = false
       ws.ping(0x9)
@@ -121,6 +121,7 @@ function startHeartBeat (ws) {
       observer.notify('webswitchTimeout', 'webswitch server timeout', true)
       console.error('webswitch server timeout, will try new connection')
       ws = null // get a new socket
+      clearInterval(intervalId)
     }
   }, heartbeat)
 }
