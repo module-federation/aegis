@@ -2,13 +2,28 @@
 
 ## See the [aegis-host](https://github.com/module-federation/MicroLib) repo for documentation and a working example of a federation server.
 
-### Consolidate your micoservices for decreased footprint, better performance, greater workload density and simpler operations without losing deployment or language independence or tightly coupling to shared dependencies.
+### Consolidate your micoservices 
+- for decreased footprint, 
+- better performance and 
+- simpler operations <p>
+without losing
+- deployment independence
+- or language independence 
+- or loose coupling
+  
+### Or distribute your components dynamically
+  - integrate them transparently 
+  - and update them live in producetion <p>
+    with 
+  - runtime bindng, 
+  - zero downtime, 
+  - and zero software installation.
 
-### Or distribute your components dynamically, integrate them transparently and update them live in producetion with runtime bindng, zero downtime, and zero software installation.
+### And Distribute them anywhere, 
+outside the datacenter and beyond the edge, to phones, drones, etc.
 
-### Distribute them anywhere, outside the datacenter and beyond the edge, to phones or drones, etc.
-
-### And do it all without deployment automation. You don't need that anymore.
+### And do it all without deployment automation. 
+You don't need that anymore.
 
 
 ![Aegis Federated Architcture](https://user-images.githubusercontent.com/38910830/141614069-20be312c-2408-4ca8-9d59-2f34f6adbd39.gif)
@@ -32,7 +47,7 @@ yarn link
 
 cd ..
 
-git clone https://github.com/module-federation/aeghis-host
+git clone https://github.com/module-federation/aegis-host
 cd aegis-host
 cp dotenv.example .env
 yarn
