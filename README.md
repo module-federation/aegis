@@ -1,6 +1,18 @@
 # ÆGIS
 
-See the [aegis-host](https://github.com/module-federation/MicroLib) repo for documentation and a working example of a federation server.
+## See the [aegis-host](https://github.com/module-federation/MicroLib) repo for documentation and a working example of a federation server.
+
+### Consolidate your micoservices for decreased footprint, better performance, greater workload density and simpler operations without losing deployment or language independence or tightly coupling to shared dependencies.
+
+### Or distribute your components dynamically, integrate them transparently and update them live in producetion with runtime bindng, zero downtime, and zero software installation.
+
+### Distribute them anywhere, outside the datacenter and beyond the edge, to phones or drones, etc.
+
+### And do it all without deployment automation. You don't need that anymore.
+
+
+![Aegis Federated Architcture](https://user-images.githubusercontent.com/38910830/141614069-20be312c-2408-4ca8-9d59-2f34f6adbd39.gif)
+
 
 [![Aegis Overview](https://res.cloudinary.com/marcomontalbano/image/upload/v1632364889/video_to_markdown/images/youtube--n2qqgi3fTto-c05b58ac6eb4c4700831b2b3070cd403.jpg)](https://youtu.be/jddhfLA_2k0 "Aegis Overview")
 
