@@ -7,20 +7,19 @@
 - better performance and 
 - simpler operations <p>
 without losing
-- deployment independence
-- or language independence 
+- deployment independence,
+- language independence 
 - or loose coupling
   
-### Or distribute your components dynamically
-  - integrate them transparently 
+### Or distribute your components
+  - dynamically and adaptively
+  - outside the datacenter and beyond the edge
+  - integrate your components transparently 
   - and update them live in producetion <p>
     with 
   - runtime bindng, 
   - zero downtime, 
   - and zero software installation.
-
-### And Distribute them anywhere, 
-outside the datacenter and beyond the edge, to phones, drones, etc.
 
 ### And do it all without deployment automation. 
 You don't need that anymore.
