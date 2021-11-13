@@ -2,6 +2,13 @@
 
 ## See the [aegis-host](https://github.com/module-federation/MicroLib) repo for documentation and a working example of a federation server.
 
+<div align="center">
+    <a href="https://youtu.be/atffJzyP41U" target="_blank">
+        <img src="https://user-images.githubusercontent.com/38910830/141614069-20be312c-2408-4ca8-9d59-2f34f6adbd39.gif" alt="GitHub Video"
+        border="10" width="460" height="250"/>
+    </a>
+</div>
+
 ### Consolidate your micoservices 
 - for decreased footprint, 
 - better performance and 
@@ -25,7 +32,7 @@ without losing
 You don't need that anymore.
 
 
-![Aegis Federated Architcture](https://user-images.githubusercontent.com/38910830/141614069-20be312c-2408-4ca8-9d59-2f34f6adbd39.gif)
+![Aegis Federated Architcture](wf)
 
 
 ## Using ÆGIS
