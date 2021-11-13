@@ -1,6 +1,6 @@
 {
   "desc": "hot-reloadable configurtion variables, see https://github.com/module-federatio/aegis",
-  "env": {
+  "general": {
     "desc": "live-updateable environmental vars",
     "distributedCache": {
       "desc": "enables transparent integration between aegis instances",
@@ -11,7 +11,12 @@
       "enabled": true
     },
     "restartWorflow": true,
-    "checkIpHost": "https://checkip.amazonaws.com"
+    "checkIpHost": "https://checkip.amazonaws.com",
+    "defaultCircuitBreaker": {
+      "errorRate": 25,
+      "callVolume": 100,
+      "intervalMs": 6000
+    }
   },
   "adapters": {
     "desc": "adapter config",
@@ -85,13 +90,12 @@
         "issuer": "https://dev-2fe2iar6.us.auth0.com/",
         "algorithms": ["RS256"]
       }
-    }
-  },
-  "domain": {
-    "defaultCircuitBreaker": {
-      "errorRate": 25,
-      "callVolume": 100,
-      "intervalMs": 6000
+    },
+    "cert": {
+      "certPath": "../cert",
+      "challengePath": "../public",
+      "domain": "aegis.module-federation.org",
+      "domainEmail": null
     }
   }
 }

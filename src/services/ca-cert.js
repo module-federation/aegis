@@ -1,8 +1,15 @@
+'use strict'
+
 const acme = require('acme-client')
 const fs = require('fs')
+const path = require('path')
+const config = require('../config').aegisConfig
+const dirname = config.services.cert.webRoot || 'public'
+const webroot = path.resolve('./', dirname)
+const domain = config.services.cert.domain
+const email = config.services.cert.domainEmail
 
-const challengePath = (webroot, token) =>
-  `${webroot}/.well-known/acme-challenge/${token}`
+const challengePath = token => `${webroot}/.well-known/acme-challenge/${token}`
 
 /**
  * Function used to satisfy an ACME challenge
@@ -12,32 +19,22 @@ const challengePath = (webroot, token) =>
  * @param {string} keyAuthorization Authorization key
  * @returns {Promise}
  */
-function makeChallengeCreateFn (path, dnsProvider) {
+function makeChallengeCreateFn (dnsProvider) {
   return async function challengeCreateFn (authz, challenge, keyAuthorization) {
     console.log('Triggered challengeCreateFn()')
 
     // http-01
     if (challenge.type === 'http-01') {
-      const filePath = challengePath(path, challenge.token)
-
-      console.log(
-        `Creating challenge response for ${authz.identifier.value} at path: ${filePath}`
-      )
+      const filePath = challengePath(challenge.token)
       console.log(`writing "${keyAuthorization}" to path "${filePath}"`)
 
       fs.writeFileSync(filePath, keyAuthorization)
       const data = fs.readFileSync(filePath, 'utf-8')
-
       console.log('file exists', data.toString())
     } else if (challenge.type === 'dns-01') {
       // dns-01
       const dnsRecord = `_acme-challenge.${authz.identifier.value}`
 
-      console.log(
-        `Creating TXT record for ${authz.identifier.value}: ${dnsRecord}`
-      )
-
-      /* Replace this */
       console.log(
         `Create TXT record "${dnsRecord}" with value "${keyAuthorization}"`
       )
@@ -61,18 +58,18 @@ function makeChallengeRemoveFn (path, dnsProvider) {
 
     // http-01
     if (challenge.type === 'http-01') {
-      const filePath = challengePath(path, challenge.token)
+      const filePath = challengePath(challenge.token)
+
       console.log(
         `Removing challenge response for ${authz.identifier.value} at path: ${filePath}`
       )
-
       fs.unlinkSync(filePath)
     } else if (challenge.type === 'dns-01') {
       // dns-01
       const dnsRecord = `_acme-challenge.${authz.identifier.value}`
 
       console.log(
-        `Would remove TXT record "${dnsRecord}" with value "${keyAuthorization}"`
+        `Removing TXT record "${dnsRecord}" with value "${keyAuthorization}"`
       )
       const provider = await dnsProvider()
       await provider.removeRecord(dnsRecord, 'TXT')
@@ -93,15 +90,8 @@ const directoryUrl = !/prod/.test(process.env.NODE_ENV)
 exports.initCertificateService = function (dnsProvider, whois) {
   /**
    * Provision/renew CA cert
-   * @param {string} domain the domain name
-   * @param {*} [email] domain admin email address
-   * @param {*} [challengePath] path from webroot to challenge data
    */
-  return async function provisionCert (
-    domain,
-    email = `${domain}.admin@gmail.com`,
-    challengePath = '/home/ec2-user/microlib/public'
-  ) {
+  return async function provisionCert () {
     // Init client
     const client = new acme.Client({
       directoryUrl,
@@ -118,8 +108,8 @@ exports.initCertificateService = function (dnsProvider, whois) {
       csr,
       email: email || (await whois(domain).getEmail()),
       termsOfServiceAgreed: true,
-      challengeCreateFn: makeChallengeCreateFn(challengePath, dnsProvider),
-      challengeRemoveFn: makeChallengeRemoveFn(challengePath, dnsProvider)
+      challengeCreateFn: makeChallengeCreateFn(dnsProvider),
+      challengeRemoveFn: makeChallengeRemoveFn(dnsProvider)
     })
 
     console.log(`CSR:\n${csr.toString()}`)
