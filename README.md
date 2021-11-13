@@ -34,8 +34,8 @@ yarn link
 
 cd ..
 
-git clone https://github.com/module-federation/microlib
-cd microlib
+git clone https://github.com/module-federation/aeghis-host
+cd aegis-host
 cp dotenv.example .env
 yarn
 yarn link "@module-federation/aegis"
