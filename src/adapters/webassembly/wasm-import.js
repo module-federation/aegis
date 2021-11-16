@@ -42,7 +42,7 @@ export async function importWebAssembly (remoteEntry, type = 'model') {
         const adapter = WasmInterop(wasm)
         const event = wasm.exports.__getString(eventName)
         const callback = wasm.exports.__getString(callbackName)
-        console.debug('wasm listen: callback', callback, 'eventName', event)
+        console.debug('addListener', callback, 'eventName', event)
 
         const fn = adapter.findWasmFunction(callback)
         if (typeof fn !== 'function') {
@@ -62,12 +62,12 @@ export async function importWebAssembly (remoteEntry, type = 'model') {
        * @param {string} eventName
        * @param {string} eventData
        */
-      fireEvent (eventName, eventData, forward) {
+      fireEvent (eventName, eventData) {
         const adapter = WasmInterop(wasm)
         const event = wasm.exports.__getString(eventName)
         const data = adapter.constructObject(eventData)
-        console.debug('wasm called js to emit an event:', event, 'data:', data)
-        observer.notify(event, data, Boolean(forward))
+        console.debug('fireEvent', data)
+        observer.notify('publishWasm', { ...data, eventName: event }, true)
       },
 
       /**

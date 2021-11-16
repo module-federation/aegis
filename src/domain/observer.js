@@ -42,7 +42,7 @@ export class Observer {
    * @param {String} eventName
    * @param {Event} eventData
    */
-  async notify (eventName, eventData) {
+  async notify (eventName, eventData, forward) {
     throw new Error('unimplemented abstract method')
   }
 }

@@ -84,11 +84,16 @@ export function forwardEvents ({ observer, models, publish, subscribe }) {
    * Forward events so marked.
    */
   function forwardUserEvents () {
-    observer.on(
-      domainEvents.forwardEvent(),
-      eventData => publish(eventData.eventName, eventData),
-      false
+    observer.on('publishWasm', data =>
+      publish({ ...data, eventName: data.eventName })
     )
+
+    subscribe('publishWasm', data => observer.notify(data.eventName, data))
+
+    observer.on(domainEvents.forwardEvent(), eventData => {
+      console.debug(forwardUserEvents.name, 'called')
+      publish(eventData, observer)``
+    })
   }
 
   forwardPortEvents()
