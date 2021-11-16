@@ -52,7 +52,7 @@ function makeChallengeCreateFn (dnsProvider) {
  * @param {string} keyAuthorization Authorization key
  * @returns {Promise}
  */
-function makeChallengeRemoveFn (path, dnsProvider) {
+function makeChallengeRemoveFn (dnsProvider) {
   return async function challengeRemoveFn (authz, challenge, keyAuthorization) {
     console.log('Triggered challengeRemoveFn()')
 
@@ -77,6 +77,15 @@ function makeChallengeRemoveFn (path, dnsProvider) {
   }
 }
 
+function getEmail (whois, domain) {
+  try {
+    return whois(domain).getEmail()
+  } catch (e) {
+    console.log('whois getEmail', e)
+  }
+  return process.env.DOMAIN_EMAIL
+}
+
 const directoryUrl = !/prod/.test(process.env.NODE_ENV)
   ? acme.directory.letsencrypt.staging
   : acme.directory.letsencrypt.production
@@ -91,7 +100,7 @@ exports.initCertificateService = function (dnsProvider, whois) {
   /**
    * Provision/renew CA cert
    */
-  return async function provisionCert () {
+  return async function provisionCert (domain, email = null) {
     // Init client
     const client = new acme.Client({
       directoryUrl,
@@ -106,7 +115,7 @@ exports.initCertificateService = function (dnsProvider, whois) {
     // Get certificate
     const cert = await client.auto({
       csr,
-      email: email || (await whois(domain).getEmail()),
+      email: email || getEmail(whois, domain),
       termsOfServiceAgreed: true,
       challengeCreateFn: makeChallengeCreateFn(dnsProvider),
       challengeRemoveFn: makeChallengeRemoveFn(dnsProvider)
