@@ -118,7 +118,7 @@ export function serviceMeshCallback(
   const eventData = new Array<string[]>(2);
   eventData[0] = [keys[0], vals[0]];
   eventData[1] = [keys[1], vals[1]];
-  aegis.fireEvent(eventName, eventData, 1);
+  aegis.fireEvent(eventName+'callback', eventData, 1);
   return [["key1", "serviceMeshCallback"]];
 }
 

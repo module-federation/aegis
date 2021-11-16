@@ -8761,6 +8761,18 @@
   local.get $8
   call $~lib/array/Array<~lib/array/Array<~lib/string/String>>#__set
   local.get $2
+  i32.const 1280
+  local.set $8
+  global.get $~lib/memory/__stack_pointer
+  local.get $8
+  i32.store offset=8
+  local.get $8
+  call $~lib/string/String.__concat
+  local.set $8
+  global.get $~lib/memory/__stack_pointer
+  local.get $8
+  i32.store
+  local.get $8
   local.get $3
   f64.const 1
   call $assembly/aegis/fireEvent
