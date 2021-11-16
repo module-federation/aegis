@@ -77,11 +77,11 @@ function makeChallengeRemoveFn (dnsProvider) {
   }
 }
 
-function getEmail (whois, domain) {
+async function getEmail (whois, domain) {
   try {
-    return whois(domain).getEmail()
+    return (await whois(domain)).getEmail()
   } catch (e) {
-    console.log('whois getEmail', e)
+    console.log('whois getEmail', e.message)
   }
   return process.env.DOMAIN_EMAIL
 }
@@ -115,7 +115,7 @@ exports.initCertificateService = function (dnsProvider, whois) {
     // Get certificate
     const cert = await client.auto({
       csr,
-      email: email || getEmail(whois, domain),
+      email: email || (await getEmail(whois, domain)),
       termsOfServiceAgreed: true,
       challengeCreateFn: makeChallengeCreateFn(dnsProvider),
       challengeRemoveFn: makeChallengeRemoveFn(dnsProvider)

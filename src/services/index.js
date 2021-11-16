@@ -3,8 +3,7 @@ export * as ClusterService from './cluster'
 export * as EventService from './event-bus'
 export * as StorageService from './persistence'
 
-import dns from './dns'
-import whois from './dns/whois'
+import { dns, whois } from './dns'
 export const DnsService = dns
 export const WhoIsService = whois
 

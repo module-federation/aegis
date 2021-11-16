@@ -7,7 +7,7 @@ import { lookup } from 'whois'
  * @param {string} domain
  * @returns {Promise<{data:string,getEmail:function():string}>}
  */
-export default async function whois (domain) {
+export async function whois (domain) {
   return new Promise(async function (resolve) {
     lookup(domain, function (_err, data) {
       resolve({
