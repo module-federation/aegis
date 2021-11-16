@@ -6,6 +6,8 @@ const domainEvents = {
   internalCacheResponse: modelName => `internalCacheResponse_${modelName}`,
   externalCacheResponse: modelName => `externalCacheResponse_${modelName}`,
   externalCrudEvent: eventName => `externalCrudEvent_${eventName}`,
+  cacheCrudSyncEvent: (modelName, instanceId) =>
+    `cacheCrudSyncEvent_${modelName}_${instanceId}`,
   cacheCreateEvent: modelName => `cacheCreateEvent_${modelName}`,
   cacheUpdateEvent: modelName => `cacheUpdateEvent_${modelName}`,
   unauthorizedCommand: modelName => `unauthorizedCommand_${modelName}`,

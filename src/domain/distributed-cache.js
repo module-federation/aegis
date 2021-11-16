@@ -340,6 +340,13 @@ export default function DistributedCache ({
     )
 
   /**
+   * Listen for events from remote systems and update local cache.
+   * @param {string} eventName
+   */
+  // const receiveCrudSyncEvent = eventName =>
+  //   subscribe(externalCrudSyncEvent(eventName), updateCache())
+
+  /**
    * Subcribe to external CRUD events for related models.
    * Also listen for request and response events for locally
    * and remotely cached data.
@@ -398,6 +405,14 @@ export default function DistributedCache ({
         models.getEventName(models.EventTypes.CREATE, modelName),
         models.getEventName(models.EventTypes.DELETE, modelName)
       ].forEach(broadcastCrudEvent)
+
+      // Listen for CRUD events from a remote instance of a local model -
+      // No endless loop as we are listening for different internal events
+      // ;[
+      //   models.getEventName(models.EventTypes.UPDATE, modelName),
+      //   models.getEventName(models.EventTypes.CREATE, modelName),
+      //   models.getEventName(models.EventTypes.DELETE, modelName)
+      // ].forEach(receiveCrudSyncEvent)
     })
   }
 
