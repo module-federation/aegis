@@ -238,7 +238,7 @@ exports.WasmInterop = function (module) {
             producesEvent,
             callback,
             undo,
-            forward 
+            forward
           ] = ports[port].split(',')
           const cb = this.findWasmFunction(callback)
           const undoCb = this.findWasmFunction(undo)
