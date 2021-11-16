@@ -7,9 +7,9 @@ import { forwardEvents } from './forward-events'
 import uuid from '../domain/util/uuid'
 
 const BROADCAST = process.env.TOPIC_BROADCAST || 'broadcastChannel'
-const useObjectCache = /true/i.test(process.env.DISTRIBUTED_CACHE_ENABLED)
+const useObjectCache =
+  /true/i.test(process.env.DISTRIBUTED_CACHE_ENABLED) || true
 const useSvcMesh = /true/i.test(process.env.SERVICEMESH_ENABLED) || true
-
 
 /**
  * Handle internal and external events.
