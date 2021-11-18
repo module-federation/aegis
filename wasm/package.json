@@ -6,8 +6,8 @@
     "test": "node tests"
   },
   "devDependencies": {
-    "@assemblyscript/loader": "0.19.17",
+    "@assemblyscript/loader": "0.19.20",
     "as-bind": "0.8.2",
-    "assemblyscript": "0.19.18"
+    "assemblyscript": "0.19.20"
   }
 }
