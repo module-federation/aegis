@@ -18,8 +18,8 @@ const useSvcMesh = /true/i.test(process.env.SERVICEMESH_ENABLED) || true
  * @param {import("../domain/model-factory").ModelFactory} models
  */
 export default function brokerEvents (observer, datasources, models) {
-  const svcPub = event => MeshService.publish(event, observer)
-  const svcSub = (event, cb) => MeshService.subscribe(event, cb, observer)
+  const svcPub = event => MeshService.publish(event)
+  const svcSub = (event, cb) => MeshService.subscribe(event, cb)
 
   const busPub = event => EventBus.notify(BROADCAST, JSON.stringify(event))
   const busSub = (event, cb) =>

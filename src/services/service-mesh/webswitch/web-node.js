@@ -7,12 +7,14 @@
 
 import WebSocket from 'ws'
 import dns from 'dns/promises'
+import ObserverFactory from '../../../domain/observer'
 
 const SERVICENAME = 'webswitch'
 const configRoot = require('../../../config').aegisConfig
 const config = configRoot.services.serviceMesh.WebSwitch
 const DEBUG = /true|yes|y/i.test(config.debug) || false
 const heartbeat = config.heartbeat || 10000
+const observer = ObserverFactory.getInstance()
 
 if (!configRoot) console.error('WebSwitch', 'cannot access config file')
 
@@ -137,7 +139,7 @@ function startHeartBeat (ws) {
  * @param {*} observer
  * @param {{allowMultiple:boolean, once:boolean}} [options]
  */
-export async function subscribe (eventName, callback, observer, options = {}) {
+export async function subscribe (eventName, callback, options = {}) {
   try {
     observer.on(eventName, callback, options)
   } catch (e) {
@@ -148,10 +150,9 @@ export async function subscribe (eventName, callback, observer, options = {}) {
 /**
  * Call this method to broadcast a message on the webswitch network
  * @param {*} event
- * @param {import('../../../domain/observer').Observer} observer
  * @returns
  */
-export async function publish (event, observer) {
+export async function publish (event) {
   try {
     if (!event) return
     if (!hostAddress) hostAddress = await getHostAddress(fqdn)

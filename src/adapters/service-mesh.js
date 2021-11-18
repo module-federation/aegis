@@ -1,14 +1,14 @@
 'use strict'
 
 export function publish (service) {
-  return async function (event, observer) {
-    service.publish(event, observer)
+  return async function (event) {
+    service.publish(event)
   }
 }
 
 export function subscribe (service) {
-  return async function (event, callback, observer = null) {
-    service.subscribe(event, callback, observer)
+  return async function (event, callback) {
+    service.subscribe(event, callback)
   }
 }
 

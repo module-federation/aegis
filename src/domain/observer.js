@@ -122,6 +122,11 @@ async function notify (eventName, eventData, forward = false) {
   }
 }
 
+const defaultOptions = {
+  allowMultiple: true,
+  once: false
+}
+
 /**
  * @type {Observer}
  * @extends Observer
@@ -141,8 +146,8 @@ class ObserverImpl extends Observer {
    * @param {eventHandler} handler
    * @param {{allowMultiple?:boolean, once?:boolean}} [options]
    */
-  on (eventName, handler, options = {}) {
-    const { allowMultiple = true, once = false } = options
+  on (eventName, handler, options = defaultOptions) {
+    const { allowMultiple, once } = options
 
     if (!eventName || typeof handler !== 'function') {
       console.error(ObserverImpl.name, 'invalid arg', eventName, handler)
