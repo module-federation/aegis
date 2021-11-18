@@ -63,7 +63,7 @@ export default function ({ models, observer, repository, modelName }) {
   return async function loadModels () {
     const spec = models.getModelSpec(modelName)
 
-    setInterval(handleRestart, 30000, repository)
+    setTimeout(handleRestart, 30000, repository)
 
     return repository.load({
       hydrate: hydrateModels(models.loadModel, observer, repository),

@@ -75,7 +75,7 @@ export function forwardEvents ({ observer, models, publish, subscribe }) {
       observer.on(
         producerEvent,
         eventData => publish(producerEvent, eventData || 'no data'),
-        true
+        { allowMultiple: false }
       )
     )
   }
@@ -92,7 +92,7 @@ export function forwardEvents ({ observer, models, publish, subscribe }) {
 
     observer.on(domainEvents.forwardEvent(), eventData => {
       console.debug(forwardUserEvents.name, 'called')
-      publish(eventData, observer)``
+      publish(eventData, observer)
     })
   }
 

@@ -1,6 +1,7 @@
 'use strict'
 
 let invokeController
+let parsers
 
 /**
  * Start `service` if it hasn't been started
@@ -17,8 +18,9 @@ let invokeController
  */
 exports.makeServerlessAdapter = function (getParsers) {
   return async function (service, provider) {
-    // get remote parsers from aegis-services repo
-    const parsers = await getParsers()
+    // get local or remote parsers from aegis-services repo
+    if (!parsers) parsers = await getParsers()
+
     /**
      *
      * @param {"request"|"response"} type
