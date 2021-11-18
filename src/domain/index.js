@@ -276,43 +276,46 @@ let adapterCache
 let serviceCache
 
 export async function importRemoteCache (name) {
-  if (!remotesConfig) {
-    console.warn('distributed cache cannot be initialized')
-    return
-  }
-
-  if (ModelFactory.getModelSpec(name)) return
-
-  if (!modelCache) {
-    modelCache = await importModelCache(remotesConfig)
-    // Check if we have since loaded the model
-    adapterCache = {
-      ...(await importAdapterCache(remotesConfig)),
-      ...localOverrides
+  try {
+    if (!remotesConfig) {
+      console.warn('distributed cache cannot be initialized')
+      return
     }
-    serviceCache = {
-      ...(await importServiceCache(remotesConfig)),
-      ...localOverrides
+
+    if (ModelFactory.getModelSpec(name)) return
+
+    if (!modelCache) {
+      modelCache = await importModelCache(remotesConfig)
+      // Check if we have since loaded the model
+      adapterCache = {
+        ...(await importAdapterCache(remotesConfig)),
+        ...localOverrides
+      }
+      serviceCache = {
+        ...(await importServiceCache(remotesConfig)),
+        ...localOverrides
+      }
     }
+
+    if (ModelFactory.getModelSpec(name)) return
+
+    if (!modelCache) {
+      console.error('no models found in cache')
+      return
+    }
+
+    const model = modelCache
+      .filter(m => m.modelName)
+      .find(model => model.modelName.toUpperCase() === name.toUpperCase())
+
+    if (!model) {
+      console.error('could not find model in cache', name)
+      return
+    }
+    register(model, serviceCache, adapterCache, true)
+  } catch (e) {
+    console.error(importRemoteCache.name, e)
   }
-
-  if (ModelFactory.getModelSpec(name)) return
-
-  if (!modelCache) {
-    console.error('no models found in cache')
-    return
-  }
-
-  const model = modelCache.find(
-    model =>
-      (model.modelName || model.getName()).toUpperCase() === name.toUpperCase()
-  )
-
-  if (!model) {
-    console.error('could not find model in cache', name)
-    return
-  }
-  register(model, serviceCache, adapterCache, true)
 }
 
 export default ModelFactory
