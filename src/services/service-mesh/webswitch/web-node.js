@@ -74,7 +74,7 @@ async function getServicePort (hostname) {
   }
   return port
 }
-
+;``
 /**
  * Set callback for uplink.
  * @param {*} callback

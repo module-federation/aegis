@@ -304,7 +304,8 @@ export async function importRemoteCache (name) {
   }
 
   const model = modelCache.find(
-    model => model.modelName.toUpperCase() === name.toUpperCase()
+    model =>
+      (model.modelName || model.getName()).toUpperCase() === name.toUpperCase()
   )
 
   if (!model) {

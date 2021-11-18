@@ -67,7 +67,7 @@ export function forwardEvents ({ observer, models, publish, subscribe }) {
 
     consumerEvents.forEach(consumerEvent =>
       subscribe(consumerEvent, eventData =>
-        observer.notify(consumerEvent, eventData || 'no data')
+        observer.notify(consumerEvent, `eventData` || 'no data')
       )
     )
 
@@ -77,6 +77,7 @@ export function forwardEvents ({ observer, models, publish, subscribe }) {
       })
     )
   }
+  ;``
 
   /**
    * Forward events so marked.
