@@ -122,7 +122,7 @@ exports.initCertificateService = function (dnsProvider, whois) {
     })
 
     console.log(`CSR:\n${csr.toString()}`)
-    console.log(`Private key:\n${key.toString()}`)
+    console.log(`Private key:\nREDACTED`)
     console.log(`Certificate:\n${cert.toString()}`)
 
     return { key, cert, csr }
