@@ -1,9 +1,9 @@
 {
   "name": "@module-federation/aegis",
-  "version": "1.0.0-beta.62",
+  "version": "1.0.0-beta.63",
   "module": "lib/index.js",
   "main": "lib/index.js",
-  "repository": "git@github.com:tysonrm/aegis.git",
+  "repository": "git@github.com:module-federation/aegis.git",
   "author": "Tyson Midboe <tyson.midboe@gmail.com>",
   "license": "MIT",
   "scripts": {
