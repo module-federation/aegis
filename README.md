@@ -26,11 +26,18 @@ without losing <p>
 
 with <p>
 
-- transparent integration,
-- automatic persistence,
-- built-in service mesh
-- runtime binding,
-- and zero downtime.
+- non-functional stuff done for you
+    * transparent integration
+    * automated persistence
+    * built-in service mesh
+    * self-provisioned (e.g. CA certs handled programmatically)
+    * execute anywhere (serverless or server, frontend or backend, phone or drone...)
+    * deploy anywhere (same process regardless of vendor or platform, lightweight and lightning fast)
+- and capabilities that enhance the development experience
+    * runtime binding for dynamic changes (switch db adapters live in prod)
+    * zero downtime, hot deployment
+    * portable, polyglot units of compute that execute at near native speeds
+    * decentralized, non-layered (tesellated) architecture
 
 ### And do it all without deployment automation. 
 You don't need that anymore.
@@ -64,28 +71,14 @@ yarn demo
 ```
 [![Aegis Overview](https://res.cloudinary.com/marcomontalbano/image/upload/v1632364889/video_to_markdown/images/youtube--n2qqgi3fTto-c05b58ac6eb4c4700831b2b3070cd403.jpg)](https://youtu.be/jddhfLA_2k0 "Aegis Overview")
 
-# Work in Progress
-
-## WebAssembly
-Enable polyglot, WASM-powered compute 
-
-### Overview:
-- Support WASM modules as domain, adapter, and service components
-- Linter and compiler transform supports compiling existing TypeScript to AssemblyScript
-- Support in browser and on any WASM runtime (No Node.js dependency)
-
-## AppMesh 
-Decentralized network for transparent integration and dynamic redistribution of federated software
-
-### Overview:
-- Distributed object cache over switched mesh network 
-- Gracefully degrade or upgrade based on available middleware (plug-in NATs, Kafka, etc).
-- No assumption of container networking or provisioning automation, compute delivery nethod abstracted
-- Operations analytics / AIOps capture performance at switch nodes, recommends deployment changes)
-- Operations automation (implement recommended changes, including basic orchestration)
-- Dynamic redeployment (e.g. of 2 chatty services to same instance, run closer to users and data)
-- Use Cases: DataMesh, Federated Learning, transparent integration, low-config, 
-
-### Based on:
-- Web3 / blockchain / Solid
-- Software defined overlay network
+# Current work
+    
+More WebAssembly features
+Run on wasm runtime 
+Run in browser
+Run on wasm3
+Built-in, pluggable, fast service mesh
+Support for streaming media and realtime AI inference
+QUIC, WebRTC
+Addt'l datasource adapters: Etherium, Solid Pod
+Support for MLOps
