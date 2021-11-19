@@ -1,6 +1,6 @@
 # ÆGIS
 
-## See the [aegis-host](https://github.com/module-federation/MicroLib) repo for documentation and a working example of a federation server.
+See the [aegis-host](https://github.com/module-federation/MicroLib) repo for documentation and a working example of a federation server.
 
 <div align="center">
     <a href="https://youtu.be/atffJzyP41U" target="_blank">
@@ -9,7 +9,7 @@
     </a>
 </div>
 
-### Consolidate your microservices 
+## Consolidate your microservices 
 - for decreased footprint, 
 - better performance and 
 - simpler operations <p>
@@ -20,7 +20,7 @@ without losing <p>
 - language independence 
 - or component independence (i.e. components remain decoupled)
   
-### Or distribute your components
+## Or distribute your components
 - dynamically and adaptively
 - outside the datacenter and beyond the edge
 
