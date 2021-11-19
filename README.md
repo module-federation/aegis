@@ -21,20 +21,17 @@ without losing <p>
 - or component independence (i.e. components remain decoupled)
   
 ### Or distribute your components
-  - dynamically and adaptively
-  - outside the datacenter and beyond the edge
-  - integrate your components transparently 
-  - and update them live in production <p>
+- dynamically and adaptively
+- outside the datacenter and beyond the edge
 
-    with <p>
-        
-  - runtime binding, 
-  - zero downtime, 
-  - and zero software installation.
+  with <p>
+
+- transparent integration,
+- runtime binding,
+- zero downtime.
 
 ### And do it all without deployment automation. 
 You don't need that anymore.
-
 
 ## Using ÆGIS
 
