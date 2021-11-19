@@ -73,12 +73,12 @@ yarn demo
 
 # Current work
     
-More WebAssembly features
-Run on wasm runtime 
-Run in browser
-Run on wasm3
-Built-in, pluggable, fast service mesh
-Support for streaming media and realtime AI inference
-QUIC, WebRTC
-Addt'l datasource adapters: Etherium, Solid Pod
-Support for MLOps
+- More WebAssembly features
+- Run on wasm runtime 
+- Run in browser
+- Run on wasm3
+- Built-in, pluggable, fast service mesh
+- Support for streaming media and realtime AI inference
+- QUIC, WebRTC
+- Addt'l datasource adapters: Etherium, Solid Pod
+- Support for MLOps
