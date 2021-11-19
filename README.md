@@ -24,11 +24,13 @@ without losing <p>
 - dynamically and adaptively
 - outside the datacenter and beyond the edge
 
-  with <p>
+with <p>
 
 - transparent integration,
+- automatic persistence,
+- built-in service mesh
 - runtime binding,
-- zero downtime.
+- and zero downtime.
 
 ### And do it all without deployment automation. 
 You don't need that anymore.
