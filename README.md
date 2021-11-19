@@ -9,30 +9,31 @@
     </a>
 </div>
 
-### Consolidate your micoservices 
+### Consolidate your microservices 
 - for decreased footprint, 
 - better performance and 
 - simpler operations <p>
-without losing
+    
+without losing <p>
+    
 - deployment independence,
 - language independence 
-- or loose coupling
+- or component independence (i.e. components remain decoupled)
   
 ### Or distribute your components
   - dynamically and adaptively
   - outside the datacenter and beyond the edge
   - integrate your components transparently 
-  - and update them live in producetion <p>
-    with 
-  - runtime bindng, 
+  - and update them live in production <p>
+
+    with <p>
+        
+  - runtime binding, 
   - zero downtime, 
   - and zero software installation.
 
 ### And do it all without deployment automation. 
 You don't need that anymore.
-
-
-![Aegis Federated Architcture](wf)
 
 
 ## Using ÆGIS
