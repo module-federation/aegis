@@ -160,6 +160,7 @@ export default function DistributedCache ({
         console.debug('handle cache event', eventName)
 
         if (!model) {
+          console.error('no model found', eventName)
           // no model found
           if (route) await route(event)
           return
