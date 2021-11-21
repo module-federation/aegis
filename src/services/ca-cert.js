@@ -6,7 +6,7 @@ const path = require('path')
 const config = require('../config').aegisConfig
 const dirname = config.services.cert.webRoot || 'public'
 const webroot = path.resolve('./', dirname)
-const domain = config.services.cert.domain
+const domain = process.env.DOMAIN || config.services.cert.domain
 const email = config.services.cert.domainEmail
 
 const challengePath = token => `${webroot}/.well-known/acme-challenge/${token}`
