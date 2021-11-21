@@ -12,7 +12,6 @@ export const CertificateService = {
   provisionCert: initCertificateService(dns, whois)
 }
 
-import * as MeshAdapter from '../adapters/service-mesh'
 import * as MeshServices from './service-mesh'
 
 const config = require('../config').aegisConfig
@@ -32,11 +31,4 @@ const service = enabledServices.includes(designatedService)
   ? designatedService
   : 'WebSwitch'
 
-/**
- * Bind service to adapter.
- */
-export const MeshService = {
-  ...Object.keys(MeshAdapter)
-    .map(k => ({ [k]: MeshAdapter[k](MeshServices[service]) }))
-    .reduce((a, b) => ({ ...a, ...b }))
-}
+export const MeshService = MeshServices[service]

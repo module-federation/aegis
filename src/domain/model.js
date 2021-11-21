@@ -111,14 +111,15 @@ const Model = (() => {
   }
 
   function queueNotice (model) {
-    setTimeout(
-      async function () {
-        const eventName = 'UPDATE' + model.getName().toUpperCase()
-        await model.emit(eventName, { desc: 'domain update', time: Date.now() })
-      },
-      3000,
-      model
-    )
+    console.debug(queueNotice.name, 'disabled')
+    // setTimeout(
+    //   async function () {
+    //     const eventName = 'UPDATE' + model.getName().toUpperCase()
+    //     await model.emit(eventName, { desc: 'domain update', time: Date.now() })
+    //   },
+    //   3000,
+    //   model
+    // )
   }
 
   /**
@@ -205,7 +206,6 @@ const Model = (() => {
         return compensate(this)
       },
 
-
       /**
        * Listen for domain events.
        *
@@ -214,7 +214,7 @@ const Model = (() => {
        * @param {boolean} [multi] - allow multiple listeners for event,
        * defaults to `true`
        */
-       addListener (eventName, callback, options) {
+      addListener (eventName, callback, options) {
         observer.on(eventName, callback, options)
       },
 

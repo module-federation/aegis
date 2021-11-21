@@ -2,6 +2,8 @@
 
 const mlink = require('mesh-link')
 const nanoid = require('nanoid').nanoid
+const ObserverFactory = require('../../domain/observer').ObserverFactory
+const observer = ObserverFactory.getInstance()
 const begins = Date.now()
 const uptime = () => Math.round(Math.abs((Date.now() - begins) / 1000 / 60))
 const userConfig = require('../../config').aegisConfig
@@ -127,7 +129,7 @@ async function start (config = cfg, wss) {
   }
 }
 
-async function publish (event, observer) {
+async function publish (event) {
   console.debug('publish called', event.eventName)
   const deserEvent = JSON.parse(JSON.stringify(event))
   const handlerId = numericHash(event.eventName)

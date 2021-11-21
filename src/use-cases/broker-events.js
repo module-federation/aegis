@@ -2,7 +2,7 @@
 
 import DistributedCache from '../domain/distributed-cache'
 import EventBus from '../services/event-bus'
-import { MeshService } from '../services'
+import { ServiceMesh } from '../adapters'
 import { forwardEvents } from './forward-events'
 import uuid from '../domain/util/uuid'
 
@@ -18,8 +18,8 @@ const useSvcMesh = /true/i.test(process.env.SERVICEMESH_ENABLED) || true
  * @param {import("../domain/model-factory").ModelFactory} models
  */
 export default function brokerEvents (observer, datasources, models) {
-  const svcPub = event => MeshService.publish(event)
-  const svcSub = (event, cb) => MeshService.subscribe(event, cb)
+  const meshPub = event => ServiceMesh.publish(event)
+  const meshSub = (event, cb) => ServiceMesh.subscribe(event, cb)
 
   const busPub = event => EventBus.notify(BROADCAST, JSON.stringify(event))
   const busSub = (event, cb) =>
@@ -31,8 +31,8 @@ export default function brokerEvents (observer, datasources, models) {
       callback: msg => cb(JSON.parse(msg))
     })
 
-  const publish = useSvcMesh ? svcPub : busPub
-  const subscribe = useSvcMesh ? svcSub : busSub
+  const publish = useSvcMesh ? meshPub : busPub
+  const subscribe = useSvcMesh ? meshSub : busSub
 
   if (useObjectCache) {
     const broker = DistributedCache({
