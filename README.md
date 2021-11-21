@@ -12,9 +12,9 @@ See the [aegis-host](https://github.com/module-federation/MicroLib) repo for doc
 ## Consolidate your microservices 
 - for decreased footprint, 
 - better performance and 
-- simpler operations <p>
+- simpler operations 
     
-without losing <p>
+### without losing
     
 - deployment independence,
 - language independence 
@@ -24,7 +24,7 @@ without losing <p>
 - dynamically and adaptively
 - outside the datacenter and beyond the edge
 
-with <p>
+### with
 
 - non-functional stuff done for you
     * transparent integration
@@ -41,6 +41,8 @@ with <p>
 
 ### And do it all without deployment automation. 
 You don't need that anymore.
+
+----
 
 ## Using ÆGIS
 
