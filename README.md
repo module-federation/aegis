@@ -12,9 +12,9 @@ See the [aegis-host](https://github.com/module-federation/MicroLib) repo for doc
 ## Consolidate your microservices 
 - for decreased footprint, 
 - better performance and 
-- simpler operations <p>
+- simpler operations 
     
-without losing <p>
+### without losing
     
 - deployment independence,
 - language independence 
@@ -24,7 +24,7 @@ without losing <p>
 - dynamically and adaptively
 - outside the datacenter and beyond the edge
 
-with <p>
+### with
 
 - non-functional stuff done for you
     * transparent integration
@@ -34,13 +34,15 @@ with <p>
     * execute anywhere (serverless or server, frontend or backend, phone or drone...)
     * deploy anywhere (same process regardless of vendor or platform, lightweight and lightning fast)
 - and capabilities that enhance the development experience
-    * runtime binding for dynamic changes (switch db adapters live in prod)
-    * zero downtime, hot deployment
-    * portable, polyglot units of compute that execute at near native speeds
-    * decentralized, non-layered (tesellated) architecture
+    * runtime binding for dynamic deployment of updates or new feature/fuctions (switch storage adapter live in prod)
+    * zero downtime, hot, lightning-quick deployment
+    * polyglot, highly portable, contaiherless, safe units of compute that execute at near native speeds
+    * decentralized, non-layered, highly-scalable "tessellated" architecture 
 
 ### And do it all without deployment automation. 
 You don't need that anymore.
+
+----
 
 ## Using ÆGIS
 
