@@ -7,7 +7,7 @@ function listUnhandledPortEvents (specs) {
     .filter(spec => spec.ports)
     .map(spec =>
       Object.values(spec.ports)
-        .filter(v => v.consumesEvent) // && v.forward)
+        .filter(v => v.consumesEvent && v.forward)
         .map(v => v.consumesEvent)
     )
     .flat(2)
@@ -16,7 +16,7 @@ function listUnhandledPortEvents (specs) {
     .filter(spec => spec.ports)
     .map(spec =>
       Object.values(spec.ports)
-        .filter(v => v.producesEvent) // && v.forward)
+        .filter(v => v.producesEvent && v.forward)
         .map(v => v.producesEvent)
     )
     .flat(2)
