@@ -3,8 +3,8 @@
 See the [aegis-host](https://github.com/module-federation/MicroLib) repo for documentation and a working example of a federation server.
 
 <div align="center">
-    <a href="https://youtu.be/atffJzyP41U" target="_blank">
-        <img src="https://user-images.githubusercontent.com/38910830/141614069-20be312c-2408-4ca8-9d59-2f34f6adbd39.gif" alt="GitHub Video"
+    <a href="" target="_blank">
+        <img src="https://user-images.githubusercontent.com/38910830/142773640-5a4d710d-a428-4bfc-9f56-03e90255eb1b.gif" alt="GitHub Video"
         border="10" width="460" height="250"/>
     </a>
 </div>
