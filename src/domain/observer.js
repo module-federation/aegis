@@ -15,6 +15,23 @@ const DEBUG = process.env.DEBUG
  */
 
 /**
+ * @typedef {object} defaultOptions
+ * @property {boolean} [allowMultiple] - allow multiple handlers for this event
+ * @property {boolean} [once] - run this listener only once
+ * @property {string} [id] - run this handler only if the `id` provided matches the id
+ * of the event returned by the callback
+ */
+
+/**
+ * @type {defaultOptions}
+ */
+const defaultOptions = {
+  allowMultiple: true,
+  once: false,
+  id: null
+}
+
+/**
  * Abstract observer
  */
 export class Observer {
@@ -33,7 +50,7 @@ export class Observer {
    * @param {{allowMultiple?:boolean, once?:boolean}} [options]
    * `allowMultiple` true by default; if false, event can be handled by only one callback
    */
-  on (eventName, handler, { allowMultiple = true, once = false }) {
+  on (eventName, handler, { ...defaultOptions }) {
     throw new Error('unimplemented abstract method')
   }
 
@@ -122,11 +139,6 @@ async function notify (eventName, eventData, forward = false) {
   }
 }
 
-const defaultOptions = {
-  allowMultiple: true,
-  once: false
-}
-
 /**
  * @type {Observer}
  * @extends Observer
@@ -146,29 +158,46 @@ class ObserverImpl extends Observer {
    * @param {eventHandler} handler
    * @param {{allowMultiple?:boolean, once?:boolean}} [options]
    */
-  on (eventName, handler, options = defaultOptions) {
-    const { allowMultiple, once } = options
-
+  on (eventName, handler, { id = null, once = false, allowMultiple = true }) {
     if (!eventName || typeof handler !== 'function') {
       console.error(ObserverImpl.name, 'invalid arg', eventName, handler)
       return false
     }
 
-    const onceWrapper = data => {
-      this.off(eventName, handler)
-      return handler(data)
+    const invokeHandler = data => {
+      const conditions = {
+        id: {
+          enabled: id ? true : false,
+          test: data =>
+            id === data.id || id === data.modelId || id === data.getId()
+        },
+        once: {
+          enabled: once,
+          test: data => {
+            if (!conditions.id.enabled || conditions.id.test(data))
+              this.off(eventName, invokeHandler)
+            return true
+          }
+        }
+      }
+
+      if (
+        Object.values(conditions).every(
+          c => !c.enabled || (c.enabled && c.test(data))
+        )
+      ) {
+        return handler(data)
+      }
     }
 
-    const fn = once ? onceWrapper : handler
     const funcs = this.handlers.get(eventName)
-
     if (funcs) {
       if (allowMultiple || funcs.length < 1) {
-        funcs.push(fn)
+        funcs.push(invokeHandler)
         return true
       }
     } else {
-      this.handlers.set(eventName, [fn])
+      this.handlers.set(eventName, [invokeHandler])
       return true
     }
     return false
