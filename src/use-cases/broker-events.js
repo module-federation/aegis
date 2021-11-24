@@ -2,7 +2,7 @@
 
 import DistributedCache from '../domain/distributed-cache'
 import EventBus from '../services/event-bus'
-import { ServiceMesh } from '../adapters'
+import { ServiceMeshAdapter as ServiceMesh } from '../adapters'
 import { forwardEvents } from './forward-events'
 import uuid from '../domain/util/uuid'
 

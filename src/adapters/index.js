@@ -31,20 +31,19 @@ import { MeshService } from '../services'
  */
 
 /**
- * Service Mesh adapter interface.
- * @typedef {object} ServiceMesh
+ * Service Mesh plugin adapter interface.
+ * @typedef {object} ServiceMeshAdapter
  * @property {attachServer} attachServer all service mesh plugins will
  * implement a websocket server on the same port as the API. This func
- * is passing us the handle for it.
+ * passes the handle for the socket.
  * @property {publish} publish publish an event to the service mesh
  * @property {subscribe} subscribe subscribe to events on the service mesh
  */
 
 /**
- * Binds service to adapter.
- * @type {ServiceMesh}
+ * @type {ServiceMeshAdapter}
  */
-export const ServiceMesh = {
+export const ServiceMeshAdapter = {
   ...Object.keys(MeshAdapter)
     .map(k => ({ [k]: MeshAdapter[k](MeshService) }))
     .reduce((a, b) => ({ ...a, ...b }))
