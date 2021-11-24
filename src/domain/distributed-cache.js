@@ -44,7 +44,7 @@ export default function DistributedCache ({
    *  modelId:string,
    *  model:import("./model").Model,
    *  args:[],
-   *  related:{
+   *  relation:{
    *    type:string,
    *    modelName:string,
    *    foreignKey:string}
@@ -226,7 +226,7 @@ export default function DistributedCache ({
     }
     try {
       const related = await createRelated(event)
-      const datasource = datasources.getDataSource(related[0].getName())
+      const datasource = datasources.getDataSource(event.relation.modelName)
       await Promise.all(related.map(async m => datasource.save(m.getId(), m)))
       return related
     } catch (error) {

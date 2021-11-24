@@ -169,7 +169,7 @@ class ObserverImpl extends Observer {
         id: {
           enabled: id ? true : false,
           test: data =>
-            id === data.id || id === data.modelId || id === data.getId()
+            id === data?.id || id === data?.modelId || id === data?.getId()
         },
         once: {
           enabled: once,
