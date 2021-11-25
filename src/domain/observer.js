@@ -84,15 +84,14 @@ const handleError = error => {
 async function runHandler (eventName, eventData = {}, handle, forward) {
   const abort = eventData ? false : true
 
-  DEBUG &&
-    console.debug('handler running', {
-      eventName,
-      handle: handle.toString(),
-      model: eventData?.modelName,
-      modelId: eventData?.modleId,
-      abort,
-      forward
-    })
+  console.assert(!DEBUG, 'handler running', {
+    eventName,
+    handle: handle.toString(),
+    model: eventData?.modelName,
+    modelId: eventData?.modleId,
+    abort,
+    forward
+  })
 
   if (abort) {
     console.warn('no data provided, abort')
