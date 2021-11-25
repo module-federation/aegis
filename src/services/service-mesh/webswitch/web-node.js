@@ -79,16 +79,16 @@ async function getServicePort (hostname) {
  * Set callback for uplink.
  * @param {*} callback
  */
-export function onMessage (callback) {
+export function onUplinkMessage (callback) {
   uplinkCallback = callback
 }
 
 /**
  * server sets uplink host
  */
-export function setDestinationHost (host) {
+export function setUplinkAddress (address) {
   hostAddress = null
-  const [FQDN, PORT] = host.split(':')
+  const [FQDN, PORT] = address.split(':')
   fqdn = FQDN
   port = PORT
 }
@@ -120,7 +120,9 @@ function startHeartBeat (ws) {
       receivedPong = false
       ws.ping(0x9)
     } else {
-      observer.notify('webswitchTimeout', 'webswitch server timeout', true)
+      observer.notify('webswitchTimeout', 'webswitch server timeout', {
+        allowMultiple: false
+      })
       console.error('webswitch server timeout, will try new connection')
       ws = null // get a new socket
       clearInterval(intervalId)

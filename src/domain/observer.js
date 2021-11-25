@@ -56,8 +56,9 @@ export class Observer {
 
   /**
    * Fire event `eventName` and pass `eventData` to listeners.
-   * @param {String} eventName
-   * @param {Event} eventData
+   * @param {String} eventName - unique name of event
+   * @param {Event} eventData - the import of the event
+   * @param {boolean} forward - forward this event externally
    */
   async notify (eventName, eventData, forward) {
     throw new Error('unimplemented abstract method')
@@ -99,6 +100,7 @@ async function runHandler (eventName, eventData = {}, handle, forward) {
 
   const data = { ...eventData, eventName }
   await handle(data)
+
   if (forward && eventName !== forwardEvent) {
     await this.notify(forwardEvent, data)
   }

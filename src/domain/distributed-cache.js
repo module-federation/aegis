@@ -320,8 +320,10 @@ export default function DistributedCache ({
    * @param {*} externalEvent
    */
   const forwardSearchRequest = (internalEvent, externalEvent) =>
-    observer.on(internalEvent, async event =>
-      publish({ ...event, eventName: externalEvent })
+    observer.on(
+      internalEvent,
+      async event => publish({ ...event, eventName: externalEvent }),
+      { id: event?.modelId }
     )
 
   /**
