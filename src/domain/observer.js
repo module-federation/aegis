@@ -193,9 +193,7 @@ class ObserverImpl extends Observer {
 
       if (
         Object.values(conditions).every(
-          condition =>
-            !condition.applies ||
-            (condition.applies && condition.satisfied(eventData))
+          condition => !condition.applies || condition.satisfied(eventData)
         )
       ) {
         return handler(eventData)
