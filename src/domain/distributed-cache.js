@@ -56,34 +56,27 @@ export default function DistributedCache ({
 
   /**
    * parse input into {@link Event}
-   * @param {Event|string} payload
+   * @param {Event} payload
    * @returns {Event}
    */
   function parse (payload) {
-    try {
-      const event = payload
-      const eventName = event.eventName
-      const eventUuid = event.eventUuid
-      const modelName = event.modelName?.toLowerCase()
-      const model = event.model
-      const modelId = event.id || event.modelId
-      const relation = event.relation // optional
-      const args = event.args // optional;
+    const requiredFields = ['eventName', 'eventUuid', 'model']
 
-      if (!eventName || !modelName || !modelId || !eventUuid)
-        throw new Error('invalid message format')
+    try {
+      const actuals = Object.keys(payload)
+      const missing = requiredFields.filter(k => !actuals.includes(k))
+
+      if (missing.length > 0) {
+        throw new Error('missing required fields', missing)
+      }
 
       return {
-        eventName,
-        eventUuid,
-        modelName,
-        model,
-        modelId,
-        relation,
-        args
+        ...payload,
+        modelName: payload.modelName.toLowerCase(),
+        modelId: payload.modelId ? payload.modelId : payload.model.id // add this
       }
     } catch (e) {
-      console.error('could not parse message', e, payload)
+      console.error('could not parse message', e, { payload })
     }
   }
 
