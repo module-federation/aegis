@@ -72,7 +72,10 @@ export default function DistributedCache ({
 
       return {
         ...payload,
-        modelName: payload.modelName.toLowerCase(),
+        modelName: (payload.modelName
+          ? payload.modelName
+          : payload.model.modelName
+        ).toLowerCase(),
         modelId: payload.modelId ? payload.modelId : payload.model.id // add this
       }
     } catch (e) {
