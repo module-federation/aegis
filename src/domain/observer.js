@@ -1,8 +1,9 @@
 /**
- * @typedef {import('./event').Event} Event
+ * typedef {import('./event').Event} Event
  * @typedef {import('.').Model} Model
  */
 
+import Event from './event'
 import domainEvents from './domain-events'
 
 const { forwardEvent } = domainEvents
@@ -18,7 +19,7 @@ const DEBUG = process.env.DEBUG
  * @typedef {object} defaultOptions
  * @property {boolean} [allowMultiple] - allow multiple handlers for this event
  * @property {boolean} [once] - run this listener only once
- * @property {string} [id] - run this handler only if the `id` provided matches the id
+ * @property {string} [matchId] - run this handler only if the `uuid` provided matches the uuid
  * of the event returned by the callback
  */
 
@@ -28,7 +29,7 @@ const DEBUG = process.env.DEBUG
 const defaultOptions = {
   allowMultiple: true,
   once: false,
-  id: null
+  matchId: false
 }
 
 /**
@@ -158,26 +159,33 @@ class ObserverImpl extends Observer {
    * @override
    * @param {string | RegExp} eventName
    * @param {eventHandler} handler
-   * @param {{allowMultiple?:boolean, once?:boolean}} [options]
+   * @param {{allowMultiple?:boolean, matchId?:boolean, once?:boolean}} [options]
    */
-  on (eventName, handler, { id = null, once = false, allowMultiple = true }) {
+  on (
+    eventName,
+    handler,
+    { once = false, matchId = false, allowMultiple = true } = {}
+  ) {
     if (!eventName || typeof handler !== 'function') {
       console.error(ObserverImpl.name, 'invalid arg', eventName, handler)
       return false
     }
+    const thisEvent = Event.create({ eventName })
 
-    const invokeHandler = data => {
+    const callbackWrapper = eventData => {
       const conditions = {
-        id: {
-          enabled: id ? true : false,
-          test: data =>
-            id === data?.id || id === data?.modelId || id === data?.getId()
+        matchId: {
+          applies: matchId,
+          satisfied: event => thisEvent.eventUuid === event?.eventUuid
         },
         once: {
-          enabled: once,
-          test: data => {
-            if (!conditions.id.enabled || conditions.id.test(data))
-              this.off(eventName, invokeHandler)
+          applies: once,
+          satisfied: event => {
+            if (
+              !conditions.matchId.applies ||
+              conditions.matchId.satisfied(event)
+            )
+              this.off(eventName, callbackWrapper)
             return true
           }
         }
@@ -185,21 +193,23 @@ class ObserverImpl extends Observer {
 
       if (
         Object.values(conditions).every(
-          c => !c.enabled || (c.enabled && c.test(data))
+          condition =>
+            !condition.applies ||
+            (condition.applies && condition.satisfied(eventData))
         )
       ) {
-        return handler(data)
+        return handler(eventData)
       }
     }
 
     const funcs = this.handlers.get(eventName)
     if (funcs) {
       if (allowMultiple || funcs.length < 1) {
-        funcs.push(invokeHandler)
+        funcs.push(callbackWrapper)
         return true
       }
     } else {
-      this.handlers.set(eventName, [invokeHandler])
+      this.handlers.set(eventName, [callbackWrapper])
       return true
     }
     return false

@@ -120,9 +120,7 @@ function startHeartBeat (ws) {
       receivedPong = false
       ws.ping(0x9)
     } else {
-      observer.notify('webswitchTimeout', 'webswitch server timeout', {
-        allowMultiple: false
-      })
+      observer.notify('webswitchTimeout', 'webswitch server timeout', true)
       console.error('webswitch server timeout, will try new connection')
       ws = null // get a new socket
       clearInterval(intervalId)

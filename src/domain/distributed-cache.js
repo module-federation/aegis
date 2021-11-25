@@ -4,6 +4,7 @@ import makeArray from './util/make-array'
 import { relationType } from './make-relations'
 import { importRemoteCache } from '.'
 import domainEvents from '../domain/domain-events'
+import { nanoid } from 'nanoid'
 const {
   internalCacheRequest,
   internalCacheResponse,
@@ -62,17 +63,19 @@ export default function DistributedCache ({
     try {
       const event = payload
       const eventName = event.eventName
-      const modelName = event.modelName.toLowerCase()
+      const eventUuid = event.eventUuid
+      const modelName = event.modelName?.toLowerCase()
       const model = event.model
       const modelId = event.id || event.modelId
       const relation = event.relation // optional
       const args = event.args // optional;
 
-      if (!eventName || !modelName || !modelId)
+      if (!eventName || !modelName || !modelId || !eventUuid)
         throw new Error('invalid message format')
 
       return {
         eventName,
+        eventUuid,
         modelName,
         model,
         modelId,
@@ -323,7 +326,7 @@ export default function DistributedCache ({
     observer.on(
       internalEvent,
       async event => publish({ ...event, eventName: externalEvent }),
-      { id: event?.modelId }
+      { matchId: true }
     )
 
   /**

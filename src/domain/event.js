@@ -1,8 +1,8 @@
 'use strict'
 
 import { withId, withTimestamp } from './mixins'
-import asyncPipe from '../domain/util/async-pipe'
 import uuid from '../domain/util/uuid'
+import pipe from './util/pipe'
 
 /**
  * @typedef {import('./model-factory').EventType} EventType
@@ -19,12 +19,13 @@ import uuid from '../domain/util/uuid'
 
 /**
  * @typedef {Object} Event
+ * @property {Model} model
  * @property {EventType} eventType
  * @property {String} eventName
+ * @property {String} eventUuid
  * @property {String} eventTime
  * @property {String} modelName
  * @property {Object} modelData
- * @property {String} id
  */
 
 /**
@@ -36,20 +37,20 @@ const Event = (() => {
    * @namespace
    * @class
    * @param {options} options
-   * @returns {Promise<Readonly<Event>>}
+   * @returns {Readonly<Event>}
    */
-  const Event = async ({ factory, args, eventType, modelName }) =>
-    Promise.resolve(factory(args)).then(event => ({
-      ...event,
-      eventName: (eventType + modelName).toUpperCase(),
-      eventType,
-      modelName
-    }))
+  const Event = ({ factory, args = {}, eventType, modelName } = {}) => ({
+    eventName:
+      eventType && modelName && eventType.concat(modelName).toUpperCase(),
+    eventType,
+    modelName,
+    ...(factory ? factory(args) : args)
+  })
 
-  const makeEvent = asyncPipe(
+  const makeEvent = pipe(
     Event,
     withTimestamp('eventTime'),
-    withId('id', uuid),
+    withId('eventUuid', uuid),
     Object.freeze
   )
 
@@ -57,9 +58,9 @@ const Event = (() => {
     /**
      * Create event
      * @param {options} options
-     * @returns {Promise<Readonly<Event>>}
+     * @returns {Readonly<Event>}
      */
-    create: async options => makeEvent(options)
+    create: options => makeEvent(options)
   }
 })()
 
