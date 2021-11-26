@@ -4,7 +4,6 @@ import makeArray from './util/make-array'
 import { relationType } from './make-relations'
 import { importRemoteCache } from '.'
 import domainEvents from '../domain/domain-events'
-import { nanoid } from 'nanoid'
 const {
   internalCacheRequest,
   internalCacheResponse,
@@ -60,14 +59,18 @@ export default function DistributedCache ({
    * @returns {Event}
    */
   function parse (payload) {
-    const requiredFields = ['eventName', 'eventUuid', 'model']
+    if (!payload) {
+      throw new Error('no payload included')
+    }
 
     try {
+      const requiredFields = ['eventName', 'eventUuid', 'model']
       const actuals = Object.keys(payload)
       const missing = requiredFields.filter(k => !actuals.includes(k))
 
       if (missing.length > 0) {
-        throw new Error('missing required fields', missing)
+        console.debug('missing', missing)
+        throw new Error('missing required fields', { missing })
       }
 
       return {
@@ -321,8 +324,8 @@ export default function DistributedCache ({
   const forwardSearchRequest = (internalEvent, externalEvent) =>
     observer.on(
       internalEvent,
-      async event => publish({ ...event, eventName: externalEvent }),
-      { matchId: true }
+      async event => publish({ ...event, eventName: externalEvent })
+      // { matchId: true }
     )
 
   /**
