@@ -60,7 +60,7 @@ export default function DistributedCache ({
    */
   function parse (payload) {
     if (!payload) {
-      throw new Error('no payload included')
+      throw new Error({ func: parse.name, error: 'no payload included' })
     }
 
     try {
@@ -69,17 +69,14 @@ export default function DistributedCache ({
       const missing = requiredFields.filter(k => !actuals.includes(k))
 
       if (missing.length > 0) {
-        console.debug('missing', missing)
+        console.error(parse.name, 'missing fields:', missing)
         throw new Error('missing required fields', { missing })
       }
 
       return {
         ...payload,
-        modelName: (payload.modelName
-          ? payload.modelName
-          : payload.model.modelName
-        ).toLowerCase(),
-        modelId: payload.modelId ? payload.modelId : payload.model.id // add this
+        modelName: (payload.modelName || payload.model.modelName).toLowerCase(),
+        modelId: payload.modelId || payload.model.id
       }
     } catch (e) {
       console.error('could not parse message', e, { payload })
