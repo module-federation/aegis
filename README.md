@@ -51,7 +51,7 @@ You don't need that anymore.
 npm i @module-federation/aegis
 ```
 
-### Contribute [![Open in Visual Studio Code](https://open.vscode.dev/badges/open-in-vscode.svg)](https://open.vscode.dev/module-federation/aegis)
+### Contribute [![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/github.com/module-federation/aegis)) [![Open in Visual Studio Code](https://open.vscode.dev/badges/open-in-vscode.svg)](https://open.vscode.dev/module-federation/aegis)
 
 ```shell
 git clone https://github.com/module-federation/aegis
