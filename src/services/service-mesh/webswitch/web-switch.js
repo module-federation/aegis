@@ -22,14 +22,14 @@ export function attachServer (server) {
    */
   server.broadcast = function (data, sender) {
     server.clients.forEach(function (client) {
-      if (client.OPEN && client.info.id !== sender.info.id) {
-        DEBUG && console.debug('sending client', client.info, data.toString())
+      if (client.OPEN && client !== sender) {
+        console.assert(!DEBUG, 'sending client', client.info, data.toString())
         client.send(data)
         messagesSent++
       }
     })
 
-    if (server.uplink && server.uplink.info.id !== sender.info.id) {
+    if (server.uplink && server.uplink !== sender) {
       server.uplink.publish(data)
       messagesSent++
     }
@@ -99,13 +99,17 @@ export function attachServer (server) {
   try {
     if (uplink) {
       server.uplink = require('./web-node')
-      server.uplink.info = { id: nanoid(), role: 'uplink' }
-      server.uplink.setDestinationHost(uplink)
-      server.uplink.onMessage(msg => server.broadcast(msg, server.uplink))
+      server.uplink.setUplinkAddress(uplink)
+      server.uplink.onUplinkMessage(msg => server.broadcast(msg, server.uplink))
+      server.uplink.info = {
+        id: nanoid(),
+        pid: process.pid,
+        role: 'uplink',
+        initialized: true
+      }
       server.uplink.publish({
         proto: SERVICENAME,
-        pid: process.pid,
-        role: 'uplink'
+        ...server.uplink.info
       })
     }
   } catch (e) {

@@ -7,6 +7,7 @@
 
 import WebSocket from 'ws'
 import dns from 'dns/promises'
+import doh from 'dohjs'
 import ObserverFactory from '../../../domain/observer'
 
 const SERVICENAME = 'webswitch'
@@ -25,25 +26,32 @@ let ws
 
 let port = config.port || SERVICENAME
 let fqdn = config.host || 'switch.app-mesh.net'
-let hostAddress = config.host || null
-let servicePort = config.port || null
+let hostAddress
+let servicePort
 let uplinkCallback
 
-async function dnsResolve (hostname) {
+async function resolveAddress (hostname) {
   try {
-    const addresses = await dns.resolve(hostname, 'CNAME')
+    // Use DNS over HTTPS
+    const resolver = new doh.DohResolver('https://cloudflare-dns.com/dns-query')
+    const result = await resolver.query(hostname, 'A')
+    if (result.answers.length > 0) return result.answers[0].data
+
+    // Fallback to DNS
+    const addresses = await dns.resolve(hostname, 'A')
     if (addresses.length > 0) return addresses[0]
+
+    // Include /etc/hosts
+    const record = await dns.lookup(hostname)
+    return record.address
   } catch (e) {
-    console.warn(dnsResolve.name, 'warning', e)
+    console.warn(resolveAddress.name, 'warning', e)
   }
-  // try local override /etc/hosts
-  const record = await dns.lookup(hostname)
-  return record.address
 }
 
 async function getHostAddress (hostname) {
   try {
-    const address = await dnsResolve(hostname)
+    const address = await resolveAddress(hostname)
     console.info('resolved host address', address)
     return address
   } catch (error) {
@@ -53,26 +61,23 @@ async function getHostAddress (hostname) {
 
 async function getServicePort (hostname) {
   try {
-    if (port === SERVICENAME) {
-      const services = await dns.resolveSrv(hostname)
-      if (services) {
-        const prt = services
-          .filter(s => s.name === SERVICENAME)
-          .reduce(s => s.port)
-        if (prt) {
-          return prt
-        }
+    if (port && port !== SERVICENAME) return port
+    const services = await dns.resolveSrv(hostname)
+    if (services) {
+      const prt = services
+        .filter(s => s.name === SERVICENAME)
+        .reduce(s => s.port)
+      if (prt) {
+        return prt
       }
-      throw new Error('cant find port')
     }
+    throw new Error('cant find port')
   } catch (error) {
     console.error(getServicePort.name, error)
-    // should default to 80
-    return /true/i.test(process.env.SSL_ENABLED)
-      ? process.env.SSL_PORT || 443
-      : process.env.PORT || 80
   }
-  return port
+  return /true/i.test(process.env.SSL_ENABLED)
+    ? process.env.SSL_PORT || 443
+    : process.env.PORT || 80
 }
 ;``
 /**
@@ -109,7 +114,7 @@ function startHeartBeat (ws) {
   let receivedPong = false
 
   ws.addListener('pong', function () {
-    DEBUG && console.debug('received pong')
+    console.assert(!DEBUG, 'received pong')
     receivedPong = true
   })
 
@@ -120,7 +125,11 @@ function startHeartBeat (ws) {
       receivedPong = false
       ws.ping(0x9)
     } else {
-      observer.notify('webswitchTimeout', 'webswitch server timeout', true)
+      try {
+        observer.notify('webswitchTimeout', 'webswitch server timeout', true)
+      } catch (e) {
+        console.error(startHeartBeat.name, e)
+      }
       console.error('webswitch server timeout, will try new connection')
       ws = null // get a new socket
       clearInterval(intervalId)
@@ -154,7 +163,10 @@ export async function subscribe (eventName, callback, options = {}) {
  */
 export async function publish (event) {
   try {
-    if (!event) return
+    if (!event) {
+      console.error(publish.name, 'no event provided')
+      return
+    }
     if (!hostAddress) hostAddress = await getHostAddress(fqdn)
     if (!servicePort) servicePort = await getServicePort(fqdn)
 
@@ -175,7 +187,7 @@ export async function publish (event) {
 
         ws.on('message', async function (message) {
           const eventData = JSON.parse(message)
-          DEBUG && console.debug('received event:', eventData)
+          console.assert(!DEBUG, 'received event:', eventData)
 
           if (eventData.eventName) {
             await observer.notify(eventData.eventName, eventData)
@@ -202,12 +214,7 @@ export async function publish (event) {
 
       send()
     }
-
-    try {
-      sendEvent()
-    } catch (e) {
-      console.warn('publish', e)
-    }
+    sendEvent()
   } catch (e) {
     console.error('publish', e)
   }
