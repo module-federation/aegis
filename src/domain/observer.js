@@ -18,9 +18,9 @@ const DEBUG = process.env.DEBUG
 /**
  * @typedef {object} defaultOptions
  * @property {boolean} [allowMultiple] - allow multiple handlers for this event
- * @property {boolean} [once] - run this listener only once
- * @property {string} [matchId] - run this handler only if the `uuid` provided matches the uuid
- * of the event returned by the callback
+ * @property {boolean} [once] - run this handler only once
+ * @property {boolean} [matchId] - run this handler only if the `eventUuid` of
+ * the subscription is found in the eventData passed to the handler
  */
 
 /**
@@ -48,7 +48,7 @@ export class Observer {
    * Register callback `handler` to fire on event `eventName`
    * @param {String | RegExp} eventName
    * @param {eventHandler} handler
-   * @param {{allowMultiple?:boolean, once?:boolean}} [options]
+   * @param {defaultOptions} [options]
    * `allowMultiple` true by default; if false, event can be handled by only one callback
    */
   on (eventName, handler, { ...defaultOptions }) {

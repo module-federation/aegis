@@ -245,7 +245,8 @@ export default function DistributedCache ({
       console.debug('related is null')
       return {
         ...event,
-        model: null
+        model: null,
+        result: 'no related model found'
       }
     }
     const rel = makeArray(related)
@@ -273,6 +274,8 @@ export default function DistributedCache ({
 
         if (event.args.length > 0) {
           const newModel = await createRelatedObject(event)
+          if (!newModel || newModel.length < 1)
+            console.debug('no related model(s) found')
           await route(formatResponse(event, newModel))
           return
         }
@@ -319,10 +322,8 @@ export default function DistributedCache ({
    * @param {*} externalEvent
    */
   const forwardSearchRequest = (internalEvent, externalEvent) =>
-    observer.on(
-      internalEvent,
-      async event => publish({ ...event, eventName: externalEvent })
-      // { matchId: true }
+    observer.on(internalEvent, async event =>
+      publish({ ...event, eventName: externalEvent })
     )
 
   /**
