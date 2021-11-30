@@ -67,7 +67,7 @@ async function importWebAssembly () {
 
           if (typeof fn === 'function') {
             observer.on(eventName, eventData => {
-              adapter.callWasmFunction(fn, eventData, { allowMultiple, once })
+              adapter.callWasmFunction(fn, eventData)
               return
             })
             console.log('no command found')

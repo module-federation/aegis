@@ -11,25 +11,30 @@ const DEBUG = process.env.DEBUG
 
 /**
  * @callback eventHandler
- * @param {Event | Model | {eventName:string, Model}} eventData
+ * @param {import('./event').Event} eventData
  * @returns {Promise<void>}
  */
 
 /**
  * @typedef {object} defaultOptions
- * @property {boolean} [allowMultiple] - allow multiple handlers for this event
- * @property {boolean} [once] - run this handler only once
- * @property {boolean} [matchId] - run this handler only if the `eventUuid` of
- * the subscription is found in the eventData passed to the handler
+ * @property {object} [filters] - matching key value pairs have to be found in the event data
+ * @property {boolean} [subscribed] - subscription id has to be found in returned event data
+ * @property {boolean} [once] - only run this handler once
+ * @property {boolean} [singleton] - only register this handler once. To unsubscribe:
+ * ```
+ * const subscription = model.on(eventName, eventData => console.log(eventData))
+ * subscription.unsubscribe()
+ * ```
  */
 
 /**
  * @type {defaultOptions}
  */
 const defaultOptions = {
-  allowMultiple: true,
   once: false,
-  matchId: false
+  filters: Object,
+  singleton: false,
+  subscribed: false
 }
 
 /**
@@ -59,9 +64,9 @@ export class Observer {
    * Fire event `eventName` and pass `eventData` to listeners.
    * @param {String} eventName - unique name of event
    * @param {Event} eventData - the import of the event
-   * @param {boolean} forward - forward this event externally
+   * @param {{forward:boolean, eventUuid:string}} options - forward this event externally
    */
-  async notify (eventName, eventData, forward) {
+  async notify (eventName, eventData, options) {
     throw new Error('unimplemented abstract method')
   }
 }
@@ -77,7 +82,7 @@ const handleError = error => {
 /**
  *
  * @param {string} eventName
- * @param {*} eventData
+ * @param {import('./event').Event} eventData
  * @param {eventHandler} handle
  * @param {boolean} forward
  */
@@ -86,6 +91,7 @@ async function runHandler (eventName, eventData = {}, handle, forward) {
 
   console.assert(!DEBUG, 'handler running', {
     eventName,
+    eventUuid: eventData?.eventUuid,
     handle: handle.toString(),
     model: eventData?.modelName,
     modelId: eventData?.modleId,
@@ -98,21 +104,22 @@ async function runHandler (eventName, eventData = {}, handle, forward) {
     return
   }
 
-  const data = { ...eventData, eventName }
-  await handle(data)
+  /**@type {eventHandler} */
+  await handle(eventData)
 
   if (forward && eventName !== forwardEvent) {
-    await this.notify(forwardEvent, data)
+    await this.notify(forwardEvent, eventData)
   }
 }
 
 /**
  *
  * @param {string} eventName
- * @param {*} eventData
+ * @param {import('./event').Event} eventData
  * @param {boolean} forward
  */
-async function notify (eventName, eventData, forward = false) {
+async function notify (eventName, eventData, options = {}) {
+  const { eventUuid = null, forward = false } = options
   const run = runHandler.bind(this)
 
   if (!eventData) {
@@ -124,7 +131,7 @@ async function notify (eventName, eventData, forward = false) {
     if (this.handlers.has(eventName)) {
       await Promise.allSettled(
         this.handlers.get(eventName).map(async handler => {
-          await run(eventName, eventData, handler, forward)
+          await run(eventName, { eventUuid, ...eventData }, handler, forward)
         })
       )
     }
@@ -133,7 +140,10 @@ async function notify (eventName, eventData, forward = false) {
       [...this.handlers]
         .filter(([k]) => k instanceof RegExp && k.test(eventName))
         .map(([, v]) =>
-          v.map(async f => await run(eventName, eventData, f, forward))
+          v.map(
+            async f =>
+              await run(eventName, { eventUuid, ...eventData }, f, forward)
+          )
         )
     )
   } catch (error) {
@@ -158,35 +168,32 @@ class ObserverImpl extends Observer {
    * @override
    * @param {string | RegExp} eventName
    * @param {eventHandler} handler
-   * @param {{allowMultiple?:boolean, matchId?:boolean, once?:boolean}} [options]
+   * @param {defaultOptions} [options]
    */
-  on (
-    eventName,
-    handler,
-    { once = false, matchId = false, allowMultiple = true } = {}
-  ) {
+  on (eventName, handler, options = {}) {
+    const {
+      once = false,
+      filters = {},
+      singleton = false,
+      subscribed = false
+    } = options
+
     if (!eventName || typeof handler !== 'function') {
       console.error(ObserverImpl.name, 'invalid arg', eventName, handler)
-      return false
+      return null
     }
-    const thisEvent = Event.create({ eventName })
+    const filterKeys = Object.keys(filters)
+    const subscription = Event.create({ eventName })
 
     const callbackWrapper = eventData => {
       const conditions = {
-        matchId: {
-          applies: matchId,
-          satisfied: event => thisEvent.eventUuid === event?.eventUuid
+        filter: {
+          applies: filterKeys.length > 0,
+          satisfied: data => filterKeys.every(k => filterKeys[k] === data[k])
         },
-        once: {
-          applies: once,
-          satisfied: event => {
-            if (
-              !conditions.matchId.applies ||
-              conditions.matchId.satisfied(event)
-            )
-              this.off(eventName, callbackWrapper)
-            return true
-          }
+        subscribed: {
+          applies: subscribed,
+          satisfied: data => data.eventUuid === subscription.eventUuid
         }
       }
 
@@ -195,21 +202,23 @@ class ObserverImpl extends Observer {
           condition => !condition.applies || condition.satisfied(eventData)
         )
       ) {
+        if (once) this.off(eventName, callbackWrapper)
         return handler(eventData)
       }
     }
 
+    subscription.unsubscribe = this.off(eventName, callbackWrapper)
+
     const funcs = this.handlers.get(eventName)
     if (funcs) {
-      if (allowMultiple || funcs.length < 1) {
+      if (!singleton || funcs.length < 1) {
         funcs.push(callbackWrapper)
-        return true
+        return subscription
       }
-    } else {
-      this.handlers.set(eventName, [callbackWrapper])
-      return true
+      return null
     }
-    return false
+    this.handlers.set(eventName, [callbackWrapper])
+    return subscription
   }
 
   /**

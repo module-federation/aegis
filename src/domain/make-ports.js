@@ -127,7 +127,7 @@ function addPortListener (portName, portConf, observer, disabled) {
         // invoke this port
         await async(model[portName](callback))
       },
-      { allowMultiple: false }
+      { singleton: true }
     )
     return true
   }
