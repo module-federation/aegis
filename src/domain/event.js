@@ -20,12 +20,18 @@ import pipe from './util/pipe'
 /**
  * @typedef {Object} Event
  * @property {Model} model
- * @property {EventType} eventType
+ * @property {string} modelId
+ * @property {string} eventId
  * @property {String} eventName
- * @property {String} eventUuid
  * @property {String} eventTime
  * @property {String} modelName
- * @property {Object} modelData
+ * @property {object} eventData
+ * @property {string} eventCode
+ * @property {string} eventRank
+ * @property {string} eventTags
+ * @property {string} eventSource
+ * @property {string} eventTarget
+ * @property {EventType} eventType
  */
 
 /**
@@ -50,7 +56,7 @@ const Event = (() => {
   const makeEvent = pipe(
     Event,
     withTimestamp('eventTime'),
-    withId('eventUuid', uuid),
+    withId('eventId', uuid),
     Object.freeze
   )
 

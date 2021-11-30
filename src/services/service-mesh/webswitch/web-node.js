@@ -98,13 +98,18 @@ export function setUplinkAddress (address) {
   port = PORT
 }
 
-const handshake = type =>
-  JSON.stringify({
-    proto: SERVICENAME,
-    role: 'node',
-    type,
-    pid: process.pid
-  })
+const handshake = {
+  getEvent () {
+    return {
+      proto: SERVICENAME,
+      role: 'node',
+      pid: process.pid
+    }
+  },
+  serialize () {
+    return JSON.stringify(this.getEvent())
+  }
+}
 
 /**
  *
@@ -126,13 +131,13 @@ function startHeartBeat (ws) {
       ws.ping(0x9)
     } else {
       try {
-        observer.notify('webswitchTimeout', 'webswitch server timeout', true)
-      } catch (e) {
-        console.error(startHeartBeat.name, e)
+        observer.notify('webswitchTimeout', 'server unresponsive', true)
+        console.error('mesh server unresponsive, trying new connection')
+        ws = null // get a new socket
+        clearInterval(intervalId)
+      } catch (error) {
+        console.error(startHeartBeat.name, error)
       }
-      console.error('webswitch server timeout, will try new connection')
-      ws = null // get a new socket
-      clearInterval(intervalId)
     }
   }, heartbeat)
 }
@@ -176,7 +181,7 @@ export async function publish (event) {
         ws = new WebSocket(`${proto}://${hostAddress}:${servicePort}`)
 
         ws.on('open', function () {
-          ws.send(handshake())
+          ws.send(handshake.serialize())
           startHeartBeat(ws)
         })
 
@@ -219,3 +224,6 @@ export async function publish (event) {
     console.error('publish', e)
   }
 }
+
+// try connecting
+setTimeout(() => publish(handshake.getEvent()), 10000)

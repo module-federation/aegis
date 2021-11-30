@@ -7,6 +7,7 @@ const startTime = Date.now()
 const uptime = () => Math.round(Math.abs((Date.now() - startTime) / 1000 / 60))
 const configRoot = require('../../../config').aegisConfig
 const uplink = configRoot.services.serviceMesh.WebSwitch.uplink
+const config = configRoot.services.serviceMesh.WebSwitch
 const DEBUG = /true/i.test(configRoot.services.serviceMesh.WebSwitch.debug)
 let messagesSent = 0
 
@@ -57,7 +58,7 @@ export function attachServer (server) {
     client.info = { address: client._socket.address(), id: nanoid() }
 
     client.addListener('ping', function () {
-      DEBUG && console.debug('responding to client ping', client.info)
+      console.assert(!DEBUG, 'responding to client ping', client.info)
       client.pong(0xa)
     })
 
@@ -84,7 +85,7 @@ export function attachServer (server) {
             role: msg.role,
             initialized: true
           }
-          console.log('client initialized', client.info)
+          console.info('client initialized', client.info)
           return
         }
       } catch (e) {

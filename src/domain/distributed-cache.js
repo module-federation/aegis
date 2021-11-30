@@ -307,8 +307,8 @@ export default function DistributedCache ({
   /**
    * Listen for search request from remote system, search and send response.
    *
-   * @param {*} request
-   * @param {*} response
+   * @param {string} request name of event received from remote instance
+   * @param {string} response name of event sent in response to request
    */
   const answerSearchRequest = (request, response) =>
     subscribe(
@@ -318,8 +318,8 @@ export default function DistributedCache ({
 
   /**
    * Listen for internal events requesting cache search and send to remote systems.
-   * @param {*} internalEvent
-   * @param {*} externalEvent
+   * @param {string} internalEvent name of internal event
+   * @param {string} externalEvent name of external event
    */
   const forwardSearchRequest = (internalEvent, externalEvent) =>
     observer.on(internalEvent, async event =>
@@ -408,14 +408,6 @@ export default function DistributedCache ({
         models.getEventName(models.EventTypes.CREATE, modelName),
         models.getEventName(models.EventTypes.DELETE, modelName)
       ].forEach(broadcastCrudEvent)
-
-      // Listen for CRUD events from a remote instance of a local model -
-      // No endless loop as we are listening for different internal events
-      // ;[
-      //   models.getEventName(models.EventTypes.UPDATE, modelName),
-      //   models.getEventName(models.EventTypes.CREATE, modelName),
-      //   models.getEventName(models.EventTypes.DELETE, modelName)
-      // ].forEach(receiveCrudSyncEvent)
     })
   }
 

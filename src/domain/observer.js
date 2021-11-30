@@ -16,23 +16,28 @@ const DEBUG = process.env.DEBUG
  */
 
 /**
- * @typedef {object} defaultOptions
- * @property {object} [filters] - matching key value pairs have to be found in the event data
- * @property {boolean} [subscribed] - subscription id has to be found in returned event data
- * @property {boolean} [once] - only run this handler once
- * @property {boolean} [singleton] - only register this handler once. To unsubscribe:
+ * @typedef {object} observerOptions
+ * @property {object} [filter] - matching key-value pairs have to be found in the event data
+ * - can also be used to link a notification to a specific subscription or just narrow criteria
+ * @property {boolean} [subscribed] - `eventId` has to be found in returned event data
+ * - this allows a notification to be linked to a specific event subscription (good for req/res)
+ * @property {boolean} [once] - only run this handler once, then unsubscribe. To do it manually:
  * ```
- * const subscription = model.on(eventName, eventData => console.log(eventData))
- * subscription.unsubscribe()
+ * const handler = eventData => console.log(eventData)
+ * const script = model.on(eventName, handler)
+ * model.off(eventName, handler)
+ * // or
+ * script.unsubscribe()
  * ```
+ * @property {boolean} [singleton] - there should be only one instance of this handler in the system
  */
 
 /**
- * @type {defaultOptions}
+ * @type {observerOptions}
  */
-const defaultOptions = {
+const observerOptions = {
   once: false,
-  filters: Object,
+  filter: {},
   singleton: false,
   subscribed: false
 }
@@ -53,10 +58,10 @@ export class Observer {
    * Register callback `handler` to fire on event `eventName`
    * @param {String | RegExp} eventName
    * @param {eventHandler} handler
-   * @param {defaultOptions} [options]
+   * @param {observerOptions} [options]
    * `allowMultiple` true by default; if false, event can be handled by only one callback
    */
-  on (eventName, handler, { ...defaultOptions }) {
+  on (eventName, handler, { ...observerOptions }) {
     throw new Error('unimplemented abstract method')
   }
 
@@ -119,7 +124,7 @@ async function runHandler (eventName, eventData = {}, handle, forward) {
  * @param {boolean} forward
  */
 async function notify (eventName, eventData, options = {}) {
-  const { eventUuid = null, forward = false } = options
+  const { forward = false } = options
   const run = runHandler.bind(this)
 
   if (!eventData) {
@@ -131,7 +136,7 @@ async function notify (eventName, eventData, options = {}) {
     if (this.handlers.has(eventName)) {
       await Promise.allSettled(
         this.handlers.get(eventName).map(async handler => {
-          await run(eventName, { eventUuid, ...eventData }, handler, forward)
+          await run(eventName, eventData, handler, forward)
         })
       )
     }
@@ -140,10 +145,7 @@ async function notify (eventName, eventData, options = {}) {
       [...this.handlers]
         .filter(([k]) => k instanceof RegExp && k.test(eventName))
         .map(([, v]) =>
-          v.map(
-            async f =>
-              await run(eventName, { eventUuid, ...eventData }, f, forward)
-          )
+          v.map(async f => await run(eventName, eventData, f, forward))
         )
     )
   } catch (error) {
@@ -168,21 +170,18 @@ class ObserverImpl extends Observer {
    * @override
    * @param {string | RegExp} eventName
    * @param {eventHandler} handler
-   * @param {defaultOptions} [options]
+   * @param {observerOptions} [options]
    */
-  on (eventName, handler, options = {}) {
-    const {
-      once = false,
-      filters = {},
-      singleton = false,
-      subscribed = false
-    } = options
-
+  on (
+    eventName,
+    handler,
+    { once = false, filter = {}, singleton = false, subscribed = false } = {}
+  ) {
     if (!eventName || typeof handler !== 'function') {
       console.error(ObserverImpl.name, 'invalid arg', eventName, handler)
       return null
     }
-    const filterKeys = Object.keys(filters)
+    const filterKeys = Object.keys(filter)
     const subscription = Event.create({ eventName })
 
     const callbackWrapper = eventData => {
@@ -193,7 +192,7 @@ class ObserverImpl extends Observer {
         },
         subscribed: {
           applies: subscribed,
-          satisfied: data => data.eventUuid === subscription.eventUuid
+          satisfied: data => data.eventId === subscription.eventId
         }
       }
 
@@ -207,18 +206,21 @@ class ObserverImpl extends Observer {
       }
     }
 
-    subscription.unsubscribe = this.off(eventName, callbackWrapper)
+    const script = {
+      ...subscription,
+      unsubscribe: () => this.off(eventName, callbackWrapper)
+    }
 
     const funcs = this.handlers.get(eventName)
     if (funcs) {
       if (!singleton || funcs.length < 1) {
         funcs.push(callbackWrapper)
-        return subscription
+        return script
       }
       return null
     }
     this.handlers.set(eventName, [callbackWrapper])
-    return subscription
+    return script
   }
 
   /**
