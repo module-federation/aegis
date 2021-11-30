@@ -19,19 +19,19 @@ import pipe from './util/pipe'
 
 /**
  * @typedef {Object} Event
- * @property {Model} model
+ * @property {import('.').Model} model
  * @property {string} modelId
  * @property {string} eventId
  * @property {String} eventName
- * @property {String} eventTime
  * @property {String} modelName
- * @property {object} eventData
- * @property {string} eventCode
- * @property {string} eventRank
- * @property {string} eventTags
- * @property {string} eventSource
- * @property {string} eventTarget
- * @property {EventType} eventType
+ * @property {number} eventTime
+ * @property {object} [eventData]
+ * @property {string} [eventCode]
+ * @property {string} [eventRank]
+ * @property {string} [eventTags]
+ * @property {string} [eventSource]
+ * @property {string} [eventTarget]
+ * @property {EventType} [eventType]
  */
 
 /**
