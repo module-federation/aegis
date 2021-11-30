@@ -199,7 +199,7 @@ export async function publish (event) {
           }
 
           if (eventData.proto === SERVICENAME && eventData.pid) {
-            ws.send(handshake())
+            ws.send(handshake.serialize())
             return
           }
 
