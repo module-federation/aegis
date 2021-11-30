@@ -64,7 +64,7 @@ export default function DistributedCache ({
     }
 
     try {
-      const requiredFields = ['eventName', 'eventUuid', 'model']
+      const requiredFields = ['eventName', 'model']
       const actuals = Object.keys(payload)
       const missing = requiredFields.filter(k => !actuals.includes(k))
 
@@ -76,7 +76,8 @@ export default function DistributedCache ({
       return {
         ...payload,
         modelName: (payload.modelName || payload.model.modelName).toLowerCase(),
-        modelId: payload.modelId || payload.model.id
+        modelId: payload.modelId || payload.model.id,
+        args: payload.args || []
       }
     } catch (e) {
       console.error('could not parse message', e, { payload })
@@ -125,7 +126,7 @@ export default function DistributedCache ({
    * @param {import("./datasource").default} datasource
    * @param {function(m)=>m.id} return id to save
    */
-  async function saveModel (model, datasource, id = m => m.id) {
+  async function saveModel (model, datasource, id = m => m.id || m.getId()) {
     console.debug('saving model(s)')
     if (Array.isArray(model))
       await Promise.all(model.map(async m => datasource.save(id(m), m)))
@@ -173,7 +174,7 @@ export default function DistributedCache ({
         console.debug('unmarshal deserialized model(s)', modelName, modelId)
         const datasource = datasources.getDataSource(modelName, true)
         const hydratedModel = hydrateModel(model, datasource, modelName)
-        await saveModel(hydratedModel, datasource, m => m.getId())
+        await saveModel(hydratedModel, datasource, m => m.getId() || m.id)
 
         if (route) await route({ ...event, model: hydratedModel })
       } catch (error) {
@@ -225,6 +226,12 @@ export default function DistributedCache ({
     }
     try {
       const related = await createRelated(event)
+      if (!related || related.length < 1)
+        throw new Error(
+          createRelatedObject.name,
+          'failed to create related object for event',
+          event
+        )
       const datasource = datasources.getDataSource(event.relation.modelName)
       await Promise.all(related.map(async m => datasource.save(m.getId(), m)))
       return related
@@ -246,7 +253,7 @@ export default function DistributedCache ({
       return {
         ...event,
         model: null,
-        result: 'no related model found'
+        result: 'no related model'
       }
     }
     const rel = makeArray(related)
@@ -275,7 +282,7 @@ export default function DistributedCache ({
         if (event.args.length > 0) {
           const newModel = await createRelatedObject(event)
           if (!newModel || newModel.length < 1)
-            console.debug('no related model(s) found')
+            console.debug('no related model(s) found/created')
           await route(formatResponse(event, newModel))
           return
         }
