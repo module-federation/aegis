@@ -261,8 +261,8 @@ export default function DistributedCache ({
     return {
       ...event,
       model: rel.length < 2 ? rel[0] : rel,
-      modelName: event.relation.modelName,
-      modelId: rel[0].id || rel[0].getId()
+      modelName: event.relation.modelName
+      //modelId: rel[0].id || rel[0].getId()
     }
   }
 

@@ -9,10 +9,10 @@ const { WasmInterop } = require('./wasm-interop')
 
 /**
  * Wrap the WASM Module as a {@link ModelSpecification}
- * @param {WebAssembly.Instance} module WebAssembly module instance
+ * @param {WebAssembly.Instance} instance WebAssembly module instance
  * @returns {ModelSpecification}
  */
-exports.wrapWasmModelSpec = function (module) {
+exports.wrapWasmModelSpec = function (instance) {
   const {
     __unpin,
     __pin,
@@ -23,9 +23,9 @@ exports.wrapWasmModelSpec = function (module) {
     validate,
     onUpdate,
     onDelete
-  } = module.exports
+  } = instance.exports
 
-  const interop = WasmInterop(module)
+  const interop = WasmInterop(instance)
   const specPtr = __pin(getModelSpec())
   const modelSpec = ModelSpec.wrap(specPtr)
 
@@ -68,12 +68,12 @@ exports.wrapWasmModelSpec = function (module) {
 
 /**
  *
- * @param {WebAssembly.Instance} module
+ * @param {WebAssembly.Instance} instance
  * @returns {Adapter}
  */
-exports.wrapWasmAdapter = function (module) {
-  const { invoke } = module.exports
-  const interop = WasmInterop(module)
+exports.wrapWasmAdapter = function (instance) {
+  const { invoke } = instance.exports
+  const interop = WasmInterop(instance)
 
   return function (service) {
     return async function (options) {
@@ -89,12 +89,10 @@ exports.wrapWasmAdapter = function (module) {
 
 /**
  *
- * @param {WebAssembly.Instance} module
+ * @param {WebAssembly.Instance} instance
  * @returns {Service}
  */
-exports.wrapWasmService = function (module) {
-  const { makeService } = module.exports
-  const adapter = WasmInterop(module)
-
-  return Object.freeze(adapter.callWasmFunction(makeService))
+exports.wrapWasmService = function (instance) {
+  const { makeService } = instance.exports
+  return WasmInterop(instance).callWasmFunction(makeService)
 }

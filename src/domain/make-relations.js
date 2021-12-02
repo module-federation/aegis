@@ -97,11 +97,12 @@ export function requireRemoteObject (model, relation, observer, ...args) {
     model,
     args
   }
-  const searchId = model.getId()
 
   return new Promise(async function (resolve) {
     setTimeout(resolve, maxwait)
-    observer.on(response, execute(resolve))
+    observer.on(response, execute(resolve), {
+      filter: { modelId: model.getId() }
+    })
     observer.notify(request, requestData)
   })
 }

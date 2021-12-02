@@ -18,18 +18,15 @@ const DEBUG = process.env.DEBUG
 /**
  * @typedef {object} observerOptions
  * @property {object} [filter] - matching key-value pairs have to be found in the event data
- * - can also be used to link a notification to a specific subscription or just narrow criteria
- * @property {boolean} [subscribed] - `eventId` has to be found in returned event data
- * - this allows a notification to be linked to a specific event subscription (good for req/res)
- * @property {boolean} [once] - only run this handler once, then unsubscribe. To do it manually:
+ * @property {boolean} [subscriber] - the subscription's `eventId` has to be found in the event data
+ * @property {boolean} [singleton] - there should be only one instance of this handler in the system
+ * @property {boolean} [once] - only run this handler once, then unsubscribe.
  * ```
  * const handler = eventData => console.log(eventData)
- * const script = model.on(eventName, handler)
- * model.off(eventName, handler)
- * // or
- * script.unsubscribe()
+ * const subscription = model.addListener(eventName, handler)
+ * // later on...
+ * subscription.unsubscribe()
  * ```
- * @property {boolean} [singleton] - there should be only one instance of this handler in the system
  */
 
 /**
@@ -39,7 +36,7 @@ const observerOptions = {
   once: false,
   filter: {},
   singleton: false,
-  subscribed: false
+  subscriber: false
 }
 
 /**
@@ -175,7 +172,7 @@ class ObserverImpl extends Observer {
   on (
     eventName,
     handler,
-    { once = false, filter = {}, singleton = false, subscribed = false } = {}
+    { once = false, filter = {}, singleton = false, subscriber = false } = {}
   ) {
     if (!eventName || typeof handler !== 'function') {
       console.error(ObserverImpl.name, 'invalid arg', eventName, handler)
@@ -190,8 +187,8 @@ class ObserverImpl extends Observer {
           applies: filterKeys.length > 0,
           satisfied: data => filterKeys.every(k => filterKeys[k] === data[k])
         },
-        subscribed: {
-          applies: subscribed,
+        subscriber: {
+          applies: subscriber,
           satisfied: data => data.eventId === subscription.eventId
         }
       }
