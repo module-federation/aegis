@@ -1,5 +1,11 @@
 'use strict'
 
+export function initialize (service) {
+  return async function (serviceInfo = null) {
+    service.initialize(serviceInfo)
+  }
+}
+
 export function publish (service) {
   return async function (event) {
     service.publish(event)

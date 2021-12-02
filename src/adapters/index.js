@@ -6,8 +6,8 @@ export { ServerlessAdapter } from './serverless'
 export * as controllers from './controllers'
 export * as webassembly from './webassembly'
 
-import * as MeshAdapter from './service-mesh'
-import { MeshService } from '../services'
+import * as ServiceMeshPluginAdapter from './service-mesh'
+import { ServiceMeshPlugin } from '../services'
 
 /**
  * @callback attachServer
@@ -31,6 +31,11 @@ import { MeshService } from '../services'
  */
 
 /**
+ * @callback initialize
+ * @param {*} [serviceInfo]
+ */
+
+/**
  * Service Mesh plugin adapter interface.
  * @typedef {object} ServiceMeshAdapter
  * @property {attachServer} attachServer all service mesh plugins will
@@ -38,13 +43,15 @@ import { MeshService } from '../services'
  * passes the handle for the socket.
  * @property {publish} publish publish an event to the service mesh
  * @property {subscribe} subscribe subscribe to events on the service mesh
+ * @property {initialize} initialize take care of any initialization tasks
  */
 
 /**
+ * Bind the adapter to the service 
  * @type {ServiceMeshAdapter}
  */
 export const ServiceMeshAdapter = {
-  ...Object.keys(MeshAdapter)
-    .map(k => ({ [k]: MeshAdapter[k](MeshService) }))
+  ...Object.keys(ServiceMeshPluginAdapter)
+    .map(port => ({ [port]: ServiceMeshPluginAdapter[port](ServiceMeshPlugin) }))
     .reduce((a, b) => ({ ...a, ...b }))
 }

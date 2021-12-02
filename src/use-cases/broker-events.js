@@ -11,6 +11,8 @@ const useObjectCache =
   /true/i.test(process.env.DISTRIBUTED_CACHE_ENABLED) || true
 const useSvcMesh = /true/i.test(process.env.SERVICEMESH_ENABLED) || true
 
+const initialize = broker => broker.initialize()
+
 /**
  * Handle internal and external events.
  * @param {import('../domain/observer').Observer} observer
@@ -42,6 +44,8 @@ export default function brokerEvents (observer, datasources, models) {
       publish,
       subscribe
     })
+
+    if (useSvcMesh) ServiceMesh.initialize()
 
     broker.start()
   }

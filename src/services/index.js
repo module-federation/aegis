@@ -31,4 +31,4 @@ const service = enabledServices.includes(designatedService)
   ? designatedService
   : 'WebSwitch'
 
-export const MeshService = MeshServices[service]
+export const ServiceMeshPlugin = MeshServices[service]

@@ -41,8 +41,8 @@ export function getPorts(keys: string[], vals: string[]): string[][] {
   //aegis.log("getPorts called  " + keys[0] + ":" + vals[0]);
   const ports = new Array<string[]>(2);
   //service,type,consumesEvent,producesEvent,callback,undo
-  ports[0] = ["port1", "dFlow,outbound,dFlow_start,port1_done,port1Cb,true"];
-  ports[1] = ["port2", "dFlow,outbound,port1_done,port2_done,port2Cb,true"];
+  ports[0] = ["port1", "dFlow,outbound,dFlow_start,port1_done,port1Cb,1"];
+  ports[1] = ["port2", "dFlow,outbound,port1_done,port2_done,port2Cb,1"];
   return ports;
 }
 
@@ -67,7 +67,7 @@ export function port2Cb(keys: string[], vals: string[]): string[][] {
     ["producesEvent", "port2_done"],
   ];
   aegis.log(
-    "porf invokced" + cfg[0][0] + " " + cfg[0][1] + " " + cfg[0][2] + cfg[0][3]
+    "porf invoked" + cfg[0][0] + " " + cfg[0][1] + " " + cfg[0][2] + cfg[0][3]
   );
   return cfg;
 }
@@ -118,7 +118,7 @@ export function serviceMeshCallback(
   const eventData = new Array<string[]>(2);
   eventData[0] = [keys[0], vals[0]];
   eventData[1] = [keys[1], vals[1]];
-  aegis.fireEvent(eventName+'callback', eventData, 1);
+  aegis.fireEvent(eventName + "callback", eventData, 1);
   return [["key1", "serviceMeshCallback"]];
 }
 
