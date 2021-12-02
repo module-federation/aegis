@@ -170,7 +170,6 @@ export default function DistributedCache ({
 
         console.debug('check if we have the code for this object...')
         await streamRemoteModules(modelName)
-
         console.debug('unmarshal deserialized model(s)', modelName, modelId)
         const datasource = datasources.getDataSource(modelName, true)
         const hydratedModel = hydrateModel(model, datasource, modelName)
@@ -226,18 +225,23 @@ export default function DistributedCache ({
     }
     try {
       const related = await createRelated(event)
-      if (!related || related.length < 1)
+
+      if (related.length < 1) {
         throw new Error(
           createRelatedObject.name,
           'failed to create related object for event',
           event
         )
+      }
+
       const datasource = datasources.getDataSource(event.relation.modelName)
-      await Promise.all(related.map(async m => datasource.save(m.getId(), m)))
-      return related
+
+      return await Promise.all(
+        related.map(async m => datasource.save(m.getId(), m))
+      )
     } catch (error) {
       console.error(error)
-      throw new Error(createRelatedObject.name, error)
+      return []
     }
   }
 
@@ -282,9 +286,8 @@ export default function DistributedCache ({
         if (event.args.length > 0) {
           const newModel = await createRelatedObject(event)
           if (!newModel || newModel.length < 1)
-            console.debug('no related model(s) found/created')
-          await route(formatResponse(event, newModel))
-          return
+            console.debug('no related model(s) found')
+          return await route(formatResponse(event, newModel))
         }
 
         // find the requested object(s)

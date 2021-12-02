@@ -113,6 +113,7 @@ function addPortListener (portName, portConf, observer, disabled) {
 
   if (portConf.consumesEvent) {
     const callback = getPortCallback(portConf.callback)
+
     // listen for triggering event
     observer.on(
       portConf.consumesEvent,
@@ -128,6 +129,7 @@ function addPortListener (portName, portConf, observer, disabled) {
       },
       { singleton: true }
     )
+    
     return true
   }
   return false

@@ -104,6 +104,7 @@ export function requireRemoteObject (model, relation, observer, ...args) {
       filter: { modelId: model.getId() },
       once: true
     })
+    observer.on(response, execute(resolve))
     observer.notify(request, requestData)
   })
 }
