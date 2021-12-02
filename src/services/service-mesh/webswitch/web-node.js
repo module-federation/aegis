@@ -79,7 +79,7 @@ async function getServicePort (hostname) {
     ? process.env.SSL_PORT || 443
     : process.env.PORT || 80
 }
-;``
+
 /**
  * Set callback for uplink.
  * @param {*} callback
@@ -225,5 +225,4 @@ export async function publish (event) {
   }
 }
 
-// try connecting
-setTimeout(() => publish(handshake.getEvent()), 10000)
+export const initialize = () => publish(handshake.getEvent(), 10000)
