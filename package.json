@@ -30,6 +30,7 @@
     "express": "4.17.1",
     "express-jwt": "6.1.0",
     "import-fresh": "3.3.0",
+    "ipfs": "^0.60.2",
     "jwks-rsa": "2.0.5",
     "mesh-link": "0.13.6",
     "mongodb": "4.2.1",

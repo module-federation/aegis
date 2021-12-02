@@ -20,7 +20,7 @@ const DEBUG = process.env.DEBUG
  * @property {object} [filter] - matching key-value pairs have to be found in the event data
  * @property {boolean} [subscriber] - the subscription's `eventId` has to be found in the event data
  * @property {boolean} [singleton] - there should be only one instance of this handler in the system
- * @property {boolean} [once] - only run this handler once, then unsubscribe.
+ * @property {boolean} [once] - only run this handler once, then unsubscribe. Code to do it manually:
  * ```
  * const handler = eventData => console.log(eventData)
  * const subscription = model.addListener(eventName, handler)
@@ -66,7 +66,7 @@ export class Observer {
    * Fire event `eventName` and pass `eventData` to listeners.
    * @param {String} eventName - unique name of event
    * @param {Event} eventData - the import of the event
-   * @param {{forward:boolean, eventUuid:string}} options - forward this event externally
+   * @param {{forward:boolean}} options - forward this event externally
    */
   async notify (eventName, eventData, options) {
     throw new Error('unimplemented abstract method')
@@ -146,10 +146,9 @@ async function notify (eventName, eventData, options = {}) {
         )
     )
   } catch (error) {
-    handleError(error)
+    handleError(notify.name, error)
   }
 }
-
 /**
  * @type {Observer}
  * @extends Observer
@@ -203,7 +202,7 @@ class ObserverImpl extends Observer {
       }
     }
 
-    const script = {
+    const scrip = {
       ...subscription,
       unsubscribe: () => this.off(eventName, callbackWrapper)
     }
@@ -212,12 +211,12 @@ class ObserverImpl extends Observer {
     if (funcs) {
       if (!singleton || funcs.length < 1) {
         funcs.push(callbackWrapper)
-        return script
+        return scrip
       }
       return null
     }
     this.handlers.set(eventName, [callbackWrapper])
-    return script
+    return scrip
   }
 
   /**
