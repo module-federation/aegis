@@ -11,6 +11,7 @@ import doh from 'dohjs'
 import ObserverFactory from '../../../domain/observer'
 
 const SERVICENAME = 'webswitch'
+const TIMEOUTEVENT = 'switchTimeout'
 const configRoot = require('../../../config').aegisConfig
 const config = configRoot.services.serviceMesh.WebSwitch
 const DEBUG = /true|yes|y/i.test(config.debug) || false
@@ -26,8 +27,8 @@ let ws
 
 let port = config.port || SERVICENAME
 let fqdn = config.host || 'switch.app-mesh.net'
-let hostAddress
-let servicePort
+let hostAddress = config.host
+let servicePort = config.port
 let uplinkCallback
 
 async function resolveAddress (hostname) {
@@ -37,11 +38,11 @@ async function resolveAddress (hostname) {
     const result = await resolver.query(hostname, 'A')
     if (result.answers.length > 0) return result.answers[0].data
 
-    // Fallback to DNS
+    // Fallback
     const addresses = await dns.resolve(hostname, 'A')
     if (addresses.length > 0) return addresses[0]
 
-    // Include /etc/hosts
+    // Try /etc/hosts
     const record = await dns.lookup(hostname)
     return record.address
   } catch (e) {
@@ -131,8 +132,8 @@ function startHeartBeat (ws) {
       ws.ping(0x9)
     } else {
       try {
-        observer.notify('webswitchTimeout', 'server unresponsive', true)
-        console.error('mesh server unresponsive, trying new connection')
+        observer.notify(TIMEOUTEVENT, 'server unresponsive', true)
+        console.error('server timeout, trying new connection')
         ws = null // get a new socket
         clearInterval(intervalId)
       } catch (error) {
@@ -150,8 +151,7 @@ function startHeartBeat (ws) {
 /**
  * @param {*} eventName
  * @param {subscription} callback
- * @param {*} observer
- * @param {{allowMultiple:boolean, once:boolean}} [options]
+ * @param {} [options]
  */
 export async function subscribe (eventName, callback, options = {}) {
   try {
@@ -186,7 +186,7 @@ export async function publish (event) {
         })
 
         ws.on('error', function (error) {
-          console.error(ws.on, 'opening new conn after error', error)
+          console.error(ws.on, 'open new conn after error', error)
           ws = null
         })
 
