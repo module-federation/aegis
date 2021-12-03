@@ -162,7 +162,7 @@ export default function DistributedCache ({
         if (!model) {
           console.error('no model found', eventName)
           // no model found
-          if (route) await route(event)
+          if (route) await route({ ...event, model })
           return
         }
 
@@ -210,23 +210,24 @@ export default function DistributedCache ({
    * with arguments, e.g.
    * ```js
    * const customer = await order.customer(customerDetails);
-   * const customers = await order.customer(cust1, cust2);
+   * const customers = await order.customer([cust1, cust2]);
    * ```
    *
    * @param {Event} event
-   * @returns {Promise<import("./model").Model | import("./model").Model[]>}
+   * @returns {Promise<import("./model").Model[]>}
    * Updated source model (model that defines the relation)
    * @throws
    */
   async function createRelatedObject (event) {
     if (event.args.length < 1 || !event.relation || !event.modelName) {
-      console.log('missing required params', event)
+      console.error('missing required params', event)
       return event
     }
-    try {
-      const related = await createRelated(event)
 
-      if (related.length < 1) {
+    try {
+      const relatedModels = await createRelated(event)
+
+      if (relatedModels.length < 1) {
         throw new Error(
           createRelatedObject.name,
           'failed to create related object for event',
@@ -236,11 +237,11 @@ export default function DistributedCache ({
 
       const datasource = datasources.getDataSource(event.relation.modelName)
 
-      return await Promise.all(
-        related.map(async m => datasource.save(m.getId(), m))
+      return Promise.all(
+        relatedModels.map(model => datasource.save(model.getId(), model))
       )
     } catch (error) {
-      console.error(error)
+      console.error(createRelatedObject.name, error)
       return []
     }
   }
@@ -248,25 +249,24 @@ export default function DistributedCache ({
   /**
    *s
    * @param {Event} event
-   * @param {import(".").Model|import(".").Model[]} related
+   * @param {import(".").Model[]} related models
    * @returns {Event} w/ updated model, modelId, modelName
    */
-  function formatResponse (event, related) {
-    if (!related || related.length < 1) {
-      console.debug('related is null')
+  function formatResponse (event, related = []) {
+    if (related.length < 1) {
+      console.debug('no related')
       return {
         ...event,
-        model: null,
+        model: related,
         result: 'no related model'
       }
     }
-    const rel = makeArray(related)
 
     return {
       ...event,
-      model: rel.length < 2 ? rel[0] : rel,
+      model: related.length < 2 ? related[0] : related,
       modelName: event.relation.modelName
-      //modelId: rel[0].id || rel[0].getId()
+      //modelId: related[0].id || related[0].getId()
     }
   }
 
@@ -280,11 +280,13 @@ export default function DistributedCache ({
   function searchCache (route) {
     return async function (message) {
       console.debug(searchCache.name, message)
+
       try {
         const event = parse(message)
 
         if (event.args.length > 0) {
           const newModel = await createRelatedObject(event)
+
           if (!newModel || newModel.length < 1)
             console.debug('no related model(s) found')
           return await route(formatResponse(event, newModel))
@@ -351,13 +353,6 @@ export default function DistributedCache ({
     observer.on(eventName, async event =>
       publish({ ...event, eventName: externalCrudEvent(eventName) })
     )
-
-  /**
-   * Listen for events from remote systems and update local cache.
-   * @param {string} eventName
-   */
-  // const receiveCrudSyncEvent = eventName =>
-  //   subscribe(externalCrudSyncEvent(eventName), updateCache())
 
   /**
    * Subcribe to external CRUD events for related models.
