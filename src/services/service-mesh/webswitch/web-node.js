@@ -51,6 +51,11 @@ async function resolveAddress (hostname) {
 
 async function getHostAddress (hostname) {
   try {
+    if (
+      /(^((?!-)[a-zA-Z0-9-]{0,62}[a-zA-Z0-9]\.)+[a-zA-Z]{2,63}$)/.test(hostname)
+    ) {
+      return hostname
+    }
     const address = await resolveAddress(hostname)
     console.info('resolved host address', address)
     return address
