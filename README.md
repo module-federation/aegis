@@ -15,7 +15,7 @@ See the [aegis-host](https://github.com/module-federation/MicroLib) repo for doc
 - better performance and 
 - simpler operations 
     
-_without losing_
+_without loosing_
     
 - deployment independence,
 - language independence 
