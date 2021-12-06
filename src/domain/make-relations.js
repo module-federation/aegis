@@ -152,7 +152,8 @@ export default function makeRelations (relations, datasource, observer) {
               if (event && event.args.length > 0) {
                 const updated = await updateForeignKeys(this, event, rel, ds)
                 // setTimeout(updateForeignKeys, 3000, this, event, rel, ds)
-                return relationType[rel.type](updated, ds, rel)
+                return event.model
+                //return relationType[rel.type](updated, ds, rel)
               }
 
               return relationType[rel.type](this, ds, rel)
