@@ -3,7 +3,7 @@ See the [aegis-host](https://github.com/module-federation/MicroLib) repo for doc
 
 
 <div align="left">
-    <a href="" target="_blank">
+    <a href="https://blog.federated-microservices.com" target="_blank">
         <img src="https://user-images.githubusercontent.com/38910830/142773640-5a4d710d-a428-4bfc-9f56-03e90255eb1b.gif" alt="GitHub Video"
         border="10" width="460" height="250"/>
     </a>
