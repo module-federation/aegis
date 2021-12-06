@@ -31,14 +31,14 @@ _with_
     * transparent integration
     * automated persistence
     * built-in service mesh
-    * self-provisioned (e.g. CA certs handled programmatically)
-    * execute anywhere (serverless or server, frontend or backend, phone or drone...)
-    * deploy anywhere (same process regardless of vendor or platform, lightweight and lightning fast)
+    * self-provisioning (e.g. CA certs handled programmatically)
+    * run anywhere (Aegis can run as a server, clustered server, or serverless function)
+    * deploy anywhere, fast (Aegis can deploy to any compute primitive with
 - and capabilities that enhance the development experience
-    * runtime binding for dynamic deployment of updates or new feature/fuctions (switch storage adapter live in prod)
-    * zero downtime, hot, lightning-quick deployment
-    * polyglot, highly portable, contaiherless, safe units of compute that execute at near native speeds
-    * decentralized, non-layered, highly-scalable "tessellated" architecture 
+    * runtime binding for hot deployment (switch storage adapter live in prod)
+    * zero downtime, zero installation
+    * polyglot, portable, containerless, secure components that run at near native speeds
+    * decentralized, non-layered, highly-scalable, highly composable, "tessellated" architecture 
 
 ### And do it all without deployment automation. 
 You don't need that anymore.
