@@ -1,13 +1,14 @@
-# ÆGIS
-
+# ÆGIS 
 See the [aegis-host](https://github.com/module-federation/MicroLib) repo for documentation and a working example of a federation server.
 
-<div align="center">
+
+<div align="left">
     <a href="" target="_blank">
         <img src="https://user-images.githubusercontent.com/38910830/142773640-5a4d710d-a428-4bfc-9f56-03e90255eb1b.gif" alt="GitHub Video"
         border="10" width="460" height="250"/>
     </a>
 </div>
+
 
 ## Consolidate your microservices 
 - for decreased footprint, 
@@ -51,7 +52,7 @@ You don't need that anymore.
 npm i @module-federation/aegis
 ```
 
-### Contribute [![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/github.com/module-federation/aegis)) [![Open in Visual Studio Code](https://open.vscode.dev/badges/open-in-vscode.svg)](https://open.vscode.dev/module-federation/aegis)
+### Contribute [![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/github.com/module-federation/aegis) [![Open in Visual Studio Code](https://open.vscode.dev/badges/open-in-vscode.svg)](https://open.vscode.dev/module-federation/aegis)
 
 ```shell
 git clone https://github.com/module-federation/aegis
