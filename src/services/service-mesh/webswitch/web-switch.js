@@ -7,13 +7,13 @@ const startTime = Date.now()
 const uptime = () => Math.round(Math.abs((Date.now() - startTime) / 1000 / 60))
 const configRoot = require('../../../config').aegisConfig
 const uplink = configRoot.services.serviceMesh.WebSwitch.uplink
-const config = configRoot.services.serviceMesh.WebSwitch
 const DEBUG = /true/i.test(configRoot.services.serviceMesh.WebSwitch.debug)
 let messagesSent = 0
 
 /**
  *
  * @param {import('ws').Server} server
+ * @returns {}
  */
 export function attachServer (server) {
   /**
@@ -38,10 +38,14 @@ export function attachServer (server) {
 
   /**
    * @todo
-   * @param {*} client
+   * @param {WebSocket} client
    */
   server.setRateLimit = function (client) {}
 
+  /**
+   *
+   * @param {WebSocket} client
+   */
   server.sendStatus = function (client) {
     client.send(
       JSON.stringify({
@@ -54,6 +58,9 @@ export function attachServer (server) {
     )
   }
 
+  /**
+   * @param {WebSocket} client
+   */
   server.on('connection', function (client) {
     client.info = { address: client._socket.address(), id: nanoid() }
 

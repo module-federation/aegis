@@ -1,3 +1,3 @@
 /**
- * support etherium
+ * support etherium blockchain
  */
