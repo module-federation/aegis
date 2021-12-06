@@ -33,7 +33,7 @@ _with_
     * built-in service mesh
     * self-provisioning (e.g. CA certs handled programmatically)
     * run anywhere (Aegis can run as a server, clustered server, or serverless function)
-    * deploy anywhere, fast (Aegis can deploy to any compute primitive with
+    * deploy anywhere, fast (Aegis can deploy to any compute primitive: baremetal, container, serverless...)
 - and capabilities that enhance the development experience
     * runtime binding for hot deployment (switch storage adapter live in prod)
     * zero downtime, zero installation
