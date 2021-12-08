@@ -33,7 +33,7 @@ _with_
     * built-in, self-forming service mesh
     * autonomous self-configuration (e.g. CA certs provisioned/renewed programmatically)
     * exhaustive portability (Aegis can run as a server, cluster, or serverless function)
-    * universal deployment automation (deploy to any compute primitive: serverless, container, etc)
+    * comprehensive, rapid deployment (deploy in seconds to any compute primitive: serverless, container, etc)
 - and capabilities that enhance the development experience
     * runtime binding for hot deployment (e.g. switch out a storage adapter live in prod)
     * zero downtime, zero installation
