@@ -28,17 +28,17 @@ _without loosing_
 _with_
 
 - the non-functional, boilerplate code done for you
+    * dynamically generated APIs and datasources 
     * transparent integration
-    * transparent peristence
-    * built-in, self-forming service mesh
-    * autonomous self-configuration (e.g. CA certs provisioned/renewed programmatically)
-    * exhaustive portability (Aegis can run as a server, cluster, or serverless function)
-    * comprehensive, rapid deployment (deploy in seconds to any compute primitive: serverless, container, etc)
+    * built-in, pluggable, self-forming service mesh
+    * autonomous self-administration (e.g. CA certs provisioned/renewed programmatically)
+    * exhaustive portability: Aegis can run as a server, cluster, or serverless function, in the datacenter, on the edge and beyond (phone, drone, arduino)
 - and capabilities that enhance the development experience
-    * runtime binding for hot deployment (e.g. switch out a storage adapter live in prod)
-    * zero downtime, zero installation
-    * polyglot, portable, containerless, secure, near native performance
-    * decentralized, non-layered, highly-scalable, highly composable, "tessellated" architecture 
+    * comprehensive, rapid deployment (deploy in seconds to any compute primitive: serverless, container, etc)
+    * runtime binding and hot reload (e.g. add new functionality on the fly, switch from MongoDB to Etherium live)
+    * zero downtime, zero installation deployment (all changes done live in prod)
+    * polyglot, portable, containerless, sandboxed modules run at near native speeds
+    * decentralized, scalable, highly composable, "tessellated" architecture 
 
 ### And do it all without deployment automation. 
 You don't need that anymore.
@@ -85,3 +85,4 @@ yarn demo
 - QUIC, WebRTC
 - Addt'l datasource adapters: Etherium, Solid Pod
 - Support for MLOps
+- Adaptive Deployment based on AIOps
