@@ -27,17 +27,17 @@ _without loosing_
 
 _with_
 
-- non-functional stuff done for you
+- the non-functional, boilerplate code done for you
     * transparent integration
-    * automated persistence
-    * built-in service mesh
-    * self-provisioning (e.g. CA certs handled programmatically)
-    * run anywhere (Aegis can run as a server, clustered server, or serverless function)
-    * deploy anywhere, fast (Aegis can deploy to any compute primitive: baremetal, container, serverless...)
+    * transparent peristence
+    * built-in, self-forming service mesh
+    * autonomous self-configuration (e.g. CA certs provisioned/renewed programmatically)
+    * exhaustive portability (Aegis can run as a server, cluster, or serverless function)
+    * universal deployment automation (deploy to any compute primitive: serverless, container, etc)
 - and capabilities that enhance the development experience
-    * runtime binding for hot deployment (switch storage adapter live in prod)
+    * runtime binding for hot deployment (e.g. switch out a storage adapter live in prod)
     * zero downtime, zero installation
-    * polyglot, portable, containerless, secure components that run at near native speeds
+    * polyglot, portable, containerless, secure, near native performance
     * decentralized, non-layered, highly-scalable, highly composable, "tessellated" architecture 
 
 ### And do it all without deployment automation. 
