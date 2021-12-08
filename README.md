@@ -77,7 +77,7 @@ yarn demo
 # Current work
     
 - More WebAssembly features
-- Run on a WasmEdge runtime 
+- Run on WasmEdge runtime 
 - Run in the browser
 - Run on wasm3 (for microcontrollers)
 - Built-in, pluggable, fast service mesh
