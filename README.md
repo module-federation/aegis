@@ -27,7 +27,7 @@ _without loosing_
 
 _with_
 
-- the non-functional, boilerplate code done for you
+- non-functional, boilerplate code done for you
     * dynamically generated APIs and datasources 
     * transparent integration
     * built-in, pluggable, observable, self-forming service mesh
