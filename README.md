@@ -36,7 +36,7 @@ _with_
 - and capabilities that enhance the development experience
     * comprehensive, rapid deployment (deploy in seconds to any compute primitive: serverless, container, etc)
     * runtime binding and hot reload (e.g. add new functionality on the fly, switch from MongoDB to Etherium live)
-    * zero downtime, zero installation, independent deployment (all changes done live in prod, per service basis even when run togther in a single process
+    * zero downtime, zero installation, independent deployment (all changes done live in prod, on per service basis even multiple components running in the same process together.
     * independently deployable, polyglot, portable, containerless, sandboxed modules run at near native speeds
     * decentralized, scalable, highly composable, "tessellated" architecture 
 
@@ -77,12 +77,12 @@ yarn demo
 # Current work
     
 - More WebAssembly features
-- Run on wasm runtime 
-- Run in browser
-- Run on wasm3
+- Run on a WasmEdge runtime 
+- Run in the browser
+- Run on wasm3 (for microcontrollers)
 - Built-in, pluggable, fast service mesh
 - Support for streaming media and realtime AI inference
-- QUIC, WebRTC
+- Support for QUIC, NDI, WebRTC protocols
 - Addt'l datasource adapters: Etherium, Solid Pod
 - Support for MLOps
-- Adaptive Deployment based on AIOps
+- Adaptive, Autonomous (Re)deployment based on AIOps
