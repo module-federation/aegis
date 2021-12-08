@@ -36,8 +36,8 @@ _with_
 - and capabilities that enhance the development experience
     * comprehensive, rapid deployment (deploy in seconds to any compute primitive: serverless, container, etc)
     * runtime binding and hot reload (e.g. add new functionality on the fly, switch from MongoDB to Etherium live)
-    * zero downtime, zero installation, independent deployment (all changes done live in prod, on per service basis even multiple components running in the same process together.
-    * independently deployable, polyglot, portable, containerless, sandboxed modules run at near native speeds
+    * zero downtime, zero installation, independent deployment (even for components running in the same process together)
+    * Polyglot, portable, containerless, sandboxed modules run at near native speeds
     * decentralized, scalable, highly composable, "tessellated" architecture 
 
 ### And do it all without deployment automation. 
