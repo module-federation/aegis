@@ -43,7 +43,7 @@ export default function brokerEvents (observer, datasources, models) {
       subscribe
     })
 
-    if (useSvcMesh) ServiceMesh.initialize()
+    if (useSvcMesh) ServiceMesh.initialize({ models, observer })
 
     broker.start()
   }

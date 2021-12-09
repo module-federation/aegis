@@ -8,7 +8,7 @@
 import os from 'os'
 import WebSocket from 'ws'
 import makeMdns from 'multicast-dns'
-import ObserverFactory from '../../../domain/observer'
+import { Observer } from '../../../domain/observer'
 
 const SERVICENAME = 'webswitch'
 const HOSTNAME = 'webswitch.local'
@@ -18,13 +18,13 @@ const config = configRoot.services.serviceMesh.WebSwitch
 const DEBUG = /true|yes|y/i.test(config.debug) || false
 const heartbeat = config.heartbeat || 10000
 const protocol = /true/i.test(process.env.SSL_ENABLED) ? 'wss' : 'ws'
-const observer = ObserverFactory.getInstance()
 
 let serviceUrl
-
-/**
- * @type import("ws/lib/websocket")
- */
+/** @type {import('../../../domain/observer').Observer} */
+let observer
+/**@type {import('../../../domain/model-factory').ModelFactory} */
+let models
+/** @type {import("ws/lib/websocket")}*/
 let ws
 
 if (!configRoot) console.error('WebSwitch', 'cannot access config file')
@@ -134,6 +134,7 @@ export function onUplinkMessage (callback) {
  */
 export function setUplinkUrl (uplinkUrl) {
   serviceUrl = uplinkUrl
+  ws = null // trigger reconnect
 }
 
 const handshake = {
@@ -141,7 +142,8 @@ const handshake = {
     return {
       proto: SERVICENAME,
       role: 'node',
-      pid: process.pid
+      pid: process.pid,
+      models: [models.getModelSpecs().map(spec => spec.modelName)]
     }
   },
   serialize () {
@@ -263,4 +265,14 @@ export async function publish (event) {
   }
 }
 
-export const initialize = () => publish(handshake.getEvent(), 10000)
+/**
+ * @param {{
+ * observer:Observer,
+ * models:import('../../../domain/model-factory').ModelFactory
+ * }} serviceInfo
+ */
+export const initialize = serviceInfo => {
+  observer = serviceInfo.observer
+  models = serviceInfo.models
+  publish(handshake.getEvent())
+}
