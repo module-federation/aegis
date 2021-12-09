@@ -39,17 +39,18 @@ const observerOptions = {
   subscriber: false
 }
 
+/**@type {Map<string | RegExp, eventHandler[]>}  */
+const handlers = new Map()
+
 /**
  * Abstract observer
  */
 export class Observer {
   /**
    *
-   * @param {Map<string | RegExp, eventHandler[]>} eventHandlers
+   * param {Map<string | RegExp, eventHandler[]>} eventHandlers
    */
-  constructor (eventHandlers) {
-    this.handlers = eventHandlers
-  }
+  constructor () {}
 
   /**
    * Register callback `handler` to fire on event `eventName`
@@ -130,16 +131,16 @@ async function notify (eventName, eventData, options = {}) {
   }
 
   try {
-    if (this.handlers.has(eventName)) {
+    if (handlers.has(eventName)) {
       await Promise.allSettled(
-        this.handlers.get(eventName).map(async handler => {
+        handlers.get(eventName).map(async handler => {
           await run(eventName, eventData, handler, forward)
         })
       )
     }
 
     await Promise.allSettled(
-      [...this.handlers]
+      [...handlers]
         .filter(([k]) => k instanceof RegExp && k.test(eventName))
         .map(([, v]) =>
           v.map(async f => await run(eventName, eventData, f, forward))
@@ -180,6 +181,7 @@ class ObserverImpl extends Observer {
     const filterKeys = Object.keys(filter)
     const subscription = Event.create({ eventName })
 
+    /** @type {eventHandler} */
     const callbackWrapper = eventData => {
       const conditions = {
         filter: {
@@ -207,7 +209,7 @@ class ObserverImpl extends Observer {
       unsubscribe: () => this.off(eventName, callbackWrapper)
     }
 
-    const funcs = this.handlers.get(eventName)
+    const funcs = handlers.get(eventName)
     if (funcs) {
       if (!singleton || funcs.length < 1) {
         funcs.push(callbackWrapper)
@@ -215,7 +217,7 @@ class ObserverImpl extends Observer {
       }
       return null
     }
-    this.handlers.set(eventName, [callbackWrapper])
+    handlers.set(eventName, [callbackWrapper])
     return scrip
   }
 
@@ -227,7 +229,7 @@ class ObserverImpl extends Observer {
    */
   off (eventName, fn) {
     let retval = false
-    const funcs = this.handlers.get(eventName)
+    const funcs = handlers.get(eventName)
     if (funcs) {
       funcs.forEach((func, index, arr) => {
         if (func === fn) {
@@ -241,7 +243,7 @@ class ObserverImpl extends Observer {
 
   serialize () {
     return JSON.stringify(
-      [...this.handlers].map(([k, v]) => ({ [k]: v.map(fn => fn.toString()) })),
+      [...handlers].map(([k, v]) => ({ [k]: v.map(fn => fn.toString()) })),
       null,
       2
     )

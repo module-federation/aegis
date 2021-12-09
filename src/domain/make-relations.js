@@ -60,7 +60,7 @@ async function updateForeignKeys (model, event, relation, ds) {
     )
   ) {
     console.debug(updateForeignKeys.name, 'found', event)
-    return model.update({ [relation.foreignKey]: event.modelId }, false)
+    return model.update({ [relation.foreignKey]: event.model.id }, false)
   } else if (
     relation.type === relationType.oneToMany.name &&
     relation.type === relationType.containsMany &&
@@ -101,10 +101,10 @@ export function requireRemoteObject (model, relation, observer, ...args) {
 
   return new Promise(async function (resolve) {
     setTimeout(resolve, maxwait)
-    observer.on(response, execute(resolve), {
-      filter: { modelId: model.getId() },
-      once: true
-    })
+    observer.on(response, execute(resolve)) //,{
+    //   filter: { modelId: model.getId() },
+    //   once: true
+    // })
     observer.notify(request, requestData)
   })
 }
@@ -151,9 +151,9 @@ export default function makeRelations (relations, datasource, observer) {
               // each arg contains input to create a new object
               if (event && event.args.length > 0) {
                 const updated = await updateForeignKeys(this, event, rel, ds)
-                // setTimeout(updateForeignKeys, 3000, this, event, rel, ds)
-                return event.model
-                //return relationType[rel.type](updated, ds, rel)
+                setTimeout(updateForeignKeys, 3000, updated, event, rel, ds)
+                //return event.model
+                return relationType[rel.type](updated, ds, rel)
               }
 
               return relationType[rel.type](this, ds, rel)

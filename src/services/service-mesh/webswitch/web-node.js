@@ -1,14 +1,16 @@
 /**
  * WEBSWITCH (c)
- * websocket clients connect to a common server
- * which broadcasts any messages it receives.
+ *
+ * websocket clients connect to a common ws server
+ * (called the switch) which broadcasts messages
+ * to the other connected clients as well as the
+ * uplink if one is configured.
  */
 'use strict'
 
 import os from 'os'
 import WebSocket from 'ws'
 import makeMdns from 'multicast-dns'
-import { Observer } from '../../../domain/observer'
 
 const SERVICENAME = 'webswitch'
 const HOSTNAME = 'webswitch.local'
@@ -26,7 +28,7 @@ let uplinkCallback
 let observer
 /**@type {import('../../../domain/model-factory').ModelFactory} */
 let models
-/** @type {import("ws/lib/websocket")}*/
+/** @type {import('ws/lib/websocket')}*/
 let ws
 
 if (!configRoot) console.error('WebSwitch', 'cannot access config file')
@@ -45,6 +47,9 @@ function getLocalAddress () {
   return addresses
 }
 /**
+ * Use multi-cast DNS to find the Aegis
+ * instance configured as the switch for
+ * the local network.
  *
  * @returns {Promise<string>} url
  */
@@ -52,7 +57,7 @@ async function resolveServiceUrl () {
   const mdns = makeMdns()
   let url
 
-  return new Promise(async function (resolve, reject) {
+  return new Promise(async function (resolve) {
     mdns.on('response', function (response) {
       DEBUG && console.debug('got a response packet:', response)
 
@@ -101,7 +106,16 @@ async function resolveServiceUrl () {
       }
     })
 
-    function runQuery (attempts) {
+    /**
+     * Query DNS for the webswitch server.
+     * Recursively retry by incrementing a
+     * counter we pass to ourselves on the
+     * stack.
+     *
+     * @param {number} attempts number of query attempts
+     * @returns
+     */
+    function runQuery (attempts = 0) {
       if (attempts > MAXRETRY) {
         console.warn('mDNS cannot find switch after max retries')
         return
@@ -119,7 +133,7 @@ async function resolveServiceUrl () {
       setTimeout(() => (url ? resolve(url) : runQuery(attempts++)), 6000)
     }
 
-    runQuery(0)
+    runQuery()
   })
 }
 
@@ -140,16 +154,20 @@ export function setUplinkUrl (uplinkUrl) {
 }
 
 const handshake = {
-  getEvent () {
+  getObject () {
     return {
       proto: SERVICENAME,
       role: 'node',
       pid: process.pid,
-      models: [models.getModelSpecs().map(spec => spec.modelName)]
+      url: serviceUrl,
+      models: models.getModelSpecs().map(spec => spec.modelName)
     }
   },
+  validate (eventData) {
+    return eventData.proto === SERVICENAME && eventData.pid
+  },
   serialize () {
-    return JSON.stringify(this.getEvent())
+    return JSON.stringify(this.getObject())
   }
 }
 
@@ -186,7 +204,10 @@ function startHeartBeat (ws) {
 
 /**
  * @callback subscription
- * @param {{eventName:string, model:import('../../../domain/index').Model}} eventData
+ * @param {{
+ *  eventName:string,
+ *  model:import('../../../domain/index').Model
+ * }} eventData
  */
 
 /**
@@ -216,10 +237,10 @@ export async function publish (event) {
     }
 
     if (!serviceUrl) serviceUrl = await resolveServiceUrl()
-    console.debug('serviceUrl', serviceUrl)
 
     function sendEvent () {
       if (!ws) {
+        console.info('connecting to ', serviceUrl)
         ws = new WebSocket(serviceUrl)
 
         ws.on('open', function () {
@@ -240,7 +261,7 @@ export async function publish (event) {
             await observer.notify(eventData.eventName, eventData)
           }
 
-          if (eventData.proto === SERVICENAME && eventData.pid) {
+          if (handshake.validate(eventData)) {
             ws.send(handshake.serialize())
             return
           }
@@ -268,13 +289,14 @@ export async function publish (event) {
 }
 
 /**
+ *
  * @param {{
- * observer:Observer,
- * models:import('../../../domain/model-factory').ModelFactory
+ *  observer:import('../../../domain/observer').Observer,
+ *  models:import('../../../domain/model-factory').ModelFactory
  * }} serviceInfo
  */
 export const initialize = serviceInfo => {
   observer = serviceInfo.observer
   models = serviceInfo.models
-  publish(handshake.getEvent())
+  publish(handshake.getObject())
 }
