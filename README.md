@@ -27,18 +27,18 @@ _without loosing_
 
 _with_
 
-- non-functional stuff done for you
+- non-functional, boilerplate code done for you
+    * dynamically generated APIs and datasources 
     * transparent integration
-    * automated persistence
-    * built-in service mesh
-    * self-provisioning (e.g. CA certs handled programmatically)
-    * run anywhere (Aegis can run as a server, clustered server, or serverless function)
-    * deploy anywhere, fast (Aegis can deploy to any compute primitive: baremetal, container, serverless...)
+    * built-in, pluggable, observable, self-forming service mesh
+    * autonomous self-administration (e.g. CA certs provisioned/renewed programmatically)
+    * exhaustive portability: Aegis can run as a server, cluster, or serverless function, in the datacenter, on the edge and beyond (phone, drone, arduino)
 - and capabilities that enhance the development experience
-    * runtime binding for hot deployment (switch storage adapter live in prod)
-    * zero downtime, zero installation
-    * polyglot, portable, containerless, secure components that run at near native speeds
-    * decentralized, non-layered, highly-scalable, highly composable, "tessellated" architecture 
+    * comprehensive, rapid deployment (deploy in seconds to any compute primitive: serverless, container, etc)
+    * runtime binding and hot reload (e.g. add new functionality on the fly, switch from MongoDB to Etherium live)
+    * zero downtime, zero installation, independent deployment (even for components running in the same process together)
+    * Polyglot, portable, containerless, sandboxed modules run at near native speeds
+    * decentralized, scalable, highly composable, "tessellated" architecture 
 
 ### And do it all without deployment automation. 
 You don't need that anymore.
@@ -77,11 +77,12 @@ yarn demo
 # Current work
     
 - More WebAssembly features
-- Run on wasm runtime 
-- Run in browser
-- Run on wasm3
+- Run on WasmEdge runtime 
+- Run in the browser
+- Run on wasm3 (for microcontrollers)
 - Built-in, pluggable, fast service mesh
 - Support for streaming media and realtime AI inference
-- QUIC, WebRTC
+- Support for QUIC, NDI, WebRTC protocols
 - Addt'l datasource adapters: Etherium, Solid Pod
 - Support for MLOps
+- Adaptive, Autonomous (Re)deployment based on AIOps
