@@ -1,6 +1,6 @@
 /**
  * WEBSWITCH (c)
- * websocket clients connect to a common server,
+ * websocket clients connect to a common server
  * which broadcasts any messages it receives.
  */
 'use strict'
@@ -13,6 +13,7 @@ import { Observer } from '../../../domain/observer'
 const SERVICENAME = 'webswitch'
 const HOSTNAME = 'webswitch.local'
 const MAXRETRY = 5
+const TIMEOUTEVENT = 'webswitchTimeout'
 const configRoot = require('../../../config').aegisConfig
 const config = configRoot.services.serviceMesh.WebSwitch
 const DEBUG = /true|yes|y/i.test(config.debug) || false
@@ -20,6 +21,7 @@ const heartbeat = config.heartbeat || 10000
 const protocol = /true/i.test(process.env.SSL_ENABLED) ? 'wss' : 'ws'
 
 let serviceUrl
+let uplinkCallback
 /** @type {import('../../../domain/observer').Observer} */
 let observer
 /**@type {import('../../../domain/model-factory').ModelFactory} */
@@ -52,7 +54,7 @@ async function resolveServiceUrl () {
 
   return new Promise(async function (resolve, reject) {
     mdns.on('response', function (response) {
-      console.log('got a response packet:', response)
+      DEBUG && console.debug('got a response packet:', response)
 
       const answer = response.answers.find(
         a => a.name === SERVICENAME && a.type === 'SRV'
@@ -171,7 +173,7 @@ function startHeartBeat (ws) {
       ws.ping(0x9)
     } else {
       try {
-        observer.notify(WEBSWITCH, 'server unresponsive', true)
+        observer.notify(TIMEOUTEVENT, 'server unresponsive', true)
         console.error('mesh server unresponsive, trying new connection')
         ws = null // get a new socket
         clearInterval(intervalId)
