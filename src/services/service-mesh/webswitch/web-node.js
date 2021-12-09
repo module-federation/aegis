@@ -12,21 +12,22 @@ import ObserverFactory from '../../../domain/observer'
 
 const SERVICENAME = 'webswitch'
 const HOSTNAME = 'webswitch.local'
+const MAXRETRY = 5
 const configRoot = require('../../../config').aegisConfig
 const config = configRoot.services.serviceMesh.WebSwitch
 const DEBUG = /true|yes|y/i.test(config.debug) || false
 const heartbeat = config.heartbeat || 10000
+const protocol = /true/i.test(process.env.SSL_ENABLED) ? 'wss' : 'ws'
 const observer = ObserverFactory.getInstance()
-const sslEnabled = process.env.SSL_ENABLED
 
 let serviceUrl
-
-if (!configRoot) console.error('WebSwitch', 'cannot access config file')
 
 /**
  * @type import("ws/lib/websocket")
  */
 let ws
+
+if (!configRoot) console.error('WebSwitch', 'cannot access config file')
 
 function getLocalAddress () {
   const interfaces = os.networkInterfaces()
@@ -41,28 +42,39 @@ function getLocalAddress () {
   }
   return addresses
 }
-
+/**
+ *
+ * @returns {Promise<string>} url
+ */
 async function resolveServiceUrl () {
   const mdns = makeMdns()
+  let url
+
   return new Promise(async function (resolve, reject) {
     mdns.on('response', function (response) {
       console.log('got a response packet:', response)
-      try {
-        const address = response.answers.find(a => a.name === SERVICENAME)
-        if (address)
-          resolve(`${protocol}://${address.data.target}:${address.data.port}`)
-      } catch (error) {
-        reject('mdns.on', error)
+
+      const answer = response.answers.find(
+        a => a.name === SERVICENAME && a.type === 'SRV'
+      )
+
+      if (answer) {
+        url = `${protocol}://${answer.data.target}:${answer.data.port}`
+        console.info('found dns service record for', SERVICENAME, url)
+        resolve(url)
       }
     })
 
     mdns.on('query', function (query) {
-      console.log('got a query packet:', query)
-      const discoveryRequest = query.questions.filter(
-        q => q.name === SERVICENAME
+      DEBUG && console.debug('got a query packet:', query)
+
+      const questions = query.questions.filter(
+        q => q.name === SERVICENAME || q.name === HOSTNAME
       )
-      if (discoveryRequest) {
+
+      if (questions[0]) {
         if (os.hostname === HOSTNAME || config.isSwitch === true) {
+          console.debug('answering question about', HOSTNAME)
           mdns.respond({
             answers: [
               {
@@ -87,15 +99,25 @@ async function resolveServiceUrl () {
       }
     })
 
-    // lets query for an A record for 'brunhilde.local'
-    mdns.query({
-      questions: [
-        {
-          name: 'webswitch.local',
-          type: 'A'
-        }
-      ]
-    })
+    function runQuery (attempts) {
+      if (attempts > MAXRETRY) {
+        console.warn('mDNS cannot find switch after max retries')
+        return
+      }
+      // lets query for an A record
+      mdns.query({
+        questions: [
+          {
+            name: HOSTNAME,
+            type: 'A'
+          }
+        ]
+      })
+
+      setTimeout(() => (url ? resolve(url) : runQuery(attempts++)), 6000)
+    }
+
+    runQuery(0)
   })
 }
 
@@ -147,7 +169,7 @@ function startHeartBeat (ws) {
       ws.ping(0x9)
     } else {
       try {
-        observer.notify('webswitchTimeout', 'server unresponsive', true)
+        observer.notify(WEBSWITCH, 'server unresponsive', true)
         console.error('mesh server unresponsive, trying new connection')
         ws = null // get a new socket
         clearInterval(intervalId)
