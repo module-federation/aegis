@@ -87,7 +87,6 @@ export default function DistributedCache ({
   }
 
   /**
-   *
    * @param {*} eventName
    * @param {*} modelName
    * @param {Event} event
@@ -115,7 +114,7 @@ export default function DistributedCache ({
     console.info('unmarshal deserialized model', modelName)
     return [model]
       .flat()
-      .map(m => m && models.loadModel(observer, datasource, m, modelName))
+      .map(m => models.loadModel(observer, datasource, m, modelName))
   }
 
   /**
@@ -253,15 +252,12 @@ export default function DistributedCache ({
   function formatResponse (event, related) {
     if (!related || related.length < 1) {
       console.debug('no related objects found')
-      return {
-        ...event,
-        model: []
-      }
+      return event
     }
 
     return {
       ...event,
-      model: [related].flat()
+      model: related
     }
   }
 
@@ -274,18 +270,17 @@ export default function DistributedCache ({
    */
   function searchCache (route) {
     return async function (message) {
-      console.debug(searchCache.name, message)
+      console.debug(searchCache.name)
 
       try {
         const event = parse(message)
 
-        if (event.args.length > 0) {
+        // args mean create an object
+        if (event.args?.length > 0) {
           const newModel = await createRelatedObject(event)
-
-          if ([newModel].flat().length < 1)
-            console.debug('no related model(s) found')
+          if (!newModel || newModel.length < 1) console.debug('no related model found')
           return await route(formatResponse(event, newModel))
-        }
+        } 
 
         // find the requested object or objects
         const related = await relationType[event.relation.type](
@@ -293,7 +288,7 @@ export default function DistributedCache ({
           datasources.getDataSource(event.relation.modelName),
           event.relation
         )
-        await route(formatResponse(event, related))
+        return await route(formatResponse(event, related))
       } catch (error) {
         console.error(searchCache.name, error)
       }

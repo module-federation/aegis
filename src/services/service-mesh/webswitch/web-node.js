@@ -5,17 +5,21 @@
  */
 'use strict'
 
+import os from 'os'
 import WebSocket from 'ws'
-import dns from 'dns/promises'
-import doh from 'dohjs'
+import makeMdns from 'multicast-dns'
 import ObserverFactory from '../../../domain/observer'
 
 const SERVICENAME = 'webswitch'
+const HOSTNAME = 'webswitch.local'
 const configRoot = require('../../../config').aegisConfig
 const config = configRoot.services.serviceMesh.WebSwitch
 const DEBUG = /true|yes|y/i.test(config.debug) || false
 const heartbeat = config.heartbeat || 10000
 const observer = ObserverFactory.getInstance()
+const sslEnabled = process.env.SSL_ENABLED
+
+let serviceUrl
 
 if (!configRoot) console.error('WebSwitch', 'cannot access config file')
 
@@ -24,65 +28,75 @@ if (!configRoot) console.error('WebSwitch', 'cannot access config file')
  */
 let ws
 
-let port = config.port || SERVICENAME
-let fqdn = config.host || 'switch.app-mesh.net'
-let hostAddress
-let servicePort
-let uplinkCallback
-
-async function resolveAddress (hostname) {
-  try {
-    // Use DNS over HTTPS
-    const resolver = new doh.DohResolver('https://cloudflare-dns.com/dns-query')
-    const result = await resolver.query(hostname, 'A')
-    if (result.answers.length > 0) return result.answers[0].data
-
-    // Fallback to DNS
-    const addresses = await dns.resolve(hostname, 'A')
-    if (addresses.length > 0) return addresses[0]
-
-    // Include /etc/hosts
-    const record = await dns.lookup(hostname)
-    return record.address
-  } catch (e) {
-    console.warn(resolveAddress.name, 'warning', e)
-  }
-}
-
-async function getHostAddress (hostname) {
-  try {
-    if (
-      /(^((?!-)[a-zA-Z0-9-]{0,62}[a-zA-Z0-9]\.)+[a-zA-Z]{2,63}$)/.test(hostname)
-    ) {
-      return hostname
-    }
-    const address = await resolveAddress(hostname)
-    console.info('resolved host address', address)
-    return address
-  } catch (error) {
-    console.warn(getHostAddress.name, error)
-  }
-}
-
-async function getServicePort (hostname) {
-  try {
-    if (port && port !== SERVICENAME) return port
-    const services = await dns.resolveSrv(hostname)
-    if (services) {
-      const prt = services
-        .filter(s => s.name === SERVICENAME)
-        .reduce(s => s.port)
-      if (prt) {
-        return prt
+function getLocalAddress () {
+  const interfaces = os.networkInterfaces()
+  const addresses = []
+  for (var k in interfaces) {
+    for (var k2 in interfaces[k]) {
+      const address = interfaces[k][k2]
+      if (address.family === 'IPv4' && !address.internal) {
+        addresses.push(address.address)
       }
     }
-    throw new Error('cant find port')
-  } catch (error) {
-    console.error(getServicePort.name, error)
   }
-  return /true/i.test(process.env.SSL_ENABLED)
-    ? process.env.SSL_PORT || 443
-    : process.env.PORT || 80
+  return addresses
+}
+
+async function resolveServiceUrl () {
+  const mdns = makeMdns()
+  return new Promise(async function (resolve, reject) {
+    mdns.on('response', function (response) {
+      console.log('got a response packet:', response)
+      try {
+        const address = response.answers.find(a => a.name === SERVICENAME)
+        if (address)
+          resolve(`${protocol}://${address.data.target}:${address.data.port}`)
+      } catch (error) {
+        reject('mdns.on', error)
+      }
+    })
+
+    mdns.on('query', function (query) {
+      console.log('got a query packet:', query)
+      const discoveryRequest = query.questions.filter(
+        q => q.name === SERVICENAME
+      )
+      if (discoveryRequest) {
+        if (os.hostname === HOSTNAME || config.isSwitch === true) {
+          mdns.respond({
+            answers: [
+              {
+                name: SERVICENAME,
+                type: 'SRV',
+                data: {
+                  port: config.port,
+                  weight: 0,
+                  priority: 10,
+                  target: config.host
+                }
+              },
+              {
+                name: HOSTNAME,
+                type: 'A',
+                ttl: 300,
+                data: getLocalAddress()[0]
+              }
+            ]
+          })
+        }
+      }
+    })
+
+    // lets query for an A record for 'brunhilde.local'
+    mdns.query({
+      questions: [
+        {
+          name: 'webswitch.local',
+          type: 'A'
+        }
+      ]
+    })
+  })
 }
 
 /**
@@ -96,11 +110,8 @@ export function onUplinkMessage (callback) {
 /**
  * server sets uplink host
  */
-export function setUplinkAddress (address) {
-  hostAddress = null
-  const [FQDN, PORT] = address.split(':')
-  fqdn = FQDN
-  port = PORT
+export function setUplinkUrl (uplinkUrl) {
+  serviceUrl = uplinkUrl
 }
 
 const handshake = {
@@ -177,13 +188,13 @@ export async function publish (event) {
       console.error(publish.name, 'no event provided')
       return
     }
-    if (!hostAddress) hostAddress = await getHostAddress(fqdn)
-    if (!servicePort) servicePort = await getServicePort(fqdn)
+
+    if (!serviceUrl) serviceUrl = await resolveServiceUrl()
+    console.debug('serviceUrl', serviceUrl)
 
     function sendEvent () {
       if (!ws) {
-        const proto = /true/i.test(process.env.SSL_ENABLED) ? 'wss' : 'ws'
-        ws = new WebSocket(`${proto}://${hostAddress}:${servicePort}`)
+        ws = new WebSocket(serviceUrl)
 
         ws.on('open', function () {
           ws.send(handshake.serialize())
