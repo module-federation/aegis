@@ -43,9 +43,9 @@ export default function brokerEvents (observer, datasources, models) {
       subscribe
     })
 
-    if (useSvcMesh) ServiceMesh.initialize({ models, observer })
-
-    broker.start()
+    if (useSvcMesh)
+      ServiceMesh.initialize({ models, observer }).then(broker.start)
+    else broker.start()
   }
 
   forwardEvents({ observer, models, publish, subscribe })

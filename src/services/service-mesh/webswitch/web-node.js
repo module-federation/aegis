@@ -151,6 +151,7 @@ export function onUplinkMessage (callback) {
 export function setUplinkUrl (uplinkUrl) {
   serviceUrl = uplinkUrl
   ws = null // trigger reconnect
+  connect()
 }
 
 /**
@@ -205,7 +206,7 @@ function startHeartBeat (ws) {
 
   ws.ping(0x9)
 
-  const intervalId = setInterval(function () {
+  const intervalId = setInterval(async function () {
     if (receivedPong) {
       receivedPong = false
       ws.ping(0x9)
@@ -213,9 +214,8 @@ function startHeartBeat (ws) {
       try {
         observer.notify(TIMEOUTEVENT, 'server unresponsive', true)
         console.error('mesh server unresponsive, trying new connection')
-        serviceUrl = null // find possibly new switch in dns
-        ws = null // get a new socket
         clearInterval(intervalId)
+        await reconnect()
       } catch (error) {
         console.error(startHeartBeat.name, error)
       }
@@ -245,6 +245,56 @@ export async function subscribe (eventName, callback, options = {}) {
   }
 }
 
+async function connect () {
+  if (!ws) {
+    if (!serviceUrl) serviceUrl = await resolveServiceUrl()
+    console.info('connecting to ', serviceUrl)
+    ws = new WebSocket(serviceUrl)
+
+    ws.on('open', function () {
+      ws.send(handshake.serialize())
+      startHeartBeat(ws)
+    })
+
+    ws.on('error', function (error) {
+      console.error(ws.on, 'opening new conn after error', error)
+      ws = null
+    })
+
+    ws.on('message', async function (message) {
+      const eventData = JSON.parse(message)
+      console.assert(!DEBUG, 'received event:', eventData)
+
+      if (eventData.eventName) {
+        await observer.notify(eventData.eventName, eventData)
+        if (uplinkCallback) await uplinkCallback(message)
+        return
+      }
+
+      if (handshake.validate(eventData)) {
+        ws.send(handshake.serialize())
+        return
+      }
+
+      console.warn('no eventName in eventData', eventData)
+    })
+  }
+}
+
+async function reconnect () {
+  serviceUrl = null
+  ws = null
+  await connect()
+}
+
+function send (event) {
+  if (ws?.readyState) {
+    ws.send(JSON.stringify(event))
+    return
+  }
+  setTimeout(send, 1000)
+}
+
 /**
  * Call this method to broadcast a message on the webswitch network
  * @param {object} event
@@ -256,56 +306,8 @@ export async function publish (event) {
       console.error(publish.name, 'no event provided')
       return
     }
-
-    if (!serviceUrl) serviceUrl = await resolveServiceUrl()
-
-    function sendEvent () {
-      if (!ws) {
-        console.info('connecting to ', serviceUrl)
-        ws = new WebSocket(serviceUrl)
-
-        ws.on('open', function () {
-          ws.send(handshake.serialize())
-          startHeartBeat(ws)
-        })
-
-        ws.on('error', function (error) {
-          console.error(ws.on, 'opening new conn after error', error)
-          ws = null
-        })
-
-        ws.on('message', async function (message) {
-          const eventData = JSON.parse(message)
-          console.assert(!DEBUG, 'received event:', eventData)
-
-          if (eventData.eventName) {
-            await observer.notify(eventData.eventName, eventData)
-            if (uplinkCallback) await uplinkCallback(message)
-            return
-          }
-
-          if (handshake.validate(eventData)) {
-            ws.send(handshake.serialize())
-            return
-          }
-
-          console.warn('no eventName in eventData', eventData)
-        })
-
-        return
-      }
-
-      function send () {
-        if (ws?.readyState) {
-          ws.send(JSON.stringify(event))
-          return
-        }
-        setTimeout(send, 1000)
-      }
-
-      send()
-    }
-    sendEvent()
+    await connect()
+    send(event)
   } catch (e) {
     console.error('publish', e)
   }
@@ -318,8 +320,8 @@ export async function publish (event) {
  *  models:import('../../../domain/model-factory').ModelFactory
  * }} serviceInfo
  */
-export const initialize = serviceInfo => {
+export const initialize = async serviceInfo => {
   observer = serviceInfo.observer
   models = serviceInfo.models
-  publish(handshake.clientInfo())
+  await connect()
 }
