@@ -87,9 +87,7 @@ export function attachServer (server) {
 
         if (msg.proto === SERVICENAME && msg.pid && msg.role) {
           client.info = {
-            ...client.info,
-            pid: msg.pid,
-            role: msg.role,
+            ...msg,
             initialized: true
           }
           console.info('client initialized', client.info)

@@ -139,7 +139,7 @@ async function resolveServiceUrl () {
 
 /**
  * Set callback for uplink.
- * @param {*} callback
+ * @param {function():Promise<void>} callback
  */
 export function onUplinkMessage (callback) {
   uplinkCallback = callback
@@ -153,21 +153,41 @@ export function setUplinkUrl (uplinkUrl) {
   ws = null // trigger reconnect
 }
 
+/**
+ * @typedef {object} HandshakeMsg
+ * @property {string} proto the protocol 'webswitch'
+ * @property {'node'|'browser'|'uplink'} role of the client
+ * @property {number} pid - processid of the client or 1 for browsers
+ * @property {string} serviceUrl - webswitch url for the client
+ * @property {string[]} models - names of models running on the instance
+ * @property {string} address - address of the client
+ * @property {string} url - url to connect to client instance directly
+ */
+
+/**
+ *
+ */
 const handshake = {
-  getObject () {
+  /**
+   *
+   * @returns {HandshakeMsg}
+   */
+  clientInfo () {
     return {
       proto: SERVICENAME,
       role: 'node',
       pid: process.pid,
-      url: serviceUrl,
-      models: models.getModelSpecs().map(spec => spec.modelName)
+      serviceUrl,
+      models: models.getModelSpecs().map(spec => spec.modelName),
+      address: getLocalAddress()[0],
+      url: `${protocol}://${config.host}:${config.port}`
     }
   },
   validate (eventData) {
     return eventData.proto === SERVICENAME && eventData.pid
   },
   serialize () {
-    return JSON.stringify(this.getObject())
+    return JSON.stringify(this.clientInfo())
   }
 }
 
@@ -193,6 +213,7 @@ function startHeartBeat (ws) {
       try {
         observer.notify(TIMEOUTEVENT, 'server unresponsive', true)
         console.error('mesh server unresponsive, trying new connection')
+        serviceUrl = null // find possibly new switch in dns
         ws = null // get a new socket
         clearInterval(intervalId)
       } catch (error) {
@@ -226,7 +247,7 @@ export async function subscribe (eventName, callback, options = {}) {
 
 /**
  * Call this method to broadcast a message on the webswitch network
- * @param {*} event
+ * @param {object} event
  * @returns
  */
 export async function publish (event) {
@@ -259,6 +280,8 @@ export async function publish (event) {
 
           if (eventData.eventName) {
             await observer.notify(eventData.eventName, eventData)
+            if (uplinkCallback) await uplinkCallback(message)
+            return
           }
 
           if (handshake.validate(eventData)) {
@@ -266,7 +289,7 @@ export async function publish (event) {
             return
           }
 
-          if (uplinkCallback) uplinkCallback(message)
+          console.warn('no eventName in eventData', eventData)
         })
 
         return
@@ -298,5 +321,5 @@ export async function publish (event) {
 export const initialize = serviceInfo => {
   observer = serviceInfo.observer
   models = serviceInfo.models
-  publish(handshake.getObject())
+  publish(handshake.clientInfo())
 }
