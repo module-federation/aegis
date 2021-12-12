@@ -50,7 +50,7 @@ function fetchLog (id) {
 
 /**
  * Get last known status of breaker
- * @returns {symbold} breaker state
+ * @returns {symbol} breaker state
  * @returns {State}
  */
 function getState (log) {
@@ -72,7 +72,7 @@ function getState (log) {
  */
 
 /**
- * Get threahold based on error
+ * Get threshold based on error
  * @param {Error} error,
  * @param {thresholds} thresholds
  * @returns {thresholds[x]}
@@ -302,7 +302,7 @@ const CircuitBreaker = function (id, protectedCall, thresholds) {
     this.addListener(
       eventName,
       eventData => logError(id, eventData.eventName, thresholds),
-      { allowMultiple: false }
+      { singleton: true }
     )
   }
 
@@ -346,7 +346,7 @@ const CircuitBreaker = function (id, protectedCall, thresholds) {
             console.warn('breaker test failed', id)
             breaker.trip()
           } else {
-            console.warn('resetting breaker', id)
+            console.info('resetting breaker', id)
             breaker.reset()
           }
           return result

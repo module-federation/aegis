@@ -62,11 +62,11 @@ async function updateForeignKeys (model, event, relation, ds) {
     console.debug(updateForeignKeys.name, 'found', event)
     return model.update({ [relation.foreignKey]: event.model.id }, false)
   } else if (
-    relation.type === relationType.oneToMany.name &&
-    relation.type === relationType.containsMany &&
-    model instanceof Array
+    model instanceof Array &&
+    (relation.type === relationType.oneToMany.name ||
+      relation.type === relationType.containsMany)
   ) {
-    await Promise.allSettled(
+    return Promise.allSettled(
       event.model.map(async m =>
         (await ds.find(m.id)).update({ [relation.foreignKey]: model.modelId })
       )
@@ -151,7 +151,7 @@ export default function makeRelations (relations, datasource, observer) {
               // each arg contains input to create a new object
               if (event && event.args.length > 0) {
                 const updated = await updateForeignKeys(this, event, rel, ds)
-                setTimeout(updateForeignKeys, 3000, updated, event, rel, ds)
+                setTimeout(updateForeignKeys, 3000, this, event, rel, ds)
                 //return event.model
                 return relationType[rel.type](updated, ds, rel)
               }

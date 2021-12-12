@@ -213,7 +213,7 @@ export default function DistributedCache ({
   async function createRelatedObject (event) {
     if (event.args.length < 1 || !event.relation || !event.modelName) {
       console.error('missing required params', event)
-      return event
+      return null
     }
 
     try {
@@ -229,18 +229,28 @@ export default function DistributedCache ({
   /**
    *s
    * @param {Event} event
-   * @param {Model|Model[]} relatedModels models
+   * @param {Model|Model[]} model models
    * @returns {Event} w/ updated model, modelId, modelName
    */
   function formatResponse (event, model) {
-    if (!model) {
-      console.debug('no related objects found')
-      return event
+    if (!model || model.length < 1) {
+      console.debug(formatResponse.name, 'no model provided')
+      return {
+        ...event,
+        model: null
+      }
     }
 
     return {
       ...event,
-      model
+      model: Array.isArray(model)
+        ? model.length < 2
+          ? model[0]
+          : model
+        : model,
+      modelId: Array.isArray(model)
+        ? model[0].id || model[0].getId()
+        : model.id || model.getId()
     }
   }
 
@@ -261,7 +271,7 @@ export default function DistributedCache ({
         // args mean create an object
         if (event.args?.length > 0) {
           const newModel = await createRelatedObject(event)
-          if (!newModel[0]) console.debug('no related model found')
+          console.debug('new model created: ', newModel)
           return await route(formatResponse(event, newModel))
         }
 
@@ -271,6 +281,7 @@ export default function DistributedCache ({
           datasources.getDataSource(event.relation.modelName),
           event.relation
         )
+        console.debug(searchCache.name, 'related model ', related)
         return await route(formatResponse(event, related))
       } catch (error) {
         console.error(searchCache.name, error)

@@ -17,16 +17,17 @@ const DEBUG = process.env.DEBUG
 
 /**
  * @typedef {object} observerOptions
- * @property {object} [filter] - matching key-value pairs have to be found in the event data
- * @property {boolean} [subscriber] - the subscription's `eventId` has to be found in the event data
+ * @property {object} [filter] - matching key-value pairs, e.g. {id:123}, have to be found in the event data
+ * @property {boolean} [subscriber] - the subscription id `eventId` has to be found in the event data
  * @property {boolean} [singleton] - there should be only one instance of this handler in the system
- * @property {boolean} [once] - only run this handler once, then unsubscribe. Code to do it manually:
+ * @property {boolean} [once] - run this handler only once, then unsubscribe. To code it manually:
  * ```
- * const handler = eventData => console.log(eventData)
- * const subscription = model.addListener(eventName, handler)
- * // later on...
- * subscription.unsubscribe()
+ * const listener = model.addListener(eventName, function (eventData) {
+ *   // ...do something
+ *   listener.unsubscribe()
+ * })
  * ```
+ * @property {number} [delay] - run handler at least `delay` milliseconds after the event is fired
  */
 
 /**
@@ -36,7 +37,8 @@ const observerOptions = {
   once: false,
   filter: {},
   singleton: false,
-  subscriber: false
+  subscriber: false,
+  delay: 0
 }
 
 /**@type {Map<string | RegExp, eventHandler[]>}  */
@@ -57,7 +59,6 @@ export class Observer {
    * @param {String | RegExp} eventName
    * @param {eventHandler} handler
    * @param {observerOptions} [options]
-   * `allowMultiple` true by default; if false, event can be handled by only one callback
    */
   on (eventName, handler, { ...observerOptions }) {
     throw new Error('unimplemented abstract method')
@@ -70,6 +71,15 @@ export class Observer {
    * @param {{forward:boolean}} options - forward this event externally
    */
   async notify (eventName, eventData, options) {
+    throw new Error('unimplemented abstract method')
+  }
+
+  /**
+   * unsubscribe handler `callback` from event `eventName`
+   * @param {string|RegExp} eventName
+   * @param {eventHandler} callback
+   */
+  off (eventName, callback) {
     throw new Error('unimplemented abstract method')
   }
 }
@@ -150,6 +160,7 @@ async function notify (eventName, eventData, options = {}) {
     handleError(notify.name, error)
   }
 }
+
 /**
  * @type {Observer}
  * @extends Observer
@@ -158,8 +169,8 @@ class ObserverImpl extends Observer {
   /**
    * @override
    */
-  constructor (eventHandlers) {
-    super(eventHandlers)
+  constructor () {
+    super()
     this.notify = notify.bind(this)
   }
 
@@ -172,7 +183,13 @@ class ObserverImpl extends Observer {
   on (
     eventName,
     handler,
-    { once = false, filter = {}, singleton = false, subscriber = false } = {}
+    {
+      once = false,
+      filter = {},
+      singleton = false,
+      subscriber = false,
+      delay = 0
+    } = {}
   ) {
     if (!eventName || typeof handler !== 'function') {
       console.error(ObserverImpl.name, 'invalid arg', eventName, handler)
@@ -200,7 +217,8 @@ class ObserverImpl extends Observer {
         )
       ) {
         if (once) this.off(eventName, callbackWrapper)
-        return handler(eventData)
+        if (delay > 0) setTimeout(handler, delay, eventData)
+        else return handler(eventData)
       }
     }
 
