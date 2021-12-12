@@ -285,6 +285,7 @@ async function reconnect () {
   serviceUrl = null
   ws = null
   await connect()
+  if (!ws) setTimeout(reconnect, 60000)
 }
 
 function send (event) {
