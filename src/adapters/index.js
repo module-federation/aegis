@@ -17,6 +17,7 @@ import { ServiceMeshPlugin } from '../services'
 /**
  * @callback publish
  * @param {object} event
+ * @returns {Promise<void>}
  */
 
 /**
@@ -33,6 +34,7 @@ import { ServiceMeshPlugin } from '../services'
 /**
  * @callback initialize
  * @param {*} [serviceInfo]
+ * @returns {Promise<void>}
  */
 
 /**
@@ -47,11 +49,13 @@ import { ServiceMeshPlugin } from '../services'
  */
 
 /**
- * Bind the adapter to the service 
+ * Bind the adapter to the service
  * @type {ServiceMeshAdapter}
  */
 export const ServiceMeshAdapter = {
   ...Object.keys(ServiceMeshPluginAdapter)
-    .map(port => ({ [port]: ServiceMeshPluginAdapter[port](ServiceMeshPlugin) }))
+    .map(port => ({
+      [port]: ServiceMeshPluginAdapter[port](ServiceMeshPlugin)
+    }))
     .reduce((a, b) => ({ ...a, ...b }))
 }

@@ -6,23 +6,27 @@ import { ServiceMeshAdapter as ServiceMesh } from '../adapters'
 import { forwardEvents } from './forward-events'
 import uuid from '../domain/util/uuid'
 
+// use external event bus for distributed object cache?
+const useEvtBus = process.env.EVENTBUS_ENABLE || false
+// what channel to broadcast cache events?
 const BROADCAST = process.env.TOPIC_BROADCAST || 'broadcastChannel'
-const useObjectCache =
-  /true/i.test(process.env.DISTRIBUTED_CACHE_ENABLED) || true
-const useSvcMesh = /true/i.test(process.env.SERVICEMESH_ENABLED) || true
 
 /**
- * Handle internal and external events.
+ * Broker events between local and remote domains.
+ * - event forwarding
+ * - distributed object cache
+ *    - crud lifecycle events
+ *    - find obj / cache miss
  * @param {import('../domain/observer').Observer} observer
  * @param {import("../domain/datasource-factory")} datasources
  * @param {import("../domain/model-factory").ModelFactory} models
  */
 export default function brokerEvents (observer, datasources, models) {
-  const meshPub = event => ServiceMesh.publish(event)
-  const meshSub = (event, cb) => ServiceMesh.subscribe(event, cb)
+  const svcMshPub = event => ServiceMesh.publish(event)
+  const svcMshSub = (event, cb) => ServiceMesh.subscribe(event, cb)
 
-  const busPub = event => EventBus.notify(BROADCAST, JSON.stringify(event))
-  const busSub = (event, cb) =>
+  const evtBusPub = event => EventBus.notify(BROADCAST, JSON.stringify(event))
+  const evtBusSub = (event, cb) =>
     EventBus.listen({
       topic: BROADCAST,
       id: uuid(),
@@ -31,24 +35,22 @@ export default function brokerEvents (observer, datasources, models) {
       callback: msg => cb(JSON.parse(msg))
     })
 
-  const publish = useSvcMesh ? meshPub : busPub
-  const subscribe = useSvcMesh ? meshSub : busSub
+  const publish = useEvtBus ? evtBusPub : svcMshPub
+  const subscribe = useEvtBus ? evtBusSub : svcMshSub
 
-  if (useObjectCache) {
-    const broker = DistributedCache({
-      observer,
-      datasources,
-      models,
-      publish,
-      subscribe
-    })
+  const broker = DistributedCache({
+    observer,
+    datasources,
+    models,
+    publish,
+    subscribe
+  })
 
-    if (useSvcMesh)
-      ServiceMesh.initialize({ models, observer }).then(broker.start)
-    else broker.start()
-  }
-
-  forwardEvents({ observer, models, publish, subscribe })
+  // start mesh regardless
+  ServiceMesh.initialize({ models, observer }).then(() => {
+    broker.start()
+    forwardEvents({ observer, models, publish, subscribe })
+  })
 
   /**
    * This is the cluster cache sync listener - when data is
