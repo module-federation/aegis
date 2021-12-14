@@ -19,7 +19,7 @@
     "core-js": "^3"
   },
   "dependencies": {
-    "@assemblyscript/loader": "0.19.20",
+    "@assemblyscript/loader": "0.19.22",
     "@octokit/core": "3.5.1",
     "@octokit/rest": "18.12.0",
     "acme-client": "^2.0.1",
