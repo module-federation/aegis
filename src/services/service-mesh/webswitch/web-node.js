@@ -18,9 +18,10 @@ const MAXRETRY = 5
 const TIMEOUTEVENT = 'webswitchTimeout'
 const configRoot = require('../../../config').aegisConfig
 const config = configRoot.services.serviceMesh.WebSwitch
-const DEBUG = /true|yes|y/i.test(config.debug) || false
+const DEBUG = /true/i.test(config.debug) || false
 const heartbeat = config.heartbeat || 10000
 const protocol = /true/i.test(process.env.SSL_ENABLED) ? 'wss' : 'ws'
+const isSwitch = /true/i.test(process.env.IS_SWITCH) || config.isSwitch
 
 let serviceUrl
 let uplinkCallback
@@ -81,7 +82,7 @@ async function resolveServiceUrl () {
       )
 
       if (questions[0]) {
-        if (os.hostname === HOSTNAME || config.isSwitch === true) {
+        if (isSwitch || os.hostname === HOSTNAME) {
           console.debug('answering question about', HOSTNAME)
           mdns.respond({
             answers: [
