@@ -46,6 +46,7 @@ function getLocalAddress () {
   }
   return addresses
 }
+
 /**
  * Use multi-cast DNS to find the Aegis
  * instance configured as the switch for

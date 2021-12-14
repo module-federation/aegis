@@ -254,8 +254,12 @@ const Model = (() => {
         const model = optionalValidation(this, changes, validate)
         const saved = await datasource.find(model[ID])
 
+        // preserve the most recent updates
+        const [fresh, stale] =
+          model.updateTime > saved.updateTime ? [model, saved] : [saved, model]
+
         // by default merge the incoming model with the last one saved
-        const merge = overwrite ? model : { ...saved, ...model }
+        const merge = overwrite ? model : { ...stale, ...fresh }
 
         const final = await datasource.save(model[ID], {
           ...merge,

@@ -2,11 +2,12 @@
 
 const DateFunctions = {
   today: list =>
-    list.filter(m => new Date(m.createTime).getDay() == new Date().getDay())
+    list.filter(m => new Date(m.createTime).getDate() === new Date().getDate())
       .length,
   yesterday: list =>
-    list.filter(m => new Date(m.createTime).getDay() == new Date().getDay() - 1)
-      .length,
+    list.filter(
+      m => new Date(m.createTime).getDate() === new Date().getDate() - 1
+    ).length,
   thisMonth: list =>
     list.filter(
       m => new Date(m.createTime).getMonth() === new Date().getMonth()
