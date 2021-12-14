@@ -73,7 +73,7 @@ export function forwardEvents ({ observer, models, publish, subscribe }) {
 
     producerEvents.forEach(producerEvent =>
       observer.on(producerEvent, eventData => publish(eventData), {
-        allowMultiple: false
+        singleton: true
       })
     )
   }
