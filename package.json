@@ -1,6 +1,6 @@
 {
   "name": "@module-federation/aegis",
-  "version": "1.0.0-beta.76",
+  "version": "1.0.0-beta.77",
   "module": "lib/index.js",
   "main": "lib/index.js",
   "repository": "git@github.com:module-federation/aegis.git",
@@ -34,7 +34,7 @@
     "jwks-rsa": "2.0.5",
     "mesh-link": "0.13.6",
     "mongodb": "4.2.1",
-    "multicast-dns":"7.2.4",
+    "multicast-dns": "7.2.4",
     "nanoid": "3.1.30",
     "nats": "2.4.0",
     "regenerator-runtime": "0.13.9",
