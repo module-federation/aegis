@@ -12,13 +12,13 @@ import os from 'os'
 import WebSocket from 'ws'
 import makeMdns from 'multicast-dns'
 
-const SERVICENAME = 'web-switch'
-const HOSTNAME = 'web-switch.local'
+const SERVICENAME = 'webswitch'
+const HOSTNAME = 'webswitch.local'
 const MAXRETRY = 5
-const TIMEOUTEVENT = 'web-switchTimeout'
+const TIMEOUTEVENT = 'webswitchTimeout'
 const configRoot = require('../../../config').hostConfig
 const domain = configRoot.services.cert.domain
-const config = configRoot.services.serviceMesh.web -switch
+const config = configRoot.services.serviceMesh.WebSwitch
 const DEBUG = config.debug || false
 const heartbeat = config.heartbeat || 10000
 const protocol = /true/i.test(process.env.SSL_ENABLED) ? 'wss' : 'ws'
@@ -35,7 +35,7 @@ let ws
 
 if (!configRoot) console.error('web-switch', 'cannot access config file')
 
-function getLocalAddress() {
+function getLocalAddress () {
   const interfaces = os.networkInterfaces()
   const addresses = []
   for (var k in interfaces) {
@@ -56,7 +56,7 @@ function getLocalAddress() {
  *
  * @returns {Promise<string>} url
  */
-async function resolveServiceUrl() {
+async function resolveServiceUrl () {
   const mdns = makeMdns()
   let url
 
@@ -118,7 +118,7 @@ async function resolveServiceUrl() {
      * @param {number} attempts number of query attempts
      * @returns
      */
-    function runQuery(attempts = 0) {
+    function runQuery (attempts = 0) {
       if (attempts > MAXRETRY) {
         console.warn('mDNS cannot find switch after max retries')
         return
@@ -140,22 +140,20 @@ async function resolveServiceUrl() {
   })
 }
 
-async function resolveDomain() {
-
-}
+async function resolveDomain () {}
 
 /**
  * Set callback for uplink.
  * @param {function():Promise<void>} callback
  */
-export function onUplinkMessage(callback) {
+export function onUplinkMessage (callback) {
   uplinkCallback = callback
 }
 
 /**
  * server sets uplink host
  */
-export function setUplinkUrl(uplinkUrl) {
+export function setUplinkUrl (uplinkUrl) {
   serviceUrl = uplinkUrl
   ws = null // trigger reconnect
   connect()
@@ -176,25 +174,18 @@ export function setUplinkUrl(uplinkUrl) {
  *
  */
 const handshake = {
-  /**
-   * @returns {HandshakeMsg}
-   */
-  clientInfo() {
-    return {
-      proto: SERVICENAME,
-      role: 'node',
-      pid: process.pid,
-      serviceUrl,
-      models: models.getModelSpecs().map(spec => spec.modelName),
-      address: getLocalAddress()[0],
-      url: `${protocol}://${host}:${config.port}`
-    }
+  proto: SERVICENAME,
+  role: 'node',
+  pid: process.pid,
+  serviceUrl,
+  models: models.getModelSpecs().map(spec => spec.modelName),
+  address: getLocalAddress()[0],
+  url: `${protocol}://${host}:${config.port}`,
+  serialize () {
+    return JSON.stringify(this)
   },
-  validate(eventData) {
-    return eventData.proto === SERVICENAME && eventData.pid
-  },
-  serialize() {
-    return JSON.stringify(this.clientInfo())
+  validate (msg) {
+    return msg.proto === this.proto
   }
 }
 
@@ -202,8 +193,8 @@ const handshake = {
  *
  * @param {WebSocket} ws
  */
-function startHeartBeat(ws) {
-  let receivedPong = false
+function startHeartBeat (ws) {
+  let receivedPong = true
 
   ws.addListener('pong', function () {
     console.assert(!DEBUG, 'received pong')
@@ -241,7 +232,7 @@ function startHeartBeat(ws) {
  * @param {*} observer
  * @param {{allowMultiple:boolean, once:boolean}} [options]
  */
-export async function subscribe(eventName, callback, options = {}) {
+export async function subscribe (eventName, callback, options = {}) {
   try {
     observer.on(eventName, callback, options)
   } catch (e) {
@@ -249,7 +240,7 @@ export async function subscribe(eventName, callback, options = {}) {
   }
 }
 
-async function connect() {
+async function connect () {
   if (!ws) {
     if (!serviceUrl) serviceUrl = await resolveServiceUrl()
     console.info('connecting to ', serviceUrl)
@@ -285,14 +276,14 @@ async function connect() {
   }
 }
 
-async function reconnect() {
+async function reconnect () {
   serviceUrl = null
   ws = null
   await connect()
   if (!ws) setTimeout(reconnect, 60000)
 }
 
-function send(event) {
+function send (event) {
   if (ws?.readyState) {
     ws.send(JSON.stringify(event))
     return
@@ -305,7 +296,7 @@ function send(event) {
  * @param {object} event
  * @returns
  */
-export async function publish(event) {
+export async function publish (event) {
   try {
     if (!event) {
       console.error(publish.name, 'no event provided')

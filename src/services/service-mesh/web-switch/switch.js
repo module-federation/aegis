@@ -2,7 +2,7 @@
 
 import { nanoid } from 'nanoid'
 
-const SERVICENAME = 'web-switch'
+const SERVICENAME = 'webswitch'
 const startTime = Date.now()
 const uptime = () => Math.round(Math.abs((Date.now() - startTime) / 1000 / 60))
 const configRoot = require('../../../config').hostConfig
@@ -14,9 +14,9 @@ let messagesSent = 0
 /**
  *
  * @param {import('ws').Server} server
- * @returns {}
+ * @returns {import('ws').Server}
  */
-export function attachServer(server) {
+export function attachServer (server) {
   /**
    *
    * @param {object} data
@@ -41,7 +41,7 @@ export function attachServer(server) {
    * @todo
    * @param {WebSocket} client
    */
-  server.setRateLimit = function (client) { }
+  server.setRateLimit = function (client) {}
 
   /**
    *
@@ -55,16 +55,35 @@ export function attachServer(server) {
         messagesSent,
         clientsConnected: server.clients.size,
         uplink: server.uplink ? uplink : 'no uplink',
-        isSwitch
+        primarySwitch: isSwitch,
+        failoverSwitch: server.failoverSwitch
       })
     )
   }
+
+  // function setFailoverSwitch (client) {
+  //   const clients = server.clients.entries()
+
+  //   function _setFailoverSwitch (client) {
+  //     if (!server.failoverSwitch) {
+  //       if (client.OPEN) {
+  //         client.send({ proto: SERVICENAME, msg: 'setFailover' })
+  //         return true
+  //       }
+  //       if (_setFailoverSwitch(clients.next().value)) return true
+  //     }
+  //     return false
+  //   }
+
+  //   _setFailoverSwitch(client)
+  // }
 
   /**
    * @param {WebSocket} client
    */
   server.on('connection', function (client) {
     client.info = { address: client._socket.address(), id: nanoid() }
+    //setFailoverSwitch(client)
 
     client.addListener('ping', function () {
       console.assert(!DEBUG, 'responding to client ping', client.info)
@@ -83,6 +102,7 @@ export function attachServer(server) {
           if (msg == 'status') {
             return server.sendStatus(client)
           }
+
           server.broadcast(message, client)
           return
         }
