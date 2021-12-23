@@ -12,7 +12,7 @@ function hexToBytes (hex) {
   return bytes
 }
 
-export const StringEncoder = {
+const StringEncoder = {
   /**
    * Get the integer value of the string
    * @param {string} str string to encode
@@ -26,3 +26,5 @@ export const StringEncoder = {
    */
   decode: num => new TextDecoder().decode(hexToBytes(num.toString(16)))
 }
+
+module.exports = StringEncoder

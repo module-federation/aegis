@@ -47,7 +47,7 @@ export default function brokerEvents (observer, datasources, models) {
   })
 
   // start mesh regardless
-  ServiceMesh.initialize({ models, observer }).then(() => {
+  ServiceMesh.connect({ models, observer }).then(() => {
     broker.start()
     forwardEvents({ observer, models, publish, subscribe })
   })

@@ -27,8 +27,8 @@ import pipe from './util/pipe'
  * @property {number} eventTime
  * @property {object} [eventData]
  * @property {string} [eventCode]
- * @property {string} [eventRank]
- * @property {string} [eventTags]
+ * @property {number} [eventRank]
+ * @property {string[]} [eventTags]
  * @property {string} [eventSource]
  * @property {string} [eventTarget]
  * @property {EventType} [eventType]

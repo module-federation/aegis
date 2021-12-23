@@ -247,7 +247,7 @@ function attachServer (server) {
           return
         }
 
-        if (msg.proto === 'webswitch' && msg.pid && msg.role) {
+        if (msg.proto === 'web-switch' && msg.pid && msg.role) {
           client.info = {
             ...client.info,
             pid: msg.pid,

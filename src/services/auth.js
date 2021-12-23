@@ -2,7 +2,7 @@
 const path = require('path')
 const jwt = require('express-jwt')
 const jwks = require('jwks-rsa')
-const keySet = require('../config').aegisConfig.services.auth.keySet
+const keySet = require('../config').hostConfig.services.auth.keySet
 const authEnabled = /true/i.test(process.env.AUTH_ENABLED)
 
 exports.protectRoutes = function (app, path) {

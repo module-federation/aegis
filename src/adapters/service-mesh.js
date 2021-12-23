@@ -1,8 +1,8 @@
 'use strict'
 
-export function initialize (service) {
+export function connect (service) {
   return async function (serviceInfo = null) {
-    service.initialize(serviceInfo)
+    service.connect(serviceInfo)
   }
 }
 

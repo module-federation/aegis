@@ -32,20 +32,25 @@ import { ServiceMeshPlugin } from '../services'
  */
 
 /**
- * @callback initialize
+ * @callback connectMeshType
  * @param {*} [serviceInfo]
  * @returns {Promise<void>}
  */
 
 /**
- * Service Mesh plugin adapter interface.
+ * service mesh plugin adapter
  * @typedef {object} ServiceMeshAdapter
- * @property {attachServer} attachServer all service mesh plugins will
- * implement a websocket server on the same port as the API. This func
- * passes the handle for the socket.
+ * @property {attachServer} attachServer all service mesh plug-ins
+ * implement a websocket server on the same port as the domain model
+ * API, regardless of how they integrate the nodes of the mesh, which
+ * can be based on an entirely different transport protocol, e.g. UDP 
+ * instead of TCP. This function simply passes the server socket handle
+ * to the mesh, which then listens for requests from http clents to 
+ * upgrade to ws protocol, at which point clients can avail themselves
+ * of mesh services, e.g. such as subscribing to an event stream.
  * @property {publish} publish publish an event to the service mesh
  * @property {subscribe} subscribe subscribe to events on the service mesh
- * @property {initialize} initialize take care of any initialization tasks
+ * @property {connectMeshType} connect take care of any initialization tasks
  */
 
 /**

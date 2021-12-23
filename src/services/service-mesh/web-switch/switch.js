@@ -2,12 +2,13 @@
 
 import { nanoid } from 'nanoid'
 
-const SERVICENAME = 'webswitch'
+const SERVICENAME = 'web-switch'
 const startTime = Date.now()
 const uptime = () => Math.round(Math.abs((Date.now() - startTime) / 1000 / 60))
-const configRoot = require('../../../config').aegisConfig
-const uplink = configRoot.services.serviceMesh.WebSwitch.uplink
-const DEBUG = /true/i.test(configRoot.services.serviceMesh.WebSwitch.debug)
+const configRoot = require('../../../config').hostConfig
+const uplink = configRoot.services.serviceMesh.weSwitch.uplink
+const DEBUG = /true/i.test(configRoot.services.serviceMesh.webSwitch.debug)
+const isSwitch = /true/i.test(process.env.IS_SWITCH) || config.isSwitch
 let messagesSent = 0
 
 /**
@@ -15,7 +16,7 @@ let messagesSent = 0
  * @param {import('ws').Server} server
  * @returns {}
  */
-export function attachServer (server) {
+export function attachServer(server) {
   /**
    *
    * @param {object} data
@@ -40,7 +41,7 @@ export function attachServer (server) {
    * @todo
    * @param {WebSocket} client
    */
-  server.setRateLimit = function (client) {}
+  server.setRateLimit = function (client) { }
 
   /**
    *
@@ -53,7 +54,8 @@ export function attachServer (server) {
         uptimeMinutes: uptime(),
         messagesSent,
         clientsConnected: server.clients.size,
-        uplink: server.uplink ? uplink : 'no uplink'
+        uplink: server.uplink ? uplink : 'no uplink',
+        isSwitch
       })
     )
   }
@@ -104,7 +106,7 @@ export function attachServer (server) {
 
   try {
     if (uplink) {
-      server.uplink = require('./web-node')
+      server.uplink = require('./node')
       server.uplink.setUplinkAddress(uplink)
       server.uplink.onUplinkMessage(msg => server.broadcast(msg, server.uplink))
       server.uplink.info = {

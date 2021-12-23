@@ -1,7 +1,6 @@
 'use strict'
 
 import fs from 'fs'
-import path from 'path'
 const configPath = process.env.CONFIG_PATH
 
 function validateConfigs (configs) {

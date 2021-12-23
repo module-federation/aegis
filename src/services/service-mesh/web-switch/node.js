@@ -1,9 +1,9 @@
 /**
- * WEBSWITCH (c)
+ * web-switch (c)
  *
  * websocket clients connect to a common ws server
- * (called the switch) which broadcasts messages
- * to the other connected clients as well as the
+ * (called a web-switch) which broadcasts messages
+ * to the other connected clients as well as an
  * uplink if one is configured.
  */
 'use strict'
@@ -12,12 +12,13 @@ import os from 'os'
 import WebSocket from 'ws'
 import makeMdns from 'multicast-dns'
 
-const SERVICENAME = 'webswitch'
-const HOSTNAME = 'webswitch.local'
+const SERVICENAME = 'web-switch'
+const HOSTNAME = 'web-switch.local'
 const MAXRETRY = 5
-const TIMEOUTEVENT = 'webswitchTimeout'
-const configRoot = require('../../../config').aegisConfig
-const config = configRoot.services.serviceMesh.WebSwitch
+const TIMEOUTEVENT = 'web-switchTimeout'
+const configRoot = require('../../../config').hostConfig
+const domain = configRoot.services.cert.domain
+const config = configRoot.services.serviceMesh.web -switch
 const DEBUG = config.debug || false
 const heartbeat = config.heartbeat || 10000
 const protocol = /true/i.test(process.env.SSL_ENABLED) ? 'wss' : 'ws'
@@ -29,12 +30,12 @@ let uplinkCallback
 let observer
 /**@type {import('../../../domain/model-factory').ModelFactory} */
 let models
-/** @type {import('ws/lib/websocket')}*/
+/** @type {WebSocket}*/
 let ws
 
-if (!configRoot) console.error('WebSwitch', 'cannot access config file')
+if (!configRoot) console.error('web-switch', 'cannot access config file')
 
-function getLocalAddress () {
+function getLocalAddress() {
   const interfaces = os.networkInterfaces()
   const addresses = []
   for (var k in interfaces) {
@@ -49,13 +50,13 @@ function getLocalAddress () {
 }
 
 /**
- * Use multi-cast DNS to find the Aegis
- * instance configured as the switch for
- * the local network.
+ * Use multicast DNS to find the host
+ * instance configured as the "switch"
+ * node for the local area network.
  *
  * @returns {Promise<string>} url
  */
-async function resolveServiceUrl () {
+async function resolveServiceUrl() {
   const mdns = makeMdns()
   let url
 
@@ -93,7 +94,7 @@ async function resolveServiceUrl () {
                   port: config.port,
                   weight: 0,
                   priority: 10,
-                  target: config.host
+                  target: domain || config.host
                 }
               },
               {
@@ -109,7 +110,7 @@ async function resolveServiceUrl () {
     })
 
     /**
-     * Query DNS for the webswitch server.
+     * Query DNS for the web-switch server.
      * Recursively retry by incrementing a
      * counter we pass to ourselves on the
      * stack.
@@ -117,7 +118,7 @@ async function resolveServiceUrl () {
      * @param {number} attempts number of query attempts
      * @returns
      */
-    function runQuery (attempts = 0) {
+    function runQuery(attempts = 0) {
       if (attempts > MAXRETRY) {
         console.warn('mDNS cannot find switch after max retries')
         return
@@ -139,18 +140,22 @@ async function resolveServiceUrl () {
   })
 }
 
+async function resolveDomain() {
+
+}
+
 /**
  * Set callback for uplink.
  * @param {function():Promise<void>} callback
  */
-export function onUplinkMessage (callback) {
+export function onUplinkMessage(callback) {
   uplinkCallback = callback
 }
 
 /**
  * server sets uplink host
  */
-export function setUplinkUrl (uplinkUrl) {
+export function setUplinkUrl(uplinkUrl) {
   serviceUrl = uplinkUrl
   ws = null // trigger reconnect
   connect()
@@ -158,10 +163,10 @@ export function setUplinkUrl (uplinkUrl) {
 
 /**
  * @typedef {object} HandshakeMsg
- * @property {string} proto the protocol 'webswitch'
+ * @property {string} proto the protocol 'web-switch'
  * @property {'node'|'browser'|'uplink'} role of the client
  * @property {number} pid - processid of the client or 1 for browsers
- * @property {string} serviceUrl - webswitch url for the client
+ * @property {string} serviceUrl - web-switch url for the client
  * @property {string[]} models - names of models running on the instance
  * @property {string} address - address of the client
  * @property {string} url - url to connect to client instance directly
@@ -172,10 +177,9 @@ export function setUplinkUrl (uplinkUrl) {
  */
 const handshake = {
   /**
-   *
    * @returns {HandshakeMsg}
    */
-  clientInfo () {
+  clientInfo() {
     return {
       proto: SERVICENAME,
       role: 'node',
@@ -183,13 +187,13 @@ const handshake = {
       serviceUrl,
       models: models.getModelSpecs().map(spec => spec.modelName),
       address: getLocalAddress()[0],
-      url: `${protocol}://${config.host}:${config.port}`
+      url: `${protocol}://${host}:${config.port}`
     }
   },
-  validate (eventData) {
+  validate(eventData) {
     return eventData.proto === SERVICENAME && eventData.pid
   },
-  serialize () {
+  serialize() {
     return JSON.stringify(this.clientInfo())
   }
 }
@@ -198,15 +202,13 @@ const handshake = {
  *
  * @param {WebSocket} ws
  */
-function startHeartBeat (ws) {
+function startHeartBeat(ws) {
   let receivedPong = false
 
   ws.addListener('pong', function () {
     console.assert(!DEBUG, 'received pong')
     receivedPong = true
   })
-
-  ws.ping(0x9)
 
   const intervalId = setInterval(async function () {
     if (receivedPong) {
@@ -239,7 +241,7 @@ function startHeartBeat (ws) {
  * @param {*} observer
  * @param {{allowMultiple:boolean, once:boolean}} [options]
  */
-export async function subscribe (eventName, callback, options = {}) {
+export async function subscribe(eventName, callback, options = {}) {
   try {
     observer.on(eventName, callback, options)
   } catch (e) {
@@ -247,7 +249,7 @@ export async function subscribe (eventName, callback, options = {}) {
   }
 }
 
-async function connect () {
+async function connect() {
   if (!ws) {
     if (!serviceUrl) serviceUrl = await resolveServiceUrl()
     console.info('connecting to ', serviceUrl)
@@ -283,14 +285,14 @@ async function connect () {
   }
 }
 
-async function reconnect () {
+async function reconnect() {
   serviceUrl = null
   ws = null
   await connect()
   if (!ws) setTimeout(reconnect, 60000)
 }
 
-function send (event) {
+function send(event) {
   if (ws?.readyState) {
     ws.send(JSON.stringify(event))
     return
@@ -299,11 +301,11 @@ function send (event) {
 }
 
 /**
- * Call this method to broadcast a message on the webswitch network
+ * Call this method to broadcast a message on the web-switch network
  * @param {object} event
  * @returns
  */
-export async function publish (event) {
+export async function publish(event) {
   try {
     if (!event) {
       console.error(publish.name, 'no event provided')
@@ -323,7 +325,7 @@ export async function publish (event) {
  *  models:import('../../../domain/model-factory').ModelFactory
  * }} serviceInfo
  */
-export const initialize = async serviceInfo => {
+export const connect = async serviceInfo => {
   observer = serviceInfo.observer
   models = serviceInfo.models
   await connect()

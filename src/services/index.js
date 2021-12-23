@@ -14,7 +14,7 @@ export const CertificateService = {
 
 import * as MeshServices from './service-mesh'
 
-const config = require('../config').aegisConfig
+const config = require('../config').hostConfig
 const designatedService = config.services.activeServiceMesh
 
 /**
@@ -22,13 +22,13 @@ const designatedService = config.services.activeServiceMesh
  */
 const enabledServices = Object.entries(config.services.serviceMesh)
   .filter(([, v]) => v.enabled)
-  .map(([k]) => k) || ['WebSwitch']
+  .map(([k]) => k) || ['web-switch']
 
 /**
- * Which mesh service do we use?
+ * Which mesh se....../rvice do we use?
  */
 const service = enabledServices.includes(designatedService)
   ? designatedService
-  : 'WebSwitch'
+  : 'web-switch'
 
 export const ServiceMeshPlugin = MeshServices[service]
