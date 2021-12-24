@@ -43,9 +43,9 @@ import { ServiceMeshPlugin } from '../services'
  * @property {attachServer} attachServer all service mesh plug-ins
  * implement a websocket server on the same port as the domain model
  * API, regardless of how they integrate the nodes of the mesh, which
- * can be based on an entirely different transport protocol, e.g. UDP 
+ * can be based on an entirely different transport protocol, e.g. UDP
  * instead of TCP. This function simply passes the server socket handle
- * to the mesh, which then listens for requests from http clents to 
+ * to the mesh, which then listens for requests from http clents to
  * upgrade to ws protocol, at which point clients can avail themselves
  * of mesh services, e.g. such as subscribing to an event stream.
  * @property {publish} publish publish an event to the service mesh
@@ -54,7 +54,7 @@ import { ServiceMeshPlugin } from '../services'
  */
 
 /**
- * Bind the adapter to the service
+ * Bind the adapter.
  * @type {ServiceMeshAdapter}
  */
 export const ServiceMeshAdapter = {

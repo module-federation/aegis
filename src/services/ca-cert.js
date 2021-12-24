@@ -3,7 +3,7 @@
 const acme = require('acme-client')
 const fs = require('fs')
 const path = require('path')
-const config = require('../config').aegisConfig
+const config = require('../config').hostConfig
 const dirname = config.services.cert.webRoot || 'public'
 const webroot = path.resolve('./', dirname)
 const domain = process.env.DOMAIN || config.services.cert.domain

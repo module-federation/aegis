@@ -2,11 +2,10 @@
 
 const mlink = require('mesh-link')
 const nanoid = require('nanoid').nanoid
-const ObserverFactory = require('../../domain/observer').ObserverFactory
-const observer = ObserverFactory.getInstance()
+const broker = require('../../domain/event-broker').EventBrokerSingleton.getInstance()
 const begins = Date.now()
 const uptime = () => Math.round(Math.abs((Date.now() - begins) / 1000 / 60))
-const userConfig = require('../../config').aegisConfig
+const userConfig = require('../../config').hostConfig
 const DEBUG =
   /true/i.test(userConfig.services.serviceMesh.MeshLink.config) || false
 
@@ -139,7 +138,7 @@ async function publish (event) {
     const eventData = JSON.parse(res)
 
     if (eventData?.eventName) {
-      observer.notify(eventData.eventName, eventData)
+      broker.notify(eventData.eventName, eventData)
     }
     if (error) {
       console.log(error)
@@ -158,21 +157,21 @@ async function publish (event) {
 
 let registerSharedObjEvents
 
-function initSharedObject (observer) {
+function initSharedObject (broker) {
   if (!registerSharedObjEvents) {
-    registerSharedObjEvents = observer =>
-      observer.on(
+    registerSharedObjEvents = broker =>
+      broker.on(
         /^externalCrudEvent_.*/,
         async (eventName, eventData) =>
           SharedObjEvent[eventName.split('_')[1].substr(0, 6)](eventData),
         true
       )
-    registerSharedObjEvents(observer)
+    registerSharedObjEvents(broker)
   }
 }
 
-async function subscribe (eventName, callback, observer) {
-  initSharedObject(observer)
+async function subscribe (eventName, callback, broker) {
+  initSharedObject(broker)
   const handlerId = numericHash(eventName)
   if (!handlerId) return // we've already registered a callback for this event
   DEBUG && console.debug('mlink subscribe', eventName, handlerId)

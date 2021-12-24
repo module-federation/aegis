@@ -2,8 +2,8 @@
 
 const fs = require('fs')
 const loader = require('@assemblyscript/loader')
-// const { default: ObserverFactory } = require('../src/domain/observer')
-// const observer = ObserverFactory.getInstance()
+// const { default: BrokerSingleton } = require('../src/domain/broker')
+// const broker = BrokerSingleton.getInstance()
 
 async function importWebAssembly () {
   const startTime = Date.now()
@@ -66,7 +66,7 @@ async function importWebAssembly () {
           )
 
           if (typeof fn === 'function') {
-            observer.on(eventName, eventData => {
+            broker.on(eventName, eventData => {
               adapter.callWasmFunction(fn, eventData)
               return
             })
@@ -84,7 +84,7 @@ async function importWebAssembly () {
           const name = adapter.__getString(eventName)
           const data = adapter.constructObject(eventData)
           console.log('wasm called js to emit an event + ', name, ': ', data)
-          observer.notify(name, data, true)
+          broker.notify(name, data, true)
         },
 
         /**

@@ -1,2 +1,2 @@
-export * from './web-switch'
-export * from './web-node'
+export * from './switch'
+export * from './node'

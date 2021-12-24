@@ -5,7 +5,7 @@
  * @property {String} modelName
  * @property {import('../domain').ModelFactory} models
  * @property {import('../datasources/datasource').default} repository
- * @property {import('../domain/observer').Observer} observer
+ * @property {import('../domain/event-broker').EventBroker} broker
  * @property {...Function} handlers
  */
 
@@ -23,12 +23,12 @@ export default function removeModelFactory ({
   modelName,
   models,
   repository,
-  observer,
+  broker,
   handlers = []
 } = {}) {
   const eventType = models.EventTypes.DELETE
   const eventName = models.getEventName(eventType, modelName)
-  handlers.forEach(handler => observer.on(eventName, handler))
+  handlers.forEach(handler => broker.on(eventName, handler))
 
   return async function removeModel (id) {
     const model = await repository.find(id)
@@ -41,7 +41,7 @@ export default function removeModelFactory ({
     const event = await models.createEvent(eventType, modelName, deleted)
 
     const [obsResult, repoResult] = await Promise.allSettled([
-      observer.notify(event.eventName, event),
+      broker.notify(event.eventName, event),
       repository.delete(id)
     ])
 

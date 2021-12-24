@@ -16,7 +16,7 @@ const DEBUG = process.env.DEBUG
  */
 
 /**
- * @typedef {object} observerOptions
+ * @typedef {object} brokerOptions
  * @property {object} [filter] - matching key-value pairs, e.g. {id:123}, have to be found in the event data
  * @property {boolean} [subscriber] - the subscription id `eventId` has to be found in the event data
  * @property {boolean} [singleton] - there should be only one instance of this handler in the system
@@ -31,9 +31,9 @@ const DEBUG = process.env.DEBUG
  */
 
 /**
- * @type {observerOptions}
+ * @type {brokerOptions}
  */
-const observerOptions = {
+const brokerOptions = {
   once: false,
   filter: {},
   singleton: false,
@@ -45,9 +45,10 @@ const observerOptions = {
 const handlers = new Map()
 
 /**
- * Abstract observer
+ * @abstract
+ * Event broker - universal subject (a la observer pattern)
  */
-export class Observer {
+export class EventBroker {
   /**
    *
    * param {Map<string | RegExp, eventHandler[]>} eventHandlers
@@ -58,9 +59,9 @@ export class Observer {
    * Register callback `handler` to fire on event `eventName`
    * @param {String | RegExp} eventName
    * @param {eventHandler} handler
-   * @param {observerOptions} [options]
+   * @param {brokerOptions} [options]
    */
-  on (eventName, handler, { ...observerOptions }) {
+  on (eventName, handler, { ...brokerOptions }) {
     throw new Error('unimplemented abstract method')
   }
 
@@ -130,6 +131,7 @@ async function runHandler (eventName, eventData = {}, handle, forward) {
  * @param {string} eventName
  * @param {import('./event').Event} eventData
  * @param {boolean} forward
+ * @fires eventName
  */
 async function notify (eventName, eventData, options = {}) {
   const { forward = false } = options
@@ -162,10 +164,10 @@ async function notify (eventName, eventData, options = {}) {
 }
 
 /**
- * @type {Observer}
- * @extends Observer
+ * @type {EventBroker}
+ * @extends EventBroker
  */
-class ObserverImpl extends Observer {
+class EventBrokerImpl extends EventBroker {
   /**
    * @override
    */
@@ -178,7 +180,7 @@ class ObserverImpl extends Observer {
    * @override
    * @param {string | RegExp} eventName
    * @param {eventHandler} handler
-   * @param {observerOptions} [options]
+   * @param {brokerOptions} [options]
    */
   on (
     eventName,
@@ -192,7 +194,7 @@ class ObserverImpl extends Observer {
     } = {}
   ) {
     if (!eventName || typeof handler !== 'function') {
-      console.error(ObserverImpl.name, 'invalid arg', eventName, handler)
+      console.error(EventBrokerImpl.name, 'invalid arg', eventName, handler)
       return null
     }
     const filterKeys = Object.keys(filter)
@@ -222,7 +224,7 @@ class ObserverImpl extends Observer {
       }
     }
 
-    const scrip = {
+    const script = {
       ...subscription,
       unsubscribe: () => this.off(eventName, callbackWrapper)
     }
@@ -231,12 +233,12 @@ class ObserverImpl extends Observer {
     if (funcs) {
       if (!singleton || funcs.length < 1) {
         funcs.push(callbackWrapper)
-        return scrip
+        return script
       }
       return null
     }
     handlers.set(eventName, [callbackWrapper])
-    return scrip
+    return script
   }
 
   /**
@@ -274,18 +276,19 @@ class ObserverImpl extends Observer {
 }
 
 /**
+ * Create / return broker singleton instance
  * @todo handle all state same way
  */
-export const ObserverFactory = (() => {
+export const EventBrokerSingleton = (() => {
   let instance
 
   function createInstance () {
-    return new ObserverImpl(new Map())
+    return new EventBrokerImpl()
   }
 
   return Object.freeze({
     /**
-     * @returns {Observer} singleton
+     * @returns {EventBroker} singleton
      */
     getInstance: function () {
       if (!instance) {
@@ -296,4 +299,4 @@ export const ObserverFactory = (() => {
   })
 })()
 
-export default ObserverFactory
+export default EventBrokerSingleton

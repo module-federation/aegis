@@ -7,11 +7,11 @@ import {
 } from './wasm-decorators'
 
 import loader from '@assemblyscript/loader'
-import { ObserverFactory } from '../../domain/observer'
+import { EventBrokerSingleton } from '../../domain/event-broker'
 import { WasmInterop } from './wasm-interop'
 import { RepoClient } from './repo-client'
 
-const observer = ObserverFactory.getInstance()
+const broker = EventBrokerSingleton.getInstance()
 
 /**
  * Import and run a WebAssembly module as an Aegis model, adapter, or service
@@ -50,11 +50,9 @@ export async function importWebAssembly (remoteEntry, type = 'model') {
           return
         }
 
-        observer.on(
-          event,
-          eventData => adapter.callWasmFunction(fn, eventData),
-          { once: true }
-        )
+        broker.on(event, eventData => adapter.callWasmFunction(fn, eventData), {
+          once: true
+        })
       },
 
       /**
@@ -67,7 +65,7 @@ export async function importWebAssembly (remoteEntry, type = 'model') {
         const event = wasm.exports.__getString(eventName)
         const data = interop.constructObject(eventData)
         console.debug('fireEvent', data)
-        observer.notify(event, data, { forward: true })
+        broker.notify(event, data, { forward: true })
       },
 
       /**

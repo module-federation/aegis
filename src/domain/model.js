@@ -60,7 +60,6 @@ import asyncPipe from './util/async-pipe'
 import compose from './util/compose'
 import pipe from './util/pipe'
 import uuid from './util/uuid'
-import { time } from 'console'
 
 /**
  * @namespace
@@ -138,7 +137,7 @@ const Model = (() => {
         onDelete = defaultOnDelete,
         validate = defaultValidate,
         ports,
-        observer,
+        broker,
         modelName,
         datasource,
         mixins = [],
@@ -152,10 +151,10 @@ const Model = (() => {
       ...compose(...mixins)(model),
 
       // Generate functions to fetch related models
-      ...makeRelations(relations, datasource, observer),
+      ...makeRelations(relations, datasource, broker),
 
       // Generate port functions to handle domain I/O
-      ...makePorts(ports, dependencies, observer),
+      ...makePorts(ports, dependencies, broker),
 
       // Remember port calls
       [PORTFLOW]: [],
@@ -215,7 +214,7 @@ const Model = (() => {
        * defaults to `true`
        */
       addListener (eventName, callback, options) {
-        observer.on(eventName, callback, options)
+        broker.on(eventName, callback, options)
       },
 
       /**
@@ -227,7 +226,7 @@ const Model = (() => {
        * defaults to `false`
        */
       async emit (eventName, eventData, forward = false) {
-        await observer.notify(
+        await broker.notify(
           eventName,
           {
             eventName,

@@ -5,7 +5,7 @@
 // import addModelFactory from '../../src/use-cases/add-model'
 // import DataSourceFactory from '../../src/datasources'
 // import ModelFactory from '../../src/domain';
-// import ObserverFactory from '../../src/lib/observer';
+// import BrokerSingleton from '../../src/lib/broker';
 
 // describe('Use-Cases', function () {
 //   describe('addModel()', function () {
@@ -25,7 +25,7 @@
 //         modelName: 'ABC',
 //         models: ModelFactory,
 //         repository: DataSourceFactory.getDataSource('ABC'),
-//         observer: ObserverFactory.getInstance()
+//         broker: BrokerSingleton.getInstance()
 //       })({ a: 'a' });
 //       assert.strictEqual(model.a, { a: 'a' }.a);
 //     });

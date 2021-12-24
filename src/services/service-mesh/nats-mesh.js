@@ -19,7 +19,7 @@ exports.subscribe = async function (eventName, callback) {
   })()
 }
 
-exports.publish = function (event, observer) {
+exports.publish = function (event, broker) {
   console.log('calling NATS publish')
   nc.publish(event.eventName, sc.encode(JSON.stringify(event)))
 }

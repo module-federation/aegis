@@ -5,11 +5,11 @@ import { resumeWorkflow } from '../domain/orchestrator'
 
 /**
  * @param {function(import("../domain").Model)} loadModel
- * @param {import("../domain/observer").Observer} observer
+ * @param {import("../domain/event-broker").EventBroker} broker
  * @param {import("../datasources/datasource").default} repository
  * @returns {function(Map<string,Model>|Model)}
  */
-function hydrateModels (loadModel, observer, repository) {
+function hydrateModels (loadModel, broker, repository) {
   return function (saved) {
     if (!saved) return
 
@@ -17,14 +17,14 @@ function hydrateModels (loadModel, observer, repository) {
       if (saved instanceof Map) {
         return new Map(
           [...saved].map(function ([k, v]) {
-            const model = loadModel(observer, repository, v, v.modelName)
+            const model = loadModel(broker, repository, v, v.modelName)
             return [k, model]
           })
         )
       }
 
       if (Object.getOwnPropertyNames(saved).includes('modelName')) {
-        return loadModel(observer, repository, saved, saved.modelName)
+        return loadModel(broker, repository, saved, saved.modelName)
       }
     } catch (error) {
       console.warn(loadModel.name, error.message)
@@ -53,20 +53,20 @@ function handleRestart (repository) {
  * @typedef {import('../domain').Model} Model
  * @param {{
  *  models:import('../domain/model-factory').ModelFactory,
- *  observer:import('../domain/observer').Observer,
+ *  broker:import('../domain/event-broker').EventBroker,
  *  repository:import('../datasources/datasource').default,
  *  modelName:string
  * }} options
  * @returns {function():Promise<void>}
  */
-export default function ({ models, observer, repository, modelName }) {
+export default function ({ models, broker, repository, modelName }) {
   return async function loadModels () {
     const spec = models.getModelSpec(modelName)
 
     setTimeout(handleRestart, 30000, repository)
 
     return repository.load({
-      hydrate: hydrateModels(models.loadModel, observer, repository),
+      hydrate: hydrateModels(models.loadModel, broker, repository),
       serializer: Serializer.addSerializer(spec.serializers)
     })
   }

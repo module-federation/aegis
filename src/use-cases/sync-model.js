@@ -5,7 +5,7 @@
  * @property {String} modelName
  * @property {import('../domain/model-factory').ModelFactory} models
  * @property {import('../datasources/datasource').default} repository
- * @property {import('../domain/observer').Observer} observer
+ * @property {import('../domain/broker').broker} broker
  * @property {Function[]} handlers
  */
 

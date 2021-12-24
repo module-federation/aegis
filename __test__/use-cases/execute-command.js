@@ -1,6 +1,6 @@
 // var assert = require("assert");
 // import DataSourceFactory from "../../src/datasources";
-// import ObserverFactory from "../../src/lib/observer";
+// import BrokerSingleton from "../../src/lib/broker";
 // import ModelFactory from "../../src/models/model-factory";
 // import checkAcl from "../../src/lib/check-acl";
 
@@ -25,7 +25,7 @@
 //     ModelFactory.registerModel(spec);
 
 //     var m = await ModelFactory.createModel(
-//       ObserverFactory.getInstance(),
+//       BrokerSingleton.getInstance(),
 //       DataSourceFactory.getDataSource("TEST"),
 //       "TEST",
 //       [1, 2, 3]

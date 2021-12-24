@@ -82,10 +82,10 @@ async function updateForeignKeys (model, event, relation, ds) {
  * the local cache manager.
  *
  * @param {import(".").relations[x]} relation
- * @param {import("./observer").Observer} observer
+ * @param {import("./event-broker").EventBroker} broker
  * @returns {Promise<import(".").Model>} source model
  */
-export function requireRemoteObject (model, relation, observer, ...args) {
+export function requireRemoteObject (model, relation, broker, ...args) {
   const request = internalCacheRequest(relation.modelName)
   const response = internalCacheResponse(relation.modelName)
   const execute = resolve => event => resolve(event)
@@ -101,11 +101,11 @@ export function requireRemoteObject (model, relation, observer, ...args) {
 
   return new Promise(async function (resolve) {
     setTimeout(resolve, maxwait)
-    observer.on(response, execute(resolve)) //,{
+    broker.on(response, execute(resolve)) //,{
     //   filter: { modelId: model.getId() },
     //   once: true
     // })
-    observer.notify(request, requestData)
+    broker.notify(request, requestData)
   })
 }
 
@@ -114,7 +114,7 @@ export function requireRemoteObject (model, relation, observer, ...args) {
  * @param {import("./index").relations} relations
  * @param {import("./datasource").default} datasource
  */
-export default function makeRelations (relations, datasource, observer) {
+export default function makeRelations (relations, datasource, broker) {
   if (Object.getOwnPropertyNames(relations).length < 1) return
 
   return Object.keys(relations)
@@ -144,7 +144,7 @@ export default function makeRelations (relations, datasource, observer) {
               const event = await requireRemoteObject(
                 this,
                 rel,
-                observer,
+                broker,
                 ...args
               )
 

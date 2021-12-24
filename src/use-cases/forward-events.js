@@ -31,12 +31,12 @@ function listUnhandledPortEvents (specs) {
  * Forward any releveant internal events to the external event bus
  * or service mesh.
  *
- * @param {import("../domain/observer").Observer} observer
+ * @param {import("../domain/event-broker").EventBroker} broker
  * @param {import("../domain/model-factory").ModelFactory} models
  * @param {function(event,data)} publish
  * @param {function(event,function())} subscribe
  */
-export function forwardEvents ({ observer, models, publish, subscribe }) {
+export function forwardEvents ({ broker, models, publish, subscribe }) {
   /**@type{import('../domain').ModelSpecification[]} */
   const specs = models.getModelSpecs()
 
@@ -67,12 +67,12 @@ export function forwardEvents ({ observer, models, publish, subscribe }) {
 
     consumerEvents.forEach(consumerEvent =>
       subscribe(consumerEvent, eventData =>
-        observer.notify(consumerEvent, `eventData` || 'no data')
+        broker.notify(consumerEvent, `eventData` || 'no data')
       )
     )
 
     producerEvents.forEach(producerEvent =>
-      observer.on(producerEvent, eventData => publish(eventData), {
+      broker.on(producerEvent, eventData => publish(eventData), {
         singleton: true
       })
     )
@@ -83,13 +83,13 @@ export function forwardEvents ({ observer, models, publish, subscribe }) {
    * Forward events so marked.
    */
   function forwardUserEvents () {
-    observer.on('publishWasm', data =>
+    broker.on('publishWasm', data =>
       publish({ ...data, eventName: data.eventName })
     )
 
-    subscribe('publishWasm', data => observer.notify(data.eventName, data))
+    subscribe('publishWasm', data => broker.notify(data.eventName, data))
 
-    observer.on(domainEvents.forwardEvent(), eventData => {
+    broker.on(domainEvents.forwardEvent(), eventData => {
       console.debug(forwardUserEvents.name, 'called')
       publish(eventData)
     })

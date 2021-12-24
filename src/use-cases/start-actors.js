@@ -1,7 +1,7 @@
 'use strict'
 
 import { isMainThread, Worker, workerData, parentPort } from 'worker_threads'
-import { Observer } from '../domain/observer'
+import { broker } from '../domain/broker'
 
 /**@typedef {import('../domain').ModelSpecification} ModelSpecification */
 
@@ -72,7 +72,7 @@ function cloneFunction (obj) {
  * @param {object} eventData
  */
 
-const WorkerObserver = {
+const Workerbroker = {
   /**
    * @override
    * @param {string} eventName
@@ -89,10 +89,10 @@ const WorkerObserver = {
 /**
  *
  * @param {import('../domain/model-factory').ModelFactory} model
- * @param {*} observer
+ * @param {*} broker
  * @param {*} respository
  */
-function startWorker (model, observer, respository) {
+function startWorker (model, broker, respository) {
   model.getModelSpec().eventHandlers()
   if (isMainThread) {
     const model = models.createModel()
@@ -101,7 +101,7 @@ function startWorker (model, observer, respository) {
     })
 
     worker.on('message', message => ({
-      // observer.notify()
+      // broker.notify()
     }))
   } else {
   }
@@ -124,7 +124,7 @@ function startWorker (model, observer, respository) {
  *  repository:import('../domain/datasource-factory').DataSourceFactory
  * }}
  */
-const actorFactory = ({ models, repository, observer }) =>
+const actorFactory = ({ models, repository, broker }) =>
   async function startActors () {
     const specs = models.getModelSpecs()
 

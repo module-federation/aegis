@@ -10,7 +10,7 @@ import domainEvents from '../domain/domain-events'
  * @property {String} modelName
  * @property {import('../domain/model-factory').ModelFactory} models
  * @property {import('../datasources/datasource').default} repository
- * @property {import('../domain/observer').Observer} observer
+ * @property {import('../domain/event-broker').EventBroker} broker
  * @property {Function[]} handlers
  */
 
@@ -23,15 +23,15 @@ export default function makeEditModel ({
   modelName,
   models,
   repository,
-  observer,
+  broker,
   handlers = []
 } = {}) {
   const eventType = models.EventTypes.UPDATE
   const eventName = models.getEventName(eventType, modelName)
-  handlers.forEach(handler => observer.on(eventName, handler))
+  handlers.forEach(handler => broker.on(eventName, handler))
 
   // Add an event that can be used to edit this model
-  observer.on(domainEvents.editModel(modelName), editModelHandler)
+  broker.on(domainEvents.editModel(modelName), editModelHandler)
 
   async function editModel (id, changes, command) {
     const model = await repository.find(id)
@@ -55,7 +55,7 @@ export default function makeEditModel ({
           updated,
           changes
         })
-        await observer.notify(event.eventName, event)
+        await broker.notify(event.eventName, event)
         // }
       } catch (error) {
         await repository.save(id, model)

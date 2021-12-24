@@ -5,13 +5,13 @@ import Event from './event'
 
 /** @typedef {'CREATE' | 'UPDATE' | 'DELETE'} EventType */
 /** @typedef {import('./index').ModelSpecification} ModelSpecification */
-/** @typedef {import('./observer').Observer} Observer */
+/** @typedef {import('./event-broker').EventBroker} broker */
 /** @typedef {import('./datasource').default} Datasource */
 
 /**
  * @typedef {Object} ModelFactory Low-level port functions for creating, updating, deleting domain models. To be called by
  * application use-case functions, which in turn are called by driving/primary adapters.
- * @property {function(Observer,Datasource,string,...args):Promise<Readonly<Model>>} createModel Create a new model instance
+ * @property {function(broker,Datasource,string,...args):Promise<Readonly<Model>>} createModel Create a new model instance
  * @property {function(string,string,*):Promise<Readonly<Event>>} createEvent
  * @property {function(Model,object):Model} updateModel
  * @property {function(Model):Model} deleteModel
@@ -122,11 +122,11 @@ const ModelFactory = {
    * Call the factory function previously registered for `modelName`
    * @param {String} modelName - model's name
    * @param {*[]} args - input sent in the request
-   * @param {import('./observer').Observer} observer - send & receive events
+   * @param {import('./event-broker').EventBroker} broker - send & receive events
    * @param {import('./datasource').default} datasource - persistence/cache
    * @returns {Promise<Readonly<Model>>} the model instance
    */
-  createModel: async function (observer, datasource, modelName, ...args) {
+  createModel: async function (broker, datasource, modelName, ...args) {
     const name = checkModelName(modelName)
     const spec = modelFactories.get(name)
 
@@ -135,7 +135,7 @@ const ModelFactory = {
         args,
         spec: {
           ...spec,
-          observer,
+          broker,
           datasource
         }
       })
@@ -148,7 +148,7 @@ const ModelFactory = {
    * @param {import(".").Model} model
    * @param {*} modelName
    */
-  loadModel: (observer, datasource, model, modelName) => {
+  loadModel: (broker, datasource, model, modelName) => {
     const name = checkModelName(modelName)
     const spec = modelFactories.get(name)
 
@@ -157,7 +157,7 @@ const ModelFactory = {
         model,
         spec: {
           ...spec,
-          observer,
+          broker,
           datasource
         }
       })

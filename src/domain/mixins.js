@@ -124,16 +124,16 @@ export const withDeserializers = (...funcs) => o => {
 
 /**
  * Subscribe to and emit application and domain events.
- * @param {import('./observer').Observer} observer
+ * @param {import('./event-broker').EventBroker} broker
  */
-export const withObserver = observer => o => {
+export const withbroker = broker => o => {
   return {
     ...o,
     async emit (eventName, eventData) {
-      observer.notify(eventName, eventData)
+      broker.notify(eventName, eventData)
     },
     subscribe (eventName, callback) {
-      observer.on(eventName, callback)
+      broker.on(eventName, callback)
     }
   }
 }

@@ -25,7 +25,7 @@ const {
  * i.e. cache misses.
  *
  * @param {{
- *  observer:import("./observer").Observer,
+ *  broker:import("./event-broker").EventBroker,
  *  datasources:import("./datasource-factory").DataSourceFactory,
  *  models:import("./model-factory").ModelFactory,
  *  subscribe:function(...args),
@@ -34,7 +34,7 @@ const {
  */
 export default function DistributedCache ({
   models,
-  observer,
+  broker,
   datasources,
   publish,
   subscribe
@@ -111,7 +111,7 @@ export default function DistributedCache ({
    * @returns {Model}
    */
   function hydrateModel (model, datasource, modelName) {
-    return models.loadModel(observer, datasource, model, modelName)
+    return models.loadModel(broker, datasource, model, modelName)
   }
 
   /**
@@ -184,7 +184,7 @@ export default function DistributedCache ({
         console.debug('arg', arg)
         try {
           return await models.createModel(
-            observer,
+            broker,
             datasources.getDataSource(event.relation.modelName),
             event.relation.modelName,
             arg
@@ -297,7 +297,7 @@ export default function DistributedCache ({
   const receiveSearchResponse = (responseName, internalName) =>
     subscribe(
       responseName,
-      updateCache(async event => observer.notify(internalName, event))
+      updateCache(async event => broker.notify(internalName, event))
     )
 
   /**
@@ -318,7 +318,7 @@ export default function DistributedCache ({
    * @param {string} externalEvent name of external event
    */
   const forwardSearchRequest = (internalEvent, externalEvent) =>
-    observer.on(internalEvent, async event =>
+    broker.on(internalEvent, async event =>
       publish({ ...event, eventName: externalEvent })
     )
 
@@ -334,7 +334,7 @@ export default function DistributedCache ({
    * @param {string} eventName
    */
   const broadcastCrudEvent = eventName =>
-    observer.on(eventName, async event =>
+    broker.on(eventName, async event =>
       publish({ ...event, eventName: externalCrudEvent(eventName) })
     )
 

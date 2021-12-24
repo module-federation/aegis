@@ -7,7 +7,7 @@ import postModelFactory from '../../src/adapters/controllers/post-model'
 
 import DataSourceFactory from '../../src/domain/datasource-factory'
 import ModelFactory from '../../src/domain'
-import ObserverFactory from '../../src/domain/observer'
+import EventBrokerSingleton from '../../src/domain/event-broker'
 
 describe('Controllers', function () {
   describe('postModel()', function () {
@@ -27,7 +27,7 @@ describe('Controllers', function () {
         modelName: 'ABC',
         models: ModelFactory,
         repository: DataSourceFactory.getDataSource('ABC'),
-        observer: ObserverFactory.getInstance()
+        broker: EventBrokerSingleton.getInstance()
       })
       const resp = await postModelFactory(addModel)({
         body: { a: 'a' },

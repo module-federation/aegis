@@ -17,11 +17,11 @@ const BROADCAST = process.env.TOPIC_BROADCAST || 'broadcastChannel'
  * - distributed object cache
  *    - crud lifecycle events
  *    - find obj / cache miss
- * @param {import('../domain/observer').Observer} observer
+ * @param {import('../domain/event-broker').EventBroker} broker
  * @param {import("../domain/datasource-factory")} datasources
  * @param {import("../domain/model-factory").ModelFactory} models
  */
-export default function brokerEvents (observer, datasources, models) {
+export default function brokerEvents (broker, datasources, models) {
   const svcMshPub = event => ServiceMesh.publish(event)
   const svcMshSub = (event, cb) => ServiceMesh.subscribe(event, cb)
 
@@ -38,8 +38,8 @@ export default function brokerEvents (observer, datasources, models) {
   const publish = useEvtBus ? evtBusPub : svcMshPub
   const subscribe = useEvtBus ? evtBusSub : svcMshSub
 
-  const broker = DistributedCache({
-    observer,
+  const manager = DistributedCache({
+    broker,
     datasources,
     models,
     publish,
@@ -47,9 +47,9 @@ export default function brokerEvents (observer, datasources, models) {
   })
 
   // start mesh regardless
-  ServiceMesh.connect({ models, observer }).then(() => {
-    broker.start()
-    forwardEvents({ observer, models, publish, subscribe })
+  ServiceMesh.connect({ models, broker }).then(() => {
+    manager.start()
+    forwardEvents({ broker, models, publish, subscribe })
   })
 
   /**

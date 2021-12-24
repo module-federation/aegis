@@ -103,19 +103,19 @@ async function isUndoRunning (model) {
  * Register an event handler to invoke this `port`.
  * @param {string} portName
  * @param {import('.').ports[portName]} portConf
- * @param {import("./observer").Observer} observer
+ * @param {import("./event-broker").EventBroker} broker
  * @param {boolean} disabled
  * @returns {boolean} whether or not to remember this port
  * for compensation and restart
  */
-function addPortListener (portName, portConf, observer, disabled) {
+function addPortListener (portName, portConf, broker, disabled) {
   if (disabled) return false
 
   if (portConf.consumesEvent) {
     const callback = getPortCallback(portConf.callback)
 
     // listen for triggering event
-    observer.on(
+    broker.on(
       portConf.consumesEvent,
       async function ({ eventName, model }) {
         // Don't call any more ports if undoing.
@@ -129,7 +129,7 @@ function addPortListener (portName, portConf, observer, disabled) {
       },
       { singleton: true }
     )
-    
+
     return true
   }
   return false
@@ -172,9 +172,9 @@ async function updatePortFlow (model, port, remember) {
  *
  * @param {import('./index').ports} ports - object containing domain interfaces
  * @param {object} adapters - object containing application adapters
- * @param {import('./observer').Observer} observer
+ * @param {import('./event-broker').EventBroker} broker
  */
-export default function makePorts (ports, adapters, observer) {
+export default function makePorts (ports, adapters, broker) {
   if (!ports || !adapters) {
     return
   }
@@ -186,12 +186,7 @@ export default function makePorts (ports, adapters, observer) {
       const disabled = portConf.disabled || !adapters[port]
 
       // Listen for event that will invoke this port
-      const rememberPort = addPortListener(
-        portName,
-        portConf,
-        observer,
-        disabled
-      )
+      const rememberPort = addPortListener(portName, portConf, broker, disabled)
 
       /**
        *

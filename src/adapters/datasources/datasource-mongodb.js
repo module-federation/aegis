@@ -4,7 +4,7 @@ const MongoClient = require('mongodb').MongoClient
 const DataSourceMemory = require('./datasource-memory').DataSourceMemory
 
 const url = process.env.MONGODB_URL || 'mongodb://localhost:27017'
-const configRoot = require('../../config').aegisConfig
+const configRoot = require('../../config').hostConfig
 const cacheSize = configRoot.adapters.cacheSize || 3000
 
 /**

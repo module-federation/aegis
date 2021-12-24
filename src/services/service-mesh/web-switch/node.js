@@ -1,5 +1,5 @@
 /**
- * web-switch (c)
+ * webswitch (c)
  *
  * websocket clients connect to a common ws server
  * (called a web-switch) which broadcasts messages
@@ -26,8 +26,8 @@ const isSwitch = /true/i.test(process.env.IS_SWITCH) || config.isSwitch
 
 let serviceUrl
 let uplinkCallback
-/** @type {import('../../../domain/observer').Observer} */
-let observer
+/** @type {import('../../../domain/event-broker').EventBroker} */
+let broker
 /**@type {import('../../../domain/model-factory').ModelFactory} */
 let models
 /** @type {WebSocket}*/
@@ -84,7 +84,7 @@ async function resolveServiceUrl () {
 
       if (questions[0]) {
         if (isSwitch || os.hostname === HOSTNAME) {
-          console.debug('answering question about', HOSTNAME)
+          console.debug('answering question', HOSTNAME)
           mdns.respond({
             answers: [
               {
@@ -156,7 +156,7 @@ export function onUplinkMessage (callback) {
 export function setUplinkUrl (uplinkUrl) {
   serviceUrl = uplinkUrl
   ws = null // trigger reconnect
-  connect()
+  _connect()
 }
 
 /**
@@ -172,17 +172,32 @@ export function setUplinkUrl (uplinkUrl) {
 
 /**
  *
+ * @param {{
+ *  broker:import('../../../domain/event-broker').EventBroker,
+ *  models:import('../../../domain/model-factory').ModelFactory
+ * }} serviceInfo
+ */
+export async function connect (serviceInfo) {
+  broker = serviceInfo.broker
+  models = serviceInfo.models
+  await _connect()
+}
+
+/**
+ *
  */
 const handshake = {
   proto: SERVICENAME,
   role: 'node',
   pid: process.pid,
   serviceUrl,
-  models: models.getModelSpecs().map(spec => spec.modelName),
   address: getLocalAddress()[0],
-  url: `${protocol}://${host}:${config.port}`,
+  url: `${protocol}://${domain || config.host}:${config.port}`,
   serialize () {
-    return JSON.stringify(this)
+    return JSON.stringify({
+      ...this,
+      models: models.getModelSpecs().map(spec => spec.modelName)
+    })
   },
   validate (msg) {
     return msg.proto === this.proto
@@ -207,7 +222,7 @@ function startHeartBeat (ws) {
       ws.ping(0x9)
     } else {
       try {
-        observer.notify(TIMEOUTEVENT, 'server unresponsive', true)
+        broker.notify(TIMEOUTEVENT, 'server unresponsive', true)
         console.error('mesh server unresponsive, trying new connection')
         clearInterval(intervalId)
         await reconnect()
@@ -229,18 +244,18 @@ function startHeartBeat (ws) {
 /**
  * @param {*} eventName
  * @param {subscription} callback
- * @param {*} observer
+ * @param {*} broker
  * @param {{allowMultiple:boolean, once:boolean}} [options]
  */
 export async function subscribe (eventName, callback, options = {}) {
   try {
-    observer.on(eventName, callback, options)
+    broker.on(eventName, callback, options)
   } catch (e) {
     console.error('subscribe', e)
   }
 }
 
-async function connect () {
+async function _connect () {
   if (!ws) {
     if (!serviceUrl) serviceUrl = await resolveServiceUrl()
     console.info('connecting to ', serviceUrl)
@@ -261,7 +276,7 @@ async function connect () {
       console.assert(!DEBUG, 'received event:', eventData)
 
       if (eventData.eventName) {
-        await observer.notify(eventData.eventName, eventData)
+        await broker.notify(eventData.eventName, eventData)
         if (uplinkCallback) await uplinkCallback(message)
         return
       }
@@ -279,7 +294,7 @@ async function connect () {
 async function reconnect () {
   serviceUrl = null
   ws = null
-  await connect()
+  await _connect()
   if (!ws) setTimeout(reconnect, 60000)
 }
 
@@ -302,22 +317,9 @@ export async function publish (event) {
       console.error(publish.name, 'no event provided')
       return
     }
-    await connect()
+    await _connect()
     send(event)
   } catch (e) {
     console.error('publish', e)
   }
-}
-
-/**
- *
- * @param {{
- *  observer:import('../../../domain/observer').Observer,
- *  models:import('../../../domain/model-factory').ModelFactory
- * }} serviceInfo
- */
-export const connect = async serviceInfo => {
-  observer = serviceInfo.observer
-  models = serviceInfo.models
-  await connect()
 }

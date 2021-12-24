@@ -8,12 +8,16 @@ import makeRemoveModel from './remove-model'
 import makeLoadModels from './load-models'
 import makeListConfig from './list-configs'
 import DataSourceFactory from '../domain/datasource-factory'
-import ObserverFactory from '../domain/observer'
+import EventBrokerSingleton from '../domain/event-broker'
 import ModelFactory from '../domain'
 import brokerEvents from './broker-events'
 
 export function registerCacheEvents () {
-  brokerEvents(ObserverFactory.getInstance(), DataSourceFactory, ModelFactory)
+  brokerEvents(
+    EventBrokerSingleton.getInstance(),
+    DataSourceFactory,
+    ModelFactory
+  )
 }
 
 /**
@@ -24,7 +28,7 @@ function buildOptions (model) {
   return {
     modelName: model.modelName,
     models: ModelFactory,
-    observer: ObserverFactory.getInstance(),
+    broker: EventBrokerSingleton.getInstance(),
     handlers: model.eventHandlers,
     repository: DataSourceFactory.getDataSource(model.modelName)
   }

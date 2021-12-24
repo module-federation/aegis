@@ -7,7 +7,7 @@ import domainEvents from '../domain/domain-events'
  * @property {String} modelName - name of the domain model
  * @property {import('../domain/model-factory').ModelFactory} models - model factory
  * @property {import('../domain/datasource').default
- * @property {import('../domain/observer').Observer} observer - application events, propagated to domain
+ * @property {import('../domain/event-broker').EventBroker} broker - application events, propagated to domain
  * @property {...Function} handlers - event handlers can be registered by the domain
  */
 
@@ -20,23 +20,18 @@ export default function makeAddModel ({
   modelName,
   models,
   repository,
-  observer,
+  broker,
   handlers = []
 } = {}) {
   const eventType = models.EventTypes.CREATE
   const eventName = models.getEventName(eventType, modelName)
-  handlers.forEach(handler => observer.on(eventName, handler))
+  handlers.forEach(handler => broker.on(eventName, handler))
 
   // Add an event whose callback invokes this factory.
-  observer.on(domainEvents.addModel(modelName), addModel)
+  broker.on(domainEvents.addModel(modelName), addModel)
 
   async function addModel (input) {
-    const model = await models.createModel(
-      observer,
-      repository,
-      modelName,
-      input
-    )
+    const model = await models.createModel(broker, repository, modelName, input)
 
     try {
       await repository.save(model.getId(), model)
@@ -47,7 +42,7 @@ export default function makeAddModel ({
     try {
       if (!model.isCached()) {
         const event = await models.createEvent(eventType, modelName, model)
-        await observer.notify(event.eventName, event)
+        await broker.notify(event.eventName, event)
       }
     } catch (error) {
       // remote the object if not processed

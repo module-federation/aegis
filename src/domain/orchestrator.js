@@ -3,7 +3,7 @@
 import async from './util/async-error'
 import ModelFactory from '.'
 import DataSourceFactory from './datasource-factory'
-import ObserverFactory from './observer'
+import EventBrokerSingleton from './event-broker'
 import EventEmitter from 'events'
 
 export async function generateWorkflow (options) {
@@ -31,7 +31,7 @@ export async function generateWorkflow (options) {
 
 export async function runWorkflow ({ wfName }) {
   const model = await ModelFactory.createModel(
-    ObserverFactory.getInstance(),
+    EventBrokerSingleton.getInstance(),
     DataSourceFactory.getDataSource(wfName),
     wfName
   )

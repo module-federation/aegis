@@ -7,7 +7,7 @@ import fetchRelatedModels from './find-related-models'
  * @typedef {Object} ModelParam
  * @property {String} modelName
  * @property {import('../datasources/datasource').default} repository
- * @property {import('../domain/observer').Observer} observer
+ * @property {import('../domain/event-broker').EventBroker} broker
  * @property {import('../domain/index').ModelFactory} models
  * @property {...Function} handlers
  */

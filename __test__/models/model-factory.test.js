@@ -3,7 +3,7 @@
 var assert = require('assert')
 
 import ModelFactory from '../../src/domain'
-import { ObserverFactory } from '../../src/domain/observer'
+import { BrokerSingleton } from '../../src/domain/broker'
 import DataSourceFactory from '../../src/domain/datasource-factory'
 const fn = x => console.log(x)
 const modelName = 'abc'
@@ -22,10 +22,10 @@ describe('ModelFactory', function () {
       assert.equal(spec.modelName, modelName)
 
       const model = await ModelFactory.createModel({
-        observer: ObserverFactory.getInstance(),
+        broker: BrokerSingleton.getInstance(),
         datasource: DataSourceFactory.getDataSource(modelName),
         modelName,
-        b:'cccc'
+        b: 'cccc'
       })
       console.log(model.a('model'))
     })
