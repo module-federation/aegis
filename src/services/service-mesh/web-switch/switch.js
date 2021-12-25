@@ -56,7 +56,10 @@ export function attachServer (server) {
         clientsConnected: server.clients.size,
         uplink: server.uplink ? uplink : 'no uplink',
         primarySwitch: isSwitch,
-        failoverSwitch: server.failoverSwitch
+        failoverSwitch: server.failoverSwitch,
+        clients: {
+          ...server.clients.info
+        }
       })
     )
   }
