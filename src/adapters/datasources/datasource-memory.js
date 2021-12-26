@@ -58,6 +58,8 @@ export class DataSourceMemory extends DataSource {
   listSync (query) {
     const values = [...this.dataSource.values()]
 
+    if (!values) return []
+
     if (query) {
       const count = query['count']
       if (count && !Number.isNaN(parseInt(count))) {
