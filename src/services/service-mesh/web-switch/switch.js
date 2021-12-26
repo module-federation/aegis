@@ -58,7 +58,7 @@ export function attachServer (server) {
         uplink: server.uplink ? uplink : 'no uplink',
         primarySwitch: isSwitch,
         failoverSwitch: server.failoverSwitch,
-        clients: server.clients.values().map(c => c.info)
+        clients: [...server.clients].map(c => c.info)
       })
     )
   }
