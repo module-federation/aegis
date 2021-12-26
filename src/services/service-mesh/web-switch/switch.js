@@ -101,7 +101,8 @@ export function attachServer (server) {
 
         if (client.info.initialized) {
           if (msg == 'status') {
-            return server.sendStatus(client)
+            server.sendStatus(client)
+            return
           }
 
           server.broadcast(message, client)
@@ -129,10 +130,10 @@ export function attachServer (server) {
     if (config.uplink) {
       /** @type {import('./node')} */
       const uplink = require('./node')
-      uplink.setUplinkAddress(config.uplink)
+      server.uplink = uplink
+      uplink.setUplinkUrl(config.uplink)
       uplink.onUplinkMessage(msg => server.broadcast(msg, uplink))
       uplink.connect()
-      server.uplink = uplink
     }
   } catch (e) {
     console.error('uplink', e)

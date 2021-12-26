@@ -140,8 +140,6 @@ async function resolveServiceUrl () {
   })
 }
 
-async function resolveDomain () {}
-
 /**
  * Set callback for uplink.
  * @param {function():Promise<void>} callback
@@ -156,7 +154,6 @@ export function onUplinkMessage (callback) {
 export function setUplinkUrl (uplinkUrl) {
   serviceUrl = uplinkUrl
   ws = null // trigger reconnect
-  _connect()
 }
 
 /**
