@@ -22,13 +22,13 @@ const designatedService = config.services.activeServiceMesh
  */
 const enabledServices = Object.entries(config.services.serviceMesh)
   .filter(([, v]) => v.enabled)
-  .map(([k]) => k) || ['web-switch']
+  .map(([k]) => k) || ['WebSwitch']
 
 /**
  * Which mesh se....../rvice do we use?
  */
 const service = enabledServices.includes(designatedService)
   ? designatedService
-  : 'web-switch'
+  : 'WebSwitch'
 
 export const ServiceMeshPlugin = MeshServices[service]
