@@ -177,9 +177,9 @@ export function setUplinkUrl (uplinkUrl) {
  *  models:import('../../../domain/model-factory').ModelFactory
  * }} serviceInfo
  */
-export async function connect (serviceInfo) {
-  broker = serviceInfo.broker
-  models = serviceInfo.models
+export async function connect (serviceInfo = {}) {
+  broker = serviceInfo.broker || null
+  models = serviceInfo.models || null
   await _connect()
 }
 
@@ -196,7 +196,7 @@ const handshake = {
   serialize () {
     return JSON.stringify({
       ...this,
-      models: models.getModelSpecs().map(spec => spec.modelName)
+      models: models?.getModelSpecs().map(spec => spec.modelName) || []
     })
   },
   validate (msg) {
@@ -276,7 +276,7 @@ async function _connect () {
       console.assert(!DEBUG, 'received event:', eventData)
 
       if (eventData.eventName) {
-        await broker.notify(eventData.eventName, eventData)
+        if (broker) await broker.notify(eventData.eventName, eventData)
         if (uplinkCallback) await uplinkCallback(message)
         return
       }

@@ -7,7 +7,6 @@ const startTime = Date.now()
 const uptime = () => Math.round(Math.abs((Date.now() - startTime) / 1000 / 60))
 const configRoot = require('../../../config').hostConfig
 const config = configRoot.services.serviceMesh.WebSwitch
-const uplink = config.uplink
 const DEBUG = /true/i.test(config.debug)
 const isSwitch = /true/i.test(process.env.IS_SWITCH) || config.isSwitch
 let messagesSent = 0
@@ -39,7 +38,7 @@ export function attachServer (server) {
   }
 
   /**
-   * @todo
+   * @todo implement rate limit enforcement
    * @param {WebSocket} client
    */
   server.setRateLimit = function (client) {}
@@ -55,7 +54,7 @@ export function attachServer (server) {
         uptimeMinutes: uptime(),
         messagesSent,
         clientsConnected: server.clients.size,
-        uplink: server.uplink ? uplink : 'no uplink',
+        uplink: server.uplink ? server.uplink.info : 'no uplink',
         primarySwitch: isSwitch,
         failoverSwitch: server.failoverSwitch,
         clients: [...server.clients].map(c => c.info)
@@ -127,20 +126,13 @@ export function attachServer (server) {
   })
 
   try {
-    if (uplink) {
-      server.uplink = require('./node')
-      server.uplink.setUplinkAddress(uplink)
-      server.uplink.onUplinkMessage(msg => server.broadcast(msg, server.uplink))
-      server.uplink.info = {
-        id: nanoid(),
-        pid: process.pid,
-        role: 'uplink',
-        initialized: true
-      }
-      server.uplink.publish({
-        proto: SERVICENAME,
-        ...server.uplink.info
-      })
+    if (config.uplink) {
+      /** @type {import('./node')} */
+      const uplink = require('./node')
+      uplink.setUplinkAddress(config.uplink)
+      uplink.onUplinkMessage(msg => server.broadcast(msg, uplink))
+      uplink.connect()
+      server.uplink = uplink
     }
   } catch (e) {
     console.error('uplink', e)
