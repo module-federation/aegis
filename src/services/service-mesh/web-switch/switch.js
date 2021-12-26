@@ -7,8 +7,8 @@ const startTime = Date.now()
 const uptime = () => Math.round(Math.abs((Date.now() - startTime) / 1000 / 60))
 const configRoot = require('../../../config').hostConfig
 const config = configRoot.services.serviceMesh.WebSwitch
-const uplink = configRoot.services.serviceMesh.WebSwitch.uplink
-const DEBUG = /true/i.test(configRoot.services.serviceMesh.WebSwitch.debug)
+const uplink = config.uplink
+const DEBUG = /true/i.test(config.debug)
 const isSwitch = /true/i.test(process.env.IS_SWITCH) || config.isSwitch
 let messagesSent = 0
 
@@ -58,9 +58,7 @@ export function attachServer (server) {
         uplink: server.uplink ? uplink : 'no uplink',
         primarySwitch: isSwitch,
         failoverSwitch: server.failoverSwitch,
-        clients: {
-          ...server.clients.info
-        }
+        clients: server.clients.values().map(c => c.info)
       })
     )
   }
