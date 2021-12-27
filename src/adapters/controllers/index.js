@@ -5,10 +5,10 @@ import {
   editModels,
   listModels,
   findModels,
-  removeModels,
-  loadModels,
   listConfigs,
-  registerCacheEvents
+  removeModels,
+  loadModelSpecs,
+  registerEvents
 } from '../../use-cases'
 
 import postModelFactory from './post-model'
@@ -34,16 +34,16 @@ export const getConfig = () => getConfigFactory(listConfigs())
 
 export const initCache = () => {
   const label = '\ntime to load cache'
-  const models = loadModels()
+  const specs = loadModelSpecs()
 
-  async function load () {
+  async function loadModelInstances () {
     console.time(label)
-    await Promise.all(models.map(async m => m.fn()))
+    await Promise.allSettled(specs.map(async m => m.fn()))
     console.timeEnd(label)
-    registerCacheEvents()
   }
+
   return {
-    load
+    load: () => loadModelInstances().then(registerEvents)
   }
 }
 

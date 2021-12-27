@@ -10,7 +10,7 @@
 
 import os from 'os'
 import WebSocket from 'ws'
-import makeMdns from 'multicast-dns'
+import mcastDns from 'multicast-dns'
 
 const SERVICENAME = 'webswitch'
 const HOSTNAME = 'webswitch.local'
@@ -30,10 +30,10 @@ let uplinkCallback
 let broker
 /**@type {import('../../../domain/model-factory').ModelFactory} */
 let models
-/** @type {WebSocket}*/
+/** @type {WebSocket} */
 let ws
 
-if (!configRoot) console.error('web-switch', 'cannot access config file')
+if (!configRoot) console.error(protocol, 'cannot access config file')
 
 function getLocalAddress () {
   const interfaces = os.networkInterfaces()
@@ -57,12 +57,12 @@ function getLocalAddress () {
  * @returns {Promise<string>} url
  */
 async function resolveServiceUrl () {
-  const mdns = makeMdns()
+  const mdns = mcastDns()
   let url
 
   return new Promise(async function (resolve) {
     mdns.on('response', function (response) {
-      DEBUG && console.debug('got a response packet:', response)
+      DEBUG && console.debug(resolveServiceUrl.name, response)
 
       const answer = response.answers.find(
         a => a.name === SERVICENAME && a.type === 'SRV'
@@ -84,7 +84,7 @@ async function resolveServiceUrl () {
 
       if (questions[0]) {
         if (isSwitch || os.hostname === HOSTNAME) {
-          console.debug('answering question', HOSTNAME)
+          console.debug('answering for', HOSTNAME)
           mdns.respond({
             answers: [
               {
@@ -219,8 +219,8 @@ function startHeartBeat (ws) {
       ws.ping(0x9)
     } else {
       try {
-        broker.notify(TIMEOUTEVENT, 'server unresponsive', true)
-        console.error('mesh server unresponsive, trying new connection')
+        await broker.notify(TIMEOUTEVENT, 'server unresponsive', true)
+        console.error(receivedPong.resolve, 'no response, trying new conn')
         clearInterval(intervalId)
         await reconnect()
       } catch (error) {
@@ -255,7 +255,7 @@ export async function subscribe (eventName, callback, options = {}) {
 async function _connect () {
   if (!ws) {
     if (!serviceUrl) serviceUrl = await resolveServiceUrl()
-    console.info('connecting to ', serviceUrl)
+    console.info(_connect.name, 'connecting to ', serviceUrl)
     ws = new WebSocket(serviceUrl)
 
     ws.on('open', function () {
@@ -264,7 +264,7 @@ async function _connect () {
     })
 
     ws.on('error', function (error) {
-      console.error(ws.on, 'opening new conn after error', error)
+      console.error(_connect.name, 'opening new conn after error', error)
       ws = null
     })
 

@@ -195,6 +195,14 @@ const deleteEvent = model => ({
   model: model
 })
 
+/**
+ * Register the {@link ModelSpecification}: inject dependencies,
+ * bind adapters, register events
+ * @param {Model} model
+ * @param {{[x:string]:{[x:string]:Function}}} services
+ * @param {{[x: string]:Function}} adapters
+ * @param {boolean} isCached
+ */
 function register (model, services, adapters, isCached = false) {
   const serviceAdapters = bindAdapters(model.ports, adapters, services)
 

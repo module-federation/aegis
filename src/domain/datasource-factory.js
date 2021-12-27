@@ -10,6 +10,7 @@ const defaultAdapter = process.env.DATASOURCE_ADAPTER || config.MEMORYADAPTER
 const DefaultDataSource = adapters[defaultAdapter]
 
 /**
+ * Creates or returns the dedicated datasource for the domain model.
  * @todo handle all state same way
  * @typedef {{getDataSource:function(string):import("./datasource").default,listDataSources:Map[]}} DataSourceFactory
  * @type {DataSourceFactory}

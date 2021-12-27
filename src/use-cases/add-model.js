@@ -6,9 +6,9 @@ import domainEvents from '../domain/domain-events'
  * @typedef {Object} dependencies injected dependencies
  * @property {String} modelName - name of the domain model
  * @property {import('../domain/model-factory').ModelFactory} models - model factory
- * @property {import('../domain/datasource').default
+ * @property {import('../domain/datasource').default repository - model datasource adapter
  * @property {import('../domain/event-broker').EventBroker} broker - application events, propagated to domain
- * @property {...Function} handlers - event handlers can be registered by the domain
+ * @property {...import('../domain/index').eventHandler} handlers - {@link eventHandler} configured in the model spec.
  */
 
 /**

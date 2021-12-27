@@ -12,7 +12,7 @@ import EventBrokerSingleton from '../domain/event-broker'
 import ModelFactory from '../domain'
 import brokerEvents from './broker-events'
 
-export function registerCacheEvents () {
+export function registerEvents () {
   brokerEvents(
     EventBrokerSingleton.getInstance(),
     DataSourceFactory,
@@ -47,6 +47,6 @@ export const editModels = () => make(makeEditModel)
 export const listModels = () => make(makeListModels)
 export const findModels = () => make(makeFindModel)
 export const removeModels = () => make(makeRemoveModel)
-export const loadModels = () => make(makeLoadModels)
+export const loadModelSpecs = () => make(makeLoadModels)
 export const listConfigs = () =>
   makeListConfig({ models: ModelFactory, data: DataSourceFactory })
