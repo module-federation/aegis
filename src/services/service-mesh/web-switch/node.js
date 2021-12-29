@@ -16,12 +16,15 @@ const SERVICENAME = 'webswitch'
 const HOSTNAME = 'webswitch.local'
 const TIMEOUTEVENT = 'webswitchTimeout'
 const configRoot = require('../../../config').hostConfig
-const domain = configRoot.services.cert.domain
+const domain = configRoot.services.cert.domain || process.env.DOMAIN
 const config = configRoot.services.serviceMesh.WebSwitch
-const DEBUG = config.debug || false
+const DEBUG = config.debug || /.*/i.test(process.env.DEBUG)
 const heartbeat = config.heartbeat || 10000
-const protocol = /true/i.test(process.env.SSL_ENABLED) ? 'wss' : 'ws'
 const isSwitch = /true/i.test(process.env.IS_SWITCH) || config.isSwitch
+const protocol = /true/i.test(process.env.SSL_ENABLED) ? 'wss' : 'ws'
+const sslPort = /true/i.test(process.env.SSL_PORT) || 443
+const port = /true/i.test(process.env.PORT) || 80
+const servicePort = /true/i.test(process.env.SSL_ENABLED) ? sslPort : port
 
 let serviceUrl
 let uplinkCallback
@@ -45,12 +48,6 @@ function getLocalAddress () {
     return addresses
   }
 }
-
-const getHost = () => domain || process.env.DOMAIN
-const getPort = () =>
-  /true/i.test(process.env.SSL_ENABLED)
-    ? process.env.SSL_PORT
-    : process.env.PORT
 
 /**
  * Use multicast DNS to find the host
@@ -86,17 +83,17 @@ async function resolveServiceUrl () {
       )
 
       if (questions[0] && (isSwitch || os.hostname === HOSTNAME)) {
-        console.debug('answering for', HOSTNAME, protocol, getPort(), getHost())
+        console.debug('answering for', HOSTNAME, protocol, servicePort)
         const answer = {
           answers: [
             {
               name: SERVICENAME,
               type: 'SRV',
               data: {
-                port: 8080, //getPort(),
+                port: servicePort,
                 weight: 0,
                 priority: 10,
-                target: 'aegis.module-federation.org'
+                target: domain
               }
             },
             {
@@ -112,23 +109,24 @@ async function resolveServiceUrl () {
       }
     })
 
-    let takeoverTime
+    let failoverDelay
     const RETRYINTERVAL = 2000
 
-    function takeover (retries) {
-      if (!takeoverTime) {
-        takeoverTime =
+    function failover (retries) {
+      if (!failoverDelay) {
+        failoverDelay =
           Date.now() + RETRYINTERVAL * retries * Math.random() * 1000
         return
       }
       const now = Date.now()
-      const ready = now > takeoverTime
-      console.log({ ready, now, takeoverTime })
-      return ready
+      const takeover = now > failoverDelay
+      
+      console.info(failover.name, { takeover, now, failoverTime: failoverDelay })
+      return takeover
     }
 
     /**
-     * Query DNS for the webswitch server.
+     * Query  DNS for the webswitch server.
      * Recursively retry by incrementing a
      * counter we pass to ourselves on the
      * stack.
@@ -137,13 +135,12 @@ async function resolveServiceUrl () {
      * @returns
      */
     function runQuery (retries = 0) {
-      if (takeover(retries)) {
+      if (failover(retries)) {
         console.warn('assuming switch duties')
         isSwitch = true
-        return
       }
 
-      // lets query for an A record
+      // let's query for an A record
       dns.query({
         questions: [
           {
@@ -214,7 +211,7 @@ const handshake = {
   pid: process.pid,
   serviceUrl,
   address: getLocalAddress()[0],
-  url: `${protocol}://${getHost()}:${getPort()}`,
+  url: `${protocol}://${domain}:${servicePort}`,
   serialize () {
     return JSON.stringify({
       ...this,
@@ -301,11 +298,11 @@ async function _connect () {
       if (eventData.eventName) {
         if (broker) await broker.notify(eventData.eventName, eventData)
         if (uplinkCallback) await uplinkCallback(message)
-
         return
       }
 
       if (handshake.validate(eventData)) {
+        priority = eventData.connOrder
         ws.send(handshake.serialize())
         return
       }

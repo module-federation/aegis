@@ -42,22 +42,24 @@ export function attachServer (server) {
    */
   server.setRateLimit = function (client) {}
 
+  function reportStatus () {
+    return JSON.stringify({
+      servicePlugin: SERVICENAME,
+      uptimeMinutes: uptime(),
+      messagesSent,
+      clientsConnected: server.clients.size,
+      uplink: server.uplink ? server.uplink.info : 'no uplink',
+      activeSwitch: isSwitch,
+      clients: [...server.clients].map(c => ({ ...c.info, OPEN: c.OPEN }))
+    })
+  }
+
   /**
    *
    * @param {WebSocket} client
    */
   server.sendStatus = function (client) {
-    client.send(
-      JSON.stringify({
-        servicePlugin: SERVICENAME,
-        uptimeMinutes: uptime(),
-        messagesSent,
-        clientsConnected: server.clients.size,
-        uplink: server.uplink ? server.uplink.info : 'no uplink',
-        activeSwitch: isSwitch,
-        clients: [...server.clients].map(c => c.info)
-      })
-    )
+    client.send(reportStatus())
   }
 
   /**
@@ -73,6 +75,7 @@ export function attachServer (server) {
 
     client.on('close', function () {
       console.warn('client disconnecting', client.info)
+      server.broadcast(reportStatus(), client)
     })
 
     client.on('message', function (message) {
@@ -89,12 +92,14 @@ export function attachServer (server) {
           return
         }
 
-        if (msg.proto === SERVICENAME && msg.pid && msg.role) {
+        if (msg.proto === SERVICENAME) {
           client.info = {
             ...msg,
+            priority: server.clients.size,
             initialized: true
           }
           console.info('client initialized', client.info)
+          client.send(JSON.stringify({ proto: SERVICENAME, ...client.info }))
           return
         }
       } catch (e) {
@@ -104,6 +109,8 @@ export function attachServer (server) {
       client.terminate()
       console.warn('terminated client', client.info)
     })
+
+    server.broadcast(reportStatus(), client)
   })
 
   try {
