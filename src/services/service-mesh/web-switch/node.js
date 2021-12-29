@@ -10,11 +10,10 @@
 
 import os from 'os'
 import WebSocket from 'ws'
-import mcastDns from 'multicast-dns'
+import Dns from 'multicast-dns'
 
 const SERVICENAME = 'webswitch'
 const HOSTNAME = 'webswitch.local'
-const MAXRETRY = 5
 const TIMEOUTEVENT = 'webswitchTimeout'
 const configRoot = require('../../../config').hostConfig
 const domain = configRoot.services.cert.domain
@@ -33,8 +32,6 @@ let models
 /** @type {WebSocket} */
 let ws
 
-if (!configRoot) console.error(protocol, 'cannot access config file')
-
 function getLocalAddress () {
   const interfaces = os.networkInterfaces()
   const addresses = []
@@ -45,9 +42,15 @@ function getLocalAddress () {
         addresses.push(address.address)
       }
     }
+    return addresses
   }
-  return addresses
 }
+
+const getHost = () => domain || process.env.DOMAIN
+const getPort = () =>
+  /true/i.test(process.env.SSL_ENABLED)
+    ? process.env.SSL_PORT
+    : process.env.PORT
 
 /**
  * Use multicast DNS to find the host
@@ -57,11 +60,11 @@ function getLocalAddress () {
  * @returns {Promise<string>} url
  */
 async function resolveServiceUrl () {
-  const mdns = mcastDns()
+  const dns = Dns()
   let url
 
   return new Promise(async function (resolve) {
-    mdns.on('response', function (response) {
+    dns.on('response', function (response) {
       DEBUG && console.debug(resolveServiceUrl.name, response)
 
       const answer = response.answers.find(
@@ -75,56 +78,73 @@ async function resolveServiceUrl () {
       }
     })
 
-    mdns.on('query', function (query) {
+    dns.on('query', function (query) {
       DEBUG && console.debug('got a query packet:', query)
 
       const questions = query.questions.filter(
         q => q.name === SERVICENAME || q.name === HOSTNAME
       )
 
-      if (questions[0]) {
-        if (isSwitch || os.hostname === HOSTNAME) {
-          console.debug('answering for', HOSTNAME)
-          mdns.respond({
-            answers: [
-              {
-                name: SERVICENAME,
-                type: 'SRV',
-                data: {
-                  port: config.port,
-                  weight: 0,
-                  priority: 10,
-                  target: domain || config.host
-                }
-              },
-              {
-                name: HOSTNAME,
-                type: 'A',
-                ttl: 300,
-                data: getLocalAddress()[0]
+      if (questions[0] && (isSwitch || os.hostname === HOSTNAME)) {
+        console.debug('answering for', HOSTNAME, protocol, getPort(), getHost())
+        const answer = {
+          answers: [
+            {
+              name: SERVICENAME,
+              type: 'SRV',
+              data: {
+                port: 8080, //getPort(),
+                weight: 0,
+                priority: 10,
+                target: 'aegis.module-federation.org'
               }
-            ]
-          })
+            },
+            {
+              name: HOSTNAME,
+              type: 'A',
+              ttl: 300,
+              data: getLocalAddress()[0]
+            }
+          ]
         }
+
+        dns.respond(answer)
       }
     })
 
+    let takeoverTime
+    const RETRYINTERVAL = 2000
+
+    function takeover (retries) {
+      if (!takeoverTime) {
+        takeoverTime =
+          Date.now() + RETRYINTERVAL * retries * Math.random() * 1000
+        return
+      }
+      const now = Date.now()
+      const ready = now > takeoverTime
+      console.log({ ready, now, takeoverTime })
+      return ready
+    }
+
     /**
-     * Query DNS for the web-switch server.
+     * Query DNS for the webswitch server.
      * Recursively retry by incrementing a
      * counter we pass to ourselves on the
      * stack.
      *
-     * @param {number} attempts number of query attempts
+     * @param {number} retries number of query attempts
      * @returns
      */
-    function runQuery (attempts = 0) {
-      if (attempts > MAXRETRY) {
-        console.warn('mDNS cannot find switch after max retries')
+    function runQuery (retries = 0) {
+      if (takeover(retries)) {
+        console.warn('assuming switch duties')
+        isSwitch = true
         return
       }
+
       // lets query for an A record
-      mdns.query({
+      dns.query({
         questions: [
           {
             name: HOSTNAME,
@@ -133,7 +153,12 @@ async function resolveServiceUrl () {
         ]
       })
 
-      setTimeout(() => (url ? resolve(url) : runQuery(attempts++)), 6000)
+      if (url) {
+        resolve(url)
+        return
+      }
+
+      setTimeout(() => runQuery(retries++), RETRYINTERVAL)
     }
 
     runQuery()
@@ -189,7 +214,7 @@ const handshake = {
   pid: process.pid,
   serviceUrl,
   address: getLocalAddress()[0],
-  url: `${protocol}://${domain || config.host}:${config.port}`,
+  url: `${protocol}://${getHost()}:${getPort()}`,
   serialize () {
     return JSON.stringify({
       ...this,
@@ -219,8 +244,8 @@ function startHeartBeat (ws) {
       ws.ping(0x9)
     } else {
       try {
-        await broker.notify(TIMEOUTEVENT, 'server unresponsive', true)
-        console.error(receivedPong.resolve, 'no response, trying new conn')
+        await broker.notify(TIMEOUTEVENT, 'server unresponsive')
+        console.error(receivedPong, 'no response, trying new conn')
         clearInterval(intervalId)
         await reconnect()
       } catch (error) {
@@ -255,7 +280,8 @@ export async function subscribe (eventName, callback, options = {}) {
 async function _connect () {
   if (!ws) {
     if (!serviceUrl) serviceUrl = await resolveServiceUrl()
-    console.info(_connect.name, 'connecting to ', serviceUrl)
+    console.info(_connect.name, 'switch', serviceUrl)
+
     ws = new WebSocket(serviceUrl)
 
     ws.on('open', function () {
@@ -264,8 +290,8 @@ async function _connect () {
     })
 
     ws.on('error', function (error) {
-      console.error(_connect.name, 'opening new conn after error', error)
-      ws = null
+      console.error(_connect.name, error)
+      ws = null // new socket next msg
     })
 
     ws.on('message', async function (message) {
@@ -275,6 +301,7 @@ async function _connect () {
       if (eventData.eventName) {
         if (broker) await broker.notify(eventData.eventName, eventData)
         if (uplinkCallback) await uplinkCallback(message)
+
         return
       }
 

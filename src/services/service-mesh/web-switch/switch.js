@@ -18,7 +18,6 @@ let messagesSent = 0
  */
 export function attachServer (server) {
   /**
-   *
    * @param {object} data
    * @param {WebSocket} sender
    */
@@ -55,36 +54,17 @@ export function attachServer (server) {
         messagesSent,
         clientsConnected: server.clients.size,
         uplink: server.uplink ? server.uplink.info : 'no uplink',
-        primarySwitch: isSwitch,
-        failoverSwitch: server.failoverSwitch,
+        activeSwitch: isSwitch,
         clients: [...server.clients].map(c => c.info)
       })
     )
   }
-
-  // function setFailoverSwitch (client) {
-  //   const clients = server.clients.entries()
-
-  //   function _setFailoverSwitch (client) {
-  //     if (!server.failoverSwitch) {
-  //       if (client.OPEN) {
-  //         client.send({ proto: SERVICENAME, msg: 'setFailover' })
-  //         return true
-  //       }
-  //       if (_setFailoverSwitch(clients.next().value)) return true
-  //     }
-  //     return false
-  //   }
-
-  //   _setFailoverSwitch(client)
-  // }
 
   /**
    * @param {WebSocket} client
    */
   server.on('connection', function (client) {
     client.info = { address: client._socket.address(), id: nanoid() }
-    //setFailoverSwitch(client)
 
     client.addListener('ping', function () {
       console.assert(!DEBUG, 'responding to client ping', client.info)

@@ -28,8 +28,8 @@ const {
  *  broker:import("./event-broker").EventBroker,
  *  datasources:import("./datasource-factory").DataSourceFactory,
  *  models:import("./model-factory").ModelFactory,
- *  subscribe:function(...args),
- *  publish:function(...args),
+ *  subscribe:function(string,function()),
+ *  publish:function(string,object),
  * }} param0
  */
 export default function DistributedCache ({
@@ -121,7 +121,7 @@ export default function DistributedCache ({
    * @param {function(m)=>m.id} return id to save
    */
   async function saveModel (model, datasource) {
-    return datasource.save(model.id || model.getId(), model)
+    return datasource.save(models.getModelId(model), model)
   }
 
   /**
@@ -154,7 +154,7 @@ export default function DistributedCache ({
         if (!model || model.length < 1) {
           console.error('no model found', eventName)
           // no model found
-          if (route) await route({ ...event, model })
+          if (route) await route(event)
           return
         }
 

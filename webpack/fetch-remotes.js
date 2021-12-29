@@ -1,8 +1,8 @@
-"use strict";
+'use strict'
 
-const { Octokit } = require("@octokit/rest");
-const fs = require("fs");
-const token = process.env.GITHUB_TOKEN;
+const { Octokit } = require('@octokit/rest')
+const fs = require('fs')
+const token = process.env.GITHUB_TOKEN
 
 /**
  * Allow multiple entry points from different owners, repos, etc on github.
@@ -10,33 +10,32 @@ const token = process.env.GITHUB_TOKEN;
  * @param {*} url
  * @returns
  */
-function githubPath(entry, url) {
+function githubPath (entry, url) {
   if (entry.owner)
-    return `${entry.owner}-${entry.repo}-${entry.filedir.split("/").join("-")}`;
-  return url.pathname.split("/").join("-");
+    return `${entry.owner}-${entry.repo}-${entry.filedir.split('/').join('-')}`
+  return url.pathname.split('/').join('-')
 }
 
-function generateFilename(entry) {
-  const url = new URL(entry.url);
-  const hostpart = url.hostname.split(".").join("-");
-  const portpart = url.port ? url.port : 80;
-  const pathpart = githubPath(entry, url);
+function generateFilename (entry) {
+  const url = new URL(entry.url)
+  const hostpart = url.hostname.split('.').join('-')
+  const portpart = url.port ? url.port : 80
+  const pathpart = githubPath(entry, url)
   if (/remoteEntry/i.test(pathpart))
-    return `${hostpart}-${portpart}-${pathpart}`;
-  return `${hostpart}-${portpart}-${pathpart}-remoteEntry.js`;
-  const tocken = process.env.GITHUB_TID;
+    return `${hostpart}-${portpart}-${pathpart}`
+  return `${hostpart}-${portpart}-${pathpart}-remoteEntry.js`
 }
 
-function getPath(entry) {
-  const filename = generateFilename(entry);
-  let basedir = entry.path;
-  if (entry.path.charAt(entry.path.length - 1) !== "/") {
-    basedir = entry.path.concat("/");
+function getPath (entry) {
+  const filename = generateFilename(entry)
+  let basedir = entry.path
+  if (entry.path.charAt(entry.path.length - 1) !== '/') {
+    basedir = entry.path.concat('/')
   }
-  return basedir.concat(filename);
+  return basedir.concat(filename)
 }
 
-const octokit = new Octokit({ auth: token });
+const octokit = new Octokit({ auth: token })
 
 /**
  * Download remote entry from github. Will be a blob (> 1MB).
@@ -46,46 +45,46 @@ const octokit = new Octokit({ auth: token });
  * @param {*} path where to write file contents
  * @returns
  */
-async function githubFetch(entry, path) {
+async function githubFetch (entry, path) {
   return octokit
     .request(
-      "GET https://api.github.com/repos/{owner}/{repo}/contents/{filedir}?ref={branch}",
+      'GET https://api.github.com/repos/{owner}/{repo}/contents/{filedir}?ref={branch}',
       {
         owner: entry.owner,
         repo: entry.repo,
         filedir: entry.filedir,
-        branch: entry.branch,
+        branch: entry.branch
       }
     )
     .then(function (rest) {
-      const file = rest.data.find(f => f.name === "remoteEntry.js");
-      return file.sha;
+      const file = rest.data.find(f => f.name === 'remoteEntry.js')
+      return file.sha
     })
     .then(function (sha) {
-      return octokit.request("GET /repos/{owner}/{repo}/git/blobs/{sha}", {
+      return octokit.request('GET /repos/{owner}/{repo}/git/blobs/{sha}', {
         owner: entry.owner,
         repo: entry.repo,
-        sha,
-      });
+        sha
+      })
     })
     .then(function (rest) {
       fs.writeFileSync(
         path,
-        Buffer.from(rest.data.content, "base64").toString("utf-8")
-      );
-    });
+        Buffer.from(rest.data.content, 'base64').toString('utf-8')
+      )
+    })
 }
 
-function httpGet(entry, path, done) {
-  const url = new URL(entry.url);
-  require(url.protocol.replace(":", "")).get(
+function httpGet (entry, path, done) {
+  const url = new URL(entry.url)
+  require(url.protocol.replace(':', '')).get(
     entry.url,
     { rejectUnauthorized: false },
     function (response) {
-      response.pipe(fs.createWriteStream(path));
-      response.on("end", done);
+      response.pipe(fs.createWriteStream(path))
+      response.on('end', done)
     }
-  );
+  )
 }
 
 /**
@@ -93,8 +92,8 @@ function httpGet(entry, path, done) {
  * @param {*} entry
  * @returns
  */
-function getUniqueEntry(entry) {
-  return `${entry.url}${entry.owner}${entry.repo}${entry.filedir}`;
+function getUniqueEntry (entry) {
+  return `${entry.url}${entry.owner}${entry.repo}${entry.filedir}`
 }
 
 /**
@@ -102,17 +101,17 @@ function getUniqueEntry(entry) {
  * @param {{name:string,path:sting,filedir:string,branch:string,url:string}[]} entries
  * @returns {{[x:string]:{name:string,path:string,url:string}}}
  */
-function deduplicate(entries) {
+function deduplicate (entries) {
   return entries
     .map(function (e) {
       return {
         [getUniqueEntry(e)]: {
           ...e,
-          name: getUniqueEntry(e),
-        },
-      };
+          name: getUniqueEntry(e)
+        }
+      }
     })
-    .reduce((p, c) => ({ ...p, ...c }));
+    .reduce((p, c) => ({ ...p, ...c }))
 }
 
 /**
@@ -126,31 +125,31 @@ function deduplicate(entries) {
  * @returns {Promise<{[index: string]: string}>} local paths to downloaded entries
  */
 module.exports = async remoteEntry => {
-  console.info(remoteEntry);
-  const entries = Array.isArray(remoteEntry) ? remoteEntry : [remoteEntry];
+  console.info(remoteEntry)
+  const entries = Array.isArray(remoteEntry) ? remoteEntry : [remoteEntry]
   const nonWasmEntries = entries.filter(entry => !entry.wasm)
 
   const remotes = await Promise.all(
     Object.values(deduplicate(nonWasmEntries)).map(function (entry) {
-      if (entry.wasm) return;
-      const path = getPath(entry);
-      console.log("downloading file to", path);
+      if (entry.wasm) return
+      const path = getPath(entry)
+      console.log('downloading file to', path)
 
       return new Promise(async function (resolve) {
-        const resolvePath = () => resolve({ [entry.name]: path });
+        const resolvePath = () => resolve({ [entry.name]: path })
 
         if (/^https:\/\/api.github.com.*/i.test(entry.url)) {
           // Download from github.
-          githubFetch(entry, path);
-          resolvePath();
+          githubFetch(entry, path)
+          resolvePath()
         } else {
-          httpGet(entry, path, resolvePath);
+          httpGet(entry, path, resolvePath)
         }
-      });
+      })
     })
-  );
+  )
 
   return entries.map(e => ({
-    [e.name]: remotes.find(r => r[getUniqueEntry(e)])[getUniqueEntry(e)],
-  }));
-};
+    [e.name]: remotes.find(r => r[getUniqueEntry(e)])[getUniqueEntry(e)]
+  }))
+}
