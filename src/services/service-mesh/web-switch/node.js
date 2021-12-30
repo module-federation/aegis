@@ -110,18 +110,23 @@ async function resolveServiceUrl () {
     })
 
     let failoverDelay
-    const RETRYINTERVAL = 2000
+    const RETRYINTERVAL = config.retryInterval || 2000
+    const MAXRETRY = config.maxRetry || 10
 
     function failover (retries) {
       if (!failoverDelay) {
         failoverDelay =
-          Date.now() + RETRYINTERVAL * retries * Math.random() * 1000
+          Date.now() + RETRYINTERVAL * MAXRETRY * Math.random() * 10000
         return
       }
       const now = Date.now()
       const takeover = now > failoverDelay
-      
-      console.info(failover.name, { takeover, now, failoverTime: failoverDelay })
+
+      console.info(failover.name, {
+        takeover,
+        now,
+        failoverDelay
+      })
       return takeover
     }
 
@@ -138,6 +143,7 @@ async function resolveServiceUrl () {
       if (failover(retries)) {
         console.warn('assuming switch duties')
         isSwitch = true
+        return
       }
 
       // let's query for an A record
@@ -178,6 +184,10 @@ export function setUplinkUrl (uplinkUrl) {
   ws = null // trigger reconnect
 }
 
+function dispose () {
+  ws = null
+}
+
 /**
  * @typedef {object} HandshakeMsg
  * @property {string} proto the protocol 'web-switch'
@@ -209,7 +219,6 @@ const handshake = {
   proto: SERVICENAME,
   role: 'node',
   pid: process.pid,
-  serviceUrl,
   address: getLocalAddress()[0],
   url: `${protocol}://${domain}:${servicePort}`,
   serialize () {
@@ -288,7 +297,7 @@ async function _connect () {
 
     ws.on('error', function (error) {
       console.error(_connect.name, error)
-      ws = null // new socket next msg
+      ws = null // get rid of this socket
     })
 
     ws.on('message', async function (message) {
