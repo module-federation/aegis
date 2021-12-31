@@ -12,19 +12,21 @@ import os from 'os'
 import WebSocket from 'ws'
 import Dns from 'multicast-dns'
 
-const SERVICENAME = 'webswitch'
-const HOSTNAME = 'webswitch.local'
-const TIMEOUTEVENT = 'webswitchTimeout'
 const configRoot = require('../../../config').hostConfig
-const domain = configRoot.services.cert.domain || process.env.DOMAIN
 const config = configRoot.services.serviceMesh.WebSwitch
+
+const HOSTNAME = config.hostname || 'webswitch.local'
+const SERVICENAME = config.servicename || 'webswitch'
+const TIMEOUTEVENT = config.timeoutevent || 'webswitchTimeout'
+const RETRYINTERVAL = config.retryInterval || 2000
 const DEBUG = config.debug || /.*/i.test(process.env.DEBUG)
-const heartbeat = config.heartbeat || 10000
-const isSwitch = /true/i.test(process.env.IS_SWITCH) || config.isSwitch
-const protocol = /true/i.test(process.env.SSL_ENABLED) ? 'wss' : 'ws'
-const sslPort = /true/i.test(process.env.SSL_PORT) || 443
-const port = /true/i.test(process.env.PORT) || 80
-const servicePort = /true/i.test(process.env.SSL_ENABLED) ? sslPort : port
+const DOMAIN = configRoot.services.cert.domain || process.env.DOMAIN
+const HEARTBEAT = config.heartbeat || 10000
+const IS_SWITCH = /true/i.test(process.env.IS_SWITCH) || config.isSwitch
+const PROTOCOL = /true/i.test(process.env.SSL_ENABLED) ? 'wss' : 'ws'
+const SSL_PORT = /true/i.test(process.env.SSL_PORT) || 443
+const PORT = /true/i.test(process.env.PORT) || 80
+const SERVICEPORT = /true/i.test(process.env.SSL_ENABLED) ? SSL_PORT : PORT
 
 /** @type {import('../../../domain/event-broker').EventBroker} */
 let broker
@@ -32,11 +34,11 @@ let broker
 let models
 /** @type {WebSocket} */
 let ws
-let failoverPriority = 65535
 let serviceUrl
 let uplinkCallback
+let isBackupSwitch = false
 
-function getLocalAddress () {
+function getLocalAddress() {
   const interfaces = os.networkInterfaces()
   const addresses = []
   for (var k in interfaces) {
@@ -57,7 +59,7 @@ function getLocalAddress () {
  *
  * @returns {Promise<string>} url
  */
-async function resolveServiceUrl () {
+async function resolveServiceUrl() {
   const dns = Dns()
   let url
 
@@ -70,7 +72,7 @@ async function resolveServiceUrl () {
       )
 
       if (answer) {
-        url = `${protocol}://${answer.data.target}:${answer.data.port}`
+        url = `${PROTOCOL}://${answer.data.target}:${answer.data.port}`
         console.info('found dns service record for', SERVICENAME, url)
         resolve(url)
       }
@@ -83,18 +85,20 @@ async function resolveServiceUrl () {
         q => q.name === SERVICENAME || q.name === HOSTNAME
       )
 
-      if (questions[0] && (isSwitch || os.hostname === HOSTNAME)) {
-        console.debug('answering for', HOSTNAME, protocol, servicePort)
+      if (!questions[0]) return
+
+      if (IS_SWITCH || isBackupSwitch || os.hostname === HOSTNAME) {
+        console.debug('answering for', HOSTNAME, PROTOCOL, SERVICEPORT)
         const answer = {
           answers: [
             {
               name: SERVICENAME,
               type: 'SRV',
               data: {
-                port: servicePort,
+                port: SERVICEPORT,
                 weight: 0,
                 priority: 10,
-                target: domain
+                target: DOMAIN
               }
             },
             {
@@ -110,29 +114,8 @@ async function resolveServiceUrl () {
       }
     })
 
-    let failoverDelay
-    const RETRYINTERVAL = config.retryInterval || 2000
-    const MAXRETRY = config.maxRetry || 10
-
-    function failover (retries) {
-      if (!failoverDelay) {
-        failoverDelay =
-          Date.now() + RETRYINTERVAL * MAXRETRY * Math.random() * 10000
-        return
-      }
-      const now = Date.now()
-      const takeover = now > failoverDelay
-
-      console.info(failover.name, {
-        takeover,
-        now,
-        failoverDelay
-      })
-      return takeover
-    }
-
     /**
-     * Query  DNS for the webswitch server.
+     * Query DNS for the webswitch server.
      * Recursively retry by incrementing a
      * counter we pass to ourselves on the
      * stack.
@@ -140,12 +123,8 @@ async function resolveServiceUrl () {
      * @param {number} retries number of query attempts
      * @returns
      */
-    function runQuery (retries = 0) {
-      if (failover(retries)) {
-        console.warn('assuming switch duties')
-        isSwitch = true
-        return
-      }
+    function runQuery(retries = 0) {
+      console.info('asking for', HOSTNAME, SERVICENAME, retries)
 
       // let's query for an A record
       dns.query({
@@ -173,19 +152,19 @@ async function resolveServiceUrl () {
  * Set callback for uplink.
  * @param {function():Promise<void>} callback
  */
-export function onUplinkMessage (callback) {
+export function onUplinkMessage(callback) {
   uplinkCallback = callback
 }
 
 /**
  * server sets uplink host
  */
-export function setUplinkUrl (uplinkUrl) {
+export function setUplinkUrl(uplinkUrl) {
   serviceUrl = uplinkUrl
   ws = null // trigger reconnect
 }
 
-function dispose () {
+function dispose() {
   ws = null
 }
 
@@ -207,7 +186,7 @@ function dispose () {
  *  models:import('../../../domain/model-factory').ModelFactory
  * }} serviceInfo
  */
-export async function connect (serviceInfo = {}) {
+export async function connect(serviceInfo = {}) {
   broker = serviceInfo.broker || null
   models = serviceInfo.models || null
   await _connect()
@@ -221,14 +200,14 @@ const handshake = {
   role: 'node',
   pid: process.pid,
   address: getLocalAddress()[0],
-  url: `${protocol}://${domain}:${servicePort}`,
-  serialize () {
+  url: `${PROTOCOL}://${DOMAIN}:${SERVICEPORT}`,
+  serialize() {
     return JSON.stringify({
       ...this,
       models: models?.getModelSpecs().map(spec => spec.modelName) || []
     })
   },
-  validate (msg) {
+  validate(msg) {
     return msg.proto === this.proto
   }
 }
@@ -237,7 +216,7 @@ const handshake = {
  *
  * @param {WebSocket} ws
  */
-function startHeartBeat (ws) {
+function startHeartBeat(ws) {
   let receivedPong = true
 
   ws.addListener('pong', function () {
@@ -259,7 +238,7 @@ function startHeartBeat (ws) {
         console.error(startHeartBeat.name, error)
       }
     }
-  }, heartbeat)
+  }, HEARTBEAT)
 }
 
 /**
@@ -276,7 +255,7 @@ function startHeartBeat (ws) {
  * @param {*} broker
  * @param {{allowMultiple:boolean, once:boolean}} [options]
  */
-export async function subscribe (eventName, callback, options = {}) {
+export async function subscribe(eventName, callback, options = {}) {
   try {
     broker.on(eventName, callback, options)
   } catch (e) {
@@ -284,7 +263,7 @@ export async function subscribe (eventName, callback, options = {}) {
   }
 }
 
-async function _connect () {
+async function _connect() {
   if (!ws) {
     if (!serviceUrl) serviceUrl = await resolveServiceUrl()
     console.info(_connect.name, 'switch', serviceUrl)
@@ -312,7 +291,7 @@ async function _connect () {
       }
 
       if (handshake.validate(eventData)) {
-        failoverPriority = eventData.priority
+        backupSwitch = eventData.isBackupSwitch
         ws.send(handshake.serialize())
         return
       }
@@ -322,14 +301,14 @@ async function _connect () {
   }
 }
 
-async function reconnect () {
+async function reconnect() {
   serviceUrl = null
   ws = null
   await _connect()
   if (!ws) setTimeout(reconnect, 60000)
 }
 
-function send (event) {
+function send(event) {
   if (ws?.readyState) {
     ws.send(JSON.stringify(event))
     return
@@ -342,7 +321,7 @@ function send (event) {
  * @param {object} event
  * @returns
  */
-export async function publish (event) {
+export async function publish(event) {
   try {
     if (!event) {
       console.error(publish.name, 'no event provided')
