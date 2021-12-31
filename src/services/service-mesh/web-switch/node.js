@@ -25,6 +25,7 @@ const protocol = /true/i.test(process.env.SSL_ENABLED) ? 'wss' : 'ws'
 const sslPort = /true/i.test(process.env.SSL_PORT) || 443
 const port = /true/i.test(process.env.PORT) || 80
 const servicePort = /true/i.test(process.env.SSL_ENABLED) ? sslPort : port
+let priority
 
 let serviceUrl
 let uplinkCallback
@@ -65,7 +66,10 @@ async function resolveServiceUrl () {
       DEBUG && console.debug(resolveServiceUrl.name, response)
 
       const answer = response.answers.find(
-        a => a.name === SERVICENAME && a.type === 'SRV'
+        a =>
+          a.name === SERVICENAME &&
+          a.type === 'SRV' &&
+          a.data.priority > priority
       )
 
       if (answer) {
