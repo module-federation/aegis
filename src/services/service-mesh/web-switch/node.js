@@ -25,16 +25,16 @@ const protocol = /true/i.test(process.env.SSL_ENABLED) ? 'wss' : 'ws'
 const sslPort = /true/i.test(process.env.SSL_PORT) || 443
 const port = /true/i.test(process.env.PORT) || 80
 const servicePort = /true/i.test(process.env.SSL_ENABLED) ? sslPort : port
-let priority
 
-let serviceUrl
-let uplinkCallback
 /** @type {import('../../../domain/event-broker').EventBroker} */
 let broker
-/**@type {import('../../../domain/model-factory').ModelFactory} */
+/** @type {import('../../../domain/model-factory').ModelFactory} */
 let models
 /** @type {WebSocket} */
 let ws
+let failoverPriority = 65535
+let serviceUrl
+let uplinkCallback
 
 function getLocalAddress () {
   const interfaces = os.networkInterfaces()
@@ -66,10 +66,7 @@ async function resolveServiceUrl () {
       DEBUG && console.debug(resolveServiceUrl.name, response)
 
       const answer = response.answers.find(
-        a =>
-          a.name === SERVICENAME &&
-          a.type === 'SRV' &&
-          a.data.priority > priority
+        a => a.name === SERVICENAME && a.type === 'SRV'
       )
 
       if (answer) {
@@ -315,7 +312,7 @@ async function _connect () {
       }
 
       if (handshake.validate(eventData)) {
-        priority = eventData.connOrder
+        failoverPriority = eventData.priority
         ws.send(handshake.serialize())
         return
       }

@@ -10,6 +10,7 @@ const config = configRoot.services.serviceMesh.WebSwitch
 const DEBUG = /true/i.test(config.debug)
 const isSwitch = /true/i.test(process.env.IS_SWITCH) || config.isSwitch
 let messagesSent = 0
+let backupSwitch
 
 /**
  *
@@ -49,7 +50,7 @@ export function attachServer (server) {
       messagesSent,
       clientsConnected: server.clients.size,
       uplink: server.uplink ? server.uplink.info : 'no uplink',
-      activeSwitch: isSwitch,
+      isPrimarySwitch: isSwitch,
       clients: [...server.clients].map(c => ({ ...c.info, OPEN: c.OPEN }))
     })
   }
@@ -60,6 +61,18 @@ export function attachServer (server) {
    */
   server.sendStatus = function (client) {
     client.send(reportStatus())
+  }
+
+  server.reassignBackupSwitch = function (client) {
+    if (client.info.id === backupSwitch) {
+      for (let c of server.clients) {
+        if (c.info.id !== backupSwitch) {
+          backupSwitch = c.info.id
+          c.isBackupSwitch = true
+          return
+        }
+      }
+    }
   }
 
   /**
@@ -75,6 +88,7 @@ export function attachServer (server) {
 
     client.on('close', function () {
       console.warn('client disconnecting', client.info)
+      server.reassignBackupSwitch(client)
       server.broadcast(reportStatus(), client)
     })
 
@@ -87,19 +101,19 @@ export function attachServer (server) {
             server.sendStatus(client)
             return
           }
-
           server.broadcast(message, client)
           return
         }
 
         if (msg.proto === SERVICENAME) {
+          if (!backupSwitch) backupSwitch = client.info.id
           client.info = {
             ...msg,
-            priority: server.clients.size,
-            initialized: true
+            initialized: true,
+            isBackupSwitch: backupSwitch === client.info.id
           }
           console.info('client initialized', client.info)
-          client.send(JSON.stringify({ proto: SERVICENAME, ...client.info }))
+          client.send(JSON.stringify({ ...msg, ...client.info }))
           return
         }
       } catch (e) {
