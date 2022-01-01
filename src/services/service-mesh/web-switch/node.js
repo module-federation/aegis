@@ -19,14 +19,14 @@ const HOSTNAME = config.hostname || 'webswitch.local'
 const SERVICENAME = config.servicename || 'webswitch'
 const TIMEOUTEVENT = config.timeoutevent || 'webswitchTimeout'
 const RETRYINTERVAL = config.retryInterval || 2000
+const MAXRETRIES = config.maxRetries || 5
 const DEBUG = config.debug || /.*/i.test(process.env.DEBUG)
 const DOMAIN = configRoot.services.cert.domain || process.env.DOMAIN
 const HEARTBEAT = config.heartbeat || 10000
-const IS_SWITCH = /true/i.test(process.env.IS_SWITCH) || config.isSwitch
 const PROTOCOL = /true/i.test(process.env.SSL_ENABLED) ? 'wss' : 'ws'
 const SSL_PORT = /true/i.test(process.env.SSL_PORT) || 443
 const PORT = /true/i.test(process.env.PORT) || 80
-const SERVICEPORT = /true/i.test(process.env.SSL_ENABLED) ? SSL_PORT : PORT
+const SERVICEPORT = process.env.SERVICEPORT || /true/i.test(process.env.SSL_ENABLED) ? SSL_PORT : PORT
 
 /** @type {import('../../../domain/event-broker').EventBroker} */
 let broker
@@ -37,7 +37,13 @@ let ws
 let serviceUrl
 let uplinkCallback
 let isBackupSwitch = false
+let activateBackup = false
+let isSwitch = config.isSwitch || /true/i.test(process.env.IS_SWITCH)
 
+/**
+ * 
+ * @returns 
+ */
 function getLocalAddress() {
   const interfaces = os.networkInterfaces()
   const addresses = []
@@ -87,7 +93,7 @@ async function resolveServiceUrl() {
 
       if (!questions[0]) return
 
-      if (IS_SWITCH || isBackupSwitch || os.hostname === HOSTNAME) {
+      if (isSwitch || (isBackupSwitch && activateBackup) || os.hostname === HOSTNAME) {
         console.debug('answering for', HOSTNAME, PROTOCOL, SERVICEPORT)
         const answer = {
           answers: [
@@ -124,6 +130,10 @@ async function resolveServiceUrl() {
      * @returns
      */
     function runQuery(retries = 0) {
+      if (retries > MAXRETRIES) {
+        activateBackup = true
+        return
+      }
       console.info('asking for', HOSTNAME, SERVICENAME, retries)
 
       // let's query for an A record
@@ -164,6 +174,9 @@ export function setUplinkUrl(uplinkUrl) {
   ws = null // trigger reconnect
 }
 
+/**
+ * 
+ */
 function dispose() {
   ws = null
 }
@@ -224,6 +237,9 @@ function startHeartBeat(ws) {
     receivedPong = true
   })
 
+  /**
+   * 
+   */
   const intervalId = setInterval(async function () {
     if (receivedPong) {
       receivedPong = false
@@ -250,9 +266,9 @@ function startHeartBeat(ws) {
  */
 
 /**
- * @param {*} eventName
+ * @param {string} eventName
  * @param {subscription} callback
- * @param {*} broker
+ * @param {import('../../../domain/event-broker').EventBroker} broker
  * @param {{allowMultiple:boolean, once:boolean}} [options]
  */
 export async function subscribe(eventName, callback, options = {}) {
@@ -263,6 +279,9 @@ export async function subscribe(eventName, callback, options = {}) {
   }
 }
 
+/**
+ * 
+ */
 async function _connect() {
   if (!ws) {
     if (!serviceUrl) serviceUrl = await resolveServiceUrl()
@@ -291,7 +310,7 @@ async function _connect() {
       }
 
       if (handshake.validate(eventData)) {
-        backupSwitch = eventData.isBackupSwitch
+        isBackupSwitch = eventData.isBackupSwitch
         ws.send(handshake.serialize())
         return
       }
@@ -301,13 +320,21 @@ async function _connect() {
   }
 }
 
+/**
+ * 
+ */
 async function reconnect() {
   serviceUrl = null
   ws = null
   await _connect()
-  if (!ws) setTimeout(reconnect, 60000)
+  if (!ws) setTjimeout(reconnect, 60000)
 }
 
+/**
+ * 
+ * @param {object} event 
+ * @returns 
+ */
 function send(event) {
   if (ws?.readyState) {
     ws.send(JSON.stringify(event))
