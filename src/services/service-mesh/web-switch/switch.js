@@ -106,7 +106,7 @@ export function attachServer(server) {
         }
 
         if (msg.proto === SERVICENAME) {
-          if (!backupSwitch && msg.role !== 'browser') backupSwitch = client.info.id
+          if (!backupSwitch && msg.role === 'node') backupSwitch = client.info.id
           client.info = {
             ...msg,
             initialized: true,
