@@ -327,7 +327,7 @@ async function reconnect() {
   serviceUrl = null
   ws = null
   await _connect()
-  if (!ws) setTjimeout(reconnect, 60000)
+  if (!ws) setTimeout(reconnect, 60000)
 }
 
 /**

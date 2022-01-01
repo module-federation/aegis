@@ -17,7 +17,7 @@ let backupSwitch
  * @param {import('ws').Server} server
  * @returns {import('ws').Server}
  */
-export function attachServer (server) {
+export function attachServer(server) {
   /**
    * @param {object} data
    * @param {WebSocket} sender
@@ -41,9 +41,9 @@ export function attachServer (server) {
    * @todo implement rate limit enforcement
    * @param {WebSocket} client
    */
-  server.setRateLimit = function (client) {}
+  server.setRateLimit = function (client) { }
 
-  function reportStatus () {
+  function reportStatus() {
     return JSON.stringify({
       servicePlugin: SERVICENAME,
       uptimeMinutes: uptime(),
@@ -106,7 +106,7 @@ export function attachServer (server) {
         }
 
         if (msg.proto === SERVICENAME) {
-          if (!backupSwitch) backupSwitch = client.info.id
+          if (!backupSwitch && msg.role !== 'browser') backupSwitch = client.info.id
           client.info = {
             ...msg,
             initialized: true,
