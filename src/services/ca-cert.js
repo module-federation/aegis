@@ -132,6 +132,6 @@ exports.initCertificateService = function (dnsProvider, whois) {
       return { key, cert, csr }
     } catch (e) {
       console.error(acme.Client.name, e);
-    } ``
+    }
   }
 }

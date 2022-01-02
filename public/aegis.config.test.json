@@ -2,7 +2,7 @@
   "desc": "hot-reloadable configurtion variables, see https://github.com/module-federatio/aegis",
   "general": {
     "desc": "live-updateable environmental vars",
-    "fqdn": "localhost",
+    "fqdn": "webswitch.local",
     "restartWorflow": true,
     "checkIpHost": "https://checkip.amazonaws.com",
     "defaultCircuitBreaker": {
@@ -87,7 +87,7 @@
     "cert": {
       "certPath": "../cert",
       "webroot": "../public",
-      "domain": "aegis.module-federation.org",
+      "domain": "webswitch.local",
       "domainEmail": null
     }
   }

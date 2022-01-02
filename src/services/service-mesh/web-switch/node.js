@@ -21,7 +21,7 @@ const TIMEOUTEVENT = 'webswitchTimeout'
 const RETRYINTERVAL = config.retryInterval || 2000
 const MAXRETRIES = config.maxRetries || 5
 const DEBUG = config.debug || /true/i.test(process.env.DEBUG)
-const DOMAIN = configRoot.services.cert.domain || process.env.DOMAIN
+  const DOMAIN = configRoot.general.fqdn || process.env.DOMAIN
 const HEARTBEAT = config.heartbeat || 10000
 const SSL_ENABLED = /true/i.test(process.env.SSL_ENABLED)
 const SSL_PORT = /true/i.test(process.env.SSL_PORT) || 443
@@ -141,11 +141,7 @@ async function resolveServiceUrl() {
           {
             name: SERVICENAME,
             type: 'SRV'
-          }//,
-          // {
-          //   name: HOSTNAME,
-          //   type: 'A'
-          // }
+          }
         ]
       })
 
@@ -255,7 +251,7 @@ function startHeartBeat() {
       ws.ping(0x9)
     } else {
       try {
-        await broker.notify(TIMEOUTEVENT, 'server unresponsive')
+        if (broker) await broker.notify(TIMEOUTEVENT, 'server unresponsive')
         console.error(receivedPong, 'no response, trying new conn')
         clearInterval(intervalId)
         await reconnect()
@@ -353,7 +349,7 @@ function send(event) {
     ws.send(event)
     return
   }
-  setTimeout(send, 1000)
+  setTimeout(send, 1000, event)
 }
 
 /**
