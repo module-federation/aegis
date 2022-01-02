@@ -2,14 +2,7 @@
   "desc": "hot-reloadable configurtion variables, see https://github.com/module-federatio/aegis",
   "general": {
     "desc": "live-updateable environmental vars",
-    "distributedCache": {
-      "desc": "enables transparent integration between aegis instances",
-      "enabled": true
-    },
-    "serviceMesh": {
-      "desc": "service mesh enabled or not: disable to use external, federated event bus",
-      "enabled": true
-    },
+    "fqdn": "localhost",
     "restartWorflow": true,
     "checkIpHost": "https://checkip.amazonaws.com",
     "defaultCircuitBreaker": {
@@ -44,7 +37,7 @@
   },
   "services": {
     "desc": "services config",
-    "activeServiceMesh": "MeshLink",
+    "activeServiceMesh": "WebSwitch",
     "serviceMesh": {
       "WebSwitch": {
         "desc": "Default implementation. Switched mesh over web sockets.",
@@ -86,12 +79,14 @@
         "jwksUri": "https://dev-2fe2iar6.us.auth0.com/.well-known/jwks.json",
         "audience": "https://microlib.io/",
         "issuer": "https://dev-2fe2iar6.us.auth0.com/",
-        "algorithms": ["RS256"]
+        "algorithms": [
+          "RS256"
+        ]
       }
     },
     "cert": {
       "certPath": "../cert",
-      "challengePath": "../public",
+      "webroot": "../public",
       "domain": "aegis.module-federation.org",
       "domainEmail": null
     }

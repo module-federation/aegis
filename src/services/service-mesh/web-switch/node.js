@@ -15,18 +15,20 @@ import Dns from 'multicast-dns'
 const configRoot = require('../../../config').hostConfig
 const config = configRoot.services.serviceMesh.WebSwitch
 
-const HOSTNAME = config.hostname || 'webswitch.local'
-const SERVICENAME = config.servicename || 'webswitch'
-const TIMEOUTEVENT = config.timeoutevent || 'webswitchTimeout'
+const HOSTNAME = 'webswitch.local'
+const SERVICENAME = 'webswitch'
+const TIMEOUTEVENT = 'webswitchTimeout'
 const RETRYINTERVAL = config.retryInterval || 2000
 const MAXRETRIES = config.maxRetries || 5
-const DEBUG = config.debug || /.*/i.test(process.env.DEBUG)
+const DEBUG = config.debug || /true/i.test(process.env.DEBUG)
 const DOMAIN = configRoot.services.cert.domain || process.env.DOMAIN
 const HEARTBEAT = config.heartbeat || 10000
-const PROTOCOL = /true/i.test(process.env.SSL_ENABLED) ? 'wss' : 'ws'
+const SSL_ENABLED = /true/i.test(process.env.SSL_ENABLED)
 const SSL_PORT = /true/i.test(process.env.SSL_PORT) || 443
-const PORT = /true/i.test(process.env.PORT) || 80
-const SERVICEPORT = process.env.SERVICEPORT || /true/i.test(process.env.SSL_ENABLED) ? SSL_PORT : PORT
+const PROTOCOL = /true/i.test(process.env.SSL_ENABLED) ? 'wss' : 'ws'
+const PORT = process.env.PORT || 80
+const SERVICEPORT = process.env.SERVICEPORT || SSL_ENABLED ? SSL_PORT : PORT
+const SERVICEPROTO = process.env.SERVICEPROTO || PROTOCOL
 
 /** @type {import('../../../domain/event-broker').EventBroker} */
 let broker
@@ -78,23 +80,26 @@ async function resolveServiceUrl() {
       )
 
       if (answer) {
-        url = `${PROTOCOL}://${answer.data.target}:${answer.data.port}`
+        url = `${SERVICEPROTO}://${answer.data.target}:${answer.data.port}`
         console.info('found dns service record for', SERVICENAME, url)
         resolve(url)
       }
     })
 
     dns.on('query', function (query) {
-      DEBUG && console.debug('got a query packet:', query)
+      console.assert(!DEBUG, 'got a query packet:', query)
 
       const questions = query.questions.filter(
         q => q.name === SERVICENAME || q.name === HOSTNAME
       )
 
-      if (!questions[0]) return
+      if (!questions[0]) {
+        console.warn('no questions', questions)
+        return
+      }
 
-      if (isSwitch || (isBackupSwitch && activateBackup) || os.hostname === HOSTNAME) {
-        console.debug('answering for', HOSTNAME, PROTOCOL, SERVICEPORT)
+      if (isSwitch || (isBackupSwitch && activateBackup)) {
+        console.debug('answering for', SERVICEPROTO, SERVICEPORT)
         const answer = {
           answers: [
             {
@@ -106,12 +111,6 @@ async function resolveServiceUrl() {
                 priority: 10,
                 target: DOMAIN
               }
-            },
-            {
-              name: HOSTNAME,
-              type: 'A',
-              ttl: 300,
-              data: getLocalAddress()[0]
             }
           ]
         }
@@ -140,9 +139,13 @@ async function resolveServiceUrl() {
       dns.query({
         questions: [
           {
-            name: HOSTNAME,
-            type: 'A'
-          }
+            name: SERVICENAME,
+            type: 'SRV'
+          }//,
+          // {
+          //   name: HOSTNAME,
+          //   type: 'A'
+          // }
         ]
       })
 
@@ -202,6 +205,7 @@ function dispose() {
 export async function connect(serviceInfo = {}) {
   broker = serviceInfo.broker || null
   models = serviceInfo.models || null
+  console.info(connect.name, serviceInfo)
   await _connect()
 }
 
@@ -213,7 +217,7 @@ const handshake = {
   role: 'node',
   pid: process.pid,
   address: getLocalAddress()[0],
-  url: `${PROTOCOL}://${DOMAIN}:${SERVICEPORT}`,
+  url: `${SERVICEPROTO}://${DOMAIN}:${SERVICEPORT}`,
   serialize() {
     return JSON.stringify({
       ...this,
@@ -221,7 +225,12 @@ const handshake = {
     })
   },
   validate(msg) {
-    return msg.proto === this.proto
+    if (msg) {
+      const valid = msg.proto === this.proto
+      console.assert(valid, `invalid msg ${msg}`)
+      return valid
+    }
+    return false
   }
 }
 
@@ -229,7 +238,7 @@ const handshake = {
  *
  * @param {WebSocket} ws
  */
-function startHeartBeat(ws) {
+function startHeartBeat() {
   let receivedPong = true
 
   ws.addListener('pong', function () {
@@ -290,8 +299,8 @@ async function _connect() {
     ws = new WebSocket(serviceUrl)
 
     ws.on('open', function () {
-      ws.send(handshake.serialize())
-      startHeartBeat(ws)
+      send(handshake.serialize())
+      startHeartBeat()
     })
 
     ws.on('error', function (error) {
@@ -311,7 +320,7 @@ async function _connect() {
 
       if (handshake.validate(eventData)) {
         isBackupSwitch = eventData.isBackupSwitch
-        ws.send(handshake.serialize())
+        send(handshake.serialize())
         return
       }
 
@@ -337,7 +346,11 @@ async function reconnect() {
  */
 function send(event) {
   if (ws?.readyState) {
-    ws.send(JSON.stringify(event))
+    if (typeof event !== 'string') {
+      ws.send(JSON.stringify(event))
+      return
+    }
+    ws.send(event)
     return
   }
   setTimeout(send, 1000)

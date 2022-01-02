@@ -43,7 +43,7 @@ export function attachServer(server) {
    */
   server.setRateLimit = function (client) { }
 
-  function reportStatus() {
+  function checkStatus() {
     return JSON.stringify({
       servicePlugin: SERVICENAME,
       uptimeMinutes: uptime(),
@@ -51,6 +51,7 @@ export function attachServer(server) {
       clientsConnected: server.clients.size,
       uplink: server.uplink ? server.uplink.info : 'no uplink',
       isPrimarySwitch: isSwitch,
+      isBackupSwitch: backupSwitch ? true : false,
       clients: [...server.clients].map(c => ({ ...c.info, OPEN: c.OPEN }))
     })
   }
@@ -60,7 +61,7 @@ export function attachServer(server) {
    * @param {WebSocket} client
    */
   server.sendStatus = function (client) {
-    client.send(reportStatus())
+    client.send(checkStatus())
   }
 
   server.reassignBackupSwitch = function (client) {
@@ -89,7 +90,7 @@ export function attachServer(server) {
     client.on('close', function () {
       console.warn('client disconnecting', client.info)
       server.reassignBackupSwitch(client)
-      server.broadcast(reportStatus(), client)
+      server.broadcast(checkStatus(), client)
     })
 
     client.on('message', function (message) {
@@ -124,7 +125,7 @@ export function attachServer(server) {
       console.warn('terminated client', client.info)
     })
 
-    server.broadcast(reportStatus(), client)
+    server.broadcast(checkStatus(), client)
   })
 
   try {
