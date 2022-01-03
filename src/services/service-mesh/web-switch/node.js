@@ -40,13 +40,13 @@ let serviceUrl
 let uplinkCallback
 let isBackupSwitch = false
 let activateBackup = false
-let isSwitch = config.isSwitch || /true/i.test(process.env.IS_SWITCH)
+let isSwitch = config.isSwitch || false
 
 /**
- * 
- * @returns 
+ *
+ * @returns
  */
-function getLocalAddress() {
+function getLocalAddress () {
   const interfaces = os.networkInterfaces()
   const addresses = []
   for (var k in interfaces) {
@@ -61,11 +61,11 @@ function getLocalAddress() {
 }
 
 /**
- * 
- * @param {*} proto 
- * @param {*} host 
- * @param {*} port 
- * @returns 
+ *
+ * @param {*} proto
+ * @param {*} host
+ * @param {*} port
+ * @returns
  */
 const _url = (proto, host, port) =>
   proto && host && port ? `${proto}://${host}:${port}` : null
@@ -77,7 +77,7 @@ const _url = (proto, host, port) =>
  *
  * @returns {Promise<string>} url
  */
-async function resolveServiceUrl() {
+async function resolveServiceUrl () {
   const dns = Dns()
   let url
 
@@ -138,7 +138,7 @@ async function resolveServiceUrl() {
      * @param {number} retries number of query attempts
      * @returns
      */
-    function runQuery(retries = 0) {
+    function runQuery (retries = 0) {
       if (retries > MAXRETRIES) {
         activateBackup = true
         return
@@ -165,7 +165,7 @@ async function resolveServiceUrl() {
 
     if (isSwitch) {
       resolve(_url(SERVICEPROTO, DOMAIN, SERVICEPORT))
-    }else {
+    } else {
       runQuery()
     }
   })
@@ -175,22 +175,22 @@ async function resolveServiceUrl() {
  * Set callback for uplink.
  * @param {function():Promise<void>} callback
  */
-export function onUplinkMessage(callback) {
+export function onUplinkMessage (callback) {
   uplinkCallback = callback
 }
 
 /**
  * server sets uplink host
  */
-export function setUplinkUrl(uplinkUrl) {
+export function setUplinkUrl (uplinkUrl) {
   serviceUrl = uplinkUrl
   ws = null // trigger reconnect
 }
 
 /**
- * 
+ *
  */
-function dispose() {
+function dispose () {
   ws = null
 }
 
@@ -212,7 +212,7 @@ function dispose() {
  *  models:import('../../../domain/model-factory').ModelFactory
  * }} serviceInfo
  */
-export async function connect(serviceInfo = {}) {
+export async function connect (serviceInfo = {}) {
   broker = serviceInfo.broker || null
   models = serviceInfo.models || null
   console.info(connect.name, serviceInfo)
@@ -228,13 +228,13 @@ const handshake = {
   pid: process.pid,
   address: getLocalAddress()[0],
   url: `${SERVICEPROTO}://${DOMAIN}:${SERVICEPORT}`,
-  serialize() {
+  serialize () {
     return JSON.stringify({
       ...this,
       models: models?.getModelSpecs().map(spec => spec.modelName) || []
     })
   },
-  validate(msg) {
+  validate (msg) {
     if (msg) {
       const valid = msg.proto === this.proto
       console.assert(valid, `invalid msg ${msg}`)
@@ -248,7 +248,7 @@ const handshake = {
  *
  * @param {WebSocket} ws
  */
-function startHeartBeat() {
+function startHeartBeat () {
   let receivedPong = true
 
   ws.addListener('pong', function () {
@@ -257,7 +257,7 @@ function startHeartBeat() {
   })
 
   /**
-   * 
+   *
    */
   const intervalId = setInterval(async function () {
     if (receivedPong) {
@@ -290,7 +290,7 @@ function startHeartBeat() {
  * @param {import('../../../domain/event-broker').EventBroker} broker
  * @param {{allowMultiple:boolean, once:boolean}} [options]
  */
-export async function subscribe(eventName, callback, options = {}) {
+export async function subscribe (eventName, callback, options = {}) {
   try {
     broker.on(eventName, callback, options)
   } catch (e) {
@@ -299,9 +299,9 @@ export async function subscribe(eventName, callback, options = {}) {
 }
 
 /**
- * 
+ *
  */
-async function _connect() {
+async function _connect () {
   if (!ws) {
     if (!serviceUrl) serviceUrl = await resolveServiceUrl()
     console.info(_connect.name, 'switch', serviceUrl)
@@ -329,7 +329,7 @@ async function _connect() {
       }
 
       if (handshake.validate(eventData)) {
-        isBackupSwitch = eventData.isBackupSwitch
+        isBackupSwitch = eventData.isBackupSwitch ? true : false
         send(handshake.serialize())
         return
       }
@@ -340,23 +340,34 @@ async function _connect() {
 }
 
 /**
- * 
+ *
  */
-async function reconnect() {
+async function reconnect () {
   serviceUrl = null
   ws = null
   await _connect()
   if (!ws) setTimeout(reconnect, 60000)
 }
 
+function readData (data) {
+  if (data instanceof ArrayBuffer) {
+    // binary frame
+    const view = new DataView(data)
+    console.log(view.getInt32(0))
+  } else {
+    // text frame
+    console.log(event.data)
+  }
+}
+
 /**
- * 
- * @param {object} event 
- * @returns 
+ *
+ * @param {object} event
+ * @returns
  */
-function send(event) {
+function send (event) {
   if (ws?.readyState) {
-    if (typeof event !== 'string') {
+    if (typeof event == 'object') {
       ws.send(JSON.stringify(event))
       return
     }
@@ -371,7 +382,7 @@ function send(event) {
  * @param {object} event
  * @returns
  */
-export async function publish(event) {
+export async function publish (event) {
   try {
     if (!event) {
       console.error(publish.name, 'no event provided')
