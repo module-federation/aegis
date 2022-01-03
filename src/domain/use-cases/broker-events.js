@@ -1,10 +1,10 @@
 'use strict'
 
-import DistributedCache from '../domain/distributed-cache'
-import EventBus from '../services/event-bus'
-import { ServiceMeshAdapter as ServiceMesh } from '../adapters'
+import DistributedCache from '../distributed-cache'
+import EventBus from '../../services/event-bus'
+import { ServiceMeshAdapter as ServiceMesh } from '../../adapters'
 import { forwardEvents } from './forward-events'
-import uuid from '../domain/util/uuid'
+import uuid from '../util/uuid'
 
 // use external event bus for distributed object cache?
 const useEvtBus = process.env.EVENTBUS_ENABLE || false
@@ -17,11 +17,11 @@ const BROADCAST = process.env.TOPIC_BROADCAST || 'broadcastChannel'
  * - distributed object cache
  *    - crud lifecycle events
  *    - find obj / cache miss
- * @param {import('../domain/event-broker').EventBroker} broker
- * @param {import("../domain/datasource-factory")} datasources
- * @param {import("../domain/model-factory").ModelFactory} models
+ * @param {import('../event-broker').EventBroker} broker
+ * @param {import("../datasource-factory")} datasources
+ * @param {import("../model-factory").ModelFactory} models
  */
-export default function brokerEvents (broker, datasources, models) {
+export default function brokerEvents(broker, datasources, models) {
   const svcMshPub = event => ServiceMesh.publish(event)
   const svcMshSub = (event, cb) => ServiceMesh.subscribe(event, cb)
 

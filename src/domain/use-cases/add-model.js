@@ -1,14 +1,14 @@
 'use strict'
 
-import domainEvents from '../domain/domain-events'
+import domainEvents from '../domain-events'
 
 /**
  * @typedef {Object} dependencies injected dependencies
  * @property {String} modelName - name of the domain model
- * @property {import('../domain/model-factory').ModelFactory} models - model factory
- * @property {import('../domain/datasource').default repository - model datasource adapter
- * @property {import('../domain/event-broker').EventBroker} broker - application events, propagated to domain
- * @property {...import('../domain/index').eventHandler} handlers - {@link eventHandler} configured in the model spec.
+ * @property {import('../model-factory').ModelFactory} models - model factory
+ * @property {import('../datasource').default repository - model datasource adapter
+ * @property {import('../event-broker').EventBroker} broker - application events, propagated to domain
+ * @property {...import('../index').eventHandler} handlers - {@link eventHandler} configured in the model spec.
  */
 
 /**
@@ -16,7 +16,7 @@ import domainEvents from '../domain/domain-events'
  * @param {dependencies} param0
  * @returns {function():Promise<import('../domain').Model>}
  */
-export default function makeAddModel ({
+export default function makeAddModel({
   modelName,
   models,
   repository,
@@ -30,7 +30,7 @@ export default function makeAddModel ({
   // Add an event whose callback invokes this factory.
   broker.on(domainEvents.addModel(modelName), addModel)
 
-  async function addModel (input) {
+  async function addModel(input) {
     const model = await models.createModel(broker, repository, modelName, input)
 
     try {

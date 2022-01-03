@@ -21,10 +21,10 @@ const DateFunctions = {
 /**
  *
  * @param {*} query
- * @param {import("../datasources/datasource").default} repository
+ * @param {import("../datasource").default} repository
  * @returns
  */
-async function parseQuery (query, repository) {
+async function parseQuery(query, repository) {
   if (query?.count) {
     const dateFunc = DateFunctions[query.count]
 
@@ -63,13 +63,13 @@ async function parseQuery (query, repository) {
 /**
  * @callback listModels
  * @param {{key1:string, keyN:string}} query
- * @returns {Promise<Array<import("../domain/model").Model)>>}
+ * @returns {Promise<Array<import("../model").Model)>>}
  *
- * @param {{repository:import('../datasources/datasource').default}}
+ * @param {{repository:import('../datasource').default}}
  * @returns {listModels}
  */
-export default function makeListModels ({ repository } = {}) {
-  return async function listModels (query) {
+export default function makeListModels({ repository } = {}) {
+  return async function listModels(query) {
     return parseQuery(query, repository)
   }
 }

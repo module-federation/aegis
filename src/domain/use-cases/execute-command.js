@@ -1,8 +1,8 @@
 'use strict'
 
-import checkAcl from '../domain/util/check-acl'
-import async from '../domain/util/async-error'
-import domainEvents from '../domain/domain-events'
+import checkAcl from '../util/check-acl'
+import async from '../util/async-error'
+import domainEvents from '../domain-events'
 
 const commandType = {
   /**
@@ -14,12 +14,12 @@ const commandType = {
   /**
    *
    * @param {string} command
-   * @param {import("../domain/model").Model} model
+   * @param {import("../model").Model} model
    */
   string: async (command, model) => model[command]()
 }
 
-function commandAuthorized (spec, command, permission) {
+function commandAuthorized(spec, command, permission) {
   return (
     command &&
     spec.commands &&
@@ -30,11 +30,11 @@ function commandAuthorized (spec, command, permission) {
 
 /**
  *
- * @param {import("../domain/model").Model} model
+ * @param {import("../model").Model} model
  * @param {command:string} command - name of command
  * @param {string} permission - permission of caller
  */
-export default async function executeCommand (model, command, permission) {
+export default async function executeCommand(model, command, permission) {
   const spec = model.getSpec()
 
   if (commandAuthorized(spec, command, permission)) {

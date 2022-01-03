@@ -1,8 +1,8 @@
 'use strict'
 
-import domainEvents from '../domain/domain-events'
+import domainEvents from '../domain-events'
 
-function listUnhandledPortEvents (specs) {
+function listUnhandledPortEvents(specs) {
   const cons = specs
     .filter(spec => spec.ports)
     .map(spec =>
@@ -36,7 +36,7 @@ function listUnhandledPortEvents (specs) {
  * @param {function(event,data)} publish
  * @param {function(event,function())} subscribe
  */
-export function forwardEvents ({ broker, models, publish, subscribe }) {
+export function forwardEvents({ broker, models, publish, subscribe }) {
   /**@type{import('../domain').ModelSpecification[]} */
   const specs = models.getModelSpecs()
 
@@ -55,7 +55,7 @@ export function forwardEvents ({ broker, models, publish, subscribe }) {
    * producer events, provided there is no local service
    * configured to handle the event.
    */
-  function forwardPortEvents () {
+  function forwardPortEvents() {
     const { consumerEvents, producerEvents } = listUnhandledPortEvents(specs)
 
     console.info(
@@ -77,12 +77,12 @@ export function forwardEvents ({ broker, models, publish, subscribe }) {
       })
     )
   }
-  ;``
+  ; ``
 
   /**
    * Forward events so marked.
    */
-  function forwardUserEvents () {
+  function forwardUserEvents() {
     broker.on('publishWasm', data =>
       publish({ ...data, eventName: data.eventName })
     )

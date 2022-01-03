@@ -83,7 +83,7 @@ async function getEmail(whois, domain) {
   } catch (e) {
     console.log('whois getEmail', e.message)
   }
-  return process.env.DOMAIN_EMAIL
+  return config.services.cert.domainEmail
 }
 
 const directoryUrl = !/prod/.test(process.env.NODE_ENV)
@@ -107,8 +107,6 @@ exports.initCertificateService = function (dnsProvider, whois) {
         accountKey: await acme.forge.createPrivateKey()
       })
 
-
-
       // Create CSR
       const [key, csr] = await acme.forge.createCsr({
         commonName: domain
@@ -122,9 +120,6 @@ exports.initCertificateService = function (dnsProvider, whois) {
         challengeCreateFn: makeChallengeCreateFn(dnsProvider),
         challengeRemoveFn: makeChallengeRemoveFn(dnsProvider)
       })
-
-
-
       console.log(`CSR:\n${csr.toString()}`)
       console.log(`Private key:\nREDACTED`)
       console.log(`Certificate:\n${cert.toString()}`)

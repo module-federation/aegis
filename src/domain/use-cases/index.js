@@ -7,12 +7,12 @@ import makeFindModel from './find-model'
 import makeRemoveModel from './remove-model'
 import makeLoadModels from './load-models'
 import makeListConfig from './list-configs'
-import DataSourceFactory from '../domain/datasource-factory'
-import EventBrokerSingleton from '../domain/event-broker'
-import ModelFactory from '../domain'
+import DataSourceFactory from '../datasource-factory'
+import EventBrokerSingleton from '../event-broker'
+import ModelFactory from '../model-factory'
 import brokerEvents from './broker-events'
 
-export function registerEvents () {
+export function registerEvents() {
   brokerEvents(
     EventBrokerSingleton.getInstance(),
     DataSourceFactory,
@@ -22,9 +22,9 @@ export function registerEvents () {
 
 /**
  *
- * @param {import('../domain').ModelSpecification} model
+ * @param {import('..').ModelSpecification} model
  */
-function buildOptions (model) {
+function buildOptions(model) {
   return {
     modelName: model.modelName,
     models: ModelFactory,
@@ -34,7 +34,7 @@ function buildOptions (model) {
   }
 }
 
-function make (factory) {
+function make(factory) {
   const specs = ModelFactory.getModelSpecs()
   return specs.map(spec => ({
     endpoint: spec.endpoint,

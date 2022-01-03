@@ -3,18 +3,18 @@
 /**
  * @typedef {Object} ModelParam
  * @property {String} modelName
- * @property {import('../domain/model-factory').ModelFactory} models
- * @property {import('../datasources/datasource').default} repository
- * @property {import('../domain/broker').broker} broker
- * @property {Function[]} handlers
+ * @property {import('../model-factory').ModelFactory} models
+ * @property {import('../datasource').default} repository
+ * @property {import('../broker').broker} broker
+ * @property {function[]} handlers
  */
 
 /**
- * @typedef {function(ModelParam):Promise<import("../domain").Model>} editModel
+ * @typedef {function(ModelParam):Promise<import("..").Model>} editModel
  * @param {ModelParam} param0
- * @returns {function():Promise<import("../domain/model").Model>}
+ * @returns {function():Promise<import("../model").Model>}
  */
-export default function makeSyncModel ({ modelName, models, repository } = {}) {
+export default function makeSyncModel({ modelName, models, repository } = {}) {
   /**
    * This function does not generate an event and there is no validation.
    * Its a silent update received from the distributed cache allowing
@@ -28,7 +28,7 @@ export default function makeSyncModel ({ modelName, models, repository } = {}) {
    * @param {*} command
    * @returns
    */
-  return async function syncModel (id, changes) {
+  return async function syncModel(id, changes) {
     const model = await repository.find(id)
 
     if (!model) {

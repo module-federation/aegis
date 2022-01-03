@@ -21,14 +21,14 @@ const TIMEOUTEVENT = 'webswitchTimeout'
 const RETRYINTERVAL = config.retryInterval || 2000
 const MAXRETRIES = config.maxRetries || 5
 const DEBUG = config.debug || /true/i.test(process.env.DEBUG)
-  const DOMAIN = configRoot.general.fqdn || process.env.DOMAIN
+const DOMAIN = configRoot.general.fqdn || process.env.DOMAIN
 const HEARTBEAT = config.heartbeat || 10000
 const SSL_ENABLED = /true/i.test(process.env.SSL_ENABLED)
 const SSL_PORT = /true/i.test(process.env.SSL_PORT) || 443
 const PROTOCOL = /true/i.test(process.env.SSL_ENABLED) ? 'wss' : 'ws'
 const PORT = process.env.PORT || 80
-const SERVICEPORT = process.env.SERVICEPORT || SSL_ENABLED ? SSL_PORT : PORT
-const SERVICEPROTO = process.env.SERVICEPROTO || PROTOCOL
+const SERVICEPORT = config.port || SSL_ENABLED ? SSL_PORT : PORT
+const SERVICEPROTO = config.protocol || PROTOCOL
 
 /** @type {import('../../../domain/event-broker').EventBroker} */
 let broker
@@ -61,6 +61,16 @@ function getLocalAddress() {
 }
 
 /**
+ * 
+ * @param {*} proto 
+ * @param {*} host 
+ * @param {*} port 
+ * @returns 
+ */
+const _url = (proto, host, port) =>
+  proto && host && port ? `${proto}://${host}:${port}` : null
+
+/**
  * Use multicast DNS to find the host
  * instance configured as the "switch"
  * node for the local area network.
@@ -80,7 +90,7 @@ async function resolveServiceUrl() {
       )
 
       if (answer) {
-        url = `${SERVICEPROTO}://${answer.data.target}:${answer.data.port}`
+        url = _url(SERVICEPROTO, answer.data.target, answer.data.port)
         console.info('found dns service record for', SERVICENAME, url)
         resolve(url)
       }
@@ -94,12 +104,12 @@ async function resolveServiceUrl() {
       )
 
       if (!questions[0]) {
-        console.warn('no questions', questions)
+        console.assert(!DEBUG, 'no questions', questions)
         return
       }
 
       if (isSwitch || (isBackupSwitch && activateBackup)) {
-        console.debug('answering for', SERVICEPROTO, SERVICEPORT)
+        console.info('answering for', SERVICEPROTO, SERVICEPORT)
         const answer = {
           answers: [
             {
@@ -135,7 +145,7 @@ async function resolveServiceUrl() {
       }
       console.info('asking for', HOSTNAME, SERVICENAME, retries)
 
-      // let's query for an A record
+      // query the service name
       dns.query({
         questions: [
           {
@@ -153,7 +163,11 @@ async function resolveServiceUrl() {
       setTimeout(() => runQuery(retries++), RETRYINTERVAL)
     }
 
-    runQuery()
+    if (isSwitch) {
+      resolve(_url(SERVICEPROTO, DOMAIN, SERVICEPORT))
+    }else {
+      runQuery()
+    }
   })
 }
 

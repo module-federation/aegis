@@ -1,10 +1,10 @@
-import { generateWorkflow, runWorkflow } from '../domain/orchestrate'
+import { generateWorkflow, runWorkflow } from '../orchestrate'
 
 module.exports.startWorkflow = function ({ domainName, workflowName }) {
   const wfName = workflowName
   const domain = domainName
 
-  /**@type {import("../domain").ports} */
+  /**@type {import("..").ports} */
   const ports = {
     requestCerts: {
       service: 'CertificateAuthority',

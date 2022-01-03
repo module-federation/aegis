@@ -4,22 +4,22 @@
  * @typedef {Object} ModelParam
  * @property {String} modelName
  * @property {import('../domain').ModelFactory} models
- * @property {import('../datasources/datasource').default} repository
- * @property {import('../domain/event-broker').EventBroker} broker
+ * @property {import('../datasource').default} repository
+ * @property {import('../event-broker').EventBroker} broker
  * @property {...Function} handlers
  */
 
 /**
  * @callback removeModel
  * @param {string} id
- * @returns {Promise<import("../domain").Model>}
+ * @returns {Promise<import("..").Model>}
  */
 
 /**
  * @param {ModelParam} param0
  * @returns {removeModel}
  */
-export default function removeModelFactory ({
+export default function removeModelFactory({
   modelName,
   models,
   repository,
@@ -30,7 +30,7 @@ export default function removeModelFactory ({
   const eventName = models.getEventName(eventType, modelName)
   handlers.forEach(handler => broker.on(eventName, handler))
 
-  return async function removeModel (id) {
+  return async function removeModel(id) {
     const model = await repository.find(id)
 
     if (!model) {

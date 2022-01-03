@@ -9,7 +9,7 @@ import {
   removeModels,
   loadModelSpecs,
   registerEvents
-} from '../../use-cases'
+} from '../../domain/use-cases'
 
 import postModelFactory from './post-model'
 import patchModelFactory from './patch-model'
@@ -18,7 +18,7 @@ import getModelByIdFactory from './get-model-by-id'
 import deleteModelFactory from './delete-model'
 import getConfigFactory from './get-config'
 
-function make (useCases, controllerFactory) {
+function make(useCases, controllerFactory) {
   return useCases().map(uc => ({
     endpoint: uc.endpoint,
     fn: controllerFactory(uc.fn)
@@ -36,7 +36,7 @@ export const initCache = () => {
   const label = '\ntime to load cache'
   const specs = loadModelSpecs()
 
-  async function loadModelInstances () {
+  async function loadModelInstances() {
     console.time(label)
     await Promise.allSettled(specs.map(async m => m.fn()))
     console.timeEnd(label)

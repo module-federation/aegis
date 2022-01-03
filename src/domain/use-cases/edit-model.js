@@ -2,8 +2,8 @@
 
 import executeCommand from './execute-command'
 import invokePort from './invoke-port'
-import async from '../domain/util/async-error'
-import domainEvents from '../domain/domain-events'
+import async from '../util/async-error'
+import domainEvents from '../domain-events'
 
 /**
  * @typedef {Object} ModelParam
