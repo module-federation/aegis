@@ -21,7 +21,6 @@ const TIMEOUTEVENT = 'webswitchTimeout'
 const RETRYINTERVAL = config.retryInterval || 2000
 const MAXRETRIES = config.maxRetries || 5
 const DEBUG = config.debug || /true/i.test(process.env.DEBUG)
-const DOMAIN = configRoot.general.fqdn || process.env.DOMAIN
 const HEARTBEAT = config.heartbeat || 10000
 const SSL_ENABLED = /true/i.test(process.env.SSL_ENABLED)
 const SSL_PORT = /true/i.test(process.env.SSL_PORT) || 443
@@ -120,7 +119,7 @@ async function resolveServiceUrl () {
                 port: PORT,
                 weight: 0,
                 priority: 10,
-                target: DOMAIN
+                target: HOST
               }
             }
           ]
@@ -358,12 +357,11 @@ function format (event) {
   if (event instanceof ArrayBuffer) {
     // binary frame
     const view = new DataView(event)
-    DEBUG && console.debug(view.getInt32(0))
+    DEBUG && console.debug('arraybuffer', view.getInt32(0))
     return event
   }
-  //if (event instanceof Blob) return event
-  if (typeof event === 'string') return event
   if (typeof event === 'object') return JSON.stringify(event)
+  return event
 }
 
 /**
