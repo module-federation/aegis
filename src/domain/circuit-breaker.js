@@ -20,7 +20,7 @@ const DefaultThreshold = {
   /** Percentage of requests that failed within `intervalMs`. */
   errorRate: process.env.CIRCUITBREAKER_ERRORRATE || 20,
   /** Total number of requests within `intervalMs` */
-  callVolume: process.env.CIRCUITBREAKER_CALLVOLUME || 8,
+  callVolume: process.env.CIRCUITBREAKER_CALLVOLUME || 5,
   /** Milliseconds in which to measure threshold*/
   intervalMs: process.env.CIRCUITBREAKER_INTERVALMS || 9000,
   /** Milliseconds to wait after tripping breaker before retesting */
