@@ -6,27 +6,47 @@ const {
   StorageService
 } = require('./services')
 const { ServerlessAdapter, ServiceMeshAdapter } = require('./adapters')
-const app = require('./app')
+const host = require('./host')
 
-module.exports = async function aegis (options) {
-  const service = await app.start()
+async function aegis (options) {
   return {
+    async importRemotes () {},
+
+    createRoutes ({}) {},
+
+    protectRoutes ({ routes, keys }) {
+      AuthorizationService.protectRoutes(routes)
+      return this
+    },
+
     async provisionCert (domain) {
-      return CertificateService.provisionCert(domain)
+      await CertificateService.provisionCert(domain)
+      return this
     },
-    protectRoutes (routes) {
-      return AuthorizationService.protectRoutes(service.routes)
-    },
-    runAsWebServer () {},
+
     async runAsServerlessFunction () {
-      return ServerlessAdapter()
+      ServerlessAdapter()
     },
-    async runAsCluster () {
+
+    runAsCluster () {
       ClusterService.startCluster(service)
+      return this
     },
-    runInBrowser () {
-      console.error('not yet implemented')
+
+    runAsClient () {
+      console.error('run in browser')
+      return this
     },
-    registerPlugin (plugin) {}
+
+    async startHost () {
+      return this
+    }
   }
 }
+
+aegis
+  .importRemotes(entries)
+  .then(ae => ae.createRoutes(controllers))
+  .then(ae => ae.protectRoutes(routes).provisionCert(domain))
+  .then(ae => ae.runAsCluster(cores))
+  .startHost(app)
