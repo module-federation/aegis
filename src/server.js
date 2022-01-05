@@ -237,8 +237,9 @@ const App = (() => {
 
               return {
                 invoke,
+                router,
                 adapters,
-                router
+                services
               }
             })
           })
