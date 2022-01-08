@@ -143,7 +143,7 @@ async function resolveServiceUrl () {
         activateBackup = true
         return
       }
-      console.info('asking for', SERVICENAME, 'retries', retries)
+      console.assert(!DEBUG, 'asking for', SERVICENAME, 'retries', retries)
 
       // query the service name
       dns.query({
@@ -252,9 +252,6 @@ function startHeartBeat () {
     receivedPong = true
   })
 
-  /**
-   *
-   */
   const intervalId = setInterval(async function () {
     if (receivedPong) {
       receivedPong = false

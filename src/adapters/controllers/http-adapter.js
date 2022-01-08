@@ -46,7 +46,7 @@ export default function buildCallback (controller) {
           method: httpRequest.method,
           params: httpRequest.params,
           query: httpRequest.query,
-          ...httpRequest.body
+          body: httpRequest.body
         })
       }
     }
