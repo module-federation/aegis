@@ -1,5 +1,6 @@
 'use strict'
 
+const path = require('path')
 const services = require('./services')
 const adapters = require('./adapters')
 const domain = require('./domain')
@@ -255,39 +256,40 @@ const Aegis = (() => {
   async function start (remoteEntries) {
     const routes = new RouteMap()
 
-    const getRemoteEntries = remoteEntries.aegis
-      .get('./remoteEntries')
-      .then(factory => factory())
+    // const getRemoteEntries = remoteEntries.aegis
+    //   .get('./remoteEntries')
+    //   .then(factory => factory())
 
     const { initCache } = adapters.controllers
     const { StorageAdapter } = adapters
     const { find, save } = StorageAdapter
     const { StorageService } = services
     const overrides = { save, find, StorageService }
+    const remotes = require(
+      '.\webpack\remote-entries.js'
+    )
 
     const label = '\ntotal time to import & register remote modules'
     console.time(label)
 
-    return getRemoteEntries.then(remotes => {
-      return domain.importRemotes(remotes, overrides).then(async () => {
-        const cache = initCache()
+    return domain.importRemotes(remotes, overrides).then(async () => {
+      const cache = initCache()
 
-        // const style = router ? make.express.name : make.aegis.name
-        // console.info(`using ${style} router`)
+      // const style = router ? make.express.name : make.aegis.name
+      // console.info(`using ${style} router`)
 
-        setRoutes(routes, adapters, make.aegis.name, null)
+      setRoutes(routes, adapters, make.aegis.name, null)
 
-        console.timeEnd(label)
-        process.on('SIGTERM', shutdown)
-        await cache.load()
+      console.timeEnd(label)
+      process.on('SIGTERM', shutdown)
+      await cache.load()
 
-        return {
-          handleServerless,
-          handle: handleRequest(routes),
-          adapters,
-          services
-        }
-      })
+      return {
+        handleServerless,
+        handle: handleRequest(routes),
+        adapters,
+        services
+      }
     })
   }
 
