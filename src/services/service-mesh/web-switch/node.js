@@ -140,10 +140,12 @@ async function resolveServiceUrl () {
      */
     function runQuery (retries = 0) {
       if (retries > MAXRETRIES) {
+        console.warn('primary switch unresponsive: backup taking over')
         activateBackup = true
         return
       }
       console.info('asking for', SERVICENAME, 'retries', retries)
+
 
       // query the service name
       dns.query({
