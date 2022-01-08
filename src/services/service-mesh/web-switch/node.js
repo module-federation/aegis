@@ -21,14 +21,14 @@ const TIMEOUTEVENT = 'webswitchTimeout'
 const RETRYINTERVAL = config.retryInterval || 2000
 const MAXRETRIES = config.maxRetries || 5
 const DEBUG = config.debug || /true/i.test(process.env.DEBUG)
-const DOMAIN = configRoot.general.fqdn || process.env.DOMAIN
 const HEARTBEAT = config.heartbeat || 10000
 const SSL_ENABLED = /true/i.test(process.env.SSL_ENABLED)
 const SSL_PORT = /true/i.test(process.env.SSL_PORT) || 443
-const PROTOCOL = /true/i.test(process.env.SSL_ENABLED) ? 'wss' : 'ws'
-const PORT = process.env.PORT || 80
-const SERVICEPORT = config.port || SSL_ENABLED ? SSL_PORT : PORT
-const SERVICEPROTO = config.protocol || PROTOCOL
+const PROTOCOL =
+  config.protocol || /true/i.test(process.env.SSL_ENABLED) ? 'wss' : 'ws'
+const PORT =
+  config.port || (SSL_ENABLED ? SSL_PORT : config.port || process.env.PORT)
+const HOST = config.host || configRoot.general.fqdn || process.env.HOST
 
 /** @type {import('../../../domain/event-broker').EventBroker} */
 let broker
@@ -90,7 +90,7 @@ async function resolveServiceUrl () {
       )
 
       if (answer) {
-        url = _url(SERVICEPROTO, answer.data.target, answer.data.port)
+        url = _url(PROTOCOL, answer.data.target, answer.data.port)
         console.info('found dns service record for', SERVICENAME, url)
         resolve(url)
       }
@@ -109,17 +109,17 @@ async function resolveServiceUrl () {
       }
 
       if (isSwitch || (isBackupSwitch && activateBackup)) {
-        console.info('answering for', SERVICEPROTO, SERVICEPORT)
+        console.info('answering for', PROTOCOL, PORT)
         const answer = {
           answers: [
             {
               name: SERVICENAME,
               type: 'SRV',
               data: {
-                port: SERVICEPORT,
+                port: PORT,
                 weight: 0,
                 priority: 10,
-                target: DOMAIN
+                target: HOST
               }
             }
           ]
@@ -144,7 +144,8 @@ async function resolveServiceUrl () {
         activateBackup = true
         return
       }
-      //console.info('asking for', HOSTNAME, SERVICENAME, retries)
+      console.info('asking for', SERVICENAME, 'retries', retries)
+
 
       // query the service name
       dns.query({
@@ -165,7 +166,7 @@ async function resolveServiceUrl () {
     }
 
     if (isSwitch) {
-      resolve(_url(SERVICEPROTO, DOMAIN, SERVICEPORT))
+      resolve(_url(PROTOCOL, HOST, PORT))
     } else {
       runQuery()
     }
@@ -189,13 +190,6 @@ export function setUplinkUrl (uplinkUrl) {
 }
 
 /**
- *
- */
-function dispose () {
-  ws = null
-}
-
-/**
  * @typedef {object} HandshakeMsg
  * @property {string} proto the protocol 'web-switch'
  * @property {'node'|'browser'|'uplink'} role of the client
@@ -214,8 +208,8 @@ function dispose () {
  * }} serviceInfo
  */
 export async function connect (serviceInfo = {}) {
-  broker = serviceInfo.broker || null
-  models = serviceInfo.models || null
+  broker = serviceInfo.broker
+  models = serviceInfo.models
   console.info(connect.name, serviceInfo)
   await _connect()
 }
@@ -228,7 +222,7 @@ const handshake = {
   role: 'node',
   pid: process.pid,
   address: getLocalAddress()[0],
-  url: `${SERVICEPROTO}://${DOMAIN}:${SERVICEPORT}`,
+  url: `${PROTOCOL}://${HOST}:${PORT}`,
   serialize () {
     return JSON.stringify({
       ...this,
@@ -242,6 +236,9 @@ const handshake = {
       return valid
     }
     return false
+  },
+  isBackupSwitch (msg) {
+    return msg.isBackupSwitch === true
   }
 }
 
@@ -293,7 +290,16 @@ function startHeartBeat () {
  */
 export async function subscribe (eventName, callback, options = {}) {
   try {
-    broker.on(eventName, callback, options)
+    if (broker) {
+      broker.on(eventName, callback, options)
+      return
+    }
+    console.error(
+      subscribe.name,
+      'no broker',
+      eventName,
+      JSON.stringify(callback.toString(), null, 2)
+    )
   } catch (e) {
     console.error('subscribe', e)
   }
@@ -330,8 +336,7 @@ async function _connect () {
       }
 
       if (handshake.validate(eventData)) {
-        isBackupSwitch = eventData.isBackupSwitch ? true : false
-        send(handshake.serialize())
+        isBackupSwitch = handshake.isBackupSwitch(eventData)
         return
       }
 
@@ -350,15 +355,15 @@ async function reconnect () {
   if (!ws) setTimeout(reconnect, 60000)
 }
 
-function readData (data) {
-  if (data instanceof ArrayBuffer) {
+function format (event) {
+  if (event instanceof ArrayBuffer) {
     // binary frame
-    const view = new DataView(data)
-    console.log(view.getInt32(0))
-  } else {
-    // text frame
-    console.log(event.data)
+    const view = new DataView(event)
+    DEBUG && console.debug('arraybuffer', view.getInt32(0))
+    return event
   }
+  if (typeof event === 'object') return JSON.stringify(event)
+  return event
 }
 
 /**
@@ -368,11 +373,7 @@ function readData (data) {
  */
 function send (event) {
   if (ws?.readyState) {
-    if (typeof event == 'object') {
-      ws.send(JSON.stringify(event))
-      return
-    }
-    ws.send(event)
+    ws.send(format(event))
     return
   }
   setTimeout(send, 1000, event)
