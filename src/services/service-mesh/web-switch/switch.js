@@ -17,7 +17,7 @@ let backupSwitch
  * @param {import('ws').Server} server
  * @returns {import('ws').Server}
  */
-export function attachServer(server) {
+export function attachServer (server) {
   /**
    * @param {object} data
    * @param {WebSocket} sender
@@ -41,9 +41,9 @@ export function attachServer(server) {
    * @todo implement rate limit enforcement
    * @param {WebSocket} client
    */
-  server.setRateLimit = function (client) { }
+  server.setRateLimit = function (client) {}
 
-  function statusReport() {
+  function statusReport () {
     return JSON.stringify({
       servicePlugin: SERVICENAME,
       uptimeMinutes: uptime(),
@@ -51,7 +51,6 @@ export function attachServer(server) {
       clientsConnected: server.clients.size,
       uplink: server.uplink ? server.uplink.info : 'no uplink',
       isPrimarySwitch: isSwitch,
-      isBackupSwitch: backupSwitch ? true : false,
       clients: [...server.clients].map(c => ({ ...c.info, OPEN: c.OPEN }))
     })
   }
@@ -93,7 +92,9 @@ export function attachServer(server) {
       server.broadcast(statusReport(), client)
     })
 
-    client.on('error', function (error) { console.error(error) })
+    client.on('error', function (error) {
+      console.error(error)
+    })
 
     client.on('message', function (message) {
       try {
@@ -109,7 +110,8 @@ export function attachServer(server) {
         }
 
         if (msg.proto === SERVICENAME) {
-          if (!backupSwitch && msg.role === 'node') backupSwitch = client.info.id
+          if (!backupSwitch && !isSwitch && msg.role === 'node')
+            backupSwitch = client.info.id
           client.info = {
             ...msg,
             initialized: true,
