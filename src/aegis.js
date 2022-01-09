@@ -1,6 +1,5 @@
 'use strict'
 
-const path = require('path')
 const services = require('./services')
 const adapters = require('./adapters')
 const domain = require('./domain')
@@ -11,14 +10,14 @@ const modelPath = `${apiRoot}/models`
 const idRoute = route =>
   route
     .split('/')
-    .splice(5, 1)
+    .splice(0, 5)
     .concat([':id'])
     .join('/')
 
 const idParam = route =>
   route
     .split('/')
-    .splice(5, 2)
+    .splice(5, 1)
     .map(p => ({ ['id']: p }))
 
 const cmdRoute = route =>
@@ -169,12 +168,12 @@ const Aegis = (() => {
         console.error('controller is not a function', controller)
       } catch (error) {
         console.error('problem running controller', error)
-        res.writeHead(500, error.message)
+        res.writeHead(500, error.message).end()
         return
       }
     }
     console.warn('potential config issue', path, method)
-    res.writeHead(404, 'not found')
+    res.writeHead(404, 'not found').end()
   }
 
   function handleBody (req, body) {
@@ -265,9 +264,7 @@ const Aegis = (() => {
     const { find, save } = StorageAdapter
     const { StorageService } = services
     const overrides = { save, find, StorageService }
-    const remotes = require(
-      '.\webpack\remote-entries.js'
-    )
+    const remotes = require('.webpack\remote-entries.js')
 
     const label = '\ntotal time to import & register remote modules'
     console.time(label)
