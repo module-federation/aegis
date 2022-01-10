@@ -11,6 +11,7 @@ const remotes = require(path.resolve(
 const services = require('./services')
 const adapters = require('./adapters')
 const domain = require('./domain')
+const router = require('./router')
 const ModelFactory = domain.default
 const modelName = workerData
 const { StorageService } = services
@@ -18,25 +19,16 @@ const { StorageAdapter } = adapters
 const { find, save } = StorageAdapter
 const { importRemotes } = domain
 
-const {
-  deleteModels,
-  getConfig,
-  getModels,
-  getModelsById,
-  http,
-  initCache,
-  patchModels,
-  postModels
-} = adapters.controllers
-
 async function init () {
   const overrides = { find, save, StorageService }
   await importRemotes(remotes, overrides)
   loadModels(modelName)
 }
 
+function handleRequest (httpRequest) {}
+
 parentPort.on('message', httpRequest => {
-  parentPort.postMessage(solution)
+  parentPort.postMessage(handleRequest(httpRequest))
 })
 
 init().then(() => console.log('aegis worker thread running'))

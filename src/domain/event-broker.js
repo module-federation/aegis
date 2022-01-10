@@ -174,6 +174,10 @@ class EventBrokerImpl extends EventBroker {
   constructor () {
     super()
     this.notify = notify.bind(this)
+    this.channels = {
+      workflow: [],
+      cache: []
+    }
   }
 
   /**
