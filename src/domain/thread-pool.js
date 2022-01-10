@@ -1,7 +1,7 @@
 'use strict'
 
 import { Worker, MessageChannel } from 'worker_threads'
-import { EventBrokerSingleton } from '../domain/event-broker'
+import { EventBrokerSingleton } from './event-broker'
 const broker = EventBrokerSingleton.getInstance()
 
 /**
@@ -113,7 +113,7 @@ export class ThreadPool {
     return this.waitingTasks.length
   }
 
-  runTask (taskName, workerData) {
+  runTask (workerData) {
     if (this.availThreads.length > 0) {
       handleRequest(res, dataAsUint8Array, this.availThreads.shift())
     } else {
@@ -123,3 +123,21 @@ export class ThreadPool {
     }
   }
 }
+
+const ThreadPoolFactory = (() => {
+  const threadPools = new Map()
+
+  function createThreadPool (modelName) {
+    threadPools.set(modelName, new ThreadPool())
+  }
+
+  function getThreadPool (modelName) {
+    if (threadPools.has(modelName)) return threadPools.get(modelName)
+    return createThreadPool(modelName)
+  }
+  return {
+    getThreadPool
+  }
+})()
+
+export default ThreadPoolFactory

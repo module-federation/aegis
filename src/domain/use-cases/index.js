@@ -11,8 +11,10 @@ import DataSourceFactory from '../datasource-factory'
 import EventBrokerSingleton from '../event-broker'
 import ModelFactory from '../model-factory'
 import brokerEvents from './broker-events'
+import Model from '../model'
+import ThreadPoolFactory from '../thread-pool'
 
-export function registerEvents() {
+export function registerEvents () {
   brokerEvents(
     EventBrokerSingleton.getInstance(),
     DataSourceFactory,
@@ -24,22 +26,28 @@ export function registerEvents() {
  *
  * @param {import('..').ModelSpecification} model
  */
-function buildOptions(model) {
+function buildOptions (model) {
   return {
     modelName: model.modelName,
     models: ModelFactory,
     broker: EventBrokerSingleton.getInstance(),
     handlers: model.eventHandlers,
-    repository: DataSourceFactory.getDataSource(model.modelName)
+    repository: DataSourceFactory.getDataSource(model.modelName),
+    threadpool: ThreadPoolFactory.getThreadPool(model.modelName)
   }
 }
 
-function make(factory) {
+function make (factory) {
   const specs = ModelFactory.getModelSpecs()
   return specs.map(spec => ({
     endpoint: spec.endpoint,
     fn: factory(buildOptions(spec))
   }))
+}
+
+function makeOne (modelName, factory) {
+  const spec = ModelFactory.getModelSpec(modelName)
+  return factory(buildOptions(spec))
 }
 
 export const addModels = () => make(makeAddModel)
@@ -50,3 +58,11 @@ export const removeModels = () => make(makeRemoveModel)
 export const loadModelSpecs = () => make(makeLoadModels)
 export const listConfigs = () =>
   makeListConfig({ models: ModelFactory, data: DataSourceFactory })
+
+function UseCaseService (modelName) {
+  return {
+    addModel: makeOne(modelName, makeAddModel),
+    editModel: makeOne(modelName, makeEditModel),
+    listModels: makeOne(modelName, makeListModels)
+  }
+}
