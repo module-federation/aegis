@@ -2,10 +2,13 @@
 
 import { Worker, MessageChannel } from 'worker_threads'
 import { EventBrokerSingleton } from './event-broker'
+
 const broker = EventBrokerSingleton.getInstance()
+const DEFAULT_THREADPOOL_SIZE = 2
 
 /**
  * @typedef {object} Thread
+ * @property {string} name
  * @property {number} threadId
  * @property {Worker} worker
  * @property {{[x:string]:*}} metadata
@@ -13,7 +16,7 @@ const broker = EventBrokerSingleton.getInstance()
 
 function setSubChannel (channel, worker) {
   const { port1, port2 } = new MessageChannel()
-  worker.postMessage({ channel, port: port1 }, [port1])
+  worker.postMessage({ port: port1, channel }, [port1])
   broker.channels[channel].push(port2)
 }
 
@@ -25,13 +28,13 @@ function setSubChannels (worker) {
 /**
  * @returns {Thread}
  */
-function newThread (file, workerData, metaData) {
+function newThread (file, workerData, metadata) {
   const worker = new Worker(file, { workerData })
-  setSubChannels(worker)
+  // setSubChannels(worker)
   return {
     worker,
     threadId: worker.threadId,
-    metaData,
+    metadata,
     createdAt: Date.now(),
     toJSON () {
       return {
@@ -48,11 +51,13 @@ function newThread (file, workerData, metaData) {
  * @param {Thread} thread
  *
  */
-function metaDataMatch (metaCriteria, thread) {
+function metadataMatch (metaCriteria, thread) {
   return Object.keys(metaCriteria).every(k =>
-    thread.metatData[k] ? metaCriteria[k] === thread.metatData[k] : true
+    thread.metadata[k] ? metaCriteria[k] === thread.metadata[k] : true
   )
 }
+
+function handleRequest (thread) {}
 
 export class ThreadPool {
   constructor ({
@@ -66,7 +71,7 @@ export class ThreadPool {
     this.availThreads = []
     this.waitingTasks = []
     for (let i = 0; i < numThreads; i++) {
-      this.availThreads.push(newThread(file, workerData, metaData))
+      this.availThreads.push(newThread(file, workerData, metadata))
     }
   }
 
@@ -74,20 +79,20 @@ export class ThreadPool {
    *
    * @param {string} file
    * @param {*} workerData
-   * @param {*} metaData
+   * @param {*} metadata
    * @returns {Thread}
    */
-  addThread (file, workerData, metaData = null) {
-    const thread = newThread(file, workerData, metaData)
+  addThread (file, workerData, metadata = null) {
+    const thread = newThread(file, workerData, metadata)
     this.availThreads.push(thread)
     return thread
   }
 
-  removeThread (threadId = null, metaCriteria = null) {
+  removeThread (name = null, threadId = null, metaCriteria = null) {
     if (this.availThreads.length > 0) {
-      if (threadId || metaCriteria) {
+      if (name || threadId || metaCriteria) {
         const threadsToRemove = this.availThreads.filter(
-          t => t.threadId === threadId || metaDataMatch(metaCriteria, t)
+          t => t.t.threadId === threadId || metadataMatch(metaCriteria, t)
         )
         if (threadsToRemove.length > 0) {
           console.info('terminating threads:', threadsToRemove)
@@ -128,13 +133,21 @@ const ThreadPoolFactory = (() => {
   const threadPools = new Map()
 
   function createThreadPool (modelName) {
-    threadPools.set(modelName, new ThreadPool())
+    const pool = new ThreadPool(
+      '../worker.js',
+      modelName,
+      { workerData: 'starting' },
+      DEFAULT_THREADPOOL_SIZE
+    )
+    threadPools.set(modelName, pool)
+    return pool
   }
 
   function getThreadPool (modelName) {
     if (threadPools.has(modelName)) return threadPools.get(modelName)
     return createThreadPool(modelName)
   }
+
   return {
     getThreadPool
   }

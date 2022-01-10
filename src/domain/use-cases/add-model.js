@@ -1,12 +1,14 @@
 'use strict'
 
+import { isMainThread } from 'worker_threads'
 import domainEvents from '../domain-events'
 
 /**
  * @typedef {Object} dependencies injected dependencies
  * @property {String} modelName - name of the domain model
  * @property {import('../model-factory').ModelFactory} models - model factory
- * @property {import('../datasource').default repository - model datasource adapter
+ * @property {import('../datasource').default } repository - model datasource adapter
+ * @property {import('../thread-pool').ThreadPool} threadpool
  * @property {import('../event-broker').EventBroker} broker - application events, propagated to domain
  * @property {...import('../index').eventHandler} handlers - {@link eventHandler} configured in the model spec.
  */
@@ -16,10 +18,11 @@ import domainEvents from '../domain-events'
  * @param {dependencies} param0
  * @returns {function():Promise<import('../domain').Model>}
  */
-export default function makeAddModel({
+export default function makeAddModel ({
   modelName,
   models,
   repository,
+  threadpool,
   broker,
   handlers = []
 } = {}) {
@@ -30,8 +33,14 @@ export default function makeAddModel({
   // Add an event whose callback invokes this factory.
   broker.on(domainEvents.addModel(modelName), addModel)
 
-  async function addModel(input) {
-    const model = await models.createModel(broker, repository, modelName, input)
+  async function addModel (input) {
+    let model
+
+    if (isMainThread) {
+      model = await threadpool.runTask(addModel.name, input)
+    } else {
+      model = await models.createModel(broker, repository, modelName, input)
+    }
 
     try {
       await repository.save(model.getId(), model)

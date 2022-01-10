@@ -12,23 +12,27 @@ const services = require('./services')
 const adapters = require('./adapters')
 const domain = require('./domain')
 const router = require('./router')
+const { UseCaseService } = require('./domain/use-cases')
 const ModelFactory = domain.default
 const modelName = workerData
 const { StorageService } = services
 const { StorageAdapter } = adapters
 const { find, save } = StorageAdapter
-const { importRemotes } = domain
 
-async function init () {
+async function init (modelName) {
   const overrides = { find, save, StorageService }
-  await importRemotes(remotes, overrides)
-  loadModels(modelName)
+  const modelServiceRems = remotes.filter(r => r.service === modelName)
+  await importRemotes(modelServiceRems, overrides)
+  //loadModels(modelName)
+  return UseCaseService(modelName)
 }
 
-function handleRequest (httpRequest) {}
-
-parentPort.on('message', httpRequest => {
-  parentPort.postMessage(handleRequest(httpRequest))
+init().then(async service => {
+  console.log('aegis worker thread running')
+  parentPort.on('message', async event => {
+    const result = await service[event.function](event.data)
+    parentPort.postMessage(result)
+  })
 })
 
-init().then(() => console.log('aegis worker thread running'))
+function handleRequest (httpRequest) {}

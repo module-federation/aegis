@@ -44,17 +44,6 @@ exports.init = async function (remotes) {
 
   const Models = ModelFactory.getModelSpecs().map(m => m.modelName)
 
-  if (ThreadPool.length < 1) {
-    Models.forEach(m => {
-      ThreadPool.push({
-        modelName: m.modelName,
-        thread: new Worker('./worker.js', {
-          workerData: { modelName: m.modelName }
-        })
-      })
-    })
-  }
-
   const cache = initCache()
   makeRoutes(endpoint, 'get', getModels, router, http)
   makeRoutes(endpoint, 'post', postModels, router, http)

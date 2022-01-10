@@ -254,7 +254,7 @@ let localOverrides = {}
 
 /**
  * Import remote models, services, and adapters.
- *
+ * @param {import('../../webpack/remote-entries-type.js')} remoteEntries
  * @param {*} overrides - override or add services and adapters
  */
 export async function importRemotes (remoteEntries, overrides = {}) {
