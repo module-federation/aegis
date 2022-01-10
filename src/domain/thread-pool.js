@@ -92,7 +92,10 @@ export class ThreadPool {
     if (this.availThreads.length > 0) {
       if (name || threadId || metaCriteria) {
         const threadsToRemove = this.availThreads.filter(
-          t => t.t.threadId === threadId || metadataMatch(metaCriteria, t)
+          t =>
+            t.name === name ||
+            t.threadId === threadId ||
+            metadataMatch(metaCriteria, t)
         )
         if (threadsToRemove.length > 0) {
           console.info('terminating threads:', threadsToRemove)
@@ -118,12 +121,27 @@ export class ThreadPool {
     return this.waitingTasks.length
   }
 
-  runTask (workerData) {
+  handleRequest (taskName, taskData, thread) {
+    return new Promise((resolve, reject) => {
+      thread.worker.once('message', result => {
+        if (this.waitingTasks.length > 0) {
+          this.waitingTasks.shift()(thread)
+        } else {
+          this.availThreads.push(thread)
+        }
+        resolve(result)
+      })
+      thread.worker.on('error', reject)
+      thread.worker.postMessage({ name: taskName, data: taskData })
+    })
+  }
+
+  runTask (taskName, taskData) {
     if (this.availThreads.length > 0) {
-      handleRequest(res, dataAsUint8Array, this.availThreads.shift())
+      return this.handleRequest(taskName, taskData, this.availThreads.shift())
     } else {
       this.waitingTasks.push(thread =>
-        handleRequest(res, dataAsUint8Array, thread)
+        handleRequest(taskName, taskData, thread)
       )
     }
   }
