@@ -8,7 +8,7 @@ import domainEvents from '../domain-events'
  * @property {String} modelName - name of the domain model
  * @property {import('../model-factory').ModelFactory} models - model factory
  * @property {import('../datasource').default } repository - model datasource adapter
- * @property {import('../thread-pool').ThreadPool} threadpool
+ * @property {import('../thread-pool.js').ThreadPool} threadpool
  * @property {import('../event-broker').EventBroker} broker - application events, propagated to domain
  * @property {...import('../index').eventHandler} handlers - {@link eventHandler} configured in the model spec.
  */

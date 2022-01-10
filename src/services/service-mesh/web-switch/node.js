@@ -144,8 +144,7 @@ async function resolveServiceUrl () {
         activateBackup = true
         return
       }
-      console.info('asking for', SERVICENAME, 'retries', retries)
-
+      //console.info('asking for', SERVICENAME, 'retries', retries)
 
       // query the service name
       dns.query({

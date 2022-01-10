@@ -7,7 +7,7 @@ export default function deleteModelFactory (removeModel, ThreadPool) {
   return async function deleteModel (httpRequest) {
     httpRequest.log(deleteModel.name)
     try {
-      const { ThreadPool } = require('../../domain/thread-pool')
+      const { ThreadPool } = require('../../domain/thread-pool.js')
       const model = await ThreadPool.runTask(
         removeModel.name,
         httpRequest.params.id

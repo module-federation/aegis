@@ -326,4 +326,6 @@ export async function importRemoteCache (name) {
   }
 }
 
+export { UseCaseService } from './use-cases'
+
 export default ModelFactory

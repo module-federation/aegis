@@ -29,6 +29,7 @@ function setSubChannels (worker) {
  * @returns {Thread}
  */
 function newThread (file, workerData, metadata) {
+  console.debug('creating new thread', newThread.name)
   const worker = new Worker(file, { workerData })
   // setSubChannels(worker)
   return {
@@ -64,8 +65,8 @@ export class ThreadPool {
     file,
     name = null,
     workerData = {},
-    numThreads = 0,
-    metaData = null
+    numThreads = DEFAULT_THREADPOOL_SIZE,
+    metadata = null
   } = {}) {
     this.name = name
     this.availThreads = []
@@ -73,6 +74,7 @@ export class ThreadPool {
     for (let i = 0; i < numThreads; i++) {
       this.availThreads.push(newThread(file, workerData, metadata))
     }
+    console.debug('threads in pool', this.availThreads.length, numThreads)
   }
 
   /**
@@ -135,15 +137,22 @@ export class ThreadPool {
       thread.worker.postMessage({ name: taskName, data: taskData })
     })
   }
-
+  dd
   runTask (taskName, taskData) {
-    if (this.availThreads.length > 0) {
-      return this.handleRequest(taskName, taskData, this.availThreads.shift())
-    } else {
-      this.waitingTasks.push(thread =>
-        handleRequest(taskName, taskData, thread)
-      )
-    }
+    return new Promise(async (resolve, reject) => {
+      if (this.availThreads.length > 0) {
+        const result = await this.handleRequest(
+          taskName,
+          taskData,
+          this.availThreads.shift()
+        )
+        resolve(result)
+      } else {
+        this.waitingTasks.push(thread =>
+          handleRequest(taskName, taskData, thread)
+        )
+      }
+    })
   }
 }
 
@@ -151,12 +160,13 @@ const ThreadPoolFactory = (() => {
   const threadPools = new Map()
 
   function createThreadPool (modelName) {
-    const pool = new ThreadPool(
-      '../worker.js',
+    console.debug(createThreadPool.name)
+    const pool = new ThreadPool({
+      file: './dist/worker.js',
       modelName,
-      { workerData: 'starting' },
-      DEFAULT_THREADPOOL_SIZE
-    )
+      workerData: { msg: 'starting' },
+      numThreads: DEFAULT_THREADPOOL_SIZE
+    })
     threadPools.set(modelName, pool)
     return pool
   }

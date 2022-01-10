@@ -1,10 +1,9 @@
 'use strict'
 
-const router = require('express').Router
+//const router = require('express').Router
 const services = require('./services')
 const adapters = require('./adapters')
 const domain = require('./domain')
-const ModelFactory = domain.default
 
 const { StorageService } = services
 const { StorageAdapter } = adapters
@@ -22,6 +21,9 @@ const {
   postModels
 } = adapters.controllers
 
+const apiRoot = process.env.APIROOT || '/microlib/api'
+const modelPath = `${apiRoot}/models`
+
 function adminRoute (adapter, getConfig, app) {
   app.get(`${apiRoot}/config`, adapter(getConfig()))
 }
@@ -36,14 +38,10 @@ function makeRoutes (path, method, controllers, app, http) {
 const endpoint = e => `${modelPath}/${e}`
 const endpointId = e => `${modelPath}/${e}/:id`
 const endpointCmd = e => `${modelPath}/${e}/:id/:command`
-const ThreadPool = []
 
-exports.init = async function (remotes) {
+exports.init = async function (remotes, router) {
   const overrides = { find, save, StorageService }
   await importRemotes(remotes, overrides)
-
-  const Models = ModelFactory.getModelSpecs().map(m => m.modelName)
-
   const cache = initCache()
   makeRoutes(endpoint, 'get', getModels, router, http)
   makeRoutes(endpoint, 'post', postModels, router, http)

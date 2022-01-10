@@ -8,7 +8,7 @@ import makeRemoveModel from './remove-model'
 import makeLoadModels from './load-models'
 import makeListConfig from './list-configs'
 import DataSourceFactory from '../datasource-factory'
-import ThreadPoolFactory from '../thread-pool'
+import ThreadPoolFactory from '../thread-pool.js'
 import ModelFactory from '../model-factory'
 import EventBrokerSingleton from '../event-broker'
 import brokerEvents from './broker-events'
@@ -27,7 +27,7 @@ export function registerEvents () {
  * @param {import('..').ModelSpecification} model
  */
 function buildOptions (model) {
-  options = {
+  const options = {
     modelName: model.modelName,
     models: ModelFactory,
     broker: EventBrokerSingleton.getInstance(),
@@ -36,6 +36,7 @@ function buildOptions (model) {
     threadpool: null
   }
   if (isMainThread) {
+    console.debug('creating thread pool for ', model.modelName)
     return {
       ...options,
       threadpool: ThreadPoolFactory.getThreadPool(model.modelName)
