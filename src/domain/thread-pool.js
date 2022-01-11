@@ -164,7 +164,7 @@ const ThreadPoolFactory = (() => {
     const pool = new ThreadPool({
       file: './dist/worker.js',
       modelName,
-      workerData: { msg: 'starting' },
+      workerData: { modelName },
       numThreads: DEFAULT_THREADPOOL_SIZE
     })
     threadPools.set(modelName, pool)
