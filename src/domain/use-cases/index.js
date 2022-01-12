@@ -7,16 +7,17 @@ import makeFindModel from './find-model'
 import makeRemoveModel from './remove-model'
 import makeLoadModels from './load-models'
 import makeListConfig from './list-configs'
+
+import ModelFactory from '../model-factory'
 import DataSourceFactory from '../datasource-factory'
 import ThreadPoolFactory from '../thread-pool.js'
-import ModelFactory from '../model-factory'
-import EventBrokerSingleton from '../event-broker'
+import EventBrokerFactory from '../event-broker'
 import brokerEvents from './broker-events'
 import { isMainThread } from 'worker_threads'
 
 export function registerEvents () {
   brokerEvents(
-    EventBrokerSingleton.getInstance(),
+    EventBrokerFactory.getInstance(),
     DataSourceFactory,
     ModelFactory
   )
@@ -30,19 +31,24 @@ function buildOptions (model) {
   const options = {
     modelName: model.modelName,
     models: ModelFactory,
-    broker: EventBrokerSingleton.getInstance(),
+    broker: EventBrokerFactory.getInstance(),
     handlers: model.eventHandlers,
-    repository: DataSourceFactory.getDataSource(model.modelName),
     threadpool: null
   }
   if (isMainThread) {
     console.debug('creating thread pool for ', model.modelName)
     return {
       ...options,
+      repository: DataSourceFactory.getDataSource(model.modelName, {
+        memoryOnly: true
+      }),
       threadpool: ThreadPoolFactory.getThreadPool(model.modelName)
     }
   } else {
-    return options
+    return {
+      ...options,
+      repository: DataSourceFactory.getDataSource(model.modelName)
+    }
   }
 }
 

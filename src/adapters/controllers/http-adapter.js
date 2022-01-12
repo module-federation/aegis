@@ -25,28 +25,15 @@ export default function buildCallback (controller) {
       ip: req.ip,
       method: req.method,
       path: req.path,
-      // headers: {
-      //   "Content-Type": req.get("Content-Type"),
-      //   Referer: req.get("referer"),
-      //   "User-Agent": req.get("User-Agent"),
-      // },
 
       log (func) {
-        //const { source = {}, ...payload } = httpRequest.body;
-        //source.ip = httpRequest.ip;
-        //source.browser = httpRequest.headers["User-Agent"];
-
-        // if (httpRequest.headers["Referer"]) {
-        //   source.referrer = httpRequest.headers["Referer"];
-        // }
-
         console.info({
           function: func,
           ip: httpRequest.ip,
           method: httpRequest.method,
           params: httpRequest.params,
           query: httpRequest.query,
-          ...httpRequest.body
+          body: httpRequest.body
         })
       }
     }

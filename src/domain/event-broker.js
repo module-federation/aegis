@@ -5,6 +5,8 @@
 
 import Event from './event'
 import domainEvents from './domain-events'
+import { isMainThread } from 'worker_threads'
+import { query } from 'express'
 
 const { forwardEvent } = domainEvents
 const DEBUG = process.env.DEBUG
@@ -126,6 +128,13 @@ async function runHandler (eventName, eventData = {}, handle, forward) {
   }
 }
 
+function _channelEvent (name) {
+  return {
+    send: `${name}_MSG_CHANNEL_SEND`,
+    recv: `${name}_MSG_CHANNEL_RECV`
+  }
+}
+
 /**
  *
  * @param {string} eventName
@@ -134,7 +143,22 @@ async function runHandler (eventName, eventData = {}, handle, forward) {
  * @fires eventName
  */
 async function notify (eventName, eventData, options = {}) {
-  const { forward = false } = options
+  const { forward } = options
+  const sendToWorker = `to_worker_${eventData.modelName}`
+  const replyToMain = `to_main_${eventName}`
+  const fromWorker = `from_worker_${eventName}`
+
+  if (isMainThread) {
+    if (eventName !== sendToWorker && eventName !== fromWorker) {
+      this.notify(sendToWorker, { ...eventData, replyTo: replyToMain })
+      return
+    }
+  } else {
+    if (eventData.replyTo === replyToMain && eventName !== replyToMain) {
+      this.notify(replyToMain, eventData)
+    }
+  }
+
   const run = runHandler.bind(this)
 
   if (!eventData) {
@@ -178,6 +202,10 @@ class EventBrokerImpl extends EventBroker {
       workflow: [],
       cache: []
     }
+  }
+
+  _channel (name) {
+    return _channelEvent(name)
   }
 
   /**
@@ -283,7 +311,7 @@ class EventBrokerImpl extends EventBroker {
  * Create / return broker singleton instance
  * @todo handle all state same way
  */
-export const EventBrokerSingleton = (() => {
+export const EventBrokerFactory = (() => {
   let instance
 
   function createInstance () {
@@ -303,4 +331,4 @@ export const EventBrokerSingleton = (() => {
   })
 })()
 
-export default EventBrokerSingleton
+export default EventBrokerFactory

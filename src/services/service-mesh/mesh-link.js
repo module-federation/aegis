@@ -2,7 +2,7 @@
 
 const mlink = require('mesh-link')
 const nanoid = require('nanoid').nanoid
-const broker = require('../../domain/event-broker').EventBrokerSingleton.getInstance()
+const broker = require('../../domain/event-broker').EventBrokerFactory.getInstance()
 const begins = Date.now()
 const uptime = () => Math.round(Math.abs((Date.now() - begins) / 1000 / 60))
 const userConfig = require('../../config').hostConfig
@@ -32,7 +32,7 @@ mlink.onNewNodes(nodes => {
 
 const cfg = userConfig.services.serviceMesh.MeshLink.config || defaultCfg
 
-function numericHash(str) {
+function numericHash (str) {
   let hash = 0
   let i
   let chr
@@ -52,7 +52,7 @@ const sharedObjects = new Map()
  * @param {*} eventData
  * @returns
  */
-function createSharedObject(eventData) {
+function createSharedObject (eventData) {
   const { eventTime, modelName } = eventData
 
   if (sharedObjects.has(modelName)) {
@@ -87,7 +87,7 @@ const SharedObjEvent = {
           ...JSON.parse(JSON.stringify(eventData.model))
         })
         so.inc('total', 1)
-        so.on('update', () => { })
+        so.on('update', () => {})
       })
       .catch(e => console.error('mlink', e))
   },
@@ -109,7 +109,7 @@ const SharedObjEvent = {
  * @param {cfg} config
  * @returns
  */
-async function start(config = cfg, wss) {
+async function start (config = cfg, wss) {
   mlink
     .start(config)
     .then(() => {
@@ -128,7 +128,7 @@ async function start(config = cfg, wss) {
   }
 }
 
-async function publish(event) {
+async function publish (event) {
   console.debug('publish called', event.eventName)
   const deserEvent = JSON.parse(JSON.stringify(event))
   const handlerId = numericHash(event.eventName)
@@ -157,7 +157,7 @@ async function publish(event) {
 
 let registerSharedObjEvents
 
-function initSharedObject(broker) {
+function initSharedObject (broker) {
   if (!registerSharedObjEvents) {
     registerSharedObjEvents = broker =>
       broker.on(
@@ -170,7 +170,7 @@ function initSharedObject(broker) {
   }
 }
 
-async function subscribe(eventName, callback, broker) {
+async function subscribe (eventName, callback, broker) {
   initSharedObject(broker)
   const handlerId = numericHash(eventName)
   if (!handlerId) return // we've already registered a callback for this event
@@ -185,7 +185,7 @@ async function subscribe(eventName, callback, broker) {
   }
 }
 
-function attachServer(server) {
+function attachServer (server) {
   let messagesSent = 0
   /**
    *
@@ -208,7 +208,7 @@ function attachServer(server) {
    * @todo
    * @param {*} client
    */
-  server.setRateLimit = function (client) { }
+  server.setRateLimit = function (client) {}
 
   server.sendStatus = function (client) {
     client.send(

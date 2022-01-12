@@ -7,7 +7,6 @@ export default function deleteModelFactory (removeModel, ThreadPool) {
   return async function deleteModel (httpRequest) {
     httpRequest.log(deleteModel.name)
     try {
-      const { ThreadPool } = require('../../domain/thread-pool.js')
       const model = await ThreadPool.runTask(
         removeModel.name,
         httpRequest.params.id
@@ -20,7 +19,7 @@ export default function deleteModelFactory (removeModel, ThreadPool) {
           'Last-Modified': new Date().toUTCString()
         },
         statusCode: 201,
-        body: { modelId: model.getId() }
+        body: { modelId: model.id }
       }
     } catch (e) {
       console.error(e)

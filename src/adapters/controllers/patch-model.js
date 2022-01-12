@@ -1,6 +1,6 @@
 /**
  *
- * @param {import("../../use-cases/edit-model").editModel} editModel
+ * @param {import("../../domain/use-cases/edit-model.js").editModel} editModel
  * @returns {import("../http-adapter").httpController}
  */
 export default function patchModelFactory (editModel) {
@@ -12,7 +12,7 @@ export default function patchModelFactory (editModel) {
       const command = httpRequest.params.command
       const payload = httpRequest.body
 
-      const model = await editModel(id, payload, command)
+      const model = await editModel({ id, payload, command })
 
       return {
         headers: {
@@ -20,7 +20,7 @@ export default function patchModelFactory (editModel) {
           'Last-Modified': new Date().toUTCString()
         },
         statusCode: 201,
-        body: { modelId: model.getId() }
+        body: { modelId: model.id }
       }
     } catch (e) {
       console.error(e)

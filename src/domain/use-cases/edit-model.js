@@ -4,6 +4,7 @@ import executeCommand from './execute-command'
 import invokePort from './invoke-port'
 import async from '../util/async-error'
 import domainEvents from '../domain-events'
+import { isMainThread } from 'worker_threads'
 
 /**
  * @typedef {Object} ModelParam
@@ -23,6 +24,7 @@ export default function makeEditModel ({
   modelName,
   models,
   repository,
+  threadpool,
   broker,
   handlers = []
 } = {}) {
@@ -31,9 +33,10 @@ export default function makeEditModel ({
   handlers.forEach(handler => broker.on(eventName, handler))
 
   // Add an event that can be used to edit this model
-  broker.on(domainEvents.editModel(modelName), editModelHandler)
+  broker.on(domainEvents.editModel(modelName), editModel)
 
-  async function editModel (id, changes, command) {
+  async function editModel (input) {
+    const { id, changes, command } = input
     const model = await repository.find(id)
 
     if (!model) {
@@ -41,7 +44,13 @@ export default function makeEditModel ({
     }
 
     try {
-      const updated = models.updateModel(model, changes)
+      let updated
+
+      if (isMainThread) {
+        updated = threadpool.runTask(editModel.name, { id, changes, command })
+      } else {
+        updated = models.updateModel(model, changes)
+      }
 
       try {
         await repository.save(id, updated)
@@ -50,13 +59,12 @@ export default function makeEditModel ({
       }
 
       try {
-        //if (!updated.isCached()) {
         const event = await models.createEvent(eventType, modelName, {
           updated,
           changes
         })
+
         await broker.notify(event.eventName, event)
-        // }
       } catch (error) {
         await repository.save(id, model)
         throw new Error(error)
@@ -69,21 +77,10 @@ export default function makeEditModel ({
         }
       }
 
-      if (command) {
-        const result = await async(invokePort(updated, command, 'write'))
-        if (result.ok) {
-          return result.data
-        }
-      }
-
-      return updated
+      return await repository.find(id)
     } catch (error) {
       throw new Error(error)
     }
-  }
-
-  async function editModelHandler (event) {
-    return editModel(event.id, event.changes, event.command)
   }
 
   return editModel

@@ -204,7 +204,7 @@ export function setUplinkUrl (uplinkUrl) {
  * @param {{
  *  broker:import('../../../domain/event-broker').EventBroker,
  *  models:import('../../../domain/model-factory').ModelFactory
- * }} serviceInfo
+ * }} [serviceInfo]
  */
 export async function connect (serviceInfo = {}) {
   broker = serviceInfo.broker

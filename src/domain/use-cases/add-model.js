@@ -38,29 +38,29 @@ export default function makeAddModel ({
 
     if (isMainThread) {
       model = await threadpool.runTask(addModel.name, input)
+      return repository.save(model.id, model)
     } else {
       model = await models.createModel(broker, repository, modelName, input)
-    }
 
-    try {
-      await repository.save(model.getId(), model)
-    } catch (error) {
-      throw new Error(error)
-    }
+      console.debug(model)
+      try {
+        await repository.save(model.getId(), model)
+      } catch (error) {
+        throw new Error(error)
+      }
 
-    try {
-      if (!model.isCached()) {
+      try {
         const event = await models.createEvent(eventType, modelName, model)
         await broker.notify(event.eventName, event)
+      } catch (error) {
+        // remote the object if not processed
+        await repository.delete(model.getId())
+        throw new Error(error)
       }
-    } catch (error) {
-      // remote the object if not processed
-      await repository.delete(model.getId())
-      throw new Error(error)
-    }
 
-    // Return the latest changes
-    return repository.find(model.getId())
+      // Return the latest changes
+      return repository.find(model.getId())
+    }
   }
 
   return addModel

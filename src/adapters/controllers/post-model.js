@@ -4,7 +4,7 @@
  *
  * @param {import("../use-cases/add-model").addModel} addModel
  * @param {function():string} hash
- * @returns {import("../adapters/http-adapter").httpController}
+ * @returns {import("./http-adapter").httpController}
  */
 export default function postModelFactory (addModel) {
   return async function postModel (httpRequest) {
@@ -21,7 +21,7 @@ export default function postModelFactory (addModel) {
           'Last-Modified': new Date().toUTCString()
         },
         statusCode: 201,
-        body: { modelId: model.getId() }
+        body: { modelId: model.id }
       }
     } catch (e) {
       console.error(e)
