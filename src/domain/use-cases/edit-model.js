@@ -36,8 +36,13 @@ export default function makeEditModel ({
   broker.on(domainEvents.editModel(modelName), editModel)
 
   async function editModel (input) {
-    const { id, changes, command } = input
-    const model = await repository.find(id)
+    const { id, changes, command, model = {} } = input
+
+    if (isMainThread) {
+      // let the main thread lookup;
+      // don't do it again in the worker
+      model = await repository.find(id)
+    }
 
     if (!model) {
       throw new Error('no such id')
@@ -47,7 +52,12 @@ export default function makeEditModel ({
       let updated
 
       if (isMainThread) {
-        updated = threadpool.runTask(editModel.name, { id, changes, command })
+        updated = threadpool.runTask(editModel.name, {
+          id,
+          changes,
+          command,
+          model
+        })
       } else {
         updated = models.updateModel(model, changes)
       }
