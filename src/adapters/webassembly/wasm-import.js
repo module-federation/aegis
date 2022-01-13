@@ -65,7 +65,7 @@ export async function importWebAssembly (remoteEntry, type = 'model') {
         const event = wasm.exports.__getString(eventName)
         const data = interop.constructObject(eventData)
         console.debug('fireEvent', data)
-        broker.notify(event, data, { forward: true })
+        broker.notify(event, data, { worker: true })
       },
 
       /**

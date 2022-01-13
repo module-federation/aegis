@@ -6,7 +6,7 @@
 import Event from './event'
 import domainEvents from './domain-events'
 import { isMainThread } from 'worker_threads'
-import { query } from 'express'
+import e, { query } from 'express'
 
 const { forwardEvent } = domainEvents
 const DEBUG = process.env.DEBUG
@@ -122,17 +122,6 @@ async function runHandler (eventName, eventData = {}, handle, forward) {
 
   /**@type {eventHandler} */
   await handle(eventData)
-
-  if (forward && eventName !== forwardEvent) {
-    await this.notify(forwardEvent, eventData)
-  }
-}
-
-function _channelEvent (name) {
-  return {
-    send: `${name}_MSG_CHANNEL_SEND`,
-    recv: `${name}_MSG_CHANNEL_RECV`
-  }
 }
 
 /**
@@ -143,20 +132,21 @@ function _channelEvent (name) {
  * @fires eventName
  */
 async function notify (eventName, eventData, options = {}) {
-  const { forward } = options
-  const sendToWorker = `to_worker_${eventData.modelName}`
-  const replyToMain = `to_main_${eventName}`
-  const fromWorker = `from_worker_${eventName}`
+  const { worker = null, mesh = null } = options
 
   if (isMainThread) {
-    if (eventName !== sendToWorker && eventName !== fromWorker) {
-      this.notify(sendToWorker, { ...eventData, replyTo: replyToMain })
+    const sendToWorker = domainEvents.sendToWorker(eventData.modelName)
+    const sendToMesh = domainEvents.sendToMesh(eventName)
+
+    if (worker && eventName !== sendToWorker) {
+      this.notify(sendToWorker, eventData)
       return
     }
-  } else {
-    if (eventData.replyTo === replyToMain && eventName !== replyToMain) {
-      this.notify(replyToMain, eventData)
+    if (mesh && eventName !== sendToMesh) {
+      this.notify(sendToMesh, eventData)
+      return
     }
+    if (![sendToWorker, sendToMesh].includes(eventName)) return
   }
 
   const run = runHandler.bind(this)
@@ -170,7 +160,7 @@ async function notify (eventName, eventData, options = {}) {
     if (handlers.has(eventName)) {
       await Promise.allSettled(
         handlers.get(eventName).map(async handler => {
-          await run(eventName, eventData, handler, forward)
+          await run(eventName, eventData, handler, options)
         })
       )
     }
@@ -179,7 +169,7 @@ async function notify (eventName, eventData, options = {}) {
       [...handlers]
         .filter(([k]) => k instanceof RegExp && k.test(eventName))
         .map(([, v]) =>
-          v.map(async f => await run(eventName, eventData, f, forward))
+          v.map(async f => await run(eventName, eventData, f, options))
         )
     )
   } catch (error) {
@@ -202,10 +192,6 @@ class EventBrokerImpl extends EventBroker {
       workflow: [],
       cache: []
     }
-  }
-
-  _channel (name) {
-    return _channelEvent(name)
   }
 
   /**

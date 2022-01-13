@@ -329,7 +329,8 @@ async function _connect () {
       console.assert(!DEBUG, 'received event:', eventData)
 
       if (eventData.eventName) {
-        if (broker) await broker.notify(eventData.eventName, eventData)
+        if (broker)
+          await broker.notify(eventData.eventName, eventData, { worker: true })
         if (uplinkCallback) await uplinkCallback(message)
         return
       }

@@ -138,7 +138,7 @@ async function publish (event) {
     const eventData = JSON.parse(res)
 
     if (eventData?.eventName) {
-      broker.notify(eventData.eventName, eventData)
+      broker.notify(eventData.eventName, eventData, { worker: true })
     }
     if (error) {
       console.log(error)

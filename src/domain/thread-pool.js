@@ -7,7 +7,9 @@ import {
   parentPort
 } from 'worker_threads'
 import { EventBrokerFactory } from './event-broker'
+import domainEvents from './domain-events'
 
+const { fromMain, fromWorker, sendToMain, sendToWorker } = domainEvents
 const broker = EventBrokerFactory.getInstance()
 const DEFAULT_THREADPOOL_SIZE = 1
 
@@ -36,19 +38,20 @@ export class ThreadPool {
     console.debug('threads in pool', this.availThreads.length, numThreads)
   }
 
-  _setSubChannel (name, worker) {
+  _setSubChannel (modelName, worker) {
     const { port1, port2 } = new MessageChannel()
-    const sendToWorker = `to_worker_${eventData.modelName}`
-    const replyToMain = `to_main_${eventName}`
-    const fromWorker = `from_worker_${eventName}`
 
     if (isMainThread) {
-      worker.postMessage({ port: port2, channel: name }, [port2])
-      port1.on('message', event => broker.notify(fromWorker, event))
-      broker.on(sendToWorker, event => port1.postMessage(event))
+      worker.postMessage({ port: port2, channel: modelName }, [port2])
+      port1.on('message', event =>
+        broker.notify(fromWorker(event.eventName), event)
+      )
+      broker.on(sendToWorker(modelName), event => port1.postMessage(event))
     } else {
-      port2.on('message', event => broker.notify(event.eventName, event))
-      broker.on(replyToMain, event => port2.postMessage(event))
+      port2.on('message', event =>
+        broker.notify(fromMain(event.eventName), event)
+      )
+      broker.on(sendToMain(modelName), event => port2.postMessage(event))
     }
   }
 
