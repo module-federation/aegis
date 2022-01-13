@@ -39,7 +39,7 @@ import { ServiceMeshPlugin } from '../services'
 
 /**
  * service mesh plugin adapter
- * @typedef {object} ServiceMeshPlugin
+ * @typedef {object} ServiceMeshAdapter
  * @property {attachServer} attachServer all service mesh plug-ins
  * implement a websocket server on the same port as the domain model
  * API, regardless of how they integrate the nodes of the mesh, which
@@ -55,9 +55,9 @@ import { ServiceMeshPlugin } from '../services'
 
 /**
  * Bind the adapter.
- * @type {ServiceMeshPlugin}
+ * @type {ServiceMeshAdapter}
  */
-export const ServiceMeshPlugin = {
+export const ServiceMeshAdapter = {
   ...Object.keys(ServiceMeshPluginAdapter)
     .map(port => ({
       [port]: ServiceMeshPluginAdapter[port](ServiceMeshPlugin)

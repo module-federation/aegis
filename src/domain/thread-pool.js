@@ -27,7 +27,6 @@ function metadataMatch (metaCriteria, thread) {
 
 /**
  * @typedef {object} Thread
- * @property {string} name
  * @property {number} threadId
  * @property {Worker} worker
  * @property {{[x:string]:*}} metadata
@@ -41,9 +40,15 @@ export class ThreadPool {
     numThreads = DEFAULT_THREADPOOL_SIZE,
     metadata = null
   } = {}) {
-    this.name = name
     this.availThreads = []
     this.waitingTasks = []
+    this.file = file
+    this.name = name
+    this.workerData = workerData
+    this.numThreads = numThreads
+    this.metadata = metadata
+    this.totalThreads = numThreads
+
     for (let i = 0; i < numThreads; i++) {
       this.availThreads.push(newThread(file, workerData, metadata))
     }
@@ -101,24 +106,27 @@ export class ThreadPool {
    * @param {*} metadata
    * @returns {Thread}
    */
-  addThread (file, workerData, metadata = null) {
+  addThread (
+    file = this.file,
+    workerData = this.workerData,
+    metadata = this.metadata
+  ) {
     const thread = newThread(file, workerData, metadata)
+    this.totalThreads++
     this.availThreads.push(thread)
     return thread
   }
 
-  removeThread (name = null, threadId = null, metaCriteria = null) {
+  removeThread (threadId = null, metaCriteria = null) {
     if (this.availThreads.length > 0) {
-      if (name || threadId || metaCriteria) {
+      if (threadId || metaCriteria) {
         const threadsToRemove = this.availThreads.filter(
-          t =>
-            t.name === name ||
-            t.threadId === threadId ||
-            metadataMatch(metaCriteria, t)
+          t => t.threadId === threadId || metadataMatch(metaCriteria, t)
         )
         if (threadsToRemove.length > 0) {
           console.info('terminating threads:', threadsToRemove)
           threadsToRemove.forEach(t => t.worker.terminate())
+          this.totalThreads -= threadsToRemove.length
           return true
         }
         return false
@@ -126,14 +134,19 @@ export class ThreadPool {
       const thread = this.availThreads.pop()
       console.info('terminating thread:', thread)
       thread.worker.terminate()
+      this.totalThreads--
       return true
     }
     console.warn('no threads available')
     return false
   }
 
+  threadPoolSize () {
+    return this.totalThreads
+  }
+
   availableThreads () {
-    return this.availThreads.length
+    return this.availThreads
   }
 
   taskQueueDepth () {

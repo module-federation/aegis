@@ -4,6 +4,7 @@
 const services = require('./services')
 const adapters = require('./adapters')
 const domain = require('./domain')
+const { liveUpdate } = require('./adapters/controllers')
 
 const { StorageService } = services
 const { StorageAdapter } = adapters
@@ -20,7 +21,8 @@ const {
   http,
   initCache,
   patchModels,
-  postModels
+  postModels,
+  liveUpdate
 } = adapters.controllers
 
 const apiRoot = process.env.APIROOT || '/microlib/api'
@@ -43,6 +45,7 @@ const endpointCmd = e => `${modelPath}/${e}/:id/:command`
 
 async function initServer (router) {
   const cache = initCache()
+  makeRoutes(endpoint, 'use', liveUpdate, router, http)
   makeRoutes(endpoint, 'get', getModels, router, http)
   makeRoutes(endpoint, 'post', postModels, router, http)
   makeRoutes(endpointId, 'get', getModelsById, router, http)

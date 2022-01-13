@@ -7,6 +7,7 @@ import makeFindModel from './find-model'
 import makeRemoveModel from './remove-model'
 import makeLoadModels from './load-models'
 import makeListConfig from './list-configs'
+import makeHotReload from './hot-reload'
 
 import ModelFactory from '../model-factory'
 import DataSourceFactory from '../datasource-factory'
@@ -72,6 +73,15 @@ const listModels = () => make(makeListModels)
 const findModels = () => make(makeFindModel)
 const removeModels = () => make(makeRemoveModel)
 const loadModelSpecs = () => make(makeLoadModels)
+const hotReload = () => [
+  {
+    endpoint: 'reload',
+    fn: makeHotReload({
+      models: ModelFactory,
+      broker: EventBrokerFactory.getInstance()
+    })
+  }
+]
 const listConfigs = () =>
   makeListConfig({ models: ModelFactory, data: DataSourceFactory })
 
@@ -82,7 +92,8 @@ export const UseCases = {
   findModels,
   removeModels,
   loadModelSpecs,
-  listConfigs
+  listConfigs,
+  hotReload
 }
 
 export function UseCaseService (modelName = null) {
@@ -104,6 +115,7 @@ export function UseCaseService (modelName = null) {
     findModels: findModels(),
     removeModels: removeModels(),
     loadModelSpecs: loadModelSpecs(),
+    hotReload: hotReload(),
     listConfigs: listConfigs()
   }
 }
