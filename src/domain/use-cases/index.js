@@ -65,23 +65,44 @@ function makeOne (modelName, factory) {
   return factory(buildOptions(spec))
 }
 
-export const addModels = () => make(makeAddModel)
-export const editModels = () => make(makeEditModel)
-export const listModels = () => make(makeListModels)
-export const findModels = () => make(makeFindModel)
-export const removeModels = () => make(makeRemoveModel)
-export const loadModelSpecs = () => make(makeLoadModels)
-export const listConfigs = () =>
+const addModels = () => make(makeAddModel)
+const editModels = () => make(makeEditModel)
+const listModels = () => make(makeListModels)
+const findModels = () => make(makeFindModel)
+const removeModels = () => make(makeRemoveModel)
+const loadModelSpecs = () => make(makeLoadModels)
+const listConfigs = () =>
   makeListConfig({ models: ModelFactory, data: DataSourceFactory })
 
-export function UseCaseService (modelName) {
+export const UseCases = {
+  addModels,
+  editModels,
+  listModels,
+  findModels,
+  removeModels,
+  loadModelSpecs,
+  listConfigs
+}
+
+export function UseCaseService (modelName = null) {
+  if (modelName) {
+    return {
+      addModel: makeOne(modelName, makeAddModel),
+      editModel: makeOne(modelName, makeEditModel),
+      listModels: makeOne(modelName, makeListModels),
+      findModel: makeOne(modelName, makeFindModel),
+      removeModel: makeOne(modelName, makeRemoveModel),
+      loadModelSpecs: makeOne(modelName, makeLoadModels),
+      listConfigs: listConfigs()
+    }
+  }
   return {
-    addModel: makeOne(modelName, makeAddModel),
-    editModel: makeOne(modelName, makeEditModel),
-    listModels: makeOne(modelName, makeListModels),
-    findModel: makeOne(modelName, makeFindModel),
-    removeModel: makeOne(modelName, makeRemoveModel),
-    loadModelSpecs: makeOne(modelName, makeLoadModels),
+    addModels: addModels(),
+    editModels: editModels(),
+    listModels: listModels(),
+    findModels: findModels(),
+    removeModels: removeModels(),
+    loadModelSpecs: loadModelSpecs(),
     listConfigs: listConfigs()
   }
 }

@@ -8,7 +8,10 @@ const domain = require('./domain')
 const { StorageService } = services
 const { StorageAdapter } = adapters
 const { find, save } = StorageAdapter
-const { importRemotes } = domain
+const { importRemotes, UseCaseService } = domain
+const overrides = { find, save, StorageService }
+const debug = /true/i.test(process.env.DEBUG)
+const isServerless = /true/i.test(process.env.SERVERLESS)
 
 const {
   deleteModels,
@@ -39,9 +42,7 @@ const endpoint = e => `${modelPath}/${e}`
 const endpointId = e => `${modelPath}/${e}/:id`
 const endpointCmd = e => `${modelPath}/${e}/:id/:command`
 
-exports.init = async function (remotes, router) {
-  const overrides = { find, save, StorageService }
-  await importRemotes(remotes, overrides)
+async function initServer (router) {
   const cache = initCache()
   makeRoutes(endpoint, 'get', getModels, router, http)
   makeRoutes(endpoint, 'post', postModels, router, http)
@@ -53,9 +54,24 @@ exports.init = async function (remotes, router) {
   await cache.load()
   return {
     path: '/',
-    routes: router,
-    handle: handleServerless
+    routes: router
   }
 }
 
-async function handleServerless (...args) {}
+async function initServerless (remotes) {
+  debug && console.debug('handle invoked', remotes)
+  const cache = initCache()
+  const service = UseCaseService()
+  await cache.load()
+  return {
+    async handle (...args) {
+      const { serviceName, modelName } = parseUrl(args)
+      service[serviceName](modelName)(args)
+    }
+  }
+}
+
+exports.init = async function (remotes, app) {
+  await importRemotes(remotes, overrides)
+  return app ? initServer(app) : initServerless()
+}

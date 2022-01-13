@@ -1,5 +1,6 @@
 'use strict'
 
+import { LoggerLevel } from 'mongodb'
 import { isMainThread } from 'worker_threads'
 import domainEvents from '../domain-events'
 
@@ -40,10 +41,8 @@ export default function makeAddModel ({
       model = await threadpool.runTask(addModel.name, input)
       return repository.save(model.id, model)
     } else {
-      model = await models.createModel(broker, repository, modelName, input)
-
-      console.debug(model)
       try {
+        model = await models.createModel(broker, repository, modelName, input)
         await repository.save(model.getId(), model)
       } catch (error) {
         throw new Error(error)
