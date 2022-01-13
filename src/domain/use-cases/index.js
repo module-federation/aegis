@@ -14,6 +14,7 @@ import ThreadPoolFactory from '../thread-pool.js'
 import EventBrokerFactory from '../event-broker'
 import brokerEvents from './broker-events'
 import { isMainThread } from 'worker_threads'
+import { controllers } from '../../adapters'
 
 export function registerEvents () {
   brokerEvents(

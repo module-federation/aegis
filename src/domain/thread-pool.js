@@ -9,9 +9,21 @@ import {
 import { EventBrokerFactory } from './event-broker'
 import domainEvents from './domain-events'
 
-const { fromMain, fromWorker, sendToMain, sendToWorker } = domainEvents
+const { fromMain, fromWorker, sendToMesh, sendToWorker } = domainEvents
 const broker = EventBrokerFactory.getInstance()
 const DEFAULT_THREADPOOL_SIZE = 1
+
+/**
+ *
+ * @param {{[x:string]:string|number}} metaCriteria
+ * @param {Thread} thread
+ *
+ */
+function metadataMatch (metaCriteria, thread) {
+  return Object.keys(metaCriteria).every(k =>
+    thread.metadata[k] ? metaCriteria[k] === thread.metadata[k] : true
+  )
+}
 
 /**
  * @typedef {object} Thread
@@ -51,7 +63,7 @@ export class ThreadPool {
       port2.on('message', event =>
         broker.notify(fromMain(event.eventName), event)
       )
-      broker.on(sendToMain(modelName), event => port2.postMessage(event))
+      broker.on(sendToMesh(modelName), event => port2.postMessage(event))
     }
   }
 
@@ -156,7 +168,7 @@ export class ThreadPool {
         resolve(result)
       } else {
         this.waitingTasks.push(thread =>
-          handleRequest(taskName, taskData, thread)
+          this._handleRequest(taskName, taskData, thread).bind(this)
         )
       }
     })

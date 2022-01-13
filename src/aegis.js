@@ -11,7 +11,6 @@ const { find, save } = StorageAdapter
 const { importRemotes, UseCaseService } = domain
 const overrides = { find, save, StorageService }
 const debug = /true/i.test(process.env.DEBUG)
-const isServerless = /true/i.test(process.env.SERVERLESS)
 
 const {
   deleteModels,
@@ -52,10 +51,6 @@ async function initServer (router) {
   makeRoutes(endpointCmd, 'patch', patchModels, router, http)
   adminRoute(http, getConfig, router, http)
   await cache.load()
-  return {
-    path: '/',
-    routes: router
-  }
 }
 
 async function initServerless (remotes) {
@@ -64,9 +59,8 @@ async function initServerless (remotes) {
   const service = UseCaseService()
   await cache.load()
   return {
-    async handle (...args) {
-      const { serviceName, modelName } = parseUrl(args)
-      service[serviceName](modelName)(args)
+    async handle (serviceName, modelName, ...args) {
+      return service[serviceName](modelName)(args)
     }
   }
 }
