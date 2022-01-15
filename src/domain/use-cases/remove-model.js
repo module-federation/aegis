@@ -40,7 +40,7 @@ export default function removeModelFactory ({
       if (!model) {
         throw new Error('no such id')
       }
-      threadpool.getThreadPool(modelName).runTask(removeModel.name, { model })
+      threadpool.getThreadPool(modelName).runJob(removeModel.name, { model })
     } else {
       const deleted = models.deleteModel(model)
       const event = await models.createEvent(eventType, modelName, deleted)

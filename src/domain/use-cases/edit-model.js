@@ -47,7 +47,7 @@ export default function makeEditModel ({
 
     let updated
     if (isMainThread) {
-      updated = threadpool.getThreadPool(modelName).runTask(editModel.name, {
+      updated = threadpool.getThreadPool(modelName).runJob(editModel.name, {
         id,
         changes,
         command

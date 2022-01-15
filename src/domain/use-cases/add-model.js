@@ -41,7 +41,7 @@ export default function makeAddModel ({
     if (isMainThread) {
       model = await threadpool
         .getThreadPool(modelName)
-        .runTask(addModel.name, input)
+        .runJob(addModel.name, input)
       return repository.save(model.id, model)
     } else {
       try {

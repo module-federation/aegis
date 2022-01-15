@@ -38,7 +38,7 @@ function commandAuthorized (spec, command, permission) {
  */
 export default async function executeCommand (model, command, permission) {
   if (isMainThread) {
-    const result = ThreadPoolFactory.getThreadPool(model.modelName).runTask(
+    const result = ThreadPoolFactory.getThreadPool(model.modelName).runJob(
       executeCommand.name,
       { command, permission }
     )

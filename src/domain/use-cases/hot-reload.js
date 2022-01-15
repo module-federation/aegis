@@ -45,7 +45,7 @@ export default function makeHotReload ({ models, broker } = {}) {
         }
 
         if (modelName) {
-          await ThreadPoolFactory.clear(modelName)
+          await ThreadPoolFactory.clearByName(modelName)
           return {
             status: `reload complete for thread pool ${modelName}`,
             modelName
