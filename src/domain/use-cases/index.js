@@ -44,7 +44,7 @@ function buildOptions (model) {
       repository: DataSourceFactory.getDataSource(model.modelName, {
         memoryOnly: true
       }),
-      threadpool: ThreadPoolFactory.getThreadPool(model.modelName)
+      threadpool: ThreadPoolFactory
     }
   } else {
     return {

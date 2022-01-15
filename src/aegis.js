@@ -1,10 +1,8 @@
 'use strict'
 
-//const router = require('express').Router
 const services = require('./services')
 const adapters = require('./adapters')
 const domain = require('./domain')
-const { liveUpdate } = require('./adapters/controllers')
 
 const { StorageService } = services
 const { StorageAdapter } = adapters
@@ -25,17 +23,17 @@ const {
   liveUpdate
 } = adapters.controllers
 
-const apiRoot = process.env.APIROOT || '/microlib/api'
+const apiRoot = process.env.API_ROOT || '/microlib/api'
 const modelPath = `${apiRoot}/models`
 
-function adminRoute (adapter, getConfig, app) {
-  app.get(`${apiRoot}/config`, adapter(getConfig()))
+function adminRoute (adapter, getConfig, router) {
+  router.get(`${apiRoot}/config`, adapter(getConfig()))
 }
 
-function makeRoutes (path, method, controllers, app, http) {
+function makeRoutes (path, method, controllers, router, http) {
   controllers().forEach(ctlr => {
     console.info(ctlr)
-    app[method](path(ctlr.endpoint), http(ctlr.fn))
+    router[method](path(ctlr.endpoint), http(ctlr.fn))
   })
 }
 
@@ -52,7 +50,7 @@ async function initServer (router) {
   makeRoutes(endpointId, 'patch', patchModels, router, http)
   makeRoutes(endpointId, 'delete', deleteModels, router, http)
   makeRoutes(endpointCmd, 'patch', patchModels, router, http)
-  adminRoute(http, getConfig, router, http)
+  adminRoute(http, getConfig, router)
   await cache.load()
 }
 
@@ -68,7 +66,7 @@ async function initServerless (remotes) {
   }
 }
 
-exports.init = async function (remotes, app) {
+exports.init = async function (remotes, router) {
   await importRemotes(remotes, overrides)
-  return app ? initServer(app) : initServerless()
+  return router ? initServer(router) : initServerless()
 }

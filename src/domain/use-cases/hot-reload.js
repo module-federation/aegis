@@ -36,53 +36,40 @@ export default function makeHotReload ({ models, broker } = {}) {
     )
   }
 
-  /**
-   *
-   * @param {import('../thread-pool.js').ThreadPool} pool
-   */
-  async function reloadPool (pool) {
-    const total = pool.threadPoolSize()
-    const fresh = []
-
-    let i = 0
-    while (i < total) {
-      if (i > 100) break
-      pool
-        .availableThreads()
-        .map(a => a.threadId)
-        .filter(a => !fresh.includes(a))
-        .forEach(a => {
-          if (pool.removeThread(a)) {
-            const thread = pool.addThread()
-            fresh.push(thread.threadId)
-            i++
-          }
-        })
-    }
-  }
-
   async function hotReload ({ modelName, remoteEntry = null }) {
     if (isMainThread) {
       if (modelName) {
         if (modelName === '*') {
-          models.getModelSpecs().forEach(spec => reloadPool(spec.threadpool))
+          await ThreadPoolFactory.reloadAll()
           return { status: `reload complete for all thread pools` }
         }
 
-        const pool = models.getModelSpec(modelName).threadpool
-        if (pool) {
-          reloadPool(pool)
-          return { status: `reload complete for ${modelName}`, modelName }
+        if (modelName) {
+          await ThreadPoolFactory.clear(modelName)
+          return {
+            status: `reload complete for thread pool ${modelName}`,
+            modelName
+          }
         }
 
-        ThreadPoolFactory.getThreadPool(modelName)
-        if (remoteEntry) registerNewModel(remoteEntry)
-        return {
-          status: 'thread pool and remote-entry created for new model',
-          modelName
+        if (remoteEntry) {
+          registerNewModel(remoteEntry)
+          return {
+            status: 'thread pool and remote-entry created for new model',
+            modelName
+          }
         }
+
+        const pools = ThreadPoolFactory.listPools().map(p => p.toLowerCase())
+        const allModels = models
+          .getModelSpecs()
+          .map(spec => spec.modelName.toLowerCase())
+
+        pools
+          .filter(poolName => !allModels.includes(poolName))
+          .forEach(async poolName => await ThreadPoolFactory.clear(poolName))
       }
-      return { status: `no ${modelName} specified` }
+      return { status: `no model specified ${modelName}` }
     }
   }
 

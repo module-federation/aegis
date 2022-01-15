@@ -3,6 +3,7 @@
 import { LoggerLevel } from 'mongodb'
 import { isMainThread } from 'worker_threads'
 import domainEvents from '../domain-events'
+import ThreadPoolFactory from '../thread-pool.js'
 
 /**
  * @typedef {Object} dependencies injected dependencies
@@ -38,7 +39,9 @@ export default function makeAddModel ({
     let model
 
     if (isMainThread) {
-      model = await threadpool.runTask(addModel.name, input)
+      model = await threadpool
+        .getThreadPool(modelName)
+        .runTask(addModel.name, input)
       return repository.save(model.id, model)
     } else {
       try {

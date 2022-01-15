@@ -47,7 +47,7 @@ export const initCache = () => {
   }
 
   return {
-    load: () => loadModelInstances().then(registerEvents)
+    load: () => loadModelInstances()
   }
 }
 

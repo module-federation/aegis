@@ -10,10 +10,10 @@ export default function makeLiveUpdate (hotReload) {
   return async function liveUpdate (httpRequest) {
     try {
       httpRequest.log(hotReload.name)
-
-      const msg = await hotReload(httpRequest.body)
-
-      console.debug({ function: liveUpdate.name, output: model })
+      const modelName = httpRequest.query.modelName
+      const remoteEntry = httpRequest.query.remoteEntry
+      const msg = await hotReload({ modelName, remoteEntry })
+      console.debug({ function: liveUpdate.name, output: modelName })
 
       return {
         headers: {
@@ -21,7 +21,11 @@ export default function makeLiveUpdate (hotReload) {
           'Last-Modified': new Date().toUTCString()
         },
         statusCode: 201,
-        body: { status: msg }
+        body: {
+          function: liveUpdate.name,
+          input: httpRequest.query,
+          output: msg
+        }
       }
     } catch (e) {
       console.error(e)

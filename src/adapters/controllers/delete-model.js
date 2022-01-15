@@ -3,15 +3,11 @@
  * @param {import("../../domain/use-cases/remove-model").removeModel} removeModel
  * @returns {import("../adapters/http-adapter").httpController}
  */
-export default function deleteModelFactory (removeModel, ThreadPool) {
+export default function deleteModelFactory (removeModel) {
   return async function deleteModel (httpRequest) {
     httpRequest.log(deleteModel.name)
     try {
-      const model = await ThreadPool.runTask(
-        removeModel.name,
-        httpRequest.params.id
-      )
-      //const model = await removeModel(httpRequest.params.id)
+      const model = await removeModel(httpRequest.params.id)
 
       return {
         headers: {
