@@ -66,11 +66,13 @@ const DEFAULT_THREADPOOL_SIZE = 1
  */
 function kill (thread) {
   return new Promise(resolve => {
-    console.log('kill thread', thread.threadId)
-    thread.pool.freeThreads = [
-      ...thread.pool.freeThreads.filter(t => t.threadId !== thread.threadId)
-    ]
-    thread.worker.terminate()
+    thread.worker.once('exit', () => {
+      console.info(
+        `thread exiting - threadId ${thread.threadId} pool ${pool.name}`
+      )
+      resolve()
+    })
+    thread.worker.emit('shutdown')
   })
 }
 
@@ -79,7 +81,6 @@ function kill (thread) {
  * @returns {Thread}
  */
 function newThread (pool, file, workerData) {
-  console.debug(newThread.name, 'creating new thread')
   const worker = new Worker(file, { workerData })
   return {
     pool,
@@ -88,14 +89,10 @@ function newThread (pool, file, workerData) {
     threadId: worker.threadId,
     createdAt: Date.now(),
     async stop () {
-      return pool.removeThread(this)
+      return kill(this)
     },
-    setStale () {
-      this.stale = true
-      this.worker.unref()
-    },
-    isStale () {
-      return this.stale
+    invalid () {
+      return pool._invalid
     },
     toJSON () {
       return {
@@ -104,6 +101,10 @@ function newThread (pool, file, workerData) {
       }
     }
   }
+}
+
+async function stopWorkers (pool) {
+  await Promise.all(pool.freeThreads.map(async thread => thread.stop()))
 }
 
 /**
@@ -116,19 +117,19 @@ function newThread (pool, file, workerData) {
  * @returns {Promise<Thread>}
  */
 function runInThread (pool, taskName, taskData, thread, cb) {
-  if (thread.isStale()) runJob(pool, taskName, taskData, thread, cb)
-
   return new Promise((resolve, reject) => {
     thread.worker.once('message', async result => {
       if (pool.waitingJobs.length > 0) {
         await pool.waitingJobs.shift()(thread)
       } else {
-        if (!thread.isStale()) pool.freeThreads.push(thread)
+        pool.freeThreads.push(thread)
       }
-      if (pool.waitingJobs.length < 1) {
-        pool.emit('allThreadsFree')
+
+      if (this.noJobsRunning()) {
+        pool.emit('noJobsRunning')
       }
-      if (cb) cb(result)
+
+      if (cb) return resolve(cb(result))
       resolve(result)
     })
     thread.worker.on('error', reject)
@@ -142,16 +143,17 @@ export class ThreadPool extends EventEmitter {
     name = null,
     workerData = {},
     numThreads = DEFAULT_THREADPOOL_SIZE,
+    waitingJobs = [],
     options = {}
   } = {}) {
     super(options)
     this.freeThreads = []
-    this.waitingJobs = []
+    this.waitingJobs = waitingJobs
     this.file = file
     this.name = name
     this.workerData = workerData
     this.numThreads = numThreads
-    this.stale = false
+    this._invalid = false
 
     for (let i = 0; i < numThreads; i++) {
       this.freeThreads.push(newThread(this, file, workerData))
@@ -169,86 +171,18 @@ export class ThreadPool extends EventEmitter {
     this.freeThreads.push(newThread(this, file, workerData))
   }
 
-  drain () {
-    this._pause = true
+  invalid () {
+    console.log('pool', this.name, 'invalid=', this._invalid)
+    return this._invalid
   }
 
-  draining () {
-    return this._pause
-  }
-
-  refill () {
-    this._pause = false
-  }
-
-  async actOnThreads (cb) {
-    await Promise.all(this.freeThreads.map(async thread => await cb(thread)))
-    this.refill()
-  }
-
-  allThreadsFree () {
-    return this.waitingJobs.length < 1
-  }
-
-  /**
-   * Pause pool, drain tasks untill all threads
-   * are free, the run a callback on all of them
-   * @param {function():Promise} cb
-   * @returns {Promise}
-   */
-  async drainPool (cb) {
-    return new Promise((resolve, reject) => {
-      try {
-        this.drain()
-        if (this.allThreadsFree()) {
-          resolve(this.actOnThreads(cb))
-        } else {
-          this.once('allThreadsFree', () => resolve(this.actOnThreads(cb)))
-        }
-      } catch (e) {
-        console.error(e)
-        reject(e)
-      } finally {
-        this.refill()
-      }
-    })
-  }
-
-  /**
-   *
-   * @param {Thread|string} thread threadId or thread itself
-   * @returns
-   */
-  async removeThreadById (threadId) {
-    try {
-      if (threadId) {
-        const thread = this.freeThreads.find(t => t.threadId === threadId)
-        if (thread) {
-          await kill(thread)
-          return true
-        }
-      }
-      return false
-    } catch (e) {
-      console.error(this.removeThreadById.name, e.message)
-    }
-  }
-
-  async removeThread (thread) {
-    if (thread) {
-      await kill(thread)
-      return true
-    }
-    let _thread = this.freeThreads.shift()
-    if (_thread) {
-      await kill(_thread)
-      return true
-    }
-    return false
+  invalidate () {
+    console.log('invalidate pool')
+    this._invalid = true
   }
 
   threadPoolSize () {
-    return this.freeThreads.length + this.waitingJobs.length
+    return this.numThreads
   }
 
   jobQueueDepth () {
@@ -257,6 +191,10 @@ export class ThreadPool extends EventEmitter {
 
   getFreeThreads () {
     return this.freeThreads
+  }
+
+  noJobsRunning () {
+    return this.numThreads - this.freeThreads.length === 0
   }
 
   status () {
@@ -268,34 +206,33 @@ export class ThreadPool extends EventEmitter {
     }
   }
 
-  /**
-   *
-   * @param {*} jobName
-   * @param {*} jobData
-   * @returns {Promise<any>}
-   */
+  async drain () {
+    return new Promise((resolve, reject) => {
+      if (pool.noJobsRunning()) {
+        resolve()
+      } else {
+        const id = setTimeout(reject, 3000)
+        this.once('noJobsRunning', () => {
+          clearTimeout(id)
+          resolve()
+        })
+      }
+    })
+  }
+
   runJob (jobName, jobData) {
     return new Promise(async (resolve, reject) => {
-      try {
-        if (!this.draining()) {
-          let thread = this.freeThreads.shift()
-          if (thread) {
-            const result = await runInThread(this, jobName, jobData, thread)
-            resolve(result)
-            return
-          }
-        } else {
-          this.freeThreads()
-            .filter((t = t.isStale()))
-            .forEach(t => t.unref())
+      if (!this.invalid()) {
+        let thread = this.freeThreads.shift()
+        if (thread) {
+          const result = await runInThread(this, jobName, jobData, thread)
+          resolve(result)
+          return
         }
-        this.waitingJobs.push(thread =>
-          runInThread(this, jobName, jobData, thread, result => resolve(result))
-        )
-      } catch (error) {
-        console.log(error)
-        reject(error)
       }
+      this.waitingJobs.push(thread =>
+        runInThread(this, jobName, jobData, thread, result => resolve(result))
+      )
     })
   }
 }
@@ -303,14 +240,15 @@ export class ThreadPool extends EventEmitter {
 let threadPools = new Map()
 
 const ThreadPoolFactory = (() => {
-  function createThreadPool (modelName) {
+  function createThreadPool (modelName, waitingJobs) {
     console.debug(createThreadPool.name)
 
     const pool = new ThreadPool({
       file: './dist/worker.js',
       name: modelName,
       workerData: { modelName },
-      numThreads: DEFAULT_THREADPOOL_SIZE
+      numThreads: DEFAULT_THREADPOOL_SIZE,
+      waitingJobs
     })
     threadPools.set(modelName, pool)
     return pool
@@ -326,39 +264,30 @@ const ThreadPoolFactory = (() => {
    * @returns {ThreadPool}
    */
   function getThreadPool (modelName) {
-    if (threadPools.has(modelName)) return threadPools.get(modelName)
+    if (threadPools.has(modelName)) {
+      const pool = threadPools.get(modelName)
+
+      if (pool.invalid() || pool.threadPoolSize() < 1) {
+        return createThreadPool(modelName, [...pool.waitingJobs])
+      }
+
+      return pool
+    }
     return createThreadPool(modelName)
   }
 
-  /**
-   * @param {ThreadPool} pool
-   * @returns {Promise<boolean>}
-   */
-  async function clear (pool) {
-    await pool.drainPool(async thread => await thread.setStale())
-    const newPool = [...threadPools].filter(([k]) => k !== pool.name)
-    console.debug('new pool', newPool)
-    threadPools = new Map(newPool)
-    return true
+  async function invalidateAll () {
+    threadPools.forEach(pool => pool.invalidate())
   }
 
-  /**
-   *
-   * @param {string} pool
-   * @returns {Promise<boolean>}
-   */
-  async function clearByName (poolName) {
+  async function invalidatePool (poolName) {
     const pool = threadPools.get(poolName)
-    if (pool) {
-      await clear(pool)
-      return true
-    }
-    return false
-  }
-
-  async function clearAll () {
-    await Promise.all(threadPools.map(pool => clear(pool)))
-    threadPools = new Map()
+    if (!pool) return false
+    pool.invalidate()
+    pool
+      .drain()
+      .then(stopWorkers)
+      .catch(e => console.error(e))
   }
 
   function status () {
@@ -371,9 +300,8 @@ const ThreadPoolFactory = (() => {
     getThreadPool,
     listPools,
     status,
-    clearAll,
-    clearByName,
-    clear
+    invalidatePool,
+    invalidateAll
   }
 })()
 
