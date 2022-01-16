@@ -14,8 +14,8 @@ import DataSourceFactory from '../datasource-factory'
 import ThreadPoolFactory from '../thread-pool.js'
 import EventBrokerFactory from '../event-broker'
 import brokerEvents from './broker-events'
+import executeCommand from './execute-command'
 import { isMainThread } from 'worker_threads'
-import { controllers } from '../../adapters'
 
 export function registerEvents () {
   brokerEvents(
@@ -44,7 +44,9 @@ function buildOptions (model) {
       repository: DataSourceFactory.getDataSource(model.modelName, {
         memoryOnly: true
       }),
-      threadpool: ThreadPoolFactory
+      threadpool: ThreadPoolFactory.getThreadPool(model.modelName, {
+        preload: false
+      })
     }
   } else {
     return {
@@ -63,7 +65,7 @@ function make (factory) {
 }
 
 function makeOne (modelName, factory) {
-  const spec = ModelFactory.getModelSpec(modelName)
+  const spec = ModelFactory.getModelSpec(modelName, { preload: false })
   return factory(buildOptions(spec))
 }
 
@@ -92,6 +94,7 @@ export const UseCases = {
   findModels,
   removeModels,
   loadModelSpecs,
+  executeCommand,
   listConfigs,
   hotReload
 }
@@ -116,6 +119,7 @@ export function UseCaseService (modelName = null) {
     removeModels: removeModels(),
     loadModelSpecs: loadModelSpecs(),
     hotReload: hotReload(),
-    listConfigs: listConfigs()
+    listConfigs: listConfigs(),
+    executeCommand
   }
 }

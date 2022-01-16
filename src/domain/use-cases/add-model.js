@@ -39,9 +39,7 @@ export default function makeAddModel ({
     let model
 
     if (isMainThread) {
-      model = await threadpool
-        .getThreadPool(modelName)
-        .runJob(addModel.name, input)
+      threadpool.refresh().runJob(addModel.name, input)
       return repository.save(model.id, model)
     } else {
       try {
