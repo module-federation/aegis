@@ -43,7 +43,7 @@ function kill (thread) {
  * @param {ThreadPool} pool
  * @returns {Thread}
  */
-function newThread ({ pool, file, workerData, cb } = {}) {
+function newThread ({ pool, file, workerData, cb }) {
   console.debug('new thread')
   const worker = new Worker(file, { workerData })
   const thread = {
@@ -193,7 +193,7 @@ export class ThreadPool extends EventEmitter {
   jobQueueDepth () {
     return this.waitingJobs.length
   }
-  q
+
   /**
    * Array of threads available to run
    * @returns {Thread[]}
@@ -224,11 +224,12 @@ export class ThreadPool extends EventEmitter {
 
   /**
    * Prevent new jobs from running by invalidating
-   * the pool, then if any jobs are running, wait
-   * for them to complete by listening for the
+   * the pool, then for any jobs already running,
+   * wait for them to complete by listening for the
    * 'noJobsRunning' event
    */
   async drain () {
+    console.debug('drain')
     this.invalidate()
     return new Promise((resolve, reject) => {
       if (this.noJobsRunning()) {
@@ -246,6 +247,7 @@ export class ThreadPool extends EventEmitter {
   noThreads () {
     const doit = !this.booted && !this.preload
     this.booted = true
+    console.debug('doit', doit)
     return doit
   }
 
@@ -268,6 +270,9 @@ export class ThreadPool extends EventEmitter {
         let thread = this.noThreads()
           ? await this.waitOnThread()
           : this.freeThreads.shift()
+
+        console.log('thread', thread)
+        this.freeThreads.forEach(t => console.log(cdddddsdssddsssll;))
 
         if (thread) {
           const result = await postJob({
@@ -340,14 +345,18 @@ const ThreadPoolFactory = (() => {
 
   function invalidatePool (poolName) {
     console.debug('invalidate pool')
-    const pool = threadPools.get(poolName)
-    if (!pool) return false
-    return pool
-      .invalidate()
-      .drain()
-      .then(stopWorkers)
-      .then(() => true)
-      .catch(e => console.error(e))
+    try {
+      const pool = threadPools.get(poolName)
+      if (!pool) return false
+      return pool
+        .invalidate()
+        .drain()
+        .then(stopWorkers)
+        .then(() => (pool._invalid = false))
+        .catch(e => console.error(e))
+    } catch (error) {
+      console.error(error)
+    }
   }
 
   async function invalidateAll () {
