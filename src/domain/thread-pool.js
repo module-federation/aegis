@@ -24,6 +24,7 @@ function kill (thread) {
   const timerId = setTimeout(() => {
     thread.worker.terminate()
     console.info('terminated thread', thread.threadId)
+    delete thread.worker
   }, 3000)
 
   return new Promise(resolve => {
@@ -42,11 +43,11 @@ function kill (thread) {
  * @param {ThreadPool} pool
  * @returns {Thread}
  */
-function newThread (pool, file, workerData, cb = x => x) {
+function newThread ({ pool, file, workerData, cb } = {}) {
+  console.debug('new thread')
   const worker = new Worker(file, { workerData })
   const thread = {
     pool,
-    stale: false,
     worker,
     threadId: worker.threadId,
     createdAt: Date.now(),
@@ -63,7 +64,7 @@ function newThread (pool, file, workerData, cb = x => x) {
       }
     }
   }
-  worker.on('online', () => cb(thread))
+  if (cb) worker.on('online', () => cb(thread))
   return thread
 }
 
@@ -73,14 +74,16 @@ async function stopWorkers (pool) {
 
 /**
  *
- * @param {ThreadPool} pool
- * @param {*} taskName
- * @param {*} taskData
- * @param {*} thread
- * @param {function()} cb
+ * @param {{
+ *  pool:ThreadPool,
+ *  jobName:string,
+ *  jobData:any,
+ *  thread:Thread,
+ *  cb:function()
+ * }}
  * @returns {Promise<Thread>}
  */
-function runInThread (pool, taskName, taskData, thread, cb) {
+function runInThread ({ pool, jobName, jobData, thread, cb } = {}) {
   return new Promise((resolve, reject) => {
     thread.worker.once('message', async result => {
       if (pool.waitingJobs.length > 0) {
@@ -97,7 +100,7 @@ function runInThread (pool, taskName, taskData, thread, cb) {
       resolve(result)
     })
     thread.worker.on('error', reject)
-    thread.worker.postMessage({ name: taskName, data: taskData })
+    thread.worker.postMessage({ name: jobName, data: jobData })
   })
 }
 export class ThreadPool extends EventEmitter {
@@ -135,31 +138,34 @@ export class ThreadPool extends EventEmitter {
    * @param {*} workerData
    * @returns {Thread}
    */
-  addThread (file = this.file, workerData = this.workerData, cb) {
+  addThread ({ cb } = {}) {
     console.debug('add thread')
-    if (this.freeThreads.length < this.maxPoolSize())
-      this.freeThreads.push(newThread(this, file, workerData, cb))
-    else if (cb) this.waitingJobs.push(cb)
+    this.freeThreads.push(
+      newThread({
+        pool: this,
+        file: this.file,
+        workerData: this.workerData,
+        cb
+      })
+    )
   }
 
   /**
    *
-   * @param {string} file
-   * @param {*} workerData
-   * @returns {Thread}
+   * @param {{
+   *  total:number
+   *  file:string
+   *  workerData
+   *  cb:function(Thread)
+   * }}
    */
-  addThreads (
-    total = this.numThreads,
-    file = this.file,
-    workerData = this.workerData,
-    cb
-  ) {
+  addThreads ({ total, cb } = {}) {
     for (let i = 0; i < total; i++) {
-      this.addThread(file, workerData, cb)
+      this.addThread({ cb })
     }
   }
 
-  /**@returns {boolean} */
+  /** @returns {boolean} */
   invalid () {
     console.log('pool', this.name, 'invalid =', this._invalid)
     return this._invalid
@@ -199,15 +205,15 @@ export class ThreadPool extends EventEmitter {
     return this.freeThreads
   }
 
-  /**@returns {boolean} */
+  /** @returns {boolean} */
   noJobsRunning () {
     return this.numThreads === this.freeThreads.length
   }
 
   numAvailableThreads () {
-    return this.maxPoolSize() < this.jobQueueDepth()
+    return this.numThreads < this.waitingJobs.length
       ? 0
-      : this.maxPoolSize() - this.jobQueueDepth()
+      : this.numThreads - this.waitingJobs.length
   }
 
   status () {
@@ -290,8 +296,8 @@ const ThreadPoolFactory = (() => {
 
     const pool = new ThreadPool({
       file: './dist/worker.js',
-      preload: options.preload,
       name: modelName,
+      preload: options.preload,
       workerData: { modelName },
       numThreads: DEFAULT_THREADPOOL_SIZE,
       waitingJobs,
