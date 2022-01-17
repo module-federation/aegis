@@ -1,9 +1,7 @@
 'use strict'
 
-import { LoggerLevel } from 'mongodb'
 import { isMainThread } from 'worker_threads'
 import domainEvents from '../domain-events'
-import ThreadPoolFactory from '../thread-pool.js'
 
 /**
  * @typedef {Object} dependencies injected dependencies
@@ -39,7 +37,7 @@ export default function makeAddModel ({
     let model
 
     if (isMainThread) {
-      threadpool.refresh().runJob(addModel.name, input)
+      model = await threadpool.runJob(addModel.name, input)
       return repository.save(model.id, model)
     } else {
       try {
@@ -50,7 +48,7 @@ export default function makeAddModel ({
       }
 
       try {
-        const event = await models.createEvent(eventType, modelName, model)
+        const event = models.createEvent(eventType, modelName, model)
         await broker.notify(event.eventName, event)
       } catch (error) {
         // remote the object if not processed
