@@ -64,7 +64,7 @@ function newThread ({ pool, file, workerData, cb } = {}) {
       }
     }
   }
-  if (cb) worker.on('online', () => cb(thread))
+  if (cb) worker.once('online', () => cb(thread))
   return thread
 }
 
@@ -83,7 +83,7 @@ async function stopWorkers (pool) {
  * }}
  * @returns {Promise<Thread>}
  */
-function runInThread ({ pool, jobName, jobData, thread, cb } = {}) {
+function postJob ({ pool, jobName, jobData, thread, cb } = {}) {
   return new Promise((resolve, reject) => {
     thread.worker.once('message', async result => {
       if (pool.waitingJobs.length > 0) {
@@ -138,16 +138,13 @@ export class ThreadPool extends EventEmitter {
    * @param {*} workerData
    * @returns {Thread}
    */
-  addThread ({ cb } = {}) {
-    console.debug('add thread')
-    this.freeThreads.push(
-      newThread({
-        pool: this,
-        file: this.file,
-        workerData: this.workerData,
-        cb
-      })
-    )
+  addThread () {
+    return newThread({
+      pool: this,
+      file: this.file,
+      workerData: this.workerData,
+      cb
+    })
   }
 
   /**
@@ -159,9 +156,9 @@ export class ThreadPool extends EventEmitter {
    *  cb:function(Thread)
    * }}
    */
-  addThreads ({ total, cb } = {}) {
-    for (let i = 0; i < total; i++) {
-      this.addThread({ cb })
+  addThreads () {
+    for (let i = 0; i < this.numThreads; i++) {
+      this.freeThreads.push(this.addThread())
     }
   }
 
@@ -196,7 +193,7 @@ export class ThreadPool extends EventEmitter {
   jobQueueDepth () {
     return this.waitingJobs.length
   }
-
+  q
   /**
    * Array of threads available to run
    * @returns {Thread[]}
@@ -246,43 +243,50 @@ export class ThreadPool extends EventEmitter {
     })
   }
 
-  notPreloaded () {
-    const pre = (this.freeThreads.length === this.waitingJobs.length) === 0
-    console.debug(
-      'not preloaded =',
-      pre,
-      this.freeThreads.length,
-      this.waitingJobs.length,
-      this.numThreads
-    )
-    return !pre
+  noThreads () {
+    const doit = !this.booted && !this.preload
+    this.booted = true
+    return doit
   }
 
-  runJob (jobName, jobData) {
+  waitOnThread () {
+    return new Promise(resolve =>
+      newThread({
+        file: this.file,
+        pool: this,
+        workerData: this.workerData,
+        cb: thread => resolve(thread)
+      })
+    )
+  }
+
+  run (jobName, jobData) {
     return new Promise(async resolve => {
       if (!this.invalid()) {
-        console.debug('not invalid')
+        console.debug('valid')
 
-        if (this.notPreloaded()) {
-          console.debug('not preloaded')
+        let thread = this.noThreads()
+          ? await this.waitOnThread()
+          : this.freeThreads.shift()
 
-          this.addThread(thread =>
-            runInThread(this, jobName, jobData, thread, result =>
-              resolve(result)
-            )
-          )
-        } else {
-          console.debug('loaded')
-
-          let thread = this.freeThreads.shift()
-          if (thread) {
-            const result = await runInThread(this, jobName, jobData, thread)
-            return resolve(result)
-          }
+        if (thread) {
+          const result = await postJob({
+            pool: this,
+            jobName,
+            jobData,
+            thread
+          })
+          return resolve(result)
         }
       }
       this.waitingJobs.push(thread =>
-        runInThread(this, jobName, jobData, thread, result => resolve(result))
+        postJob({
+          pool: this,
+          jobName,
+          jobData,
+          thread,
+          cb: result => resolve(result)
+        })
       )
     })
   }
@@ -292,7 +296,12 @@ const ThreadPoolFactory = (() => {
   let threadPools = new Map()
 
   function createThreadPool (modelName, options, waitingJobs = []) {
-    console.debug(createThreadPool.name, modelName, waitingJobs, options)
+    console.debug({
+      func: createThreadPool.name,
+      modelName,
+      waitingJobs,
+      options
+    })
 
     const pool = new ThreadPool({
       file: './dist/worker.js',
@@ -330,6 +339,7 @@ const ThreadPoolFactory = (() => {
   }
 
   function invalidatePool (poolName) {
+    console.debug('invalidate pool')
     const pool = threadPools.get(poolName)
     if (!pool) return false
     return pool

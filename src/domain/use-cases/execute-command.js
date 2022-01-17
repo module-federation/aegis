@@ -43,25 +43,29 @@ export default async function executeCommand (model, command, permission) {
       { command, permission }
     )
     return result
-  }
+  } else {
+    const spec = model.getSpec()
 
-  const spec = model.getSpec()
+    if (commandAuthorized(spec, command, permission)) {
+      const cmd = spec.commands[command].command
 
-  if (commandAuthorized(spec, command, permission)) {
-    const cmd = spec.commands[command].command
+      if (typeof cmd === 'function' || model[cmd]) {
+        const result = await async(commandType[typeof cmd](cmd, model))
 
-    if (typeof cmd === 'function' || model[cmd]) {
-      const result = await async(commandType[typeof cmd](cmd, model))
-
-      if (result.ok) {
-        return { ...model, ...result.data }
+        if (result.ok) {
+          return { ...model, ...result.data }
+        }
+      } else {
+        console.warn('command not found', command)
       }
     } else {
-      console.warn('command not found', command)
+      model.emit(
+        domainEvents.unauthorizedCommand(model.getName()),
+        command,
+        true
+      )
     }
-  } else {
-    model.emit(domainEvents.unauthorizedCommand(model.getName()), command, true)
-  }
 
-  return model
+    return model
+  }
 }
