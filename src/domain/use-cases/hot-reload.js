@@ -40,12 +40,15 @@ export default function makeHotReload ({ models, broker } = {}) {
     if (isMainThread) {
       if (modelName) {
         if (modelName === '*') {
-          await ThreadPoolFactory.invalidateAll()
+          await ThreadPoolFactory.drainPools()
+          //await ThreadPoolFactory.openPools()
+
           return { status: `reload complete for all thread pools` }
         }
 
         if (modelName) {
-          await ThreadPoolFactory.invalidatePool(modelName)
+          await ThreadPoolFactory.drainPool(modelName)
+          await ThreadPoolFactory.reopenPool(modelName)
           return {
             status: `reload complete for thread pool(s) ${modelName}`,
             modelName

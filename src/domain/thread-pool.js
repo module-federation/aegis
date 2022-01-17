@@ -1,5 +1,6 @@
 'use strict'
 
+import { resolve } from 'path/posix'
 import { EventEmitter } from 'stream'
 import { Worker } from 'worker_threads'
 
@@ -21,20 +22,23 @@ const DEFAULT_THREADPOOL_SIZE = 1
 function kill (thread) {
   console.info('killing thread', thread.threadId)
 
-  const timerId = setTimeout(() => {
-    thread.worker.terminate()
-    console.info('terminated thread', thread.threadId)
-    delete thread.worker
-  }, 3000)
-
   return new Promise(resolve => {
     thread.worker.once('exit', () => {
       console.info(
         `exiting - threadId ${thread.threadId} pool ${thread.pool.name}`
       )
       clearTimeout(timerId)
+      //delete thread.worker
       resolve()
     })
+
+    const timerId = setTimeout(() => {
+      thread.worker.terminate()
+      console.info('terminated thread', thread.threadId)
+      //delete thread.worker
+      resolve()
+    }, 5000)
+
     thread.worker.postMessage({ name: 'shutdown' })
   })
 }
@@ -54,8 +58,8 @@ function newThread ({ pool, file, workerData, cb }) {
     async stop () {
       return kill(this)
     },
-    invalid () {
-      return pool._invalid
+    closed () {
+      return pool.closed
     },
     toJSON () {
       return {
@@ -83,7 +87,7 @@ async function stopWorkers (pool) {
  * }}
  * @returns {Promise<Thread>}
  */
-function postJob ({ pool, jobName, jobData, thread, cb } = {}) {
+function postJob ({ pool, jobName, jobData, thread, cb }) {
   return new Promise((resolve, reject) => {
     thread.worker.once('message', async result => {
       if (pool.waitingJobs.length > 0) {
@@ -103,6 +107,7 @@ function postJob ({ pool, jobName, jobData, thread, cb } = {}) {
     thread.worker.postMessage({ name: jobName, data: jobData })
   })
 }
+
 export class ThreadPool extends EventEmitter {
   constructor ({
     file,
@@ -120,7 +125,7 @@ export class ThreadPool extends EventEmitter {
     this.name = name
     this.workerData = workerData
     this.numThreads = numThreads
-    this._invalid = false
+    this.closed = false
     this.factory = factory
     this.options = options
     this.booted = false
@@ -162,22 +167,6 @@ export class ThreadPool extends EventEmitter {
     }
   }
 
-  /** @returns {boolean} */
-  invalid () {
-    console.log('pool', this.name, 'invalid =', this._invalid)
-    return this._invalid
-  }
-
-  /**
-   * mark pool as invalid so new code is loaded
-   * @returns {Thread} for chaining
-   */
-  invalidate () {
-    console.log('invalidate pool')
-    this._invalid = true
-    return this
-  }
-
   /**
    * max number of threads
    * @returns {number}
@@ -198,7 +187,7 @@ export class ThreadPool extends EventEmitter {
    * Array of threads available to run
    * @returns {Thread[]}
    */
-  getFreeThreads () {
+  threadPool () {
     return this.freeThreads
   }
 
@@ -207,41 +196,54 @@ export class ThreadPool extends EventEmitter {
     return this.numThreads === this.freeThreads.length
   }
 
-  numAvailableThreads () {
-    return this.numThreads < this.waitingJobs.length
-      ? 0
-      : this.numThreads - this.waitingJobs.length
+  availableThreads () {
+    return this.freeThreads.length
   }
 
   status () {
     return {
       total: this.maxPoolSize(),
       waiting: this.jobQueueDepth(),
-      available: this.numAvailableThreads(),
+      available: this.availableThreads(),
       performance: this.freeThreads.map(t => t.worker.performance)
     }
   }
 
   /**
-   * Prevent new jobs from running by invalidating
+   * Prevent new jobs from running by closing
    * the pool, then for any jobs already running,
    * wait for them to complete by listening for the
    * 'noJobsRunning' event
    */
   async drain () {
     console.debug('drain')
-    this.invalidate()
+
+    if (!this.closed) {
+      throw new Error('close pool first')
+    }
+
     return new Promise((resolve, reject) => {
       if (this.noJobsRunning()) {
         resolve(this)
       } else {
         const id = setTimeout(reject, 10000)
+
         this.once('noJobsRunning', () => {
           clearTimeout(id)
           resolve(this)
         })
       }
     })
+  }
+
+  open () {
+    this.closed = false
+    return this
+  }
+
+  close () {
+    this.closed = true
+    return this
   }
 
   noThreads () {
@@ -264,7 +266,7 @@ export class ThreadPool extends EventEmitter {
 
   run (jobName, jobData) {
     return new Promise(async resolve => {
-      if (!this.invalid()) {
+      if (!this.closed) {
         console.debug('valid')
 
         let thread = this.noThreads()
@@ -284,6 +286,8 @@ export class ThreadPool extends EventEmitter {
           return resolve(result)
         }
       }
+      console.debug('no threads; queuing job', jobName)
+
       this.waitingJobs.push(thread =>
         postJob({
           pool: this,
@@ -311,7 +315,6 @@ const ThreadPoolFactory = (() => {
     const pool = new ThreadPool({
       file: './dist/worker.js',
       name: modelName,
-      preload: options.preload,
       workerData: { modelName },
       numThreads: DEFAULT_THREADPOOL_SIZE,
       waitingJobs,
@@ -335,7 +338,7 @@ const ThreadPoolFactory = (() => {
     if (threadPools.has(modelName)) {
       const pool = threadPools.get(modelName)
 
-      if (pool.invalid()) {
+      if (pool.disposed) {
         return createThreadPool(modelName, options, [...pool.waitingJobs])
       }
       return pool
@@ -343,24 +346,25 @@ const ThreadPoolFactory = (() => {
     return createThreadPool(modelName, options)
   }
 
-  function invalidatePool (poolName) {
-    console.debug('invalidate pool')
-    try {
-      const pool = threadPools.get(poolName)
-      if (!pool) return false
-      return pool
-        .invalidate()
-        .drain()
-        .then(stopWorkers)
-        .then(() => (pool._invalid = false))
-        .catch(e => console.error(e))
-    } catch (error) {
-      console.error(error)
-    }
+  function drainPool (poolName) {
+    console.debug('drain pool', poolName)
+    const pool = threadPools.get(poolName)
+    if (!pool) return
+    return pool
+      .close()
+      .drain()
+      .then(stopWorkers)
+      .then(pool.open)
+      .catch(console.error)
   }
 
-  async function invalidateAll () {
-    return threadPools.forEach(async pool => invalidatePool(pool.name))
+  async function drainPools () {
+    return threadPools.forEach(async pool => drainPool(pool.name))
+  }
+
+  function reopenPool (poolName) {
+    const pool = threadPools.get(poolName)
+    if (pool) pool.open()
   }
 
   function status () {
@@ -373,8 +377,9 @@ const ThreadPoolFactory = (() => {
     getThreadPool,
     listPools,
     status,
-    invalidatePool,
-    invalidateAll
+    drainPool,
+    drainPools,
+    reopenPool
   })
 })()
 
