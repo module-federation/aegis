@@ -272,7 +272,7 @@ export class ThreadPool extends EventEmitter {
           : this.freeThreads.shift()
 
         console.log('thread', thread)
-        this.freeThreads.forEach(t => console.log(cdddddsdssddsssll;))
+        this.freeThreads.forEach(t => console.log(t))
 
         if (thread) {
           const result = await postJob({
