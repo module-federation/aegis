@@ -23,6 +23,12 @@ function kill (thread) {
   console.info('killing thread', thread.threadId)
 
   return new Promise(resolve => {
+    const timerId = setTimeout(() => {
+      thread.worker.terminate()
+      console.info('terminated thread', thread.threadId)
+      resolve()
+    }, 5000)
+
     thread.worker.once('exit', () => {
       console.info(
         `exiting - threadId ${thread.threadId} pool ${thread.pool.name}`
@@ -30,12 +36,6 @@ function kill (thread) {
       clearTimeout(timerId)
       resolve()
     })
-
-    const timerId = setTimeout(() => {
-      thread.worker.terminate()
-      console.info('terminated thread', thread.threadId)
-      resolve()
-    }, 5000)
 
     thread.worker.postMessage({ name: 'shutdown' })
   })
@@ -371,7 +371,13 @@ const ThreadPoolFactory = (() => {
         const killList = pool.freeThreads.splice(0, pool.freeThreads.length)
         pool.addThreads()
         pool.open()
-        killList.forEach(thread => thread.stop())
+        setTimeout(
+          async () =>
+            await Promise.all(
+              killList.map(async thread => await thread.stop())
+            ),
+          1000
+        )
         return pool
       })
       .catch(console.error)
