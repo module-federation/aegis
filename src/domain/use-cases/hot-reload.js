@@ -40,17 +40,14 @@ export default function makeHotReload ({ models, broker } = {}) {
     if (isMainThread) {
       if (modelName) {
         if (modelName === '*') {
-          await ThreadPoolFactory.drainPools()
-          //await ThreadPoolFactory.openPools()
-
+          await ThreadPoolFactory.reloadAll()
           return { status: `reload complete for all thread pools` }
         }
 
         if (modelName) {
-          await ThreadPoolFactory.drainPool(modelName)
-          //await ThreadPoolFactory.refresh(modelName)
+          await ThreadPoolFactory.reload(modelName)
           return {
-            status: `reload complete for thread pool(s) ${modelName}`,
+            status: `reload complete for thread pool ${modelName}`,
             modelName
           }
         }
@@ -70,9 +67,7 @@ export default function makeHotReload ({ models, broker } = {}) {
 
         pools
           .filter(poolName => !allModels.includes(poolName))
-          .forEach(
-            async poolName => await ThreadPoolFactory.invalidatePool(poolName)
-          )
+          .forEach(async poolName => await ThreadPoolFactory.reload(poolName))
       }
       return { status: `no model specified ${modelName}` }
     }
