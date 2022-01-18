@@ -72,7 +72,12 @@ function newThread ({ pool, file, workerData, cb }) {
   return thread
 }
 
-async function stopWorkers (pool) {
+async function replaceWorkers (pool) {
+  pool.killList = [...pool.freeThreads]
+  pool.freeThreads = []
+}
+
+async function stopWorkers () {
   await Promise.all(pool.freeThreads.map(async thread => thread.stop()))
 }
 
@@ -92,7 +97,7 @@ function postJob ({ pool, jobName, jobData, thread, cb }) {
     thread.worker.once('message', async result => {
       if (pool.waitingJobs.length > 0) {
         pool.waitingJobs.shift()(thread)
-      } else {
+      } else if (pool.open()) {
         pool.freeThreads.push(thread)
       }
 
@@ -147,8 +152,7 @@ export class ThreadPool extends EventEmitter {
     return newThread({
       pool: this,
       file: this.file,
-      workerData: this.workerData,
-      cb
+      workerData: this.workerData
     })
   }
 
@@ -247,10 +251,7 @@ export class ThreadPool extends EventEmitter {
   }
 
   noThreads () {
-    const doit = !this.booted && !this.preload
-    this.booted = true
-    console.debug('doit', doit)
-    return doit
+    return this.availableThreads() < 1 && this.jobQueueDepth() < 1
   }
 
   waitOnThread () {
@@ -266,15 +267,12 @@ export class ThreadPool extends EventEmitter {
 
   run (jobName, jobData) {
     return new Promise(async resolve => {
-      if (!this.closed) {
-        console.debug('valid')
-
+      if (this.closed) {
+        console.info('pool is closed')
+      } else {
         let thread = this.noThreads()
           ? await this.waitOnThread()
           : this.freeThreads.shift()
-
-        console.log('thread', thread)
-        this.freeThreads.forEach(t => console.log(t))
 
         if (thread) {
           const result = await postJob({
@@ -283,6 +281,7 @@ export class ThreadPool extends EventEmitter {
             jobData,
             thread
           })
+
           return resolve(result)
         }
       }
@@ -302,6 +301,7 @@ export class ThreadPool extends EventEmitter {
 }
 
 const ThreadPoolFactory = (() => {
+  /**@type {Map<string, ThreadPool>} */
   let threadPools = new Map()
 
   function createThreadPool (modelName, options, waitingJobs = []) {
@@ -321,6 +321,7 @@ const ThreadPoolFactory = (() => {
       factory: this,
       options
     })
+
     threadPools.set(modelName, pool)
     return pool
   }
@@ -329,12 +330,21 @@ const ThreadPoolFactory = (() => {
     return [...threadPools].map(([k]) => k)
   }
 
+  function getThreadPool (modelName) {
+    return {
+      run (jobName, jobData) {
+        const pool = getPool(modelName)
+        return pool.run(jobName, jobData)
+      }
+    }
+  }
+
   /**
    *
    * @param {*} modelName
    * @returns {ThreadPool}
    */
-  function getThreadPool (modelName, options) {
+  function getPool (modelName, options) {
     if (threadPools.has(modelName)) {
       const pool = threadPools.get(modelName)
 
@@ -353,8 +363,16 @@ const ThreadPoolFactory = (() => {
     return pool
       .close()
       .drain()
-      .then(stopWorkers)
-      .then(pool.open)
+      .then(() => {
+        const killList = pool.freeThreads.splice(0, pool.freeThreads.length)
+        pool.addThreads()
+        pool.open()
+        killList.forEach(thread => thread.stop())
+        // const oldPool = threadPools.get(poolName)
+        // const waitingJobs = [...oldPool.waitingJobs]
+        // //threadPools.delete(poolName)
+        // createThreadPool(poolName, { preload: true }, waitingJobs)
+      })
       .catch(console.error)
   }
 
