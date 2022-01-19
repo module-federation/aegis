@@ -5,8 +5,6 @@
 
 import Event from './event'
 import domainEvents from './domain-events'
-import { isMainThread } from 'worker_threads'
-import e, { query } from 'express'
 
 const { forwardEvent } = domainEvents
 const DEBUG = process.env.DEBUG
@@ -132,22 +130,7 @@ async function runHandler (eventName, eventData = {}, handle, forward) {
  * @fires eventName
  */
 async function notify (eventName, eventData, options = {}) {
-  const { worker = null, mesh = null } = options
-
-  if (isMainThread) {
-    const sendToWorker = domainEvents.sendToWorker(eventData.modelName)
-    const sendToMesh = domainEvents.sendToMesh(eventName)
-
-    if (worker && eventName !== sendToWorker) {
-      this.notify(sendToWorker, eventData)
-      return
-    }
-    if (mesh && eventName !== sendToMesh) {
-      this.notify(sendToMesh, eventData)
-      return
-    }
-    if (![sendToWorker, sendToMesh].includes(eventName)) return
-  }
+  let channel
 
   const run = runHandler.bind(this)
 

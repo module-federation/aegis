@@ -1,6 +1,5 @@
 'use strict'
 
-import { resolve } from 'path/posix'
 import { EventEmitter } from 'stream'
 import { Worker } from 'worker_threads'
 
@@ -25,7 +24,7 @@ function kill (thread) {
   return new Promise(resolve => {
     const timerId = setTimeout(() => {
       thread.worker.terminate()
-      console.info('terminated thread', thread.threadId)
+      console.warn('terminated thread', thread.threadId)
       resolve()
     }, 5000)
 
@@ -42,17 +41,27 @@ function kill (thread) {
 }
 
 /**
- * @param {ThreadPool} pool
+ * creates a new thread
+ * @param {{
+ *  pool:ThreadPool
+ *  file:string
+ *  workerData:*
+ *  cb:function(Thread)
+ * }} options the callback function is called once
+ * the new thread comes online, i.e. we create a
+ * subscription to the event 'online' and return
+ * the new thread in the callback's argument
  * @returns {Thread}
  */
 function newThread ({ pool, file, workerData, cb }) {
-  console.debug('new thread')
   const worker = new Worker(file, { workerData })
   const thread = {
+    file,
     pool,
     worker,
     threadId: worker.threadId,
     createdAt: Date.now(),
+    workerData,
     async stop () {
       return kill(this)
     },
@@ -66,6 +75,7 @@ function newThread ({ pool, file, workerData, cb }) {
       }
     }
   }
+
   if (cb) worker.once('online', () => cb(thread))
   return thread
 }
@@ -321,11 +331,20 @@ const ThreadPoolFactory = (() => {
   }
 
   let counter = 0
+  /**
+   * returns existing or creates new threadpool for `moduleName`
+   * @param {string} modelName
+   * @param {{preload:boolean}} options preload means we return the actual
+   * threadpool instead of the facade, which will load the remotes at startup
+   * instead of loading them on the first request for `modelName`. The default
+   * is false, so that startup is faster and only the minimum number of threads
+   * and remote imports occur to the actual requests for this instance.
+   * @returns
+   */
   function getThreadPool (modelName, options) {
     function getPool (modelName, options) {
       if (threadPools.has(modelName)) {
         const pool = threadPools.get(modelName)
-
         if (pool.disposed) {
           return createThreadPool(modelName, options, [...pool.waitingJobs])
         }
@@ -342,7 +361,7 @@ const ThreadPoolFactory = (() => {
       status () {
         return {
           model: modelName,
-          pool: getPool(modelName).name,
+          pool: getPool(modelName, options).name,
           calls: counter,
           threadIds: getPool(modelName).freeThreads.map(
             thread => thread.threadId

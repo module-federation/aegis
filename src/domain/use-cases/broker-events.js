@@ -3,6 +3,7 @@
 import DistributedCache from '../distributed-cache'
 import EventBus from '../../services/event-bus'
 import { ServiceMeshAdapter as ServiceMesh } from '../../adapters'
+import { BroadcastChannel, isMainThread } from 'worker_threads'
 import { forwardEvents } from './forward-events'
 import uuid from '../util/uuid'
 
@@ -10,6 +11,7 @@ import uuid from '../util/uuid'
 const useEvtBus = process.env.EVENTBUS_ENABLE || false
 // what channel to broadcast cache events?
 const BROADCAST = process.env.TOPIC_BROADCAST || 'broadcastChannel'
+const worker = new BroadcastChannel('workers')
 
 /**
  * Broker events between local and remote domains.
@@ -21,55 +23,62 @@ const BROADCAST = process.env.TOPIC_BROADCAST || 'broadcastChannel'
  * @param {import("../datasource-factory")} datasources
  * @param {import("../model-factory").ModelFactory} models
  */
-export default function brokerEvents(broker, datasources, models) {
-  const svcMshPub = event => ServiceMesh.publish(event)
-  const svcMshSub = (event, cb) => ServiceMesh.subscribe(event, cb)
+export default function brokerEvents (broker, datasources, models) {
+  if (isMainThread) {
+    worker.onmessage = eventData =>
+      broker.notify(eventData.eventName, eventData)
 
-  const evtBusPub = event => EventBus.notify(BROADCAST, JSON.stringify(event))
-  const evtBusSub = (event, cb) =>
-    EventBus.listen({
-      topic: BROADCAST,
-      id: uuid(),
-      once: false,
-      filters: [event],
-      callback: msg => cb(JSON.parse(msg))
+    const svcMshPub = event => ServiceMesh.publish(event)
+    const svcMshSub = (event, cb) => ServiceMesh.subscribe(event, cb)
+
+    const evtBusPub = event => EventBus.notify(BROADCAST, JSON.stringify(event))
+    const evtBusSub = (event, cb) =>
+      EventBus.listen({
+        topic: BROADCAST,
+        id: uuid(),
+        once: false,
+        filters: [event],
+        callback: msg => cb(JSON.parse(msg))
+      })
+
+    const publish = useEvtBus ? evtBusPub : svcMshPub
+    const subscribe = useEvtBus ? evtBusSub : svcMshSub
+
+    const manager = DistributedCache({
+      broker,
+      datasources,
+      models,
+      publish,
+      subscribe
     })
 
-  const publish = useEvtBus ? evtBusPub : svcMshPub
-  const subscribe = useEvtBus ? evtBusSub : svcMshSub
+    // start mesh regardless
+    ServiceMesh.connect({ models, broker }).then(() => {
+      manager.start()
+      forwardEvents({ broker, models, publish, subscribe })
+    })
 
-  const manager = DistributedCache({
-    broker,
-    datasources,
-    models,
-    publish,
-    subscribe
-  })
+    /**
+     * This is the cluster cache sync listener - when data is
+     * saved in another process, the master forwards the data to
+     * all the other workers, so they can update their cache.
+     */
+    process.on('message', ({ cmd, id, pid, data, name }) => {
+      if (cmd && id && data && process.pid !== pid) {
+        if (cmd === 'saveCommand') {
+          const ds = datasources.getDataSource(name)
+          ds.save(id, data, false)
+          return
+        }
 
-  // start mesh regardless
-  ServiceMesh.connect({ models, broker }).then(() => {
-    manager.start()
-    forwardEvents({ broker, models, publish, subscribe })
-  })
-
-  /**
-   * This is the cluster cache sync listener - when data is
-   * saved in another process, the master forwards the data to
-   * all the other workers, so they can update their cache.
-   */
-  process.on('message', ({ cmd, id, pid, data, name }) => {
-    if (cmd && id && data && process.pid !== pid) {
-      if (cmd === 'saveCommand') {
-        const ds = datasources.getDataSource(name)
-        ds.save(id, data, false)
-        return
+        if (cmd === 'deleteCommand') {
+          const ds = datasources.getDataSource(name)
+          ds.delete(id, false)
+          return
+        }
       }
-
-      if (cmd === 'deleteCommand') {
-        const ds = datasources.getDataSource(name)
-        ds.delete(id, false)
-        return
-      }
-    }
-  })
+    })
+  } else {
+    broker.on(/.*/, eventData => worker.postMessage(eventData))
+  }
 }
