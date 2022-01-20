@@ -37,18 +37,20 @@ export default function makeHotReload ({ models, broker } = {}) {
   }
 
   async function hotReload ({ modelName, remoteEntry = null }) {
+    const model = modelName.toUpperCase()
+
     if (isMainThread) {
-      if (modelName) {
-        if (modelName === '*') {
+      if (model) {
+        if (model === '*') {
           await ThreadPoolFactory.reloadAll()
           return { status: `reload complete for all thread pools` }
         }
 
-        if (modelName) {
-          await ThreadPoolFactory.reload(modelName)
+        if (model) {
+          await ThreadPoolFactory.reload(model)
           return {
-            status: `reload complete for thread pool ${modelName}`,
-            modelName
+            status: `reload complete for thread pool ${model}`,
+            modelName: model
           }
         }
 
@@ -56,20 +58,22 @@ export default function makeHotReload ({ models, broker } = {}) {
           registerNewModel(remoteEntry)
           return {
             status: 'thread pool and remote-entry created for new model',
-            modelName
+            modelName: model
           }
         }
 
-        const pools = ThreadPoolFactory.listPools().map(p => p.toLowerCase())
+        const pools = ThreadPoolFactory.listPools().map(p => p.toUpperCase())
         const allModels = models
           .getModelSpecs()
-          .map(spec => spec.modelName.toLowerCase())
+          .map(spec => spec.modelName.toUpperCase())
 
         pools
           .filter(poolName => !allModels.includes(poolName))
           .forEach(async poolName => await ThreadPoolFactory.reload(poolName))
       }
-      return { status: `no model specified ${modelName}` }
+      return {
+        status: `no model specified; specify .../reload?modelName=<modelName>`
+      }
     }
   }
 

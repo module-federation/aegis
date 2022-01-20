@@ -37,56 +37,57 @@ export default function makeEditModel ({
   async function editModel (input) {
     const { id, changes, command } = input
 
-    // let the main thread lookup;
-    // don't do it again in the worker
-    const model = await repository.find(id)
-
-    if (!model) {
-      throw new Error('no such id')
-    }
-
-    let updated
     if (isMainThread) {
-      updated = threadpool.getThreadPool(modelName).runJob(editModel.name, {
+      console.log('sending to thread')
+      const updated = threadpool.run(editModel.name, {
         id,
         changes,
         command
       })
+      return repository.save(id, updated)
     } else {
+      console.log('thread executing')
+
+      // let the main thread lookup;
+      // don't do it again in the worker
+      const model = await repository.find(id)
+
+      if (!model) {
+        throw new Error('no such id')
+      }
+
       try {
         // only the worker does the update
-        updated = models.updateModel(model, changes)
+        const updated = models.updateModel(model, changes)
+
+        await repository.save(id, updated)
+
+        const event = await models.createEvent(eventType, modelName, {
+          updated,
+          changes
+        })
+
+        await broker.notify(event.eventName, event)
+        await repository.save(id, model)
+
+        if (command) {
+          const result = await async(
+            executeCommand({
+              model: updated,
+              command,
+              permission: 'write'
+            })
+          )
+          if (result.ok) {
+            return result.data
+          }
+        }
+
+        return await repository.find(id)
       } catch (e) {
         return new Error(e)
       }
     }
-
-    try {
-      await repository.save(id, updated)
-    } catch (error) {
-      throw new Error(error)
-    }
-
-    try {
-      const event = await models.createEvent(eventType, modelName, {
-        updated,
-        changes
-      })
-
-      await broker.notify(event.eventName, event)
-    } catch (error) {
-      await repository.save(id, model)
-      throw new Error(error)
-    }
-
-    if (command) {
-      const result = await async(executeCommand(updated, command, 'write'))
-      if (result.ok) {
-        return result.data
-      }
-    }
-
-    return await repository.find(id)
   }
 
   return editModel

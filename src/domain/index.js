@@ -213,6 +213,7 @@ function register (model, services, adapters, isCached = false) {
 
   ModelFactory.registerModel({
     ...model,
+    modelName: model.modelName.toUpperCase(),
     dependencies,
     factory: model.factory(dependencies),
     isCached
@@ -220,19 +221,19 @@ function register (model, services, adapters, isCached = false) {
 
   ModelFactory.registerEvent(
     ModelFactory.EventTypes.CREATE,
-    model.modelName,
+    model.modelName.toUpperCase(),
     createEvent
   )
 
   ModelFactory.registerEvent(
     ModelFactory.EventTypes.UPDATE,
-    model.modelName,
+    model.modelName.toUpperCase(),
     updateEvent
   )
 
   ModelFactory.registerEvent(
     ModelFactory.EventTypes.DELETE,
-    model.modelName,
+    model.modelName.toUpperCase(),
     deleteEvent
   )
 }

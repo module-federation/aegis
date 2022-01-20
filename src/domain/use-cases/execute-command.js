@@ -36,36 +36,26 @@ function commandAuthorized (spec, command, permission) {
  * @param {command:string} command - name of command
  * @param {string} permission - permission of caller
  */
-export default async function executeCommand (model, command, permission) {
-  if (isMainThread) {
-    const result = ThreadPoolFactory.getThreadPool(model.modelName).runJob(
-      executeCommand.name,
-      { command, permission }
-    )
-    return result
-  } else {
-    const spec = model.getSpec()
+export default async function executeCommand ({ model, command, permission }) {
+  const spec = model.getSpec()
 
-    if (commandAuthorized(spec, command, permission)) {
-      const cmd = spec.commands[command].command
+  console.debug('executing commnd:', command)
 
-      if (typeof cmd === 'function' || model[cmd]) {
-        const result = await async(commandType[typeof cmd](cmd, model))
+  if (commandAuthorized(spec, command, permission)) {
+    const cmd = spec.commands[command].command
 
-        if (result.ok) {
-          return { ...model, ...result.data }
-        }
-      } else {
-        console.warn('command not found', command)
+    if (typeof cmd === 'function' || model[cmd]) {
+      const result = await async(commandType[typeof cmd](cmd, model))
+
+      if (result.ok) {
+        return { ...model, ...result.data }
       }
     } else {
-      model.emit(
-        domainEvents.unauthorizedCommand(model.getName()),
-        command,
-        true
-      )
+      console.warn('command not found', command)
     }
-
-    return model
+  } else {
+    model.emit(domainEvents.unauthorizedCommand(model.getName()), command, true)
   }
+
+  return model
 }

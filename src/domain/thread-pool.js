@@ -24,14 +24,12 @@ function kill (thread) {
   return new Promise(resolve => {
     const timerId = setTimeout(() => {
       thread.worker.terminate()
-      console.warn('terminated thread', thread.threadId)
+      console.warn('terminated thread', thread)
       resolve()
     }, 5000)
 
     thread.worker.once('exit', () => {
-      console.info(
-        `exiting - threadId ${thread.threadId} pool ${thread.pool.name}`
-      )
+      console.info('exiting', thread)
       clearTimeout(timerId)
       resolve()
     })
@@ -132,7 +130,6 @@ export class ThreadPool extends EventEmitter {
     this.closed = false
     this.factory = factory
     this.options = options
-    this.booted = false
 
     if (options.preload) {
       console.info('preload enabled for', this.name)
@@ -341,7 +338,7 @@ const ThreadPoolFactory = (() => {
    * and remote imports occur to the actual requests for this instance.
    * @returns
    */
-  function getThreadPool (modelName, options) {
+  function getThreadPool (modelName, options = { preload: false }) {
     function getPool (modelName, options) {
       if (threadPools.has(modelName)) {
         const pool = threadPools.get(modelName)
@@ -376,7 +373,7 @@ const ThreadPoolFactory = (() => {
   /**
    *
    * @param {*} modelName
-   * @returns {ThreadPool}
+   * @returns {Prpomise<ThreadPool>}
    */
 
   async function reload (poolName) {

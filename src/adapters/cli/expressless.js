@@ -60,7 +60,7 @@ console.log(
 
 export async function processLine (line) {
   let [method, modelId, command] = line.split(' ')
-  method = method.toLowerCase()
+  method = method.toUpperCase()
 
   if (Object.keys(payloads).includes(method)) {
     if (modelId) {

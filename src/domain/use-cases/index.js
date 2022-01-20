@@ -108,6 +108,7 @@ export function UseCaseService (modelName = null) {
       findModel: makeOne(modelName, makeFindModel),
       removeModel: makeOne(modelName, makeRemoveModel),
       loadModelSpecs: makeOne(modelName, makeLoadModels),
+      executeCommand,
       listConfigs: listConfigs()
     }
   }
@@ -120,6 +121,6 @@ export function UseCaseService (modelName = null) {
     loadModelSpecs: loadModelSpecs(),
     hotReload: hotReload(),
     listConfigs: listConfigs(),
-    executeCommand
+    executeCommand: { fn: executeCommand }
   }
 }
