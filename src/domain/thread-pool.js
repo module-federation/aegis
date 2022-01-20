@@ -179,7 +179,6 @@ export class ThreadPool extends EventEmitter {
   }
 
   /**
-   * max number of threads
    * @returns {number}
    */
   poolSize () {
@@ -431,6 +430,28 @@ const ThreadPoolFactory = (() => {
     await Promise.all(threadPools.map(async pool => reload(pool.name)))
   }
 
+  async function dispose (poolName) {
+    console.debug('dispose pool', poolName)
+    const pool = threadPools.get(poolName)
+
+    if (!pool) return
+
+    pool.emit(poolClose(poolName), 'remove pool')
+
+    return pool
+      .close()
+      .drain()
+      .then(() => {
+        const kill = pool.freeThreads.splice(0, pool.freeThreads.length)
+        setTimeout(
+          async () =>
+            await Promise.all(kill.map(async thread => thread.stop())),
+          1000
+        )
+        threadPools.delete(poolName)
+      })
+  }
+
   function status () {
     const reports = []
     threadPools.forEach(pool => reports.push(pool.status()))
@@ -456,7 +477,8 @@ const ThreadPoolFactory = (() => {
     reloadAll,
     reload,
     status,
-    listen
+    listen,
+    dispose
   })
 })()
 

@@ -19,7 +19,7 @@ import { Persistence } from '../../src/services/persistence-service'
 
 import ModelFactory from '../../src/domain'
 
-const apiRoot = process.env.API_ROOT || '/microlib/api'
+const apiRoot = process.env.API_ROOT || '/aegis/api'
 const modelPath = `${apiRoot}/models`
 
 const idRoute = route =>
@@ -76,14 +76,12 @@ const Server = (() => {
 
   const remoteEntry = __non_webpack_require__('./remoteEntry')
 
-  const getRemoteModules = remoteEntry.microlib
-    .get('./domain')
-    .then(factory => {
-      const Module = factory()
-      return Module.importRemotes
-    })
+  const getRemoteModules = remoteEntry.aegis.get('./domain').then(factory => {
+    const Module = factory()
+    return Module.importRemotes
+  })
 
-  const getRemoteEntries = remoteEntry.microlib
+  const getRemoteEntries = remoteEntry.aegis
     .get('./remoteEntries')
     .then(factory => factory())
 

@@ -5,6 +5,7 @@ import path from 'path'
 import { isMainThread } from 'worker_threads'
 import domainEvents from '../domain-events'
 import ThreadPoolFactory from '../thread-pool.js'
+//import webpack from 'webpack'
 
 /**
  * @typedef {Object} dependencies injected dependencies
@@ -25,15 +26,30 @@ export default function makeHotReload ({ models, broker } = {}) {
   // Add an event whose callback invokes this factory.
   broker.on(domainEvents.hotReload(), hotReload)
 
+  // function compileEntries (remoteEntries) {
+  //   const compiler = webpack({
+  //     // [Configuration Object](/configuration/)
+  //   });
+
+  //   compiler.run((err, stats) => { // [Stats Object](#stats-object)
+  //     // ...
+
+  //     compiler.close((closeErr) => {
+  //       // ...
+  //     });
+  //   });
+
+  // }
+
   function registerNewModel (remoteEntry) {
-    fs.writeFileSync(
-      path.resolve(process.cwd(), 'webpack', remoteEntry.modelFile),
-      JSON.stringify(remoteEntry.modelEntries)
-    )
-    fs.writeFileSync(
-      path.resolve(process.cwd(), 'webpack', 'remote-entries.js'),
-      JSON.stringify(remoteEntry.mainEntries)
-    )
+    // fs.writeFileSync(
+    //   path.resolve(process.cwd(), 'webpack/remote-entries', remoteEntry.modelFile),
+    //   JSON.stringify(remoteEntry.modelEntries)
+    // )
+    // fs.writeFileSync(
+    //   path.resolve(process.cwd(), 'webpack', 'remote-entries.js'),
+    //   JSON.stringify(remoteEntry.mainEntries)
+    // )
   }
 
   async function hotReload ({ modelName, remoteEntry = null }) {
@@ -69,7 +85,7 @@ export default function makeHotReload ({ models, broker } = {}) {
 
         pools
           .filter(poolName => !allModels.includes(poolName))
-          .forEach(async poolName => await ThreadPoolFactory.reload(poolName))
+          .forEach(async poolName => await ThreadPoolFactory.dispose(poolName))
       }
       return {
         status: `no model specified; specify .../reload?modelName=<modelName>`

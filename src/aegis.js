@@ -23,7 +23,7 @@ const {
   liveUpdate
 } = adapters.controllers
 
-const apiRoot = process.env.API_ROOT || '/microlib/api'
+const apiRoot = process.env.API_ROOT || '/aegis/api'
 const modelPath = `${apiRoot}/models`
 
 function adminRoute (adapter, getConfig, router) {

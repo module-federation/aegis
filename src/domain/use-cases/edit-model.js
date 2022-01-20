@@ -67,8 +67,11 @@ export default function makeEditModel ({
           changes
         })
 
-        await broker.notify(event.eventName, event)
-        await repository.save(id, model)
+        try {
+          await broker.notify(event.eventName, event)
+        } catch (e) {
+          await repository.save(id, model)
+        }
 
         if (command) {
           const result = await async(

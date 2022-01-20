@@ -37,6 +37,7 @@
     "nanoid": "3.1.30",
     "nats": "2.4.0",
     "regenerator-runtime": "0.13.9",
+    "webpack": "^5.66.0",
     "whois": "2.13.7"
   },
   "devDependencies": {
