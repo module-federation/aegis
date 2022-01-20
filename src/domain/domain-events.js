@@ -25,7 +25,9 @@ const domainEvents = {
   sendToMesh: eventName => `to_mesh_${eventName}`,
   fromWorker: eventName => `from_worker_${eventName}`,
   fromMain: eventName => `from_main_${eventName}`,
-  hotReload: modelName => `hotReload_${modelName}`
+  hotReload: modelName => `hotReload_${modelName}`,
+  poolOpen: modelName => `poolOpen_${modelName}`,
+  poolClose: modelName => `poolClose_${modelName}`
 }
 
 export default domainEvents
