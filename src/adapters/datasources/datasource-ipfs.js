@@ -23,7 +23,7 @@ export class DataSourceIpfs extends DataSourceFile {
   startIpfs () {
     try {
       IPFS.create({
-        repo: 'microlib-' + Math.random()
+        repo: 'aegis-' + Math.random()
       }).then(fs => (this.ipfs = fs))
     } catch (err) {
       console.error(err)

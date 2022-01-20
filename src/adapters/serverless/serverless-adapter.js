@@ -9,7 +9,7 @@ let parsers
  * in the service. Save a reference to it, so if we
  * we are warm-started, we can use it again on the
  * next call without reloading the service.
- * @param {function():Promise<{function(...args):Promise<string>}>} service - callback starts service (MicroLib)
+ * @param {function():Promise<{function(...args):Promise<string>}>} service - callback starts service (aegis)
  * @param {"aws"|"google"|"azure"|"ibm"} provider - the name of the serverless provider
  * @param {{req:{send:function(),status:function()},res:{}}} parser - messsage parsers
  * @returns {Promise<{ServerlessAdapter:function(...args):Promise<function()>}>}
