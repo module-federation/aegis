@@ -5,7 +5,8 @@ import { Worker } from 'worker_threads'
 import domainEvents from './domain-events'
 
 const { poolOpen, poolClose } = domainEvents
-const DEFAULT_THREADPOOL_SIZE = 1
+const DEFAULT_THREADPOOL_MIN = 1
+const DEFAULT_THREADPOOL_MAX = 2
 
 /**
  * @typedef {object} Thread
@@ -24,14 +25,14 @@ function kill (thread) {
   console.info('killing thread', thread.threadId)
 
   return new Promise(resolve => {
-    const timerId = setTimeout(() => {
-      thread.worker.terminate()
-      console.warn('terminated thread', thread)
+    const timerId = setTimeout(async () => {
+      const threadId = await thread.worker.terminate()
+      console.warn('terminated thread', threadId)
       resolve()
     }, 5000)
 
     thread.worker.once('exit', () => {
-      console.info('exiting', thread)
+      console.info('exiting', thread.threadId)
       clearTimeout(timerId)
       resolve()
     })
@@ -54,7 +55,12 @@ function kill (thread) {
  * @returns {Thread}
  */
 function newThread ({ pool, file, workerData, cb }) {
+  if (pool.poolSize() === pool.maxPoolSize()) {
+    console.warn('pool is maxed out')
+    return
+  }
   const worker = new Worker(file, { workerData })
+  pool.totalThreads++
   const thread = {
     file,
     pool,
@@ -63,20 +69,15 @@ function newThread ({ pool, file, workerData, cb }) {
     createdAt: Date.now(),
     workerData,
     async stop () {
-      return kill(this)
-    },
-    closed () {
-      return pool.closed
+      await kill(this)
+      pool.totalThreads--
     },
     toJSON () {
       return {
         ...this,
-        status: pool.status(),
-        createdAt: new Date(this.createdAt).toUTCString()
+        createdAt: new Date(this.createdAt).toUTCString(),
+        poolStatus: pool.status()
       }
-    },
-    toString () {
-      return this.toJSON()
     }
   }
 
@@ -122,7 +123,6 @@ export class ThreadPool extends EventEmitter {
     file,
     name,
     workerData = {},
-    numThreads = DEFAULT_THREADPOOL_SIZE,
     waitingJobs = [],
     options = { preload: false }
   } = {}) {
@@ -132,11 +132,14 @@ export class ThreadPool extends EventEmitter {
     this.file = file
     this.name = name
     this.workerData = workerData
-    this.numThreads = numThreads
+    this.maxThreads = options.maxThreads || DEFAULT_THREADPOOL_MAX
+    this.minThreads = options.minThreads || DEFAULT_THREADPOOL_MIN
     this.closed = false
     this.options = options
+    this.reloads = 0
     this.transactions = 0
     this.transxQueued = 0
+    this.totalThreads = 0
 
     if (options.preload) {
       console.info('preload enabled for', this.name)
@@ -169,7 +172,7 @@ export class ThreadPool extends EventEmitter {
    * }}
    */
   addThreads () {
-    for (let i = 0; i < this.numThreads; i++) {
+    for (let i = 0; i < this.minPoolSize(); i++) {
       this.freeThreads.push(this.addThread())
     }
     return this
@@ -180,7 +183,15 @@ export class ThreadPool extends EventEmitter {
    * @returns {number}
    */
   poolSize () {
-    return this.numThreads.length
+    return this.totalThreads
+  }
+
+  maxPoolSize () {
+    return this.maxThreads
+  }
+
+  minPoolSize () {
+    return this.minThreads
   }
 
   /**
@@ -201,7 +212,7 @@ export class ThreadPool extends EventEmitter {
 
   /** @returns {boolean} */
   noJobsRunning () {
-    return this.numThreads === this.freeThreads.length
+    return this.totalThreads === this.freeThreads.length
   }
 
   availableThreads () {
@@ -212,12 +223,15 @@ export class ThreadPool extends EventEmitter {
     return {
       name: this.name,
       open: !this.closed,
+      max: this.maxPoolSize(),
+      min: this.minPoolSize(),
       total: this.poolSize(),
       waiting: this.jobQueueDepth(),
       available: this.availableThreads(),
       performance: this.freeThreads.map(t => t.worker.performance),
       transactions: this.tx(),
-      queueRate: this.tx() < 1 ? 0 : (this.txQ() / this.tx()) * 100
+      queueRate: this.tx() < 1 ? 0 : (this.txQ() / this.tx()) * 100,
+      reloads: this.reloads
     }
   }
 
@@ -238,7 +252,7 @@ export class ThreadPool extends EventEmitter {
       if (this.noJobsRunning()) {
         resolve(this)
       } else {
-        const timerId = setTimeout(reject, 10000)
+        const timerId = setTimeout(reject, 5000)
 
         this.once('noJobsRunning', () => {
           clearTimeout(timerId)
@@ -255,11 +269,13 @@ export class ThreadPool extends EventEmitter {
 
   close () {
     this.closed = true
+    // failsafe: don't stay closed
+    setTimeout(this.open, 2000)
     return this
   }
 
   noThreads () {
-    return this.availableThreads() < 1 && this.jobQueueDepth() < 1
+    return this.totalThreads === 0
   }
 
   waitOnThread () {
@@ -335,7 +351,6 @@ const ThreadPoolFactory = (() => {
       file: './dist/worker.js',
       name: modelName,
       workerData: { modelName },
-      numThreads: DEFAULT_THREADPOOL_SIZE,
       waitingJobs,
       options
     })
@@ -386,6 +401,7 @@ const ThreadPoolFactory = (() => {
   async function reload (poolName) {
     console.debug('reload pool', poolName)
     const pool = threadPools.get(poolName)
+
     if (!pool) return
 
     pool.emit(poolClose(poolName), pool.status())
@@ -394,21 +410,18 @@ const ThreadPoolFactory = (() => {
       .close()
       .drain()
       .then(() => {
-        const killList = pool.freeThreads.splice(0, pool.freeThreads.length)
+        const kill = pool.freeThreads.splice(0, pool.freeThreads.length)
 
-        pool
-          .addThreads()
-          .open()
-          .emit(poolOpen(poolName), pool.status())
+        pool.addThreads().open()
 
         setTimeout(
           async () =>
-            await Promise.all(
-              killList.map(async thread => await thread.stop())
-            ),
+            await Promise.all(kill.map(async thread => thread.stop())),
           1000
         )
 
+        pool.emit(poolOpen(poolName), pool.status())
+        pool.reloads++
         return pool
       })
       .catch(console.error)
