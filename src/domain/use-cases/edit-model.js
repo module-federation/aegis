@@ -4,6 +4,7 @@ import executeCommand from './execute-command'
 import async from '../util/async-error'
 import domainEvents from '../domain-events'
 import { isMainThread } from 'worker_threads'
+import AegisError from '../util/aegis-error'
 
 /**
  * @typedef {Object} ModelParam
@@ -39,11 +40,12 @@ export default function makeEditModel ({
 
     if (isMainThread) {
       console.log('sending to thread')
-      const updated = threadpool.run(editModel.name, {
+      const updated = await threadpool.run(editModel.name, {
         id,
         changes,
         command
       })
+      if (updated.aegisError) return new Error(updated.message)
       return repository.save(id, updated)
     } else {
       console.log('thread executing')
@@ -53,13 +55,13 @@ export default function makeEditModel ({
       const model = await repository.find(id)
 
       if (!model) {
-        throw new Error('no such id')
+        return new AegisError('no such id')
       }
 
       try {
         // only the worker does the update
         const updated = models.updateModel(model, changes)
-
+        console.debug('updated')
         await repository.save(id, updated)
 
         const event = await models.createEvent(eventType, modelName, {
@@ -88,7 +90,7 @@ export default function makeEditModel ({
 
         return await repository.find(id)
       } catch (e) {
-        return new Error(e)
+        return new AegisError(e)
       }
     }
   }

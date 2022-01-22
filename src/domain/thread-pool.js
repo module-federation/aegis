@@ -152,13 +152,16 @@ export class ThreadPool extends EventEmitter {
    *
    * @param {string} file
    * @param {*} workerData
-   * @returns {Thread}
+   * @returns {Promise<Thread>}
    */
   addThread () {
-    return newThread({
-      pool: this,
-      file: this.file,
-      workerData: this.workerData
+    return new Promise(resolve => {
+      return newThread({
+        pool: this,
+        file: this.file,
+        workerData: this.workerData,
+        cb: thread => resolve(thread)
+      })
     })
   }
 
@@ -171,9 +174,9 @@ export class ThreadPool extends EventEmitter {
    *  cb:function(Thread)
    * }}
    */
-  addThreads () {
+  async addThreads () {
     for (let i = 0; i < this.minPoolSize(); i++) {
-      this.freeThreads.push(this.addThread())
+      this.freeThreads.push(await this.addThread())
     }
     return this
   }
@@ -273,10 +276,6 @@ export class ThreadPool extends EventEmitter {
     return this
   }
 
-  noThreads () {
-    return this.totalThreads === 0
-  }
-
   waitOnThread () {
     return new Promise(resolve =>
       newThread({
@@ -296,6 +295,28 @@ export class ThreadPool extends EventEmitter {
     return this.transxQueued
   }
 
+  queueRate () {
+    return this.tx() < 1 ? 0 : (this.txQ() / this.tx()) * 100
+  }
+
+  poolEmpty () {
+    return this.totalThreads === 0
+  }
+
+  capacityAvail () {
+    return this.poolSize() < this.maxPoolSize()
+  }
+
+  capacityNeeded () {
+    return this.queueRate() > 1
+  }
+
+  async allocThread () {
+    return this.poolEmpty() || (this.capacityAvail() && this.capacityNeeded())
+      ? await this.addThread()
+      : this.freeThreads.shift()
+  }
+
   run (jobName, jobData) {
     return new Promise(async resolve => {
       this.transactions++
@@ -303,9 +324,7 @@ export class ThreadPool extends EventEmitter {
       if (this.closed) {
         console.info('pool is closed')
       } else {
-        let thread = this.noThreads()
-          ? await this.waitOnThread()
-          : this.freeThreads.shift()
+        let thread = await this.allocThread()
 
         if (thread) {
           const result = await postJob({
@@ -399,8 +418,8 @@ const ThreadPoolFactory = (() => {
    */
   async function reload (poolName) {
     console.debug('reload pool', poolName)
-    const pool = threadPools.get(poolName)
 
+    const pool = threadPools.get(poolName)
     if (!pool) return
 
     pool.emit(poolClose(poolName), pool.status())
@@ -408,15 +427,13 @@ const ThreadPoolFactory = (() => {
     return pool
       .close()
       .drain()
-      .then(() => {
+      .then(async () => {
         const kill = pool.freeThreads.splice(0, pool.freeThreads.length)
 
         pool.addThreads().open()
 
         setTimeout(
-          async () =>
-            await Promise.all(kill.map(async thread => thread.stop())),
-          1000
+          async () => await Promise.all(kill.map(async thread => thread.stop()))
         )
 
         pool.emit(poolOpen(poolName), pool.status())

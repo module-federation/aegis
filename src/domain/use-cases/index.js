@@ -38,7 +38,6 @@ function buildOptions (model) {
     threadpool: null
   }
   if (isMainThread) {
-    console.debug('creating thread pool for ', model.modelName)
     return {
       ...options,
       repository: DataSourceFactory.getDataSource(model.modelName, {

@@ -1,6 +1,7 @@
 'use strict'
 
 import { isMainThread } from 'worker_threads'
+import AegisError from '../util/aegis-error'
 
 /**
  * @typedef {Object} ModelParam
@@ -35,13 +36,13 @@ export default function removeModelFactory ({
 
   return async function removeModel ({ id, model }) {
     if (isMainThread) {
-      const model = await repository.find(id)
-
-      if (!model) {
-        throw new Error('no such id')
-      }
-      threadpool.getThreadPool(modelName).runJob(removeModel.name, { model })
+      return threadpool.run(removeModel.name, id)
     } else {
+      const model = await repository.find(id)
+      if (!model) {
+        return new AegisError('no such id')
+      }
+
       const deleted = models.deleteModel(model)
       const event = await models.createEvent(eventType, modelName, deleted)
 
@@ -49,14 +50,15 @@ export default function removeModelFactory ({
         broker.notify(event.eventName, event),
         repository.delete(id)
       ])
-    }
-    if (obsResult.status === 'rejected') {
-      if (repoResult.status === 'fulfilled') {
-        await repository.save(id, model)
-      }
-      throw new Error('model not deleted', obsResult.reason)
-    }
 
-    return model
+      if (obsResult.status === 'rejected') {
+        if (repoResult.status === 'fulfilled') {
+          await repository.save(id, model)
+        }
+        throw new Error('model not deleted', obsResult.reason)
+      }
+
+      return model
+    }
   }
 }

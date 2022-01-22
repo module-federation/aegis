@@ -36,7 +36,7 @@ function commandAuthorized (spec, command, permission) {
  * @param {command:string} command - name of command
  * @param {string} permission - permission of caller
  */
-export default async function executeCommand ({ model, command, permission }) {
+export default async function executeCommand (model, command, permission) {
   const spec = model.getSpec()
 
   console.debug('executing commnd:', command)
