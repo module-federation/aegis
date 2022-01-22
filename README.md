@@ -30,7 +30,7 @@ _with_
 
 - non-functional, boilerplate code done for you
   - dynamically generated APIs and datasources
-  - transparent integration
+  - transparent integration and persistence
   - built-in, extensible, observable, self-forming, high speed service mesh
   - autonomous self-administration (e.g. CA certs provisioned/renewed programmatically)
   - exhaustive portability: Aegis can run as a server, cluster, or serverless function, in the datacenter, on the edge and beyond (phone, drone, arduino)
