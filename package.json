@@ -34,7 +34,7 @@
     "mesh-link": "0.13.6",
     "mongodb": "4.2.1",
     "multicast-dns": "7.2.4",
-    "nanoid": "3.1.30",
+    "nanoid": "3.1.31",
     "nats": "2.4.0",
     "regenerator-runtime": "0.13.9",
     "whois": "2.13.7"
