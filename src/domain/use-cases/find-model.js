@@ -28,13 +28,13 @@ export default function makeFindModel ({ repository, threadpool } = {}) {
   return async function findModel ({ id, query }) {
     if (isMainThread) {
       const result = await threadpool.run(findModel.name, { id, query })
-      if (result.aegisError) throw result
+      if (result.aegis) throw result
       return result
     } else {
       const model = await repository.find(id)
 
       if (!model) {
-        return new AegisError('no such id')
+        return AegisError('no such id')
       }
 
       if (query?.relation) {

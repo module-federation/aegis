@@ -63,50 +63,64 @@ export default function makeHotReload ({ models, broker } = {}) {
       inProgress = true
 
       return new Promise(async resolve => {
-        if (model) {
-          if (model === '*') {
-            await ThreadPoolFactory.reloadAll()
-            inProgress = false
-            resolve({
-              status: `threadpool up for ${model}`,
-              modelName: model
-            })
-            return
-          }
-
+        try {
           if (model) {
-            await ThreadPoolFactory.reload(model)
-            inProgress = false
-            resolve({
-              status: `threadpool up for ${model}`,
-              modelName: model
-            })
-            return
+            if (model === '*') {
+              try {
+                await ThreadPoolFactory.reloadAll()
+                inProgress = false
+                return resolve({
+                  status: `threadpools restarted for all models`,
+                  modelName: model
+                })
+              } catch (error) {
+                console.error(hotReload.name, error)
+                return
+              }
+            }
+
+            if (model) {
+              try {
+                await ThreadPoolFactory.reload(model)
+                inProgress = false
+                if (!remoteEntry) {
+                  return resolve({
+                    status: `threadpool up for ${model}`,
+                    modelName: model
+                  })
+                }
+              } catch (error) {
+                console.log(hotReload.name, error)
+                return
+              }
+            }
+
+            const pools = ThreadPoolFactory.listPools().map(p =>
+              p.toUpperCase()
+            )
+            const allModels = models
+              .getModelSpecs()
+              .map(spec => spec.modelName.toUpperCase())
+
+            pools
+              .filter(poolName => !allModels.includes(poolName))
+              .forEach(
+                async poolName => await ThreadPoolFactory.dispose(poolName)
+              )
           }
 
           if (remoteEntry) {
             registerNewModel(remoteEntry)
-            return {
+            return resolve({
               status: 'thread pool and remote-entry created for new model',
               modelName: model
-            }
+            })
           }
 
-          const pools = ThreadPoolFactory.listPools().map(p => p.toUpperCase())
-          const allModels = models
-            .getModelSpecs()
-            .map(spec => spec.modelName.toUpperCase())
-
-          pools
-            .filter(poolName => !allModels.includes(poolName))
-            .forEach(
-              async poolName => await ThreadPoolFactory.dispose(poolName)
-            )
+          inProgress = false
+        } catch (error) {
+          console.error(hotReload.name, error)
         }
-        inProgress = false
-        resolve({
-          status: `no model specified; specify .../reload?modelName=<modelName>`
-        })
       })
     }
   }

@@ -47,7 +47,7 @@ export default function makeEditModel ({
         command
       })
 
-      if (updated.aegisError) throw updated
+      if (updated.aegis) throw new Error(updated.message)
 
       return repository.save(id, updated)
     } else {
@@ -95,7 +95,8 @@ export default function makeEditModel ({
 
         return await repository.find(id)
       } catch (e) {
-        return new AegisError(e)
+        console.error(editModel.name, e)
+        return AegisError(e)
       }
     }
   }

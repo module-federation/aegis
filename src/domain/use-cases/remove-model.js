@@ -40,7 +40,7 @@ export default function removeModelFactory ({
     } else {
       const model = await repository.find(id)
       if (!model) {
-        return new AegisError('no such id')
+        return AegisError('no such id')
       }
 
       const deleted = models.deleteModel(model)

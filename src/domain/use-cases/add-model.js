@@ -38,17 +38,21 @@ export default function makeAddModel ({
     let model
 
     if (isMainThread) {
-      model = await threadpool.run(addModel.name, input)
+      try {
+        model = await threadpool.run(addModel.name, input)
 
-      if (model.aegisError) throw new Error(model)
-
-      return repository.save(model.id, model)
+        if (model.aegis) throw model
+        return repository.save(model.id, model)
+      } catch (e) {
+        console.error(addModel.name, e)
+        return e.message
+      }
     } else {
       try {
         model = await models.createModel(broker, repository, modelName, input)
         await repository.save(model.getId(), model)
       } catch (error) {
-        return new AegisError(error)
+        return AegisError(error)
       }
 
       try {
@@ -57,7 +61,7 @@ export default function makeAddModel ({
       } catch (error) {
         // remote the object if not processed
         await repository.delete(model.getId())
-        return new AegisError(error)
+        return AegisError(error)
       }
 
       // Return the latest changes
