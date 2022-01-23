@@ -20,6 +20,9 @@ import ThreadPoolFactory from '../thread-pool.js'
  * @param {dependencies} param0
  * @returns {function():Promise<import('../domain').Model>}
  */
+
+let inProgress = false
+
 export default function makeHotReload ({ models, broker } = {}) {
   // Add an event whose callback invokes this factory.
   broker.on(domainEvents.hotReload(), hotReload)
@@ -50,7 +53,6 @@ export default function makeHotReload ({ models, broker } = {}) {
     // )
   }
 
-  let inProgress = false
   async function hotReload ({ modelName, remoteEntry = null }) {
     const model = modelName.toUpperCase()
 
@@ -61,25 +63,25 @@ export default function makeHotReload ({ models, broker } = {}) {
       inProgress = true
 
       return new Promise(async resolve => {
-        const threadReady = status => {
-          inProgress = false
-          resolve({
-            status,
-            modelName: model
-          })
-        }
-
         if (model) {
           if (model === '*') {
-            ThreadPoolFactory.reloadAll(() =>
-              threadReady('reload complete for all pools')
-            )
+            await ThreadPoolFactory.reloadAll()
+            inProgress = false
+            resolve({
+              status: `threadpool up for ${model}`,
+              modelName: model
+            })
+            return
           }
 
           if (model) {
-            ThreadPoolFactory.reload(model, () =>
-              threadReady(`reload complete for model ${model}`)
-            )
+            await ThreadPoolFactory.reload(model)
+            inProgress = false
+            resolve({
+              status: `threadpool up for ${model}`,
+              modelName: model
+            })
+            return
           }
 
           if (remoteEntry) {
@@ -101,6 +103,7 @@ export default function makeHotReload ({ models, broker } = {}) {
               async poolName => await ThreadPoolFactory.dispose(poolName)
             )
         }
+        inProgress = false
         resolve({
           status: `no model specified; specify .../reload?modelName=<modelName>`
         })

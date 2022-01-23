@@ -53,44 +53,45 @@ function kill (thread) {
  * the new thread comes online, i.e. we create a
  * subscription to the event 'online' and return
  * the new thread in the callback's argument
- * @returns {Thread}
+ * @returns {Promise<Thread>}
  */
-function newThread ({ pool, file, workerData, cb }) {
-  if (pool.poolSize() === pool.maxPoolSize()) {
-    console.warn('pool is maxed out')
-    return
-  }
+function newThread ({ pool, file, workerData }) {
+  return new Promise((resolve, reject) => {
+    if (pool.poolSize() === pool.maxPoolSize()) {
+      reject(new Error('pool is maxed out'))
+    }
 
-  const worker = new Worker(file, { workerData })
-  pool.totalThreads++
+    const worker = new Worker(file, { workerData })
+    pool.totalThreads++
 
-  const thread = {
-    file,
-    pool,
-    worker,
-    threadId: worker.threadId,
-    createdAt: Date.now(),
-    workerData,
-    async stop () {
-      await kill(this)
-      pool.totalThreads--
-    },
-    toJSON () {
-      return {
-        ...this,
-        createdAt: new Date(this.createdAt).toUTCString(),
-        poolStatus: pool.status()
+    const thread = {
+      file,
+      pool,
+      worker,
+      threadId: worker.threadId,
+      createdAt: Date.now(),
+      workerData,
+      async stop () {
+        await kill(this)
+        pool.totalThreads--
+      },
+      toJSON () {
+        return {
+          ...this,
+          createdAt: new Date(this.createdAt).toUTCString(),
+          poolStatus: pool.status()
+        }
       }
     }
-  }
 
-  worker.once('message', msg => {
-    console.log('got aegis up', msg)
-    pool.emit('aegis-up', thread)
-    if (cb) cb(thread)
+    setTimeout(reject, 10000)
+
+    worker.once('message', msg => {
+      console.log('aegis up:', msg)
+      pool.emit('aegis-up')
+      resolve(thread)
+    })
   })
-
-  return thread
 }
 
 /**
@@ -163,14 +164,14 @@ export class ThreadPool extends EventEmitter {
    * @param {*} workerData
    * @returns {Promise<Thread>}
    */
-  startThread () {
-    return new Promise(resolve => {
-      return newThread({
+  async startThread () {
+    return new Promise(async resolve => {
+      const thread = await newThread({
         pool: this,
         file: this.file,
-        workerData: this.workerData,
-        cb: thread => resolve(thread)
+        workerData: this.workerData
       })
+      resolve(thread)
     })
   }
 
@@ -372,7 +373,7 @@ export class ThreadPool extends EventEmitter {
   }
 
   notify (msg) {
-    this.emit(`Pool ${this.name} ${msg}`)
+    this.emit(`pool ${this.name} ${msg}`)
     return this
   }
 
@@ -453,28 +454,26 @@ const ThreadPoolFactory = (() => {
    * @param {string} poolName i.e. modelName
    * @returns {Promise<ThreadPool>}
    */
-  async function reload (poolName, cb = () => 1) {
+  function reload (poolName) {
     console.debug('reload pool', poolName)
 
-    return new Promise(resolve => {
+    return new Promise((resolve, reject) => {
       const pool = threadPools.get(poolName)
       if (!pool) return
-
-      // this takes longer than below ops
-      pool.on('aegis-up', resolve(cb()))
-
       return pool
         .close()
         .notify(poolClose)
         .drain()
         .then(pool => pool.stopThreads())
         .then(pool => pool.startThreads())
-        .then(pool =>
+        .then(pool => {
           pool
             .open()
             .bumpDeployCount()
             .notify(poolOpen)
-        )
+          resolve()
+        })
+        .catch(e => reject(e))
     })
   }
 
