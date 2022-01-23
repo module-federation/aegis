@@ -9,7 +9,7 @@
 export default function makeLiveUpdate (hotReload) {
   return async function liveUpdate (httpRequest) {
     try {
-      httpRequest.log(hotReload.name)
+      //httpRequest.log(hotReload.name)
       const modelName = httpRequest.query.modelName
       const remoteEntry = httpRequest.query.remoteEntry
       const msg = await hotReload({ modelName, remoteEntry })

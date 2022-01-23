@@ -60,8 +60,10 @@ function newThread ({ pool, file, workerData, cb }) {
     console.warn('pool is maxed out')
     return
   }
+
   const worker = new Worker(file, { workerData })
   pool.totalThreads++
+
   const thread = {
     file,
     pool,
@@ -82,11 +84,11 @@ function newThread ({ pool, file, workerData, cb }) {
     }
   }
 
-  worker.once('aegis-up', () => {
+  worker.once('message', msg => {
+    console.log('got aegis up', msg)
     pool.emit('aegis-up', thread)
+    if (cb) cb(thread)
   })
-
-  if (cb) cb(thread)
 
   return thread
 }
@@ -181,7 +183,7 @@ export class ThreadPool extends EventEmitter {
    *  cb:function(Thread)
    * }}
    */
-  async startThreads () {
+  async startThreads (cb) {
     for (let i = 0; i < this.minPoolSize(); i++) {
       this.freeThreads.push(await this.startThread())
     }

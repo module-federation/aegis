@@ -1,9 +1,5 @@
 'use strict'
 
-import { keyFor } from 'core-js/fn/symbol'
-import * as fs from 'fs'
-import path from 'path'
-import { resolve } from 'path/posix'
 import { isMainThread } from 'worker_threads'
 import domainEvents from '../domain-events'
 import ThreadPoolFactory from '../thread-pool.js'
@@ -43,7 +39,7 @@ export default function makeHotReload ({ models, broker } = {}) {
 
   // }
 
-  function registerNewModel (dddddsdxcc) {
+  function registerNewModel (remoteEntry) {
     // fs.writeFileSync(
     //   path.resolve(process.cwd(), 'webpack/remote-entries', remoteEntry.modelFile),
     //   JSON.stringify(remoteEntry.modelEntries)
@@ -75,7 +71,6 @@ export default function makeHotReload ({ models, broker } = {}) {
 
         if (model) {
           if (model === '*') {
-            ThreadPoolFactory.listen()
             ThreadPoolFactory.reloadAll(() =>
               threadReady('reload complete for all pools')
             )
@@ -111,7 +106,7 @@ export default function makeHotReload ({ models, broker } = {}) {
         })
       })
     }
-
-    return hotReload
   }
+
+  return hotReload
 }
