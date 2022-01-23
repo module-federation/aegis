@@ -144,8 +144,7 @@ async function resolveServiceUrl () {
         activateBackup = true
         return
       }
-      console.info('asking for', SERVICENAME, 'retries', retries)
-
+      //console.info('asking for', SERVICENAME, 'retries', retries)
 
       // query the service name
       dns.query({
@@ -205,7 +204,7 @@ export function setUplinkUrl (uplinkUrl) {
  * @param {{
  *  broker:import('../../../domain/event-broker').EventBroker,
  *  models:import('../../../domain/model-factory').ModelFactory
- * }} serviceInfo
+ * }} [serviceInfo]
  */
 export async function connect (serviceInfo = {}) {
   broker = serviceInfo.broker
@@ -330,7 +329,8 @@ async function _connect () {
       console.assert(!DEBUG, 'received event:', eventData)
 
       if (eventData.eventName) {
-        if (broker) await broker.notify(eventData.eventName, eventData)
+        if (broker)
+          await broker.notify(eventData.eventName, eventData, { worker: true })
         if (uplinkCallback) await uplinkCallback(message)
         return
       }

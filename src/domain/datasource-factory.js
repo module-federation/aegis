@@ -64,7 +64,7 @@ const DataSourceFactory = (() => {
    * @param {string} name - model name
    * @param {boolean} cacheOnly - if true returns memory adapter, default is false
    */
-  function getDataSource (name, cacheOnly = false) {
+  function getDataSource (name, { memoryOnly, adapterName } = {}) {
     if (!dataSources) {
       dataSources = new Map()
     }
@@ -73,11 +73,22 @@ const DataSourceFactory = (() => {
       return dataSources.get(name)
     }
 
-    if (cacheOnly) {
+    if (memoryOnly) {
       const MemoryDs = config.getBaseClass(config.MEMORYADAPTER)
       const newDs = new MemoryDs(new Map(), this, name)
       dataSources.set(name, newDs)
       return newDs
+    }
+
+    if (adapterName) {
+      const adapter = adapters[adapterName]
+      if (adapter) {
+        const newDs = new adapter(new Map(), this, name)
+        dataSources.set(name, newDs)
+        return newDs
+      }
+      console.error('no such adapter', adapterName)
+      return
     }
 
     const newDs = getSpecDataSource(new Map(), this, name)

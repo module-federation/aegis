@@ -51,7 +51,7 @@ export function attachServer (server) {
       clientsConnected: server.clients.size,
       uplink: server.uplink ? server.uplink.info : 'no uplink',
       isPrimarySwitch: isSwitch,
-      clients: [...server.clients].map(c => ({ ...c.info, OPEN: c.OPEN }))
+      clients: [...server.clients].map(c => ({ ...c.info, open: c.OPEN }))
     })
   }
 
@@ -112,12 +112,14 @@ export function attachServer (server) {
         if (msg.proto === SERVICENAME) {
           if (!backupSwitch && !isSwitch && msg.role === 'node')
             backupSwitch = client.info.id
+
           client.info = {
             ...msg,
             initialized: true,
             isBackupSwitch: backupSwitch === client.info.id
           }
           console.info('client initialized', client.info)
+
           client.send(JSON.stringify({ ...msg, ...client.info }))
           return
         }
@@ -128,18 +130,15 @@ export function attachServer (server) {
       client.terminate()
       console.warn('terminated client', client.info)
     })
-
-    //server.broadcast(statusReport(), client)
   })
 
   try {
     if (config.uplink) {
-      /** @type {import('./node')} */
-      const uplink = require('./node')
-      server.uplink = uplink
-      uplink.setUplinkUrl(config.uplink)
-      uplink.onUplinkMessage(msg => server.broadcast(msg, uplink))
-      uplink.connect()
+      const node = require('./node')
+      server.uplink = node
+      node.setUplinkUrl(config.uplink)
+      node.onUplinkMessage(msg => server.broadcast(msg, node))
+      node.connect()
     }
   } catch (e) {
     console.error('uplink', e)

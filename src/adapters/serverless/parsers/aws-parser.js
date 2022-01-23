@@ -38,7 +38,7 @@ export const aws = {
     req: {
       // API GW req format
       path: args.path,
-      method: args.httpMethod.toLowerCase(),
+      method: args.httpMethod.toUpperCase(),
       query: args.queryStringParameters,
       params: args.pathParameters,
       body: handleMultiline(args.body),

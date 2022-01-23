@@ -1,5 +1,8 @@
 'use strict'
 
+import { isMainThread } from 'worker_threads'
+import AegisError from '../util/aegis-error'
+
 /**
  * @typedef {Object} ModelParam
  * @property {String} modelName
@@ -19,10 +22,11 @@
  * @param {ModelParam} param0
  * @returns {removeModel}
  */
-export default function removeModelFactory({
+export default function removeModelFactory ({
   modelName,
   models,
   repository,
+  threadpool,
   broker,
   handlers = []
 } = {}) {
@@ -30,28 +34,31 @@ export default function removeModelFactory({
   const eventName = models.getEventName(eventType, modelName)
   handlers.forEach(handler => broker.on(eventName, handler))
 
-  return async function removeModel(id) {
-    const model = await repository.find(id)
-
-    if (!model) {
-      throw new Error('no such id')
-    }
-
-    const deleted = models.deleteModel(model)
-    const event = await models.createEvent(eventType, modelName, deleted)
-
-    const [obsResult, repoResult] = await Promise.allSettled([
-      broker.notify(event.eventName, event),
-      repository.delete(id)
-    ])
-
-    if (obsResult.status === 'rejected') {
-      if (repoResult.status === 'fulfilled') {
-        await repository.save(id, model)
+  return async function removeModel (id) {
+    if (isMainThread) {
+      return threadpool.run(removeModel.name, id)
+    } else {
+      const model = await repository.find(id)
+      if (!model) {
+        return AegisError('no such id')
       }
-      throw new Error('model not deleted', obsResult.reason)
-    }
 
-    return model
+      const deleted = models.deleteModel(model)
+      const event = await models.createEvent(eventType, modelName, deleted)
+
+      const [obsResult, repoResult] = await Promise.allSettled([
+        broker.notify(event.eventName, event),
+        repository.delete(id)
+      ])
+
+      if (obsResult.status === 'rejected') {
+        if (repoResult.status === 'fulfilled') {
+          await repository.save(id, model)
+        }
+        throw new Error('model not deleted', obsResult.reason)
+      }
+
+      return model
+    }
   }
 }

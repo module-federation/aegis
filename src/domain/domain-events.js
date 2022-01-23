@@ -20,7 +20,14 @@ const domainEvents = {
   portRetryFailed: (modelName, port) => `portRetryFailed_${port}_${modelName}`,
   portRetryWorked: (modelName, port) => `portRetryWorked_${port}_${modelName}`,
   publishEvent: modelName => `publishEvent_${modelName}`,
-  forwardEvent: () => '__FWD_EVENT__'
+  forwardEvent: () => '__FWD_EVENT__',
+  sendToWorker: modelName => `to_worker_${modelName}`,
+  sendToMesh: eventName => `to_mesh_${eventName}`,
+  fromWorker: eventName => `from_worker_${eventName}`,
+  fromMain: eventName => `from_main_${eventName}`,
+  hotReload: modelName => `hotReload_${modelName}`,
+  poolOpen: modelName => `poolOpen_${modelName}`,
+  poolClose: modelName => `poolClose_${modelName}`
 }
 
 export default domainEvents

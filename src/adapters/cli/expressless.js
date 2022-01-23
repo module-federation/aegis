@@ -2,7 +2,7 @@
  * Serverless test harness.
  */
 
-const microlib = require('../../../dist')
+const aegis = require('../../../dist')
 
 function awsEvent (method, path) {
   return {
@@ -23,31 +23,31 @@ function awsEvent (method, path) {
 
 const payloads = {
   post: {
-    event: awsEvent('post', '/microlib/api/models/orders'),
+    event: awsEvent('post', '/aegis/api/models/orders'),
     context: {},
     callback: x => x
   },
 
   get: {
-    event: awsEvent('get', '/microlib/api/models/orders'),
+    event: awsEvent('get', '/aegis/api/models/orders'),
     context: {},
     callback: x => x
   },
 
   getbyid: {
-    event: awsEvent('get', '/microlib/api/models/orders/'),
+    event: awsEvent('get', '/aegis/api/models/orders/'),
     context: {},
     callback: x => x
   },
 
   patch: {
-    event: awsEvent('patch', '/microlib/api/models/orders/'),
+    event: awsEvent('patch', '/aegis/api/models/orders/'),
     context: {},
     callback: x => x
   },
 
   delete: {
-    event: awsEvent('delete', '/microlib/api/models/orders/'),
+    event: awsEvent('delete', '/aegis/api/models/orders/'),
     context: {},
     callback: x => x
   }
@@ -60,7 +60,7 @@ console.log(
 
 export async function processLine (line) {
   let [method, modelId, command] = line.split(' ')
-  method = method.toLowerCase()
+  method = method.toUpperCase()
 
   if (Object.keys(payloads).includes(method)) {
     if (modelId) {
@@ -74,10 +74,10 @@ export async function processLine (line) {
         command
       }
     }
-    const result = await microlib.handleServerlessRequest(payloads[method])
+    const result = await aegis.handleServerlessRequest(payloads[method])
     console.log(result)
   } else {
-    const result = await microlib.handleServerlessRequest(payloads['post'])
+    const result = await aegis.handleServerlessRequest(payloads['post'])
     console.log(result)
   }
 }

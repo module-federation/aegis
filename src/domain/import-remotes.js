@@ -8,7 +8,9 @@
 async function importFederatedModules (remoteEntries, type) {
   const startTime = Date.now()
   const modules = await Promise.all(
-    remoteEntries
+    Object.values(remoteEntries)
+      .map(v => Object.values(v))
+      .flat(3)
       .filter(entry => entry.type === type)
       .map(entry => entry.importRemote())
   )

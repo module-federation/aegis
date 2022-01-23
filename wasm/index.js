@@ -84,7 +84,7 @@ async function importWebAssembly () {
           const name = adapter.__getString(eventName)
           const data = adapter.constructObject(eventData)
           console.log('wasm called js to emit an event + ', name, ': ', data)
-          broker.notify(name, data, true)
+          broker.notify(name, data, { worker: true })
         },
 
         /**

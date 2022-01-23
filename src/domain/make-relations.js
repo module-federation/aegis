@@ -75,8 +75,8 @@ async function updateForeignKeys (model, event, relation, ds) {
 }
 
 /**
- * Find an existing, or create a new, remote object from
- * the distributed cache and store it in the local cache.
+ * Find existing, or create new, remote objects from
+ * the distributed cache and store them in the local cache.
  *
  * Sends a request message to, and receives a response from,
  * the local cache manager.
@@ -152,7 +152,6 @@ export default function makeRelations (relations, datasource, broker) {
               if (event && event.args.length > 0) {
                 const updated = await updateForeignKeys(this, event, rel, ds)
                 setTimeout(updateForeignKeys, 3000, this, event, rel, ds)
-                //return event.model
                 return relationType[rel.type](updated, ds, rel)
               }
 

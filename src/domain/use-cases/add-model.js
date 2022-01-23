@@ -1,12 +1,15 @@
 'use strict'
 
+import { isMainThread } from 'worker_threads'
 import domainEvents from '../domain-events'
+import AegisError from '../util/aegis-error'
 
 /**
  * @typedef {Object} dependencies injected dependencies
  * @property {String} modelName - name of the domain model
  * @property {import('../model-factory').ModelFactory} models - model factory
- * @property {import('../datasource').default repository - model datasource adapter
+ * @property {import('../datasource').default } repository - model datasource adapter
+ * @property {import('../thread-pool.js').ThreadPool} threadpool
  * @property {import('../event-broker').EventBroker} broker - application events, propagated to domain
  * @property {...import('../index').eventHandler} handlers - {@link eventHandler} configured in the model spec.
  */
@@ -16,10 +19,11 @@ import domainEvents from '../domain-events'
  * @param {dependencies} param0
  * @returns {function():Promise<import('../domain').Model>}
  */
-export default function makeAddModel({
+export default function makeAddModel ({
   modelName,
   models,
   repository,
+  threadpool,
   broker,
   handlers = []
 } = {}) {
@@ -30,28 +34,39 @@ export default function makeAddModel({
   // Add an event whose callback invokes this factory.
   broker.on(domainEvents.addModel(modelName), addModel)
 
-  async function addModel(input) {
-    const model = await models.createModel(broker, repository, modelName, input)
+  async function addModel (input) {
+    let model
 
-    try {
-      await repository.save(model.getId(), model)
-    } catch (error) {
-      throw new Error(error)
-    }
+    if (isMainThread) {
+      try {
+        model = await threadpool.run(addModel.name, input)
 
-    try {
-      if (!model.isCached()) {
-        const event = await models.createEvent(eventType, modelName, model)
-        await broker.notify(event.eventName, event)
+        if (model.aegis) throw model
+        return repository.save(model.id, model)
+      } catch (e) {
+        console.error(addModel.name, e)
+        return e.message
       }
-    } catch (error) {
-      // remote the object if not processed
-      await repository.delete(model.getId())
-      throw new Error(error)
-    }
+    } else {
+      try {
+        model = await models.createModel(broker, repository, modelName, input)
+        await repository.save(model.getId(), model)
+      } catch (error) {
+        return AegisError(error)
+      }
 
-    // Return the latest changes
-    return repository.find(model.getId())
+      try {
+        const event = models.createEvent(eventType, modelName, model)
+        await broker.notify(event.eventName, event)
+      } catch (error) {
+        // remote the object if not processed
+        await repository.delete(model.getId())
+        return AegisError(error)
+      }
+
+      // Return the latest changes
+      return repository.find(model.getId())
+    }
   }
 
   return addModel

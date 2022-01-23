@@ -271,9 +271,9 @@ const Switch = function (id, thresholds) {
  */
 
 /**
- * Decorate client library functions with a circuit breaker. When the
- * function throws an exception, we check a threshold based on the error,
- * volume of requests and the rate of failure over a given interval. If a
+ * Decorate client functions with a circuit breaker. When the function
+ * throws an exception, we check a threshold based on the error, volume
+ * of requests and the rate of failure over a given interval. If a
  * threshold is breached, the breaker trips (opens) and prevents the client
  * function from being executed. It remains open until a test interval has
  * elapsed, at which point it is switched to half-open. If the next

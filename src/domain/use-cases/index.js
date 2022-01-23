@@ -7,14 +7,19 @@ import makeFindModel from './find-model'
 import makeRemoveModel from './remove-model'
 import makeLoadModels from './load-models'
 import makeListConfig from './list-configs'
-import DataSourceFactory from '../datasource-factory'
-import EventBrokerSingleton from '../event-broker'
-import ModelFactory from '../model-factory'
-import brokerEvents from './broker-events'
+import makeHotReload from './hot-reload'
 
-export function registerEvents() {
+import ModelFactory from '../model-factory'
+import DataSourceFactory from '../datasource-factory'
+import ThreadPoolFactory from '../thread-pool.js'
+import EventBrokerFactory from '../event-broker'
+import brokerEvents from './broker-events'
+import executeCommand from './execute-command'
+import { isMainThread } from 'worker_threads'
+
+export function registerEvents () {
   brokerEvents(
-    EventBrokerSingleton.getInstance(),
+    EventBrokerFactory.getInstance(),
     DataSourceFactory,
     ModelFactory
   )
@@ -24,17 +29,33 @@ export function registerEvents() {
  *
  * @param {import('..').ModelSpecification} model
  */
-function buildOptions(model) {
-  return {
+function buildOptions (model) {
+  const options = {
     modelName: model.modelName,
     models: ModelFactory,
-    broker: EventBrokerSingleton.getInstance(),
+    broker: EventBrokerFactory.getInstance(),
     handlers: model.eventHandlers,
-    repository: DataSourceFactory.getDataSource(model.modelName)
+    threadpool: null
+  }
+  if (isMainThread) {
+    return {
+      ...options,
+      repository: DataSourceFactory.getDataSource(model.modelName, {
+        memoryOnly: true
+      }),
+      threadpool: ThreadPoolFactory.getThreadPool(model.modelName, {
+        preload: false
+      })
+    }
+  } else {
+    return {
+      ...options,
+      repository: DataSourceFactory.getDataSource(model.modelName)
+    }
   }
 }
 
-function make(factory) {
+function make (factory) {
   const specs = ModelFactory.getModelSpecs()
   return specs.map(spec => ({
     endpoint: spec.endpoint,
@@ -42,11 +63,63 @@ function make(factory) {
   }))
 }
 
-export const addModels = () => make(makeAddModel)
-export const editModels = () => make(makeEditModel)
-export const listModels = () => make(makeListModels)
-export const findModels = () => make(makeFindModel)
-export const removeModels = () => make(makeRemoveModel)
-export const loadModelSpecs = () => make(makeLoadModels)
-export const listConfigs = () =>
+function makeOne (modelName, factory) {
+  const spec = ModelFactory.getModelSpec(modelName, { preload: false })
+  return factory(buildOptions(spec))
+}
+
+const addModels = () => make(makeAddModel)
+const editModels = () => make(makeEditModel)
+const listModels = () => make(makeListModels)
+const findModels = () => make(makeFindModel)
+const removeModels = () => make(makeRemoveModel)
+const loadModelSpecs = () => make(makeLoadModels)
+const hotReload = () => [
+  {
+    endpoint: 'reload',
+    fn: makeHotReload({
+      models: ModelFactory,
+      broker: EventBrokerFactory.getInstance()
+    })
+  }
+]
+const listConfigs = () =>
   makeListConfig({ models: ModelFactory, data: DataSourceFactory })
+
+export const UseCases = {
+  addModels,
+  editModels,
+  listModels,
+  findModels,
+  removeModels,
+  loadModelSpecs,
+  executeCommand,
+  listConfigs,
+  hotReload
+}
+
+export function UseCaseService (modelName = null) {
+  if (modelName) {
+    return {
+      addModel: makeOne(modelName, makeAddModel),
+      editModel: makeOne(modelName, makeEditModel),
+      listModels: makeOne(modelName, makeListModels),
+      findModel: makeOne(modelName, makeFindModel),
+      removeModel: makeOne(modelName, makeRemoveModel),
+      loadModelSpecs: makeOne(modelName, makeLoadModels),
+      executeCommand,
+      listConfigs: listConfigs()
+    }
+  }
+  return {
+    addModels: addModels(),
+    editModels: editModels(),
+    listModels: listModels(),
+    findModels: findModels(),
+    removeModels: removeModels(),
+    loadModelSpecs: loadModelSpecs(),
+    hotReload: hotReload(),
+    listConfigs: listConfigs(),
+    executeCommand: { fn: executeCommand }
+  }
+}

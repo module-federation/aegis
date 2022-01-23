@@ -120,10 +120,6 @@ async function runHandler (eventName, eventData = {}, handle, forward) {
 
   /**@type {eventHandler} */
   await handle(eventData)
-
-  if (forward && eventName !== forwardEvent) {
-    await this.notify(forwardEvent, eventData)
-  }
 }
 
 /**
@@ -134,7 +130,8 @@ async function runHandler (eventName, eventData = {}, handle, forward) {
  * @fires eventName
  */
 async function notify (eventName, eventData, options = {}) {
-  const { forward = false } = options
+  let channel
+
   const run = runHandler.bind(this)
 
   if (!eventData) {
@@ -146,7 +143,7 @@ async function notify (eventName, eventData, options = {}) {
     if (handlers.has(eventName)) {
       await Promise.allSettled(
         handlers.get(eventName).map(async handler => {
-          await run(eventName, eventData, handler, forward)
+          await run(eventName, eventData, handler, options)
         })
       )
     }
@@ -155,7 +152,7 @@ async function notify (eventName, eventData, options = {}) {
       [...handlers]
         .filter(([k]) => k instanceof RegExp && k.test(eventName))
         .map(([, v]) =>
-          v.map(async f => await run(eventName, eventData, f, forward))
+          v.map(async f => await run(eventName, eventData, f, options))
         )
     )
   } catch (error) {
@@ -174,6 +171,10 @@ class EventBrokerImpl extends EventBroker {
   constructor () {
     super()
     this.notify = notify.bind(this)
+    this.channels = {
+      workflow: [],
+      cache: []
+    }
   }
 
   /**
@@ -279,7 +280,7 @@ class EventBrokerImpl extends EventBroker {
  * Create / return broker singleton instance
  * @todo handle all state same way
  */
-export const EventBrokerSingleton = (() => {
+export const EventBrokerFactory = (() => {
   let instance
 
   function createInstance () {
@@ -299,4 +300,4 @@ export const EventBrokerSingleton = (() => {
   })
 })()
 
-export default EventBrokerSingleton
+export default EventBrokerFactory

@@ -1,6 +1,6 @@
 # ÆGIS
 
-See the [aegis-host](https://github.com/module-federation/MicroLib) repo for documentation and a working example of a federation server.
+See the [aegis-host](https://github.com/module-federation/aegis) repo for documentation and a working example of a federation server.
 
 <div align="left">
     <a href="https://blog.federated-microservices.com" target="_blank">

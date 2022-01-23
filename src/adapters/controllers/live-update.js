@@ -6,14 +6,14 @@
  * @param {function():string} hash
  * @returns {import("./http-adapter").httpController}
  */
-export default function postModelFactory (addModel) {
-  return async function postModel (httpRequest) {
+export default function makeLiveUpdate (hotReload) {
+  return async function liveUpdate (httpRequest) {
     try {
-      httpRequest.log(postModel.name)
-
-      const model = await addModel(httpRequest.body)
-
-      console.debug({ function: addModel.name, output: model })
+      //httpRequest.log(hotReload.name)
+      const modelName = httpRequest.query.modelName
+      const remoteEntry = httpRequest.query.remoteEntry
+      const msg = await hotReload({ modelName, remoteEntry })
+      console.debug({ function: liveUpdate.name, output: modelName })
 
       return {
         headers: {
@@ -21,7 +21,11 @@ export default function postModelFactory (addModel) {
           'Last-Modified': new Date().toUTCString()
         },
         statusCode: 201,
-        body: { modelId: model.id }
+        body: {
+          function: liveUpdate.name,
+          input: httpRequest.query,
+          output: msg
+        }
       }
     } catch (e) {
       console.error(e)

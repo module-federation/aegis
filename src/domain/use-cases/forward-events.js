@@ -2,7 +2,7 @@
 
 import domainEvents from '../domain-events'
 
-function listUnhandledPortEvents(specs) {
+function listUnhandledPortEvents (specs) {
   const cons = specs
     .filter(spec => spec.ports)
     .map(spec =>
@@ -36,7 +36,7 @@ function listUnhandledPortEvents(specs) {
  * @param {function(event,data)} publish
  * @param {function(event,function())} subscribe
  */
-export function forwardEvents({ broker, models, publish, subscribe }) {
+export function forwardEvents ({ broker, models, publish, subscribe }) {
   /**@type{import('../domain').ModelSpecification[]} */
   const specs = models.getModelSpecs()
 
@@ -55,7 +55,7 @@ export function forwardEvents({ broker, models, publish, subscribe }) {
    * producer events, provided there is no local service
    * configured to handle the event.
    */
-  function forwardPortEvents() {
+  function forwardPortEvents () {
     const { consumerEvents, producerEvents } = listUnhandledPortEvents(specs)
 
     console.info(
@@ -67,7 +67,7 @@ export function forwardEvents({ broker, models, publish, subscribe }) {
 
     consumerEvents.forEach(consumerEvent =>
       subscribe(consumerEvent, eventData =>
-        broker.notify(consumerEvent, `eventData` || 'no data')
+        broker.notify(consumerEvent, `eventData` || 'no data', { mesh: true })
       )
     )
 
@@ -77,17 +77,19 @@ export function forwardEvents({ broker, models, publish, subscribe }) {
       })
     )
   }
-  ; ``
+  ;``
 
   /**
    * Forward events so marked.
    */
-  function forwardUserEvents() {
+  function forwardUserEvents () {
     broker.on('publishWasm', data =>
       publish({ ...data, eventName: data.eventName })
     )
 
-    subscribe('publishWasm', data => broker.notify(data.eventName, data))
+    subscribe('publishWasm', data => broker.notify(data.eventName, data), {
+      mesh: true
+    })
 
     broker.on(domainEvents.forwardEvent(), eventData => {
       console.debug(forwardUserEvents.name, 'called')

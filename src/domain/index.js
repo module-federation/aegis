@@ -213,6 +213,7 @@ function register (model, services, adapters, isCached = false) {
 
   ModelFactory.registerModel({
     ...model,
+    modelName: model.modelName.toUpperCase(),
     dependencies,
     factory: model.factory(dependencies),
     isCached
@@ -220,19 +221,19 @@ function register (model, services, adapters, isCached = false) {
 
   ModelFactory.registerEvent(
     ModelFactory.EventTypes.CREATE,
-    model.modelName,
+    model.modelName.toUpperCase(),
     createEvent
   )
 
   ModelFactory.registerEvent(
     ModelFactory.EventTypes.UPDATE,
-    model.modelName,
+    model.modelName.toUpperCase(),
     updateEvent
   )
 
   ModelFactory.registerEvent(
     ModelFactory.EventTypes.DELETE,
-    model.modelName,
+    model.modelName.toUpperCase(),
     deleteEvent
   )
 }
@@ -254,7 +255,7 @@ let localOverrides = {}
 
 /**
  * Import remote models, services, and adapters.
- *
+ * @param {import('../../webpack/remote-entries-type.js')} remoteEntries
  * @param {*} overrides - override or add services and adapters
  */
 export async function importRemotes (remoteEntries, overrides = {}) {
@@ -325,5 +326,7 @@ export async function importRemoteCache (name) {
     console.error(importRemoteCache.name, e)
   }
 }
+
+export { UseCaseService } from './use-cases'
 
 export default ModelFactory

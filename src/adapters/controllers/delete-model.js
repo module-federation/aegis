@@ -1,13 +1,12 @@
 /**
  *
- * @param {import("../use-cases/remove-model").removeModel} removeModel
+ * @param {import("../../domain/use-cases/remove-model").removeModel} removeModel
  * @returns {import("../adapters/http-adapter").httpController}
  */
 export default function deleteModelFactory (removeModel) {
   return async function deleteModel (httpRequest) {
+    httpRequest.log(deleteModel.name)
     try {
-      httpRequest.log(deleteModel.name)
-
       const model = await removeModel(httpRequest.params.id)
 
       return {
@@ -16,7 +15,7 @@ export default function deleteModelFactory (removeModel) {
           'Last-Modified': new Date().toUTCString()
         },
         statusCode: 201,
-        body: { modelId: model.getId() }
+        body: { modelId: model.id }
       }
     } catch (e) {
       console.error(e)
