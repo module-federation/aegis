@@ -40,12 +40,15 @@ export default function makeEditModel ({
 
     if (isMainThread) {
       console.log('sending to thread')
+
       const updated = await threadpool.run(editModel.name, {
         id,
         changes,
         command
       })
-      if (updated.aegisError) return new Error(updated.message)
+
+      if (updated.aegisError) throw updated
+
       return repository.save(id, updated)
     } else {
       console.log('thread executing')
@@ -62,6 +65,7 @@ export default function makeEditModel ({
         // only the worker does the update
         const updated = models.updateModel(model, changes)
         console.debug('updated')
+
         await repository.save(id, updated)
 
         const event = await models.createEvent(eventType, modelName, {
@@ -72,6 +76,7 @@ export default function makeEditModel ({
         try {
           await broker.notify(event.eventName, event)
         } catch (e) {
+          console.error(editModel.name, e)
           await repository.save(id, model)
         }
 

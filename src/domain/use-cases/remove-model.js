@@ -34,7 +34,7 @@ export default function removeModelFactory ({
   const eventName = models.getEventName(eventType, modelName)
   handlers.forEach(handler => broker.on(eventName, handler))
 
-  return async function removeModel ({ id, model }) {
+  return async function removeModel (id) {
     if (isMainThread) {
       return threadpool.run(removeModel.name, id)
     } else {

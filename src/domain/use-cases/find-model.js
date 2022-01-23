@@ -3,6 +3,8 @@
 import { isMainThread } from 'worker_threads'
 import executeCommand from './execute-command'
 import fetchRelatedModels from './find-related-models'
+import async from '../util/async-error'
+import AegisError from '../util/aegis-error'
 
 /**
  * @typedef {Object} ModelParam
@@ -25,25 +27,27 @@ import fetchRelatedModels from './find-related-models'
 export default function makeFindModel ({ repository, threadpool } = {}) {
   return async function findModel ({ id, query }) {
     if (isMainThread) {
-      return threadpool.run(findModel.name, { id, query })
+      const result = await threadpool.run(findModel.name, { id, query })
+      if (result.aegisError) throw result
+      return result
     } else {
       const model = await repository.find(id)
 
       if (!model) {
-        throw new Error('no such id')
+        return new AegisError('no such id')
       }
 
       if (query?.relation) {
-        const related = await fetchRelatedModels(model, query.relation)
-        if (related) {
-          return related
+        const related = await async(fetchRelatedModels(model, query.relation))
+        if (related.ok) {
+          return related.data
         }
       }
 
       if (query?.command) {
-        const result = await executeCommand(model, query.command, 'read')
-        if (result) {
-          return result
+        const result = await async(executeCommand(model, query.command, 'read'))
+        if (result.ok) {
+          return result.data
         }
       }
 
