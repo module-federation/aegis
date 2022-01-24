@@ -334,15 +334,12 @@ export class ThreadPool extends EventEmitter {
     return this.queueTolerance
   }
 
-  increaseCapacity () {
-    return (
-      this.poolSize() < this.maxPoolSize() &&
-      this.jobQueueRateAvg() > this.jobQueueTolerance()
-    )
-  }
-
   async threadAlloc () {
-    if (this.totalThreads === 0 || this.totalThreads < this.maxThreads)
+    if (
+      this.totalThreads === 0 ||
+      (this.totalThreads < this.maxThreads &&
+        this.jobsQueued > this.queueTolerance)
+    )
       return this.startThread()
   }
 

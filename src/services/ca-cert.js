@@ -19,8 +19,8 @@ const challengePath = token => `${webroot}/.well-known/acme-challenge/${token}`
  * @param {string} keyAuthorization Authorization key
  * @returns {Promise}
  */
-function makeChallengeCreateFn(dnsProvider) {
-  return async function challengeCreateFn(authz, challenge, keyAuthorization) {
+function makeChallengeCreateFn (dnsProvider) {
+  return async function challengeCreateFn (authz, challenge, keyAuthorization) {
     console.log('Triggered challengeCreateFn()')
 
     // http-01
@@ -52,8 +52,8 @@ function makeChallengeCreateFn(dnsProvider) {
  * @param {string} keyAuthorization Authorization key
  * @returns {Promise}
  */
-function makeChallengeRemoveFn(dnsProvider) {
-  return async function challengeRemoveFn(authz, challenge, keyAuthorization) {
+function makeChallengeRemoveFn (dnsProvider) {
+  return async function challengeRemoveFn (authz, challenge, keyAuthorization) {
     console.log('Triggered challengeRemoveFn()')
 
     // http-01
@@ -77,7 +77,7 @@ function makeChallengeRemoveFn(dnsProvider) {
   }
 }
 
-async function getEmail(whois, domain) {
+async function getEmail (whois, domain) {
   try {
     return (await whois(domain)).getEmail()
   } catch (e) {
@@ -86,7 +86,7 @@ async function getEmail(whois, domain) {
   return config.services.cert.domainEmail
 }
 
-const directoryUrl = !/prod/.test(process.env.NODE_ENV)
+const directoryUrl = !/prod/i.test(process.env.NODE_ENV)
   ? acme.directory.letsencrypt.staging
   : acme.directory.letsencrypt.production
 
@@ -100,8 +100,9 @@ exports.initCertificateService = function (dnsProvider, whois) {
   /**
    * Provision/renew CA cert
    */
-  return async function provisionCert(domain, email = null) {
-    try {  // Init client
+  return async function provisionCert (domain, email = null) {
+    try {
+      // Init client
       const client = new acme.Client({
         directoryUrl,
         accountKey: await acme.forge.createPrivateKey()
@@ -126,7 +127,7 @@ exports.initCertificateService = function (dnsProvider, whois) {
 
       return { key, cert, csr }
     } catch (e) {
-      console.error(acme.Client.name, e);
+      console.error(acme.Client.name, e)
     }
   }
 }
