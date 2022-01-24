@@ -511,7 +511,7 @@ const ThreadPoolFactory = (() => {
           resolve()
         })
         .catch(e => reject(reload.name, e))
-    })
+    }).catch(console.error)
   }
 
   async function reloadAll () {
@@ -536,7 +536,7 @@ const ThreadPoolFactory = (() => {
         .then(pool => pool.stopThreads())
         .then(pool => resolve(threadPools.delete(pool)))
         .catch(e => reject(e))
-    })
+    }).catch(console.error)
   }
 
   function status () {
