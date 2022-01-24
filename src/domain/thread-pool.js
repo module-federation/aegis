@@ -513,7 +513,7 @@ const ThreadPoolFactory = (() => {
 
   async function reloadAll () {
     try {
-      await Promise.all(threadPools.map(async pool => reload(pool.name)))
+      await Promise.all([...threadPools].map(async ([pool]) => reload(pool)))
     } catch (e) {
       console.error(reloadAll.name, e)
     }
