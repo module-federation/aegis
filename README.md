@@ -39,7 +39,7 @@ _with_
   - runtime binding and hot reload (e.g. add new functionality on the fly, switch from MongoDB to Etherium live)
   - zero downtime, zero installation, independent deployment (even for components running in the same process together)
   - Polyglot, portable, containerless, sandboxed modules run at near native speeds
-  - decentralized, scalable, highly composable, "tessellated" architecture
+  - decentralized, scalable, highly composable, "tessellated" hexagonal architecture
 
 ### And do it all without deployment automation
 
@@ -78,7 +78,7 @@ yarn demo
 
 [![Aegis Overview](https://res.cloudinary.com/marcomontalbano/image/upload/v1632364889/video_to_markdown/images/youtube--n2qqgi3fTto-c05b58ac6eb4c4700831b2b3070cd403.jpg)](https://youtu.be/jddhfLA_2k0 "Aegis Overview")
 
-# Work in progress
+# Roadmap
 
 - More WebAssembly features
 - Run on WasmEdge runtime
