@@ -5,6 +5,8 @@ import domainEvents from '../domain-events'
 import ThreadPoolFactory from '../thread-pool.js'
 //import webpack from 'webpack'
 
+const { poolClose, poolOpen } = domainEvents
+
 /**
  * @typedef {Object} dependencies injected dependencies
  * @property {String} modelName - name of the domain model
@@ -53,7 +55,16 @@ export default function makeHotReload ({ models, broker } = {}) {
     // )
   }
 
-  async function hotReload ({ modelName, remoteEntry = null }) {
+  /**
+   *
+   * @param {{
+   *  modelName:string
+   *  remoteEntry:import('../../../webpack/remote-entries-type')
+   *  sendMsg: function(string)
+   * }} param0
+   * @returns
+   */
+  async function hotReload ({ modelName, remoteEntry = null, sendMsg }) {
     const model = modelName.toUpperCase()
 
     if (isMainThread) {
@@ -67,6 +78,7 @@ export default function makeHotReload ({ models, broker } = {}) {
           if (model) {
             if (model === '*') {
               try {
+                http
                 await ThreadPoolFactory.reloadAll()
                 inProgress = false
                 return resolve({
@@ -81,8 +93,24 @@ export default function makeHotReload ({ models, broker } = {}) {
 
             if (model) {
               try {
+                sendMsg(`beginning deployment of model ${model}...`)
+
+                ThreadPoolFactory.listen(
+                  () => sendMsg('20% complete'),
+                  [model],
+                  [poolClose(model)]
+                )
+
+                ThreadPoolFactory.listen(
+                  () => sendMsg('80% complete'),
+                  [model],
+                  [poolOpen(model)]
+                )
+
                 await ThreadPoolFactory.reload(model)
-                inProgress = false
+
+                setTimeout(() => (inProgress = false), 2000)
+
                 if (!remoteEntry) {
                   return resolve({
                     status: `threadpool up for ${model}`,
@@ -95,8 +123,8 @@ export default function makeHotReload ({ models, broker } = {}) {
               }
             }
 
-            const pools = ThreadPoolFactory.listPools().map(p =>
-              p.toUpperCase()
+            const pools = ThreadPoolFactory.listPools().map(pool =>
+              pool.toUpperCase()
             )
             const allModels = models
               .getModelSpecs()

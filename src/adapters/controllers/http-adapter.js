@@ -25,7 +25,7 @@ export default function buildCallback (controller) {
       ip: req.ip,
       method: req.method,
       path: req.path,
-
+      respond: res,
       log (func) {
         console.info({
           function: func,

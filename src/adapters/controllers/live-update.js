@@ -12,7 +12,11 @@ export default function makeLiveUpdate (hotReload) {
       //httpRequest.log(hotReload.name)
       const modelName = httpRequest.query.modelName
       const remoteEntry = httpRequest.query.remoteEntry
-      const msg = await hotReload({ modelName, remoteEntry })
+      const msg = await hotReload({
+        modelName,
+        remoteEntry,
+        sendMsg: httpRequest.respond.write
+      })
       console.debug({ function: liveUpdate.name, output: modelName })
 
       return {

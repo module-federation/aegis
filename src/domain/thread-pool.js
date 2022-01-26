@@ -489,8 +489,6 @@ const ThreadPoolFactory = (() => {
    */
   function reload (poolName) {
     return new Promise((resolve, reject) => {
-      console.debug('reload pool', poolName)
-
       const pool = threadPools.get(poolName)
       if (!pool) reject('no such pool', poolName)
 
