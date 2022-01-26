@@ -39,7 +39,7 @@ _with_
   - runtime binding and hot reload (e.g. add new functionality on the fly, switch from MongoDB to Etherium live)
   - zero downtime, zero installation, independent deployment (even for components running in the same process together)
   - Polyglot, portable, containerless, sandboxed modules run at near native speeds
-  - decentralized, scalable, highly composable, "tessellated" architecture
+  - decentralized, scalable, highly composable, "tessellated" hexagonal architecture
 
 ### And do it all without deployment automation
 
