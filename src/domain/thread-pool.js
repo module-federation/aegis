@@ -348,7 +348,7 @@ export class ThreadPool extends EventEmitter {
       this.jobsRequested++
 
       try {
-        if (this.closed) {
+        if (this.closed) {                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  
           console.info('pool is closed')
         } else {
           let thread = this.freeThreads.shift()
@@ -366,7 +366,7 @@ export class ThreadPool extends EventEmitter {
               pool: this,
               jobName,
               jobData,
-              thread
+              thread                                                                                                                     
             })
 
             return resolve(result)
@@ -454,8 +454,7 @@ const ThreadPoolFactory = (() => {
    * threadpool instead of the facade, which will load the remotes at startup
    * instead of loading them on the first request for `modelName`. The default
    * is false, so that startup is faster and only the minimum number of threads
-   * and remote imports occur to the actual requests for this instance.
-   * @returns
+   * and remote impo                
    */
   function getThreadPool (modelName, options = { preload: false }) {
     function getPool (modelName, options) {

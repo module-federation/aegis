@@ -64,7 +64,7 @@ export default function makeHotReload ({ models, broker } = {}) {
    * }} param0
    * @returns
    */
-  async function hotReload ({ modelName, remoteEntry = null, sendMsg }) {
+  async function hotReload ({ modelName, remoteEntry = null }) {
     const model = modelName.toUpperCase()
 
     if (isMainThread) {
@@ -93,19 +93,19 @@ export default function makeHotReload ({ models, broker } = {}) {
 
             if (model) {
               try {
-                sendMsg(`beginning deployment of model ${model}...`)
+                // sendMsg(`beginning deployment of model ${model}...`)
 
-                ThreadPoolFactory.listen(
-                  () => sendMsg('20% complete'),
-                  [model],
-                  [poolClose(model)]
-                )
+                // ThreadPoolFactory.listen(
+                //   () => sendMsg('20% complete'),
+                //   [model],
+                //   [poolClose(model)]
+                // )
 
-                ThreadPoolFactory.listen(
-                  () => sendMsg('80% complete'),
-                  [model],
-                  [poolOpen(model)]
-                )
+                // ThreadPoolFactory.listen(
+                //   () => sendMsg('80% complete'),
+                //   [model],
+                //   [poolOpen(model)]
+                // )
 
                 await ThreadPoolFactory.reload(model)
 
