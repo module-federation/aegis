@@ -6,12 +6,12 @@
  * @param {function():string} hash
  * @returns {import("./http-adapter").httpController}
  */
-export default function makeLiveUpdate (hotReload) {
+export default function makeLiveUpdate (hotDeploy) {
   return async function liveUpdate (httpRequest) {
     try {
       httpRequest.log(liveUpdate.name)
 
-      const result = await hotReload(httpRequest.query.modelName)
+      const result = await hotDeploy(httpRequest.query.remoteEntry)
 
       console.debug({ fn: liveUpdate.name, result })
       return {
