@@ -43,7 +43,6 @@ export default function buildCallback (controller) {
         if (httpResponse.headers) {
           res.set(httpResponse.headers)
         }
-        res.type('json')
         res.status(httpResponse.statusCode).send(httpResponse.body)
         return httpResponse
       })

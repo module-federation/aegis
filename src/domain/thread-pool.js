@@ -7,8 +7,7 @@ import domainEvents from './domain-events'
 const { poolOpen, poolClose } = domainEvents
 const DEFAULT_THREADPOOL_MIN = 1
 const DEFAULT_THREADPOOL_MAX = 2
-const DEFAULT_QUEUERATE_TOLERANCE = 25
-const DEFAULT_QUEUERATE_INTERVAL = 2000
+const DEFAULT_QUEUE_TOLERANCE = 25
 
 /**
  * @typedef {object} Thread
@@ -17,8 +16,6 @@ const DEFAULT_QUEUERATE_INTERVAL = 2000
  * @property {function()} remove
  * @property {{[x:string]:*}} metadata
  */
-
-const queueLog = []
 
 /**
  *
@@ -71,7 +68,6 @@ function newThread ({ pool, file, workerData }) {
         worker,
         threadId: worker.threadId,
         createdAt: Date.now(),
-        workerData,
         async stop () {
           await kill(this)
         },
@@ -94,7 +90,7 @@ function newThread ({ pool, file, workerData }) {
       console.error(newThread.name, error)
       reject(error)
     }
-  })
+  }).catch(console.error)
 }
 
 /**
@@ -146,7 +142,7 @@ export class ThreadPool extends EventEmitter {
     this.workerData = workerData
     this.maxThreads = options.maxThreads || DEFAULT_THREADPOOL_MAX
     this.minThreads = options.minThreads || DEFAULT_THREADPOOL_MIN
-    this.queueTolerance = options.queueTolerance || DEFAULT_QUEUERATE_TOLERANCE
+    this.queueTolerance = options.queueTolerance || DEFAULT_QUEUE_TOLERANCE
     this.closed = false
     this.options = options
     this.reloads = 0
@@ -156,10 +152,10 @@ export class ThreadPool extends EventEmitter {
 
     if (options.preload) {
       console.info('preload enabled for', this.name)
-      this.startThreads()
-      this.totalThreads = this.freeThreads.length
+      this.startThreads().then(
+        () => (this.totalThreads = this.freeThreads.length)
+      )
     }
-    console.debug('threads in pool', this.freeThreads.length)
   }
 
   /**
@@ -188,7 +184,7 @@ export class ThreadPool extends EventEmitter {
    *  cb:function(Thread)
    * }}
    */
-  async startThreads (cb) {
+  async startThreads () {
     for (let i = 0; i < this.minPoolSize(); i++) {
       this.freeThreads.push(await this.startThread())
     }
@@ -247,7 +243,6 @@ export class ThreadPool extends EventEmitter {
       //performance: this.freeThreads.map(t => t.worker.performance),
       transactions: this.totalTransactions(),
       queueRate: this.jobQueueRate(),
-      //queueRateAvg: this.jobQueueRateAvg(),
       tolerance: this.jobQueueTolerance(),
       reloads: this.deploymentCount()
     }
@@ -313,15 +308,6 @@ export class ThreadPool extends EventEmitter {
     )
   }
 
-  jobQueueRateAvg () {
-    const rates = queueLog.filter(
-      rate => rate.time > Date.now() - DEFAULT_QUEUERATE_INTERVAL
-    )
-    if (rates.length > 0)
-      return rates.map(r => r.rate).reduce((a, b) => a + b) / rates.length
-    return 0
-  }
-
   poolEmpty () {
     return this.totalThreads === 0
   }
@@ -344,11 +330,11 @@ export class ThreadPool extends EventEmitter {
   }
 
   run (jobName, jobData) {
-    return new Promise(async (resolve, reject) => {
+    return new Promise(async resolve => {
       this.jobsRequested++
 
       try {
-        if (this.closed) {                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  
+        if (this.closed) {
           console.info('pool is closed')
         } else {
           let thread = this.freeThreads.shift()
@@ -366,7 +352,7 @@ export class ThreadPool extends EventEmitter {
               pool: this,
               jobName,
               jobData,
-              thread                                                                                                                     
+              thread
             })
 
             return resolve(result)
@@ -385,12 +371,10 @@ export class ThreadPool extends EventEmitter {
         )
 
         this.jobsQueued++
-        //queueLog.push({ rate: this.jobQueueRate(), time: Date.now() })
       } catch (error) {
         console.error(this.run.name, error)
-        reject(error)
       }
-    }).catch(console.error)
+    })
   }
 
   notify (msg) {
@@ -454,7 +438,7 @@ const ThreadPoolFactory = (() => {
    * threadpool instead of the facade, which will load the remotes at startup
    * instead of loading them on the first request for `modelName`. The default
    * is false, so that startup is faster and only the minimum number of threads
-   * and remote impo                
+   * and remote impo
    */
   function getThreadPool (modelName, options = { preload: false }) {
     function getPool (modelName, options) {
