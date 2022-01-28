@@ -17,7 +17,7 @@ function getContent (httpRequest, configs) {
           <!DOCTYPE html>
           <html>
           <h2 style='color: white'>${title}</h2>         
-          <body style="background-color: black;">`
+          <body style="background-color: black  ;">`
 
     configs.forEach(config => {
       text += `<div style="margin-bottom: 12px;">
