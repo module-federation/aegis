@@ -47,7 +47,7 @@ export default function makeEditModel ({
         command
       })
 
-      if (updated.aegis) throw new Error(updated.message)
+      if (updated.hasError) throw new Error(updated.message)
 
       return repository.save(id, updated)
     } else {

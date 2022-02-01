@@ -10,7 +10,7 @@ export default function AegisError (error) {
     message = 'unknown error type'
   }
   return {
-    aegis: true,
+    hasError: true,
     name,
     message,
     stack

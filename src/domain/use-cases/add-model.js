@@ -38,15 +38,9 @@ export default function makeAddModel ({
     let model
 
     if (isMainThread) {
-      try {
-        model = await threadpool.run(addModel.name, input)
-
-        if (model.aegis) throw model
-        return repository.save(model.id, model)
-      } catch (e) {
-        console.error(addModel.name, e)
-        return e.message
-      }
+      model = await threadpool.run(addModel.name, input)
+      if (model.hasError) throw new Error(model.message)
+      return repository.save(model.id, model)
     } else {
       try {
         model = await models.createModel(broker, repository, modelName, input)

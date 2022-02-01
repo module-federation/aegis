@@ -146,9 +146,15 @@ export class ThreadPool extends EventEmitter {
     this.closed = false
     this.options = options
     this.reloads = 0
-    this.jobsRequested = 0
-    this.jobsQueued = 0
+    this.totalJobsRequested = 0
     this.totalThreads = 0
+
+    function dequeue () {
+      if (this.freeThreads.length > 0 && this.waitingJobs.length > 0) {
+        this.waitingJobs.shift(this.freeThreads.shift())
+      }
+    }
+    setInterval(dequeue.bind(this), 1500)
 
     if (options.preload) {
       console.info('preload enabled for', this.name)
@@ -243,7 +249,7 @@ export class ThreadPool extends EventEmitter {
       //performance: this.freeThreads.map(t => t.worker.performance),
       transactions: this.totalTransactions(),
       queueRate: this.jobQueueRate(),
-      tolerance: this.jobQueueTolerance(),
+      tolerance: this.maxQueuedJobs(),
       reloads: this.deploymentCount()
     }
   }
@@ -295,16 +301,14 @@ export class ThreadPool extends EventEmitter {
   }
 
   totalTransactions () {
-    return this.jobsRequested
-  }
-
-  totalTransQueued () {
-    return this.jobsQueued
+    return this.totalJobsRequested
   }
 
   jobQueueRate () {
     return Math.round(
-      this.jobsRequested < 1 ? 0 : (this.jobsQueued / this.jobsRequested) * 100
+      this.totalJobsRequested < 1
+        ? 0
+        : (this.totalJobsRequested / this.totalJobsQueued) * 100
     )
   }
 
@@ -316,26 +320,26 @@ export class ThreadPool extends EventEmitter {
     return this.freeThreads.length > 0
   }
 
-  jobQueueTolerance () {
+  maxQueuedJobs () {
     return this.queueTolerance
   }
 
   async threadAlloc () {
     if (
       this.totalThreads === 0 ||
-      (this.totalThreads < this.maxThreads &&
-        this.jobsQueued > this.queueTolerance)
+      (this.poolSize() < this.maxPoolSize() &&
+        this.jobQueueDepth() > this.maxQueuedJobs())
     )
       return this.startThread()
   }
 
   run (jobName, jobData) {
     return new Promise(async resolve => {
-      this.jobsRequested++
+      this.totalJobsRequested++
 
       try {
         if (this.closed) {
-          console.info('pool is closed')
+          console.isclo('pool is closed')
         } else {
           let thread = this.freeThreads.shift()
 
@@ -370,7 +374,7 @@ export class ThreadPool extends EventEmitter {
           })
         )
 
-        this.jobsQueued++
+        this.totalJobsQueued++
       } catch (error) {
         console.error(this.run.name, error)
       }
@@ -523,17 +527,9 @@ const ThreadPoolFactory = (() => {
     return reports
   }
 
-  function listen (cb, pools = [], events = []) {
-    threadPools
-      .filter(pool => (pools.length > 0 ? pools.includes(pool) : true))
-      .map(pool => ({ pool, events: pool.eventNames }))
-      .forEach(poolEvents => {
-        poolEvents.eventNames
-          .filter(event => (events.length > 0 ? events.includes(event) : true))
-          .forEach(poolEvent => {
-            poolEvents.pool.on(poolEvent, cb)
-          })
-      })
+  function listen (cb, poolName, eventName) {
+    if (poolName === '*') threadPools.forEach(pool => pool.on(eventName, cb))
+    else threadPools.find(pool => pool.name === poolName).on(eventName, cb)
   }
 
   return Object.freeze({

@@ -28,7 +28,7 @@ export default function makeFindModel ({ repository, threadpool } = {}) {
   return async function findModel ({ id, query }) {
     if (isMainThread) {
       const result = await threadpool.run(findModel.name, { id, query })
-      if (result.aegis) throw result
+      if (result.hasError) throw new Error(result.message)
       return result
     } else {
       const model = await repository.find(id)
