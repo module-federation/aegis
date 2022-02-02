@@ -123,7 +123,7 @@ function postJob ({ pool, jobName, jobData, thread, cb }) {
     })
     thread.worker.on('error', reject)
     thread.worker.postMessage({ name: jobName, data: jobData })
-  })
+  }).catch(console.error)
 }
 
 export class ThreadPool extends EventEmitter {
