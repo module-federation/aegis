@@ -339,7 +339,7 @@ export class ThreadPool extends EventEmitter {
 
       try {
         if (this.closed) {
-          console.isclo('pool is closed')
+          console.warn('pool is closed')
         } else {
           let thread = this.freeThreads.shift()
 
