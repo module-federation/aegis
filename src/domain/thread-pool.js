@@ -308,7 +308,7 @@ export class ThreadPool extends EventEmitter {
     return Math.round(
       this.totalJobsRequested < 1
         ? 0
-        : (this.totalJobsRequested / this.totalJobsQueued) * 100
+        : (this.totalJobsQueued / this.totalJobsRequested) * 100
     )
   }
 
