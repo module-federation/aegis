@@ -152,7 +152,8 @@ export class ThreadPool extends EventEmitter {
 
     function dequeue() {
       if (this.freeThreads.length > 0 && this.waitingJobs.length > 0) {
-        this.waitingJobs.shift(this.freeThreads.shift())
+        this.waitingJobs.shift()(
+          this.freeThreads.shift())
       }
     }
     setInterval(dequeue.bind(this), 1500)
