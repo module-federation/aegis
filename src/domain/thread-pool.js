@@ -146,7 +146,8 @@ export class ThreadPool extends EventEmitter {
     this.closed = false
     this.options = options
     this.reloads = 0
-    this.totalJobsRequested = 0
+    this.jobsRequested = 0
+    this.jobsQueued = 0
     this.totalThreads = 0
 
     function dequeue () {
@@ -301,14 +302,12 @@ export class ThreadPool extends EventEmitter {
   }
 
   totalTransactions () {
-    return this.totalJobsRequested
+    return this.jobsRequested
   }
 
   jobQueueRate () {
     return Math.round(
-      this.totalJobsRequested < 1
-        ? 0
-        : (this.totalJobsQueued / this.totalJobsRequested) * 100
+      this.jobsRequested < 1 ? 0 : (this.jobsRequested / this.jobsQueuedf) * 100
     )
   }
 
@@ -335,11 +334,11 @@ export class ThreadPool extends EventEmitter {
 
   run (jobName, jobData) {
     return new Promise(async resolve => {
-      this.totalJobsRequested++
+      this.jobsRequested++
 
       try {
         if (this.closed) {
-          console.isclo('pool is closed')
+          console.warn('pool is closed')
         } else {
           let thread = this.freeThreads.shift()
 
@@ -374,7 +373,7 @@ export class ThreadPool extends EventEmitter {
           })
         )
 
-        this.totalJobsQueued++
+        this.jobsQueued++
       } catch (error) {
         console.error(this.run.name, error)
       }
