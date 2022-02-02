@@ -46,7 +46,7 @@ let isSwitch = config.isSwitch || false
  *
  * @returns
  */
-function getLocalAddress () {
+function getLocalAddress() {
   const interfaces = os.networkInterfaces()
   const addresses = []
   for (var k in interfaces) {
@@ -77,7 +77,7 @@ const _url = (proto, host, port) =>
  *
  * @returns {Promise<string>} url
  */
-async function resolveServiceUrl () {
+async function resolveServiceUrl() {
   const dns = Dns()
   let url
 
@@ -138,13 +138,12 @@ async function resolveServiceUrl () {
      * @param {number} retries number of query attempts
      * @returns
      */
-    function runQuery (retries = 0) {
+    function runQuery(retries = 0) {
       if (retries > MAXRETRIES) {
         console.warn('primary switch unresponsive: backup taking over')
         activateBackup = true
         return
       }
-      //console.info('asking for', SERVICENAME, 'retries', retries)
 
       // query the service name
       dns.query({
@@ -176,14 +175,14 @@ async function resolveServiceUrl () {
  * Set callback for uplink.
  * @param {function():Promise<void>} callback
  */
-export function onUplinkMessage (callback) {
+export function onUplinkMessage(callback) {
   uplinkCallback = callback
 }
 
 /**
  * server sets uplink host
  */
-export function setUplinkUrl (uplinkUrl) {
+export function setUplinkUrl(uplinkUrl) {
   serviceUrl = uplinkUrl
   ws = null // trigger reconnect
 }
@@ -206,7 +205,7 @@ export function setUplinkUrl (uplinkUrl) {
  *  models:import('../../../domain/model-factory').ModelFactory
  * }} [serviceInfo]
  */
-export async function connect (serviceInfo = {}) {
+export async function connect(serviceInfo = {}) {
   broker = serviceInfo.broker
   models = serviceInfo.models
   console.info(connect.name, serviceInfo)
@@ -222,13 +221,13 @@ const handshake = {
   pid: process.pid,
   address: getLocalAddress()[0],
   url: `${PROTOCOL}://${HOST}:${PORT}`,
-  serialize () {
+  serialize() {
     return JSON.stringify({
       ...this,
       models: models?.getModelSpecs().map(spec => spec.modelName) || []
     })
   },
-  validate (msg) {
+  validate(msg) {
     if (msg) {
       const valid = msg.proto === this.proto
       console.assert(valid, `invalid msg ${msg}`)
@@ -236,7 +235,7 @@ const handshake = {
     }
     return false
   },
-  isBackupSwitch (msg) {
+  isBackupSwitch(msg) {
     return msg.isBackupSwitch === true
   }
 }
@@ -245,7 +244,7 @@ const handshake = {
  *
  * @param {WebSocket} ws
  */
-function startHeartBeat () {
+function startHeartBeat() {
   let receivedPong = true
 
   ws.addListener('pong', function () {
@@ -287,7 +286,7 @@ function startHeartBeat () {
  * @param {import('../../../domain/event-broker').EventBroker} broker
  * @param {{allowMultiple:boolean, once:boolean}} [options]
  */
-export async function subscribe (eventName, callback, options = {}) {
+export async function subscribe(eventName, callback, options = {}) {
   try {
     if (broker) {
       broker.on(eventName, callback, options)
@@ -307,7 +306,7 @@ export async function subscribe (eventName, callback, options = {}) {
 /**
  *
  */
-async function _connect () {
+async function _connect() {
   if (!ws) {
     if (!serviceUrl) serviceUrl = await resolveServiceUrl()
     console.info(_connect.name, 'switch', serviceUrl)
@@ -348,14 +347,14 @@ async function _connect () {
 /**
  *
  */
-async function reconnect () {
+async function reconnect() {
   serviceUrl = null
   ws = null
   await _connect()
   if (!ws) setTimeout(reconnect, 60000)
 }
 
-function format (event) {
+function format(event) {
   if (event instanceof ArrayBuffer) {
     // binary frame
     const view = new DataView(event)
@@ -371,7 +370,7 @@ function format (event) {
  * @param {object} event
  * @returns
  */
-function send (event) {
+function send(event) {
   if (ws?.readyState) {
     ws.send(format(event))
     return
@@ -384,7 +383,7 @@ function send (event) {
  * @param {object} event
  * @returns
  */
-export async function publish (event) {
+export async function publish(event) {
   try {
     if (!event) {
       console.error(publish.name, 'no event provided')

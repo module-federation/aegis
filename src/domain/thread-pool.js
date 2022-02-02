@@ -408,12 +408,7 @@ const ThreadPoolFactory = (() => {
   let threadPools = new Map()
 
   function createThreadPool(modelName, options, waitingJobs = []) {
-    console.debug({
-      func: createThreadPool.name,
-      modelName,
-      waitingJobs,
-      options
-    })
+    console.debug({ fn: createThreadPool.name, modelName })
 
     try {
       const pool = new ThreadPool({
@@ -427,7 +422,7 @@ const ThreadPoolFactory = (() => {
       threadPools.set(modelName, pool)
       return pool
     } catch (e) {
-      console.error(createThreadPool.name)
+      console.error(createThreadPool.name, e)
     }
   }
 
@@ -477,7 +472,7 @@ const ThreadPoolFactory = (() => {
   function reload(poolName) {
     return new Promise((resolve, reject) => {
       const pool = threadPools.get(poolName)
-      if (!pool) reject('no such pool', poolName)
+      if (!pool) reject('no such pool')
 
       return pool
         .close()
@@ -490,7 +485,7 @@ const ThreadPoolFactory = (() => {
             .open()
             .bumpDeployCount()
             .notify(poolOpen)
-          resolve()
+          resolve(pool)
         })
         .catch(e => reject(reload.name, e))
     }).catch(console.error)
@@ -517,7 +512,7 @@ const ThreadPoolFactory = (() => {
         .drain()
         .then(pool => pool.stopThreads())
         .then(pool => resolve(threadPools.delete(pool)))
-        .catch(e => reject(e))
+        .catch(reject)
     }).catch(console.error)
   }
 
