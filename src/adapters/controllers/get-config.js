@@ -2,7 +2,7 @@
 
 function getResourceName (httpRequest) {
   if (/threads/i.test(httpRequest.query.details)) return 'Thread Pools'
-  if (/data/i.test(httpRequest.query.details)) return 'Datasources'
+  if (/data/i.test(httpRequest.query.details)) return 'Data Sources'
   return 'Model Specifications'
 }
 
