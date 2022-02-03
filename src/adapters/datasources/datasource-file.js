@@ -16,9 +16,7 @@ export class DataSourceFile extends DataSourceMemory {
   }
 
   getFilePath () {
-    return dirPath
-      ? path.resolve(dirPath, `${this.name}.json`)
-      : path.resolve(process.cwd(), `./public/${this.name}.json`)
+    return path.resolve(process.cwd(), 'public', `${this.name}.json`)
   }
   /**
    *
@@ -53,7 +51,7 @@ export class DataSourceFile extends DataSourceMemory {
       const dataStr = JSON.stringify([...this.dataSource], this.replace)
       fs.writeFileSync(this.file, dataStr)
     } catch (error) {
-      console.error(this.writeFile.name, error.message)
+      console.error({ fn: this.writeFile.name, file: this.file, error })
     }
   }
 
