@@ -3,7 +3,7 @@
 function getResourceName (httpRequest) {
   if (/threads/i.test(httpRequest.query.details)) return 'Thread Pools'
   if (/data/i.test(httpRequest.query.details)) return 'Datasources'
-  return 'Host Resource'
+  return 'Model Specifications'
 }
 
 function getContent (httpRequest, configs) {
@@ -23,8 +23,11 @@ function getContent (httpRequest, configs) {
       text += `<div style="margin-bottom: 12px;">
                     <table style="border: 0px; color:white">`
 
-      Object.keys(config).forEach(k => {
-        text += `<tr><td>${k}</td><td>${config[k]}</td></tr>`
+      Object.keys(config).forEach(key => {
+        let val = config[key]
+        if (typeof val === 'object')
+          val = `<pre>${JSON.stringify(val, null, 2)}</pre>`
+        text += `<tr><td>${key}</td><td>${val}</td></tr>`
       })
 
       text += '</table></div>'
