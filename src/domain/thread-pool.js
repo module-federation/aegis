@@ -126,6 +126,13 @@ function postJob ({ pool, jobName, jobData, thread, cb }) {
   }).catch(console.error)
 }
 
+/**
+ * Contains threads, queued jobs and stats for a given `model`.
+ * Start, stop, observe threads and expose pool stats. Increase
+ * capacity on demand as needed up to max threads. when requested,
+ * prevent pool from accepting new work and allow existing work to
+ * complete. Preserve pool stats across thread restarts.
+ */
 export class ThreadPool extends EventEmitter {
   constructor ({
     file,
@@ -231,50 +238,6 @@ export class ThreadPool extends EventEmitter {
     return this.freeThreads.length
   }
 
-  status () {
-    return {
-      name: this.name,
-      open: !this.closed,
-      max: this.maxPoolSize(),
-      min: this.minPoolSize(),
-      total: this.poolSize(),
-      waiting: this.jobQueueDepth(),
-      available: this.availThreadCount(),
-      //performance: this.freeThreads.map(t => t.worker.performance),
-      transactions: this.totalTransactions(),
-      queueRate: this.jobQueueRate(),
-      tolerance: this.maxQueuedJobs(),
-      reloads: this.deploymentCount()
-    }
-  }
-
-  /**
-   * Prevent new jobs from running by closing
-   * the pool, then for any jobs already running,
-   * wait for them to complete by listening for the
-   * 'noJobsRunning' event
-   */
-  async drain () {
-    console.debug('drain pool')
-
-    if (!this.closed) {
-      throw new Error('close pool first')
-    }
-
-    return new Promise((resolve, reject) => {
-      if (this.noJobsRunning()) {
-        resolve(this)
-      } else {
-        const timerId = setTimeout(reject, 4000)
-
-        this.once('noJobsRunning', () => {
-          clearTimeout(timerId)
-          resolve(this)
-        })
-      }
-    }).catch(console.error)
-  }
-
   deploymentCount () {
     return this.reloads
   }
@@ -302,16 +265,24 @@ export class ThreadPool extends EventEmitter {
     return Math.round((this.jobsQueued / this.jobsRequested) * 100)
   }
 
-  poolEmpty () {
-    return this.totalThreads === 0
-  }
-
-  capacityAvailable () {
-    return this.freeThreads.length > 0
-  }
-
   maxQueuedJobs () {
     return this.queueTolerance
+  }
+
+  status () {
+    return {
+      name: this.name,
+      open: !this.closed,
+      max: this.maxPoolSize(),
+      min: this.minPoolSize(),
+      total: this.poolSize(),
+      waiting: this.jobQueueDepth(),
+      available: this.availThreadCount(),
+      transactions: this.totalTransactions(),
+      queueRate: this.jobQueueRate(),
+      tolerance: this.maxQueuedJobs(),
+      reloads: this.deploymentCount()
+    }
   }
 
   async threadAlloc () {
@@ -323,6 +294,16 @@ export class ThreadPool extends EventEmitter {
       return this.startThread()
   }
 
+  /**@typedef {import('./use-cases').UseCaseService UseCaseService*/
+
+  /**
+   * Run a job (use case function) on an available thread or queue the job
+   * until one becomes available. Return the result asynchronously.
+   *
+   * @param {string} jobName name of a use case function in {@link UseCaseService}
+   * @param {*} jobData anything that can be cloned
+   * @returns {Promise<*>} anything that can be cloned
+   */
   run (jobName, jobData) {
     return new Promise(async resolve => {
       this.jobsRequested++
@@ -376,6 +357,42 @@ export class ThreadPool extends EventEmitter {
     return this
   }
 
+  /**
+   * Prevent new jobs from running by closing
+   * the pool, then for any jobs already running,
+   * wait for them to complete by listening for the
+   * 'noJobsRunning' event
+   */
+  async drain () {
+    console.debug('drain pool')
+
+    if (!this.closed) {
+      throw new Error('close pool first')
+    }
+
+    return new Promise((resolve, reject) => {
+      if (this.noJobsRunning()) {
+        resolve(this)
+      } else {
+        const timerId = setTimeout(reject, 4000)
+
+        this.once('noJobsRunning', () => {
+          clearTimeout(timerId)
+          resolve(this)
+        })
+      }
+    }).catch(console.error)
+  }
+
+  /**
+   * Stop all threads. If existing threads are stopped immediately
+   * before new threads are started, it can result in a segmentation
+   * fault or bus abort, at least on Apple silicon. It seems there
+   * is shared memory between threads (or v8 isolates) that is being
+   * incorrectly freed.
+   *
+   * @returns {ThreadPool}
+   */
   async stopThreads () {
     try {
       const kill = this.freeThreads.splice(0, this.freeThreads.length)
@@ -393,6 +410,9 @@ export class ThreadPool extends EventEmitter {
   }
 }
 
+/**
+ * Create, reload, observe, destroy thread pools.
+ */
 const ThreadPoolFactory = (() => {
   /**@type {Map<string, ThreadPool>} */
   let threadPools = new Map()
@@ -454,14 +474,16 @@ const ThreadPoolFactory = (() => {
   }
 
   /**
-   * This is a hot reload. Drain the pool,
-   * add new workers, stop the old ones
+   * This is the hot reload. Drain the pool,
+   * stop the existing threads & start new
+   * ones, which will have the latest code
    * @param {string} poolName i.e. modelName
    * @returns {Promise<ThreadPool>}
    */
   function reload (poolName) {
     return new Promise((resolve, reject) => {
       const pool = threadPools.get(poolName)
+
       if (!pool) reject('no such pool')
 
       return pool
@@ -489,7 +511,7 @@ const ThreadPoolFactory = (() => {
     }
   }
 
-  function dispose (poolName) {
+  function destroy (poolName) {
     return new Promise((resolve, reject) => {
       console.debug('dispose pool', poolName)
 
@@ -524,7 +546,7 @@ const ThreadPoolFactory = (() => {
     reload,
     status,
     listen,
-    dispose
+    destroy
   })
 })()
 

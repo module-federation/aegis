@@ -98,6 +98,7 @@ export const UseCases = {
   hotReload
 }
 
+/**@typedef */
 export function UseCaseService (modelName = null) {
   if (modelName) {
     return {
