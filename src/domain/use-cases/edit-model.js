@@ -35,14 +35,32 @@ export default function makeEditModel ({
   // Add an event that can be used to edit this model
   broker.on(domainEvents.editModel(modelName), editModel)
 
+  /**
+   * Note: Unless the worker hanlding this request created this model instance,
+   * it won't be able to find it in its memory. Therefore, because another thread
+   * might have created it, the main thread, which has access to all models and
+   * model instances, looks it up in its memory and hands it to the worker. The
+   * worker then has to rehydrate the object, since anything crossing a thread
+   * boundary is cloned and de/serialized.
+   *
+   *
+   * @param {*} input
+   * @returns
+   */
   async function editModel (input) {
-    const { id, changes, command } = input
-
     if (isMainThread) {
-      console.log('sending to thread')
+      const { id, changes, command } = input
+
+      // let main thread find it, might not exist in worker
+      const model = await repository.find(id)
+
+      if (!model) {
+        throw new Error('no such id')
+      }
 
       const updated = await threadpool.run(editModel.name, {
         id,
+        model,
         changes,
         command
       })
@@ -51,19 +69,23 @@ export default function makeEditModel ({
 
       return repository.save(id, updated)
     } else {
-      console.log('thread executing')
-
-      // let the main thread lookup;
-      // don't do it again in the worker
-      const model = await repository.find(id)
-
-      if (!model) {
-        return new AppError('no such id')
-      }
-
       try {
+        // model has been found by main thread
+        const { id, changes, command, model } = input
+
+        // we need to unmarshal to use
+        const hydratedModel = models.loadModel(
+          broker,
+          repository,
+          model,
+          modelName
+        )
+
+        // save it in case this thread didn't create it
+        await repository.save(id, hydratedModel)
+
         // only the worker does the update
-        const updated = models.updateModel(model, changes)
+        const updated = models.updateModel(hydratedModel, changes)
         console.debug('updated')
 
         await repository.save(id, updated)
@@ -88,6 +110,7 @@ export default function makeEditModel ({
               permission: 'write'
             })
           )
+
           if (result.ok) {
             return result.data
           }
