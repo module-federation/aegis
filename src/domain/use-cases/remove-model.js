@@ -6,7 +6,7 @@ import AppError from '../util/app-error'
 /**
  * @typedef {Object} ModelParam
  * @property {String} modelName
- * @property {import('../domain').ModelFactory} models
+ * @property {import('../model-factory').ModelFactory} models
  * @property {import('../datasource').default} repository
  * @property {import('../event-broker').EventBroker} broker
  * @property {...Function} handlers
@@ -34,33 +34,46 @@ export default function removeModelFactory ({
   const eventName = models.getEventName(eventType, modelName)
   handlers.forEach(handler => broker.on(eventName, handler))
 
-  return async function removeModel (id) {
+  return async function removeModel (input) {
     if (isMainThread) {
-      const result = await threadpool.run(removeModel.name, id)
+      const model = await repository.find(input.id)
+      if (!model) {
+        throw new Error('no such id')
+      }
+      const result = await threadpool.run(removeModel.name, {
+        id: input.id,
+        model
+      })
       if (result.hasError) throw new Error(result.message)
       return result
     } else {
-      const model = await repository.find(id)
-      if (!model) {
-        return AppError('no such id')
-      }
+      const hydratedModel = models.loadModel(
+        broker,
+        repository,
+        input.model,
+        modelName
+      )
 
-      const deleted = models.deleteModel(model)
-      const event = await models.createEvent(eventType, modelName, deleted)
+      try {
+        const deleted = models.deleteModel(hydratedModel)
+        const event = await models.createEvent(eventType, modelName, deleted)
 
-      const [obsResult, repoResult] = await Promise.allSettled([
-        broker.notify(event.eventName, event),
-        repository.delete(id)
-      ])
+        const [obsResult, repoResult] = await Promise.allSettled([
+          broker.notify(event.eventName, event),
+          repository.delete(input.id)
+        ])
 
-      if (obsResult.status === 'rejected') {
-        if (repoResult.status === 'fulfilled') {
-          await repository.save(id, model)
+        if (obsResult.status === 'rejected') {
+          if (repoResult.status === 'fulfilled') {
+            await repository.save(input.id, hydratedModel)
+          }
+          return new AppError('model not deleted', obsResult.reason)
         }
-        throw new Error('model not deleted', obsResult.reason)
-      }
 
-      return model
+        return hydratedModel
+      } catch (error) {
+        return AppError(error)
+      }
     }
   }
 }
