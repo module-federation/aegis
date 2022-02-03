@@ -48,8 +48,9 @@ export default function makeHotReload ({ models, broker } = {}) {
           await ThreadPoolFactory.reload(model)
 
           return resolve({
-            status: `threadpool up for ${model}`,
-            modelName: model
+            fn: hotReload.name,
+            in: { modelName: model },
+            out: `threadpool up for ${model}`
           })
         } else {
           await ThreadPoolFactory.reloadAll()
@@ -67,8 +68,9 @@ export default function makeHotReload ({ models, broker } = {}) {
               async poolName => await ThreadPoolFactory.dispose(poolName)
             )
           return resolve({
-            status: `threadpools restarted for all models`,
-            modelName: model
+            fn: hotReload.name,
+            in: { modelName: model },
+            out: `threadpools restarted for all models`
           })
         }
       } catch (error) {
