@@ -1,4 +1,6 @@
-export default function AegisError (error) {
+'use strict'
+
+export default function AppError (error) {
   let name, message, stack
   if (error instanceof Error) {
     name = error.name

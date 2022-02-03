@@ -4,7 +4,7 @@ import executeCommand from './execute-command'
 import async from '../util/async-error'
 import domainEvents from '../domain-events'
 import { isMainThread } from 'worker_threads'
-import AegisError from '../util/aegis-error'
+import AppError from '../util/app-error'
 
 /**
  * @typedef {Object} ModelParam
@@ -58,7 +58,7 @@ export default function makeEditModel ({
       const model = await repository.find(id)
 
       if (!model) {
-        return new AegisError('no such id')
+        return new AppError('no such id')
       }
 
       try {
@@ -96,7 +96,7 @@ export default function makeEditModel ({
         return await repository.find(id)
       } catch (e) {
         console.error(editModel.name, e)
-        return AegisError(e)
+        return AppError(e)
       }
     }
   }

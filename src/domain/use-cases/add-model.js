@@ -2,7 +2,7 @@
 
 import { isMainThread } from 'worker_threads'
 import domainEvents from '../domain-events'
-import AegisError from '../util/aegis-error'
+import AppError from '../util/app-error'
 
 /**
  * @typedef {Object} dependencies injected dependencies
@@ -46,7 +46,7 @@ export default function makeAddModel ({
         model = await models.createModel(broker, repository, modelName, input)
         await repository.save(model.getId(), model)
       } catch (error) {
-        return AegisError(error)
+        return AppError(error)
       }
 
       try {
@@ -55,7 +55,7 @@ export default function makeAddModel ({
       } catch (error) {
         // remote the object if not processed
         await repository.delete(model.getId())
-        return AegisError(error)
+        return AppError(error)
       }
 
       // Return the latest changes

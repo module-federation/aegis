@@ -1,7 +1,7 @@
 'use strict'
 
 import { isMainThread } from 'worker_threads'
-import AegisError from '../util/aegis-error'
+import AppError from '../util/app-error'
 
 /**
  * @typedef {Object} ModelParam
@@ -42,7 +42,7 @@ export default function removeModelFactory ({
     } else {
       const model = await repository.find(id)
       if (!model) {
-        return AegisError('no such id')
+        return AppError('no such id')
       }
 
       const deleted = models.deleteModel(model)
