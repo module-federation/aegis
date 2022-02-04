@@ -44,7 +44,10 @@
         "enabled": true,
         "heartbeat": 30000,
         "debug": false,
-        "uplink": null
+        "uplink": null,
+        "host": "127.0.0.1",
+        "port": 80,
+        "protocol": "ws"
       },
       "MeshLink": {
         "desc": "Fast UDP-based, peer-to-peer mesh with shared Redis cache.",

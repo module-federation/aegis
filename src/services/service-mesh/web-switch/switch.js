@@ -45,6 +45,7 @@ export function attachServer (server) {
 
   function statusReport () {
     return JSON.stringify({
+      eventName: 'meshStatusReport',
       servicePlugin: SERVICENAME,
       uptimeMinutes: uptime(),
       messagesSent,

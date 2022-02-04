@@ -345,7 +345,7 @@ export default function DistributedCache ({
    */
   function start () {
     const modelSpecs = models.getModelSpecs()
-    const localModels = modelSpecs.map(m => m.modelName)
+    const localModels = modelSpecs.map(m => m.modelName.toUpperCase())
     const remoteModels = [
       ...new Set( // deduplicate
         modelSpecs
@@ -354,9 +354,10 @@ export default function DistributedCache ({
             Object.keys(m.relations)
               .filter(
                 // filter out existing local models
-                k => !localModels.includes(m.relations[k].modelName)
+                k =>
+                  !localModels.includes(m.relations[k].modelName.toUpperCase())
               )
-              .map(k => m.relations[k].modelName)
+              .map(k => m.relations[k].modelName.toUpperCase())
           )
           .reduce((a, b) => a.concat(b), [])
       )

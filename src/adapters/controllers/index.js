@@ -10,7 +10,8 @@ const {
   loadModelSpecs,
   listModels,
   removeModels,
-  hotReload
+  hotReload,
+  registerEvents
 } = UseCases
 
 import postModelFactory from './post-model'
@@ -39,6 +40,7 @@ export const getConfig = () => getConfigFactory(listConfigs())
 export const initCache = () => {
   const label = '\ntime to load cache'
   const specs = loadModelSpecs()
+  registerEvents()
 
   async function loadModelInstances () {
     console.time(label)

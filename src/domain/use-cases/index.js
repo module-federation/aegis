@@ -95,7 +95,8 @@ export const UseCases = {
   loadModelSpecs,
   executeCommand,
   listConfigs,
-  hotReload
+  hotReload,
+  registerEvents
 }
 
 /**@typedef */

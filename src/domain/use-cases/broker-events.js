@@ -25,9 +25,11 @@ const worker = new BroadcastChannel('workers')
  */
 export default function brokerEvents (broker, datasources, models) {
   if (isMainThread) {
-    worker.onmessage = eventData =>
+    console.debug({ fn: brokerEvents.name })
+    worker.onmessage = eventData => {
+      console.debug({ fn: worker.onmessage.name, eventData })
       broker.notify(eventData.eventName, eventData)
-
+    }
     const svcMshPub = event => ServiceMesh.publish(event)
     const svcMshSub = (event, cb) => ServiceMesh.subscribe(event, cb)
 
@@ -54,6 +56,7 @@ export default function brokerEvents (broker, datasources, models) {
 
     // start mesh regardless
     ServiceMesh.connect({ models, broker }).then(() => {
+      console.debug('service mesh connecting')
       manager.start()
       forwardEvents({ broker, models, publish, subscribe })
     })
@@ -79,6 +82,9 @@ export default function brokerEvents (broker, datasources, models) {
       }
     })
   } else {
-    broker.on(/.*/, eventData => worker.postMessage(eventData))
+    broker.on(/.*/, eventData => {
+      console.debug({ fn: broker.on.name, eventData })
+      worker.postMessage(eventData)
+    })
   }
 }
