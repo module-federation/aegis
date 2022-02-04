@@ -52,7 +52,7 @@ function getLocalAddress () {
   for (var k in interfaces) {
     for (var k2 in interfaces[k]) {
       const address = interfaces[k][k2]
-      if (address.family === 'IPv4' && !address.internal) {
+      if (!address.internal) {
         addresses.push(address.address)
       }
     }
@@ -219,8 +219,7 @@ const handshake = {
   proto: SERVICENAME,
   role: 'node',
   pid: process.pid,
-  address: getLocalAddress()[0],
-  url: `${PROTOCOL}://${HOST}:${PORT}`,
+  addresses: [...getLocalAddress()],
   serialize () {
     return JSON.stringify({
       ...this,
