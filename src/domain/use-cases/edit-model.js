@@ -86,8 +86,6 @@ export default function makeEditModel ({
 
         // only the worker does the update
         const updated = models.updateModel(hydratedModel, changes)
-        console.debug('updated')
-
         await repository.save(id, updated)
 
         const event = await models.createEvent(eventType, modelName, {
@@ -97,26 +95,25 @@ export default function makeEditModel ({
 
         try {
           await broker.notify(event.eventName, event)
+
+          if (command) {
+            const result = await async(
+              executeCommand({
+                model: updated,
+                command,
+                permission: 'write'
+              })
+            )
+
+            if (result.ok) {
+              return result.data
+            }
+          }
+          return await repository.find(id)
         } catch (e) {
           console.error(editModel.name, e)
           await repository.save(id, model)
         }
-
-        if (command) {
-          const result = await async(
-            executeCommand({
-              model: updated,
-              command,
-              permission: 'write'
-            })
-          )
-
-          if (result.ok) {
-            return result.data
-          }
-        }
-
-        return await repository.find(id)
       } catch (e) {
         console.error(editModel.name, e)
         return AppError(e)

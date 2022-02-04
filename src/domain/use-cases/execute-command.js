@@ -3,8 +3,6 @@
 import checkAcl from '../util/check-acl'
 import async from '../util/async-error'
 import domainEvents from '../domain-events'
-import { isMainThread } from 'worker_threads'
-import ThreadPoolFactory from '../thread-pool'
 
 const commandType = {
   /**
