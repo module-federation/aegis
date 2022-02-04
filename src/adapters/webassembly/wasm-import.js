@@ -19,7 +19,7 @@ const broker = EventBrokerFactory.getInstance()
  * @param {"model"|"service"|"adapter"} type
  * @returns
  */
-export async function importWebAssembly (remoteEntry, type = 'model') {
+export async function importWebAssembly (remoteEntry) {
   const startTime = Date.now()
 
   // Check if we support streaming instantiation
@@ -82,7 +82,7 @@ export async function importWebAssembly (remoteEntry, type = 'model') {
   // compile with --explicitStart
   wasm.instance.exports._start()
 
-  if (type === 'model') return wrapWasmModelSpec(wasm)
-  if (type === 'adapter') return wrapWasmAdapter(wasm)
-  if (type === 'service') return wrapWasmService(wasm)
+  if (remoteEntry.type === 'model') return wrapWasmModelSpec(wasm)
+  if (remoteEntry.type === 'adapter') return wrapWasmAdapter(wasm)
+  if (remoteEntry.type === 'service') return wrapWasmService(wasm)
 }
