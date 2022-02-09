@@ -4,11 +4,14 @@ const requestCert = true
 const calpn = 'echo'
 
 exports.quicServer = function (securityContext) {
+  const { key, cert, ca } = securityContext
+
   const server = createSocket({
-    // Bind to UDP port
+    // Bind to local UDP port 5678
     endpoint: { port: 5678 },
-    // Default config for QuicServerSession instances
-    server: { ...securityContext, requestCert, calpn }
+    // Create the default configuration for new
+    // QuicServerSession instances
+    server: { key, cert, ca, requestCert, calpn }
   })
 
   server.listen()
@@ -22,7 +25,9 @@ exports.quicServer = function (securityContext) {
       // Echo server!
       stream.pipe(stream)
     })
+
     const stream = session.openStream()
+
     stream.end('hello from the server')
   })
 }

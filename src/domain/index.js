@@ -169,7 +169,8 @@ import {
   importRemoteAdapters,
   importModelCache,
   importAdapterCache,
-  importServiceCache
+  importServiceCache,
+  importRemoteWorkers
 } from './import-remotes'
 
 /**
@@ -203,7 +204,7 @@ const deleteEvent = model => ({
  * @param {{[x: string]:Function}} adapters
  * @param {boolean} isCached
  */
-function register (model, services, adapters, isCached = false) {
+function register (model, services, adapters, workers, isCached = false) {
   const serviceAdapters = bindAdapters(model.ports, adapters, services)
 
   const dependencies = {
@@ -216,6 +217,7 @@ function register (model, services, adapters, isCached = false) {
     modelName: model.modelName.toUpperCase(),
     dependencies,
     factory: model.factory(dependencies),
+    worker: workers[model.modelName], 
     isCached
   })
 
@@ -245,9 +247,9 @@ function register (model, services, adapters, isCached = false) {
  * @param {*} services - services on which the model depends
  * @param {*} adapters - adapters for talking to the services
  */
-async function importModels (remoteEntries, services, adapters) {
+async function importModels (remoteEntries, services, adapters, workers) {
   const models = await importRemoteModels(remoteEntries)
-  models.forEach(model => register(model, services, adapters))
+  models.forEach(model => register(model, services, adapters, workers))
 }
 
 let remotesConfig
@@ -261,8 +263,9 @@ let localOverrides = {}
 export async function importRemotes (remoteEntries, overrides = {}) {
   const services = await importRemoteServices(remoteEntries)
   const adapters = await importRemoteAdapters(remoteEntries)
+  const workers = await importRemoteWorkers(remoteEntries)
 
-  console.info({ services, adapters, overrides })
+  console.info({ services, adapters, overrides, workers })
 
   await importModels(
     remoteEntries,
@@ -273,7 +276,8 @@ export async function importRemotes (remoteEntries, overrides = {}) {
     {
       ...adapters,
       ...overrides
-    }
+    },
+    workers
   )
 
   remotesConfig = remoteEntries

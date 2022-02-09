@@ -4,10 +4,10 @@ import { EventEmitter } from 'stream'
 import { Worker } from 'worker_threads'
 import domainEvents from './domain-events'
 
-const { poolOpen, poolClose } = domainEvents
+const { poolOpen, poolClose, poolDrain } = domainEvents
 const DEFAULT_THREADPOOL_MIN = 1
 const DEFAULT_THREADPOOL_MAX = 2
-const DEFAULT_QUEUE_TOLERANCE = 25
+const DEFAULT_JOBQUEUE_TOLERANCE = 25
 
 /**
  * @typedef {object} Thread
@@ -70,19 +70,11 @@ function newThread ({ pool, file, workerData }) {
         createdAt: Date.now(),
         async stop () {
           await kill(this)
-        },
-        toJSON () {
-          return {
-            ...this,
-            createdAt: new Date(this.createdAt).toUTCString(),
-            poolStatus: pool.status()
-          }
         }
       }
       setTimeout(reject, 10000)
 
       worker.once('message', msg => {
-        console.log('aegis up:', msg)
         pool.emit('aegis-up')
         resolve(thread)
       })
@@ -94,6 +86,9 @@ function newThread ({ pool, file, workerData }) {
 }
 
 /**
+ * Post a job to a worker thread if available, otherwise
+ * wait until one is. An optional callback can be used by
+ * the caller to pass an upstream promise and return.
  *
  * @param {{
  *  pool:ThreadPool,
@@ -149,7 +144,7 @@ export class ThreadPool extends EventEmitter {
     this.workerData = workerData
     this.maxThreads = options.maxThreads || DEFAULT_THREADPOOL_MAX
     this.minThreads = options.minThreads || DEFAULT_THREADPOOL_MIN
-    this.queueTolerance = options.queueTolerance || DEFAULT_QUEUE_TOLERANCE
+    this.queueTolerance = options.queueTolerance || DEFAULT_JOBQUEUE_TOLERANCE
     this.closed = false
     this.options = options
     this.reloads = 0
@@ -265,7 +260,7 @@ export class ThreadPool extends EventEmitter {
     return Math.round((this.jobsQueued / this.jobsRequested) * 100)
   }
 
-  maxQueuedJobs () {
+  maxJobQueueRate () {
     return this.queueTolerance
   }
 
@@ -280,7 +275,7 @@ export class ThreadPool extends EventEmitter {
       available: this.availThreadCount(),
       transactions: this.totalTransactions(),
       queueRate: this.jobQueueRate(),
-      tolerance: this.maxQueuedJobs(),
+      tolerance: this.maxJobQueueRate(),
       reloads: this.deploymentCount()
     }
   }
@@ -289,7 +284,7 @@ export class ThreadPool extends EventEmitter {
     if (
       this.totalThreads === 0 ||
       (this.poolSize() < this.maxPoolSize() &&
-        this.jobQueueRate() > this.maxQueuedJobs())
+        this.jobQueueRate() > this.maxJobQueueRate())
     )
       return this.startThread()
   }
@@ -352,8 +347,8 @@ export class ThreadPool extends EventEmitter {
     })
   }
 
-  notify (msg) {
-    this.emit(`pool ${this.name} ${msg}`)
+  notify (fn) {
+    this.emit(`${fn(this.name)}`, `pool: ${this.name}: ${fn.name}`)
     return this
   }
 
@@ -364,10 +359,10 @@ export class ThreadPool extends EventEmitter {
    * 'noJobsRunning' event
    */
   async drain () {
-    console.debug('drain pool')
+    this.emit(poolDrain(this.name))
 
     if (!this.closed) {
-      throw new Error('close pool first')
+      throw new Error('close pool first', this.name)
     }
 
     return new Promise((resolve, reject) => {
@@ -417,8 +412,8 @@ const ThreadPoolFactory = (() => {
   /**@type {Map<string, ThreadPool>} */
   let threadPools = new Map()
 
-  function createThreadPool (modelName, options, waitingJobs = []) {
-    console.debug({ fn: createThreadPool.name, modelName })
+  function createThreadPool (modelName, options) {
+    console.debug({ fn: createThreadPool.name, modelName, options })
 
     try {
       const pool = new ThreadPool({
@@ -441,13 +436,13 @@ const ThreadPoolFactory = (() => {
   }
 
   /**
-   * returns existing or creates new threadpool for `moduleName`
+   * Returns existing or creates new threadpool for `moduleName`
    * @param {string} modelName
    * @param {{preload:boolean}} options preload means we return the actual
-   * threadpool instead of the facade, which will load the remotes at startup
+   * threadpool instead of a facade, which will load the remotes at startup
    * instead of loading them on the first request for `modelName`. The default
    * is false, so that startup is faster and only the minimum number of threads
-   * and remote impo
+   * and remote imporklklkkl
    */
   function getThreadPool (modelName, options = { preload: false }) {
     function getPool (modelName, options) {
@@ -506,6 +501,17 @@ const ThreadPoolFactory = (() => {
   async function reloadAll () {
     try {
       await Promise.all([...threadPools].map(async ([pool]) => reload(pool)))
+
+      const pools = ThreadPoolFactory.listPools().map(pool =>
+        pool.toUpperCase()
+      )
+      const allModels = models
+        .getModelSpecs()
+        .map(spec => spec.modelName.toUpperCase())
+
+      pools
+        .filter(poolName => !allModels.includes(poolName))
+        .forEach(async poolName => await ThreadPoolFactory.destroy(poolName))
     } catch (e) {
       console.error(reloadAll.name, e)
     }
@@ -528,7 +534,12 @@ const ThreadPoolFactory = (() => {
     }).catch(console.error)
   }
 
-  function status () {
+  function status (poolName = null) {
+    if (poolName) {
+      threadPools.get(poolName).status()
+      return
+    }
+
     const reports = []
     threadPools.forEach(pool => reports.push(pool.status()))
     return reports

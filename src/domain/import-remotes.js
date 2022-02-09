@@ -1,6 +1,6 @@
 'use strict'
 
-/**`
+/**
  * @param {Promise<import('.').ModelSpecification[]>} remoteEntries
  * @param {"model"|"adapter"|"service"} type
  * @returns {Promise<import('.').ModelSpecification[]>}
@@ -54,4 +54,9 @@ export async function importServiceCache (remoteEntries) {
 export async function importAdapterCache (remoteEntries) {
   const result = await importFederatedModules(remoteEntries, 'adapter-cache')
   return parse(result).toObject()
+}
+
+export async function importRemoteWorkers (remoteEntries) {
+  const result = await importFederatedModules(remoteEntries, 'worker')
+  return parse(result).toArray()
 }

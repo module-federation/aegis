@@ -4,7 +4,8 @@ import domainEvents from '../domain-events'
 import ThreadPoolFactory from '../thread-pool.js'
 
 /**
- * @typedef {Object} dependencies injected dependencies
+ * @typedef {object} factoryParam
+ * @property {Object} dependencies injected dependencies
  * @property {String} modelName - name of the domain model
  * @property {import('../model-factory').ModelFactory} models - model factory
  * @property {import('../datasource').default } repository - model datasource adapter
@@ -21,22 +22,32 @@ import ThreadPoolFactory from '../thread-pool.js'
 
 let inProgress = false
 
+/**
+ *
+ * @param {factoryParam} param0
+ * @returns
+ */
 export default function makeHotReload ({ models, broker } = {}) {
   // Add an event whose callback invokes this factory.
   broker.on(domainEvents.hotReload(), hotReload)
 
+  const events = [...domainEvents].filter(e => /^pool.*/.test(e))
+  models
+    .getModelSpecs()
+    .map(spec => spec.modelName)
+    .forEach(pool =>
+      events.forEach(event =>
+        ThreadPoolFactory.listen(
+          data => broker.notify(data.eventName, data),
+          pool,
+          event(pool)
+        )
+      )
+    )
+
   /**
-   *
-   * @param {{
-   *  modelName:string
-   *  remoteEntry:import('../../../webpack/remote-entries-type')
-   *  sendMsg: function(string)
-   * }} param0
-   * @returns
    */
   async function hotReload (modelName) {
-    const model = modelName.toUpperCase()
-
     if (inProgress) {
       return { status: 'reload already in progress' }
     }
@@ -44,34 +55,12 @@ export default function makeHotReload ({ models, broker } = {}) {
 
     return new Promise(async resolve => {
       try {
-        if (model !== '*') {
-          await ThreadPoolFactory.reload(model)
-
-          return resolve({
-            fn: hotReload.name,
-            in: { modelName: model },
-            out: `threadpool up for ${model}`
-          })
+        if (modelName && modelName !== '*') {
+          await ThreadPoolFactory.reload(modelName)
+          return resolve(ThreadPoolFactory.status(modelName))
         } else {
           await ThreadPoolFactory.reloadAll()
-
-          const pools = ThreadPoolFactory.listPools().map(pool =>
-            pool.toUpperCase()
-          )
-          const allModels = models
-            .getModelSpecs()
-            .map(spec => spec.modelName.toUpperCase())
-
-          pools
-            .filter(poolName => !allModels.includes(poolName))
-            .forEach(
-              async poolName => await ThreadPoolFactory.dispose(poolName)
-            )
-          return resolve({
-            fn: hotReload.name,
-            in: { modelName: model },
-            out: `threadpools restarted for all models`
-          })
+          return resolve(ThreadPoolFactory.status())
         }
       } catch (error) {
         return resolve({ fn: hotReload.name, error })

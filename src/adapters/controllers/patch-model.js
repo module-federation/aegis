@@ -14,7 +14,6 @@ export default function patchModelFactory (editModel) {
 
       const model = await editModel({ id, changes, command })
 
-      console.debug(model)
       return {
         headers: {
           'Content-Type': 'application/json',

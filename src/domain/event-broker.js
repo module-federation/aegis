@@ -1,4 +1,4 @@
-/**
+                                                                                                                /**
  * typedef {import('./event').Event} Event
  * @typedef {import('.').Model} Model
  */

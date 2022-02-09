@@ -6,8 +6,7 @@ const domainEvents = {
   internalCacheResponse: modelName => `internalCacheResponse_${modelName}`,
   externalCacheResponse: modelName => `externalCacheResponse_${modelName}`,
   externalCrudEvent: eventName => `externalCrudEvent_${eventName}`,
-  cacheCrudSyncEvent: (modelName, instanceId) =>
-    `cacheCrudSyncEvent_${modelName}_${instanceId}`,
+  cacheSyncEvent: (modelName, id) => `s${modelName}_${id}`,
   cacheCreateEvent: modelName => `cacheCreateEvent_${modelName}`,
   cacheUpdateEvent: modelName => `cacheUpdateEvent_${modelName}`,
   unauthorizedCommand: modelName => `unauthorizedCommand_${modelName}`,
@@ -27,7 +26,8 @@ const domainEvents = {
   fromMain: eventName => `from_main_${eventName}`,
   hotReload: modelName => `hotReload_${modelName}`,
   poolOpen: modelName => `poolOpen_${modelName}`,
-  poolClose: modelName => `poolClose_${modelName}`
+  poolClose: modelName => `poolClose_${modelName}`,
+  poolDrain: modelName => `poolDrain_${modelName}`
 }
 
 export default domainEvents
