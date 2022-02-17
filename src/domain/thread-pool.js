@@ -23,24 +23,24 @@ const DEFAULT_JOBQUEUE_TOLERANCE = 25
  * @returns {Promise<number>}
  */
 function kill (thread) {
-  console.info('killing thread', thread.threadId)
-
   return new Promise((resolve, reject) => {
+    console.info('killing thread', thread.id)
+
     const timerId = setTimeout(async () => {
       try {
         const threadId = await thread.worker.terminate()
         console.warn('terminated thread', threadId)
-        resolve()
+        resolve(threadId)
       } catch (error) {
-        console.error(kill.name, error)
+        console.error({ fn: kill.name, error })
         reject(error)
       }
     }, 5000)
 
     thread.worker.once('exit', () => {
-      console.info('exiting', thread.threadId)
       clearTimeout(timerId)
-      resolve()
+      console.info('exiting', thread.id)
+      resolve(thread.id)
     })
 
     thread.worker.postMessage({ name: 'shutdown' })
@@ -66,7 +66,7 @@ function newThread ({ pool, file, workerData }) {
         file,
         pool,
         worker,
-        threadId: worker.threadId,
+        id: worker.threadId,
         createdAt: Date.now(),
         async stop () {
           await kill(this)
@@ -75,11 +75,11 @@ function newThread ({ pool, file, workerData }) {
       setTimeout(reject, 10000)
 
       worker.once('message', msg => {
-        pool.emit('aegis-up')
+        pool.emit('aegis-up', msg)
         resolve(thread)
       })
     } catch (error) {
-      console.error(newThread.name, error)
+      console.error({ fn: newThread.name, error })
       reject(error)
     }
   }).catch(console.error)
@@ -88,7 +88,7 @@ function newThread ({ pool, file, workerData }) {
 /**
  * Post a job to a worker thread if available, otherwise
  * wait until one is. An optional callback can be used by
- * the caller to pass an upstream promise and return.
+ * the caller to pass an upstream promise.
  *
  * @param {{
  *  pool:ThreadPool,
@@ -101,7 +101,7 @@ function newThread ({ pool, file, workerData }) {
  */
 function postJob ({ pool, jobName, jobData, thread, cb }) {
   return new Promise((resolve, reject) => {
-    thread.worker.once('message', async result => {
+    thread.worker.once('message', result => {
       if (pool.waitingJobs.length > 0) {
         pool.waitingJobs.shift()(thread)
       } else {
@@ -113,8 +113,7 @@ function postJob ({ pool, jobName, jobData, thread, cb }) {
       }
 
       if (cb) return resolve(cb(result))
-
-      resolve(result)
+      return resolve(result)
     })
     thread.worker.on('error', reject)
     thread.worker.postMessage({ name: jobName, data: jobData })
@@ -122,11 +121,18 @@ function postJob ({ pool, jobName, jobData, thread, cb }) {
 }
 
 /**
- * Contains threads, queued jobs and stats for a given `model`.
- * Start, stop, observe threads and expose pool stats. Increase
- * capacity on demand as needed up to max threads. when requested,
- * prevent pool from accepting new work and allow existing work to
- * complete. Preserve pool stats across thread restarts.
+ * Contains handles, queued jobs, metrics and settings for a collection of threads
+ * that support a common type of work, i.e. a functional domain (e.g. Order model),
+ * a non-functional quality (e.g. CPU-bound) or both.
+ *
+ * - Start and stop threads (and vice versa)
+ * - Track and expose pool metrics.
+ *   - total, max, min, free threads
+ *   - requested, running, waiting jobs
+ *   - lifetime stats: avg/h/l wait/run times by jobname, total jobs, avg jobs / sec
+ * - Increase pool capacity automatically as needed up to max threads.
+ * - Drain pool: i.e. prevent pool from accepting new work and allow existing
+ * jobs to complete.
  */
 export class ThreadPool extends EventEmitter {
   constructor ({
@@ -181,7 +187,7 @@ export class ThreadPool extends EventEmitter {
         workerData: this.workerData
       })
     } catch (error) {
-      console.error(this.startThread.name, error)
+      console.error({ fn: this.startThread.name, error })
     }
   }
 
@@ -282,7 +288,7 @@ export class ThreadPool extends EventEmitter {
 
   async threadAlloc () {
     if (
-      this.totalThreads === 0 ||
+      this.poolSize() === 0 ||
       (this.poolSize() < this.maxPoolSize() &&
         this.jobQueueRate() > this.maxJobQueueRate())
     )
@@ -313,7 +319,7 @@ export class ThreadPool extends EventEmitter {
             try {
               thread = await this.threadAlloc()
             } catch (error) {
-              console.error(run.name, error)
+              console.error({ fn: this.run.name, error })
             }
           }
 
@@ -362,7 +368,11 @@ export class ThreadPool extends EventEmitter {
     this.emit(poolDrain(this.name))
 
     if (!this.closed) {
-      throw new Error('close pool first', this.name)
+      throw new Error({
+        fn: this.drain.name,
+        msg: 'close pool first',
+        pool: this.name
+      })
     }
 
     return new Promise((resolve, reject) => {
@@ -399,19 +409,25 @@ export class ThreadPool extends EventEmitter {
       )
 
       return this
-    } catch (e) {
-      console.error(this.stopThreads.name, e)
+    } catch (error) {
+      console.error({ fn: this.stopThreads.name, error })
     }
   }
 }
 
 /**
- * Create, reload, observe, destroy thread pools.
+ * Create, reload, destroy, observe & report thread pools.
  */
 const ThreadPoolFactory = (() => {
-  /**@type {Map<string, ThreadPool>} */
+  /** @type {Map<string, ThreadPool>} */
   let threadPools = new Map()
 
+  /**
+   * Typical way to create a pool for use by a domain model
+   * @param {string} modelName named after model using it
+   * @param {{preload:boolean, waitingJobs:function(Thread)[]}} options
+   * @returns
+   */
   function createThreadPool (modelName, options) {
     console.debug({ fn: createThreadPool.name, modelName, options })
 
@@ -420,14 +436,13 @@ const ThreadPoolFactory = (() => {
         file: './dist/worker.js',
         name: modelName,
         workerData: { modelName },
-        waitingJobs,
         options
       })
 
       threadPools.set(modelName, pool)
       return pool
-    } catch (e) {
-      console.error(createThreadPool.name, e)
+    } catch (error) {
+      console.error({ fn: createThreadPool.name, error })
     }
   }
 
@@ -436,36 +451,32 @@ const ThreadPoolFactory = (() => {
   }
 
   /**
-   * Returns existing or creates new threadpool for `moduleName`
-   * @param {string} modelName
+   * Returns existing or creates new threadpool called `poolName`
+   * @param {string} poolName typically named after `modelName` it handles
    * @param {{preload:boolean}} options preload means we return the actual
    * threadpool instead of a facade, which will load the remotes at startup
    * instead of loading them on the first request for `modelName`. The default
-   * is false, so that startup is faster and only the minimum number of threads
-   * and remote imporklklkkl
+   * is `false`, so that startup is faster and only the minimum number of threads
+   * and remote imports run.
    */
-  function getThreadPool (modelName, options = { preload: false }) {
-    function getPool (modelName, options) {
-      if (threadPools.has(modelName)) {
-        return threadPools.get(modelName)
+  function getThreadPool (poolName, options = { preload: false }) {
+    function getPool (poolName, options) {
+      if (threadPools.has(poolName)) {
+        return threadPools.get(poolName)
       }
-      return createThreadPool(modelName, options)
+      return createThreadPool(poolName, options)
     }
 
     const facade = {
       async run (jobName, jobData) {
-        return getPool(modelName, options).run(jobName, jobData)
+        return getPool(poolName, options).run(jobName, jobData)
       },
       status () {
-        return getPool(modelName, options).status()
+        return getPool(poolName, options).status()
       }
     }
 
-    try {
-      return options.preload ? getPool(modelName, options) : facade
-    } catch (e) {
-      console.error(getThreadPool.name, e)
-    }
+    return options.preload ? getPool(poolName, options) : facade
   }
 
   /**
@@ -477,7 +488,7 @@ const ThreadPoolFactory = (() => {
    */
   function reload (poolName) {
     return new Promise((resolve, reject) => {
-      const pool = threadPools.get(poolName)
+      const pool = threadPools.get(poolName.toUpperCase())
 
       if (!pool) reject('no such pool')
 
@@ -494,35 +505,38 @@ const ThreadPoolFactory = (() => {
             .notify(poolOpen)
           resolve(pool)
         })
-        .catch(e => reject(reload.name, e))
+        .catch(error => reject({ fn: reload.name, error }))
     }).catch(console.error)
   }
 
   async function reloadAll () {
     try {
       await Promise.all([...threadPools].map(async ([pool]) => reload(pool)))
+      removeUndeployedPools()
+    } catch (error) {
+      console.error({ fn: reload.name, error })
+    }
+  }
 
-      const pools = ThreadPoolFactory.listPools().map(pool =>
-        pool.toUpperCase()
-      )
-      const allModels = models
-        .getModelSpecs()
-        .map(spec => spec.modelName.toUpperCase())
+  async function removeUndeployedPools () {
+    const pools = ThreadPoolFactory.listPools().map(pool => pool.toUpperCase())
+    const allModels = models
+      .getModelSpecs()
+      .map(spec => spec.modelName.toUpperCase())
 
+    await Promise.all(
       pools
         .filter(poolName => !allModels.includes(poolName))
-        .forEach(async poolName => await ThreadPoolFactory.destroy(poolName))
-    } catch (e) {
-      console.error(reloadAll.name, e)
-    }
+        .map(async poolName => await ThreadPoolFactory.destroy(poolName))
+    )
   }
 
   function destroy (poolName) {
     return new Promise((resolve, reject) => {
-      console.debug('dispose pool', poolName)
+      console.debug('dispose pool', poolName.toUpperCase())
 
-      const pool = threadPools.get(poolName)
-      if (!pool) reject('no such pool', poolName)
+      const pool = threadPools.get(poolName.toUpperCase())
+      if (!pool) reject('no such pool', poolName.toUpperCase())
 
       return pool
         .close()
@@ -536,7 +550,7 @@ const ThreadPoolFactory = (() => {
 
   function status (poolName = null) {
     if (poolName) {
-      threadPools.get(poolName).status()
+      threadPools.get(poolName.toUpperCase()).status()
       return
     }
 
@@ -547,7 +561,10 @@ const ThreadPoolFactory = (() => {
 
   function listen (cb, poolName, eventName) {
     if (poolName === '*') threadPools.forEach(pool => pool.on(eventName, cb))
-    else threadPools.find(pool => pool.name === poolName).on(eventName, cb)
+    else
+      [...threadPools]
+        .find(pool => pool.name.toUpperCase() === poolName.toUpperCase())
+        ?.on(eventName, cb)
   }
 
   return Object.freeze({
