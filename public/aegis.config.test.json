@@ -47,7 +47,8 @@
         "uplink": null,
         "host": "127.0.0.1",
         "port": 80,
-        "protocol": "ws"
+        "protocol": "ws",
+        "isSwitch": true
       },
       "MeshLink": {
         "desc": "Fast UDP-based, peer-to-peer mesh with shared Redis cache.",

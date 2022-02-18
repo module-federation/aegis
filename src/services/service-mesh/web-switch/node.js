@@ -1,34 +1,48 @@
 /**
  * webswitch (c)
  *
- * websocket clients connect to a common ws server
- * (called a web-switch) which broadcasts messages
- * to the other connected clients as well as an
- * uplink if one is configured.
+ * Websocket clients connect to a common ws server,
+ * called a webswitch. When a client sends a message,
+ * webswitch broadcasts the message to all other
+ * connected clients, as well as any uplink webswitch
+ * servers it can connect to. A Webswitch server can also
+ * receive messgages from uplinks and will broadcast
+ * those to its clients.
  */
+
 'use strict'
 
 import os from 'os'
 import WebSocket from 'ws'
 import Dns from 'multicast-dns'
 
-const configRoot = require('../../../config').hostConfig
-const config = configRoot.services.serviceMesh.WebSwitch
-
 const HOSTNAME = 'webswitch.local'
 const SERVICENAME = 'webswitch'
 const TIMEOUTEVENT = 'webswitchTimeout'
-const RETRYINTERVAL = config.retryInterval || 2000
-const MAXRETRIES = config.maxRetries || 5
-const DEBUG = config.debug || /true/i.test(process.env.DEBUG)
-const HEARTBEAT = config.heartbeat || 10000
-const SSL_ENABLED = /true/i.test(process.env.SSL_ENABLED)
-const SSL_PORT = /true/i.test(process.env.SSL_PORT) || 443
-const PROTOCOL =
-  config.protocol || (/true/i.test(process.env.SSL_ENABLED) ? 'wss' : 'ws')
-const PORT =
-  config.port || (SSL_ENABLED ? SSL_PORT : config.port || process.env.PORT)
-const HOST = config.host || configRoot.general.fqdn || process.env.HOST
+
+const configRoot = require('../../../config').hostConfig
+const config = configRoot.services.serviceMesh.WebSwitch
+const retryInterval = config.retryInterval || 2000
+const maxRetries = config.maxRetries || 5
+const debug = config.debug || /true/i.test(process.env.DEBUG)
+const heartbeat = config.heartbeat || 10000
+const sslEnabled = /true/i.test(process.env.SSL_ENABLED)
+const normalPort = process.env.PORT || 80
+const sslPort = process.env.SSL_PORT || 443
+const activePort = sslEnabled ? sslPort : normalPort
+const activeProto = sslEnabled ? 'wss' : 'ws'
+const activeHost =
+  process.env.DOMAIN ||
+  configRoot.services.cert.domain ||
+  configRoot.general.fqdn
+const protocol = config.isSwitch ? activeProto : config.protocol
+const port = config.isSwitch ? activePort : config.port
+const host = config.isSwitch ? activeHost : config.host
+
+const _url = (proto, host, port) =>
+  proto && host && port ? `${proto}://${host}:${port}` : null
+
+let serviceUrl = _url(protocol, host, port)
 
 /** @type {import('../../../domain/event-broker').EventBroker} */
 let broker
@@ -36,7 +50,6 @@ let broker
 let models
 /** @type {WebSocket} */
 let ws
-let serviceUrl
 let uplinkCallback
 let isBackupSwitch = false
 let activateBackup = false
@@ -61,16 +74,6 @@ function getLocalAddress () {
 }
 
 /**
- *
- * @param {*} proto
- * @param {*} host
- * @param {*} port
- * @returns
- */
-const _url = (proto, host, port) =>
-  proto && host && port ? `${proto}://${host}:${port}` : null
-
-/**
  * Use multicast DNS to find the host
  * instance configured as the "switch"
  * node for the local area network.
@@ -81,56 +84,65 @@ async function resolveServiceUrl () {
   const dns = Dns()
   let url
 
-  return new Promise(async function (resolve) {
+  return new Promise(function (resolve) {
     dns.on('response', function (response) {
-      DEBUG && console.debug(resolveServiceUrl.name, response)
+      debug && console.debug({ fn: resolveServiceUrl.name, response })
 
       const answer = response.answers.find(
         a => a.name === SERVICENAME && a.type === 'SRV'
       )
 
       if (answer) {
-        url = _url(PROTOCOL, answer.data.target, answer.data.port)
-        console.info('found dns service record for', SERVICENAME, url)
+        url = _url(protocol, answer.data.target, answer.data.port)
+        console.info({ msg: 'found dns service record for', SERVICENAME, url })
         resolve(url)
       }
     })
 
     dns.on('query', function (query) {
-      console.assert(!DEBUG, 'got a query packet:', query)
+      debug && console.debug('got a query packet:', query)
 
       const questions = query.questions.filter(
         q => q.name === SERVICENAME || q.name === HOSTNAME
       )
 
       if (!questions[0]) {
-        console.assert(!DEBUG, 'no questions', questions)
+        console.debug({ fn: dns.on.name, msg: 'no questions', questions })
         return
       }
 
       if (isSwitch || (isBackupSwitch && activateBackup)) {
-        console.info('answering for', PROTOCOL, PORT)
         const answer = {
           answers: [
             {
               name: SERVICENAME,
               type: 'SRV',
               data: {
-                port: PORT,
+                port: port,
                 weight: 0,
                 priority: 10,
-                target: HOST
+                target: host
               }
             }
           ]
         }
+
+        console.info({
+          fn: dns.on.name + "('query')",
+          isSwitch,
+          isBackupSwitch,
+          activateBackup,
+          msg: 'answering query packet',
+          questions,
+          answer
+        })
 
         dns.respond(answer)
       }
     })
 
     /**
-     * Query DNS for the webswitch server.
+     * Query DNS for the webswitch service.
      * Recursively retry by incrementing a
      * counter we pass to ourselves on the
      * stack.
@@ -139,9 +151,15 @@ async function resolveServiceUrl () {
      * @returns
      */
     function runQuery (retries = 0) {
-      if (retries > MAXRETRIES) {
-        console.warn('primary switch unresponsive: backup taking over')
+      if (retries > maxRetries) {
         activateBackup = true
+
+        console.warn({
+          fn: runQuery.name,
+          msg: 'primary unresponsive: backup taking over',
+          isBackupSwitch,
+          activateBackup
+        })
         return
       }
 
@@ -160,14 +178,10 @@ async function resolveServiceUrl () {
         return
       }
 
-      setTimeout(() => runQuery(retries++), RETRYINTERVAL)
+      setTimeout(() => runQuery(retries++), retryInterval)
     }
 
-    if (isSwitch) {
-      resolve(_url(PROTOCOL, HOST, PORT))
-    } else {
-      runQuery()
-    }
+    runQuery()
   })
 }
 
@@ -197,83 +211,6 @@ export function setUplinkUrl (uplinkUrl) {
  * @property {string} address - address of the client
  * @property {string} url - url to connect to client instance directly
  */
-
-/**
- *
- * @param {{
- *  broker:import('../../../domain/event-broker').EventBroker,
- *  models:import('../../../domain/model-factory').ModelFactory
- * }} [serviceInfo]
- */
-export async function connect (serviceInfo = {}) {
-  broker = serviceInfo.broker
-  models = serviceInfo.models
-  console.info(connect.name, serviceInfo)
-  await _connect()
-}
-
-/**
- *
- */
-const handshake = {
-  proto: SERVICENAME,
-  role: 'node',
-  pid: process.pid,
-  addresses: [...getLocalAddress()],
-  serialize () {
-    return JSON.stringify({
-      ...this,
-      models: models?.getModelSpecs().map(spec => spec.modelName) || []
-    })
-  },
-  validate (msg) {
-    if (msg) {
-      let _msg = msg
-      const valid = msg.proto === this.proto
-      if (typeof msg === 'object') {
-        _msg = msg = JSON.stringify(msg)
-      }
-      console.assert(valid, `invalid msg ${_msg}`)
-      return valid
-    }
-    return false
-  },
-  isBackupSwitch (msg) {
-    return msg.isBackupSwitch === true
-  }
-}
-
-/**
- *
- * @param {WebSocket} ws
- */
-function startHeartBeat () {
-  let receivedPong = true
-
-  ws.addListener('pong', function () {
-    console.assert(!DEBUG, 'received pong')
-    receivedPong = true
-  })
-
-  /**
-   *
-   */
-  const intervalId = setInterval(async function () {
-    if (receivedPong) {
-      receivedPong = false
-      ws.ping(0x9)
-    } else {
-      try {
-        if (broker) await broker.notify(TIMEOUTEVENT, 'server unresponsive')
-        console.error(receivedPong, 'no response, trying new conn')
-        clearInterval(intervalId)
-        await reconnect()
-      } catch (error) {
-        console.error(startHeartBeat.name, error)
-      }
-    }
-  }, HEARTBEAT)
-}
 
 /**
  * @callback subscription
@@ -306,62 +243,11 @@ export async function subscribe (eventName, callback, options = {}) {
   }
 }
 
-/**
- *
- */
-async function _connect () {
-  if (!ws) {
-    if (!serviceUrl) serviceUrl = await resolveServiceUrl()
-    console.info(_connect.name, 'switch', serviceUrl)
-
-    ws = new WebSocket(serviceUrl)
-
-    ws.on('open', function () {
-      send(handshake.serialize())
-      startHeartBeat()
-    })
-
-    ws.on('error', function (error) {
-      console.error(_connect.name, error)
-      ws = null // get rid of this socket
-    })
-
-    ws.on('message', async function (message) {
-      const eventData = JSON.parse(message)
-      console.assert(!DEBUG, 'received event:', eventData)
-
-      if (eventData.eventName) {
-        if (broker)
-          await broker.notify(eventData.eventName, eventData, { worker: true })
-        if (uplinkCallback) await uplinkCallback(message)
-        return
-      }
-
-      if (handshake.validate(eventData)) {
-        isBackupSwitch = handshake.isBackupSwitch(eventData)
-        return
-      }
-
-      console.warn('no eventName in eventData', eventData)
-    })
-  }
-}
-
-/**
- *
- */
-async function reconnect () {
-  serviceUrl = null
-  ws = null
-  await _connect()
-  if (!ws) setTimeout(reconnect, 60000)
-}
-
 function format (event) {
   if (event instanceof ArrayBuffer) {
     // binary frame
     const view = new DataView(event)
-    DEBUG && console.debug('arraybuffer', view.getInt32(0))
+    debug && console.debug('arraybuffer', view.getInt32(0))
     return event
   }
   if (typeof event === 'object') return JSON.stringify(event)
@@ -379,6 +265,148 @@ function send (event) {
     return
   }
   setTimeout(send, 1000, event)
+}
+
+/**
+ *
+ * @param {WebSocket} ws
+ */
+function startHeartbeat () {
+  let receivedPong = true
+
+  ws.addListener('pong', function () {
+    console.assert(!debug, 'received pong')
+    receivedPong = true
+  })
+
+  const intervalId = setInterval(async function () {
+    if (receivedPong) {
+      receivedPong = false
+      ws.ping(0x9)
+    } else {
+      try {
+        clearInterval(intervalId)
+
+        if (broker) await broker.notify(TIMEOUTEVENT, 'server unresponsive')
+
+        console.error({
+          fn: startHeartbeat.name,
+          receivedPong,
+          msg: 'no response, trying new conn'
+        })
+
+        await reconnect()
+      } catch (error) {
+        console.error(startHeartbeat.name, error)
+      }
+    }
+  }, heartbeat)
+}
+
+/**
+ *
+ */
+const handshake = {
+  proto: SERVICENAME,
+  role: 'node',
+  pid: process.pid,
+  addresses: getLocalAddress(),
+  isBackupSwitch,
+  activateBackup,
+  serialize () {
+    return JSON.stringify({
+      ...this,
+      models: models?.getModelSpecs().map(spec => spec.modelName) || []
+    })
+  },
+  validate (message) {
+    if (message) {
+      let msg = message
+      const valid = message.proto === this.proto || message.eventName
+      if (typeof message === 'object') {
+        msg = message = JSON.stringify(message)
+      }
+      console.assert(valid, `invalid message ${msg}`)
+      return valid
+    }
+    return false
+  },
+  becomeBackupSwitch (message) {
+    return message.isBackupSwitch === true
+  }
+}
+
+/**
+ *
+ */
+async function _connect () {
+  if (!ws) {
+    // null unless this is a switch or set manually by config file
+    if (!serviceUrl) serviceUrl = await resolveServiceUrl()
+    console.info({ fn: _connect.name, serviceUrl })
+
+    ws = new WebSocket(serviceUrl)
+
+    ws.on('open', function () {
+      send(handshake.serialize())
+      startHeartbeat()
+    })
+
+    ws.on('error', function (error) {
+      console.error({ fn: _connect.name, error })
+      ws = null // get fresh socket on reconnect
+    })
+
+    ws.on('message', async function (message) {
+      try {
+        const eventData = JSON.parse(message.toString())
+        debug && console.debug('received event:', eventData)
+
+        if (handshake.validate(eventData)) {
+          // check if the webswitch wants us to be a backup
+          isBackupSwitch = handshake.becomeBackupSwitch(eventData)
+
+          // process event
+          if (eventData.eventName) {
+            // call broker if there is one
+            if (broker)
+              await broker.notify(eventData.eventName, eventData, {
+                fromMesh: true
+              })
+            // send to uplink if there is one
+            if (uplinkCallback) await uplinkCallback(message)
+          }
+        }
+        console.warn('invalid message', message)
+      } catch (error) {
+        console.error({ fn: ws.on.name + '("message")', error })
+      }
+    })
+  }
+}
+
+/**
+ *
+ * @param {{
+ *  broker:import('../../../domain/event-broker').EventBroker,
+ *  models:import('../../../domain/model-factory').ModelFactory
+ * }} [serviceInfo]
+ */
+export async function connect (serviceInfo = {}) {
+  broker = serviceInfo.broker
+  models = serviceInfo.models
+  console.info({ fn: connect.name, serviceInfo })
+  await _connect()
+}
+
+/**
+ *
+ */
+async function reconnect () {
+  serviceUrl = null
+  ws = null
+  await _connect()
+  if (!ws) setTimeout(reconnect, 60000)
 }
 
 /**

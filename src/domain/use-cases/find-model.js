@@ -39,7 +39,6 @@ export default function makeFindModel ({
       if (!model) {
         throw new Error('no such id')
       }
-
       // Only send to app thread if data must be enriched
       if (!query.relation && !query.command) return model
 

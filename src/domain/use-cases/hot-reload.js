@@ -1,7 +1,7 @@
 'use strict'
 
 import domainEvents from '../domain-events'
-import ThreadPoolFactory from '../thread-pool.js'
+import ThreadPoolFactory from '../thread-pool'
 
 /**
  * @typedef {object} factoryParam
@@ -31,7 +31,7 @@ export default function makeHotReload ({ models, broker } = {}) {
   // Add an event whose callback invokes this factory.
   broker.on(domainEvents.hotReload(), hotReload)
 
-  const events = [...domainEvents].filter(e => /^pool.*/.test(e))
+  const events = Object.keys(domainEvents).filter(e => /^pool.*/.test(e))
   models
     .getModelSpecs()
     .map(spec => spec.modelName)
@@ -40,7 +40,7 @@ export default function makeHotReload ({ models, broker } = {}) {
         ThreadPoolFactory.listen(
           data => broker.notify(data.eventName, data),
           pool,
-          event(pool)
+          domainEvents[event](pool)
         )
       )
     )

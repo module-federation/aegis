@@ -93,7 +93,6 @@ export const UseCases = {
   findModels,
   removeModels,
   loadModelSpecs,
-  executeCommand,
   listConfigs,
   hotReload,
   registerEvents
@@ -109,7 +108,6 @@ export function UseCaseService (modelName = null) {
       findModel: makeOne(modelName, makeFindModel),
       removeModel: makeOne(modelName, makeRemoveModel),
       loadModelSpecs: makeOne(modelName, makeLoadModels),
-      executeCommand,
       listConfigs: listConfigs()
     }
   }
@@ -121,7 +119,6 @@ export function UseCaseService (modelName = null) {
     removeModels: removeModels(),
     loadModelSpecs: loadModelSpecs(),
     hotReload: hotReload(),
-    listConfigs: listConfigs(),
-    executeCommand: { fn: executeCommand }
+    listConfigs: listConfigs()
   }
 }

@@ -4,9 +4,12 @@
 
 import ModelFactory from '.'
 import * as adapters from '../adapters/datasources'
-import config from '../adapters/datasources'
+import dbconfig from '../adapters/datasources'
 
-const defaultAdapter = process.env.DATASOURCE_ADAPTER || config.MEMORYADAPTER
+import sysconf from '../config'
+
+//const defaultAdapter = process.env.DATASOURCE_ADAPTER || config.MEMORYADAPTER
+const defaultAdapter = sysconf.hostConfig.adapters.defaultDatasource
 const DefaultDataSource = adapters[defaultAdapter]
 
 /**
@@ -46,7 +49,7 @@ const DataSourceFactory = (() => {
       const url = spec.datasource.url
       const cacheSize = spec.datasource.cacheSize
       const adapterFactory = spec.datasource.factory
-      const BaseClass = config.getBaseClass(spec.datasource.baseClass)
+      const BaseClass = dbconfig.getBaseClass(spec.datasource.baseClass)
 
       try {
         const DataSource = adapterFactory(url, cacheSize, BaseClass)
@@ -74,7 +77,7 @@ const DataSourceFactory = (() => {
     }
 
     if (memoryOnly) {
-      const MemoryDs = config.getBaseClass(config.MEMORYADAPTER)
+      const MemoryDs = dbconfig.getBaseClass(dbconfig.MEMORYADAPTER)
       const newDs = new MemoryDs(new Map(), this, name)
       dataSources.set(name, newDs)
       return newDs

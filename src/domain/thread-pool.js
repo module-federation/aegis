@@ -550,8 +550,7 @@ const ThreadPoolFactory = (() => {
 
   function status (poolName = null) {
     if (poolName) {
-      threadPools.get(poolName.toUpperCase()).status()
-      return
+      return threadPools.get(poolName.toUpperCase()).status()
     }
 
     const reports = []

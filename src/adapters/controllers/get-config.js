@@ -6,6 +6,30 @@ function getResourceName (httpRequest) {
   return 'Model Specifications'
 }
 
+function prettifyJson (json) {
+  if (typeof json !== 'string') {
+    json = JSON.stringify(json, null, 2)
+  }
+  return json.replace(
+    /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g,
+    function (match) {
+      let cls = '<span>'
+      if (/^"/.test(match)) {
+        if (/:$/.test(match)) {
+          cls = "<span class='text-warning'>"
+        } else {
+          cls = '<span>'
+        }
+      } else if (/true|false/.test(match)) {
+        cls = "<span style='color: violet'>"
+      } else if (/null/.test(match)) {
+        cls = "<span class='text-info'>"
+      }
+      return cls + match + '</span>'
+    }
+  )
+}
+
 function getContent (httpRequest, configs) {
   if (!httpRequest.query.html)
     return { contentType: 'application/json', content: configs }
@@ -16,17 +40,29 @@ function getContent (httpRequest, configs) {
     let text = `
           <!DOCTYPE html>
           <html>
-          <h2 style='color: white'>${title}</h2>         
-          <body style="background-color: black  ;">`
+          <h2 style='color: white'>${title}</h2> 
+          <style>
+          .styled-table {
+            border-collapse: collapse;
+            margin: 25px 0;
+            font-size: 0.9em;
+            font-family: sans-serif;
+            min-width: 400px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);
+        }
+          </style>       
+          <body style="background-color: grey  ;">`
 
     configs.forEach(config => {
       text += `<div style="margin-bottom: 12px;">
-                    <table style="border: 0px; color:white">`
+                    <table class="styled-table">`
 
       Object.keys(config).forEach(key => {
         let val = config[key]
         if (typeof val === 'object')
-          val = `<pre>${JSON.stringify(val, null, 2)}</pre>`
+          val = `<pre><code>${prettifyJson(
+            JSON.stringify(val, null, 2)
+          )}</code></pre>`
         text += `<tr><td>${key}</td><td>${val}</td></tr>`
       })
 
