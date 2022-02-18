@@ -1,9 +1,11 @@
 'use strict'
 
+import { EventBrokerFactory } from './event-broker'
 import { EventEmitter } from 'stream'
 import { Worker } from 'worker_threads'
 import domainEvents from './domain-events'
 
+const broker = EventBrokerFactory.getInstance()
 const { poolOpen, poolClose, poolDrain } = domainEvents
 const DEFAULT_THREADPOOL_MIN = 1
 const DEFAULT_THREADPOOL_MAX = 2
@@ -11,10 +13,10 @@ const DEFAULT_JOBQUEUE_TOLERANCE = 25
 
 /**
  * @typedef {object} Thread
- * @property {number} threadId
+ * @property {Worker.threadId} id
  * @property {Worker} worker
- * @property {function()} remove
- * @property {{[x:string]:*}} metadata
+ * @property {function()} stop
+ * @property {MessagePort} eventPort
  */
 
 /**
@@ -29,7 +31,7 @@ function kill (thread) {
     const timerId = setTimeout(async () => {
       try {
         const threadId = await thread.worker.terminate()
-        console.warn('terminated thread', threadId)
+        console.warn('forcefully terminated thread', threadId)
         resolve(threadId)
       } catch (error) {
         console.error({ fn: kill.name, error })
@@ -39,12 +41,28 @@ function kill (thread) {
 
     thread.worker.once('exit', () => {
       clearTimeout(timerId)
-      console.info('exiting', thread.id)
+      thread.eventPort.close()
+      console.info('clean exit of thread', thread.id)
       resolve(thread.id)
     })
 
-    thread.worker.postMessage({ name: 'shutdown' })
+    thread.eventPort.postMessage({ name: 'shutdown' })
   }).catch(console.error)
+}
+
+/** @typedef {import('./event-broker').EventBroker} EventBroker */
+
+/**
+ * Connect event subchannel to {@link EventBroker}
+ * @param {Worker} worker worker thread
+ * @param {MessagePort} port1 main uses to send to and recv from worker
+ * @param {MessagePort} port2 worker uses to send to and recv from main
+ */
+function createEventChannel (worker, port1, port2) {
+  worker.postMessage({ eventPort: port2 }, [port2])
+  broker.on(/.*/, event => port1.postMessage(event), { from: 'main' })
+  port1.onmessage = msg =>
+    broker.notify(msg.data.eventName, msg.data, { from: 'worker' })
 }
 
 /**
@@ -59,6 +77,7 @@ function kill (thread) {
 function newThread ({ pool, file, workerData }) {
   return new Promise((resolve, reject) => {
     try {
+      const { port1, port2 } = new MessageChannel()
       const worker = new Worker(file, { workerData })
       pool.totalThreads++
 
@@ -66,6 +85,7 @@ function newThread ({ pool, file, workerData }) {
         file,
         pool,
         worker,
+        eventPort: port1,
         id: worker.threadId,
         createdAt: Date.now(),
         async stop () {
@@ -75,6 +95,7 @@ function newThread ({ pool, file, workerData }) {
       setTimeout(reject, 10000)
 
       worker.once('message', msg => {
+        createEventChannel(worker, port1, port2)
         pool.emit('aegis-up', msg)
         resolve(thread)
       })

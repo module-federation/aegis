@@ -1,4 +1,4 @@
-                                                                                                                /**
+/**
  * typedef {import('./event').Event} Event
  * @typedef {import('.').Model} Model
  */
@@ -126,18 +126,19 @@ async function runHandler (eventName, eventData = {}, handle, forward) {
  *
  * @param {string} eventName
  * @param {import('./event').Event} eventData
- * @param {boolean} forward
+ * @param {{from?:'worker'|'main'}} options
  * @fires eventName
  */
 async function notify (eventName, eventData, options = {}) {
-  let channel
-
   const run = runHandler.bind(this)
 
   if (!eventData) {
     console.warn('no data to publish', eventName)
     return
   }
+
+  // record options
+  eventData._options = options
 
   try {
     if (handlers.has(eventName)) {
@@ -171,10 +172,6 @@ class EventBrokerImpl extends EventBroker {
   constructor () {
     super()
     this.notify = notify.bind(this)
-    this.channels = {
-      workflow: [],
-      cache: []
-    }
   }
 
   /**
@@ -191,7 +188,8 @@ class EventBrokerImpl extends EventBroker {
       filter = {},
       singleton = false,
       subscriber = false,
-      delay = 0
+      delay = 0,
+      from = null
     } = {}
   ) {
     if (!eventName || typeof handler !== 'function') {
@@ -211,6 +209,18 @@ class EventBrokerImpl extends EventBroker {
         subscriber: {
           applies: subscriber,
           satisfied: data => data.eventId === subscription.eventId
+        },
+        from: {
+          applies: typeof from === 'string',
+          satisfied: data =>
+            typeof data._options.from === 'string' &&
+            data._options.from.toUpperCase() === from.toUpperCase()
+        },
+        from_null: {
+          applies: !['undefined', 'string'].includes(typeof from),
+          satisfied: data =>
+            typeof data._options.from !== 'undefined' &&
+            data._options.from === from
         }
       }
 

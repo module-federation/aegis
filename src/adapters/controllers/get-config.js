@@ -75,7 +75,6 @@ function getContent (httpRequest, configs) {
           )}</code></pre>`
         text += `<tr><td>${key}</td><td>${val}</td></tr>`
       })
-
       text += '</table></div>'
     })
     text += '</body></html>'

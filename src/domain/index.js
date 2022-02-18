@@ -217,7 +217,7 @@ function register (model, services, adapters, workers, isCached = false) {
     modelName: model.modelName.toUpperCase(),
     dependencies,
     factory: model.factory(dependencies),
-    worker: workers[model.modelName], 
+    worker: workers[model.modelName],
     isCached
   })
 
@@ -332,5 +332,7 @@ export async function importRemoteCache (name) {
 }
 
 export { UseCaseService } from './use-cases'
+
+export { EventBrokerFactory } from './event-broker'
 
 export default ModelFactory
