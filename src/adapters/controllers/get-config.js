@@ -16,14 +16,14 @@ function prettifyJson (json) {
       let cls = '<span>'
       if (/^"/.test(match)) {
         if (/:$/.test(match)) {
-          cls = "<span class='text-warning'>"
+          cls = "<span style='color: blue'>"
         } else {
           cls = '<span>'
         }
       } else if (/true|false/.test(match)) {
         cls = "<span style='color: violet'>"
       } else if (/null/.test(match)) {
-        cls = "<span class='text-info'>"
+        cls = "<span style='color: green'>"
       }
       return cls + match + '</span>'
     }
@@ -40,22 +40,32 @@ function getContent (httpRequest, configs) {
     let text = `
           <!DOCTYPE html>
           <html>
-          <h2 style='color: white'>${title}</h2> 
+          <h2 style='color: black'>${title}</h2> 
           <style>
-          .styled-table {
+          #configs {
+            font-family: Arial, Helvetica, sans-serif;
             border-collapse: collapse;
-            margin: 25px 0;
-            font-size: 0.9em;
-            font-family: sans-serif;
-            min-width: 400px;
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);
-        }
+            width: 50%;
+          }
+          #configs td, #configs th {
+            border: 1px solid #ddd;
+            padding: 8px;
+          }
+          #configs tr:nth-child(even){background-color: #f2f2f2;}
+          #configs tr:hover {background-color: #ddd;}
+          #configs th {
+            padding-top: 12px;
+            padding-bottom: 12px;
+            text-align: left;
+            background-color: #04AA6D;
+            color: white;
+          }
           </style>       
-          <body style="background-color: grey  ;">`
+          <body>`
 
     configs.forEach(config => {
       text += `<div style="margin-bottom: 12px;">
-                    <table class="styled-table">`
+                    <table id="configs">`
 
       Object.keys(config).forEach(key => {
         let val = config[key]
