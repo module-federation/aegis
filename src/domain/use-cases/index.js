@@ -14,7 +14,6 @@ import DataSourceFactory from '../datasource-factory'
 import ThreadPoolFactory from '../thread-pool.js'
 import EventBrokerFactory from '../event-broker'
 import brokerEvents from './broker-events'
-import executeCommand from './execute-command'
 import { isMainThread } from 'worker_threads'
 
 export function registerEvents () {

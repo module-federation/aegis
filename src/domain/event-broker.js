@@ -5,6 +5,7 @@
 
 import Event from './event'
 import domainEvents from './domain-events'
+import hash from './util/hash'
 
 const { forwardEvent } = domainEvents
 const DEBUG = process.env.DEBUG
@@ -172,6 +173,11 @@ class EventBrokerImpl extends EventBroker {
   constructor () {
     super()
     this.notify = notify.bind(this)
+    this.postSubscription = x => x
+  }
+
+  onSubscription (modelName, cb) {
+    this.postSubscription = subInfo => cb({ ...subInfo, modelName })
   }
 
   /**
@@ -187,7 +193,7 @@ class EventBrokerImpl extends EventBroker {
       once = false,
       filter = {},
       singleton = false,
-      subscriber = false,
+      private = null,
       delay = 0,
       from = null
     } = {}
@@ -206,21 +212,15 @@ class EventBrokerImpl extends EventBroker {
           applies: filterKeys.length > 0,
           satisfied: data => filterKeys.every(k => filterKeys[k] === data[k])
         },
-        subscriber: {
-          applies: subscriber,
-          satisfied: data => data.eventId === subscription.eventId
+        private: {
+          applies: private,
+          satisfied: data => data._options?.private === hash(private)
         },
         from: {
           applies: typeof from === 'string',
           satisfied: data =>
             typeof data._options.from === 'string' &&
             data._options.from.toUpperCase() === from.toUpperCase()
-        },
-        from_null: {
-          applies: !['undefined', 'string'].includes(typeof from),
-          satisfied: data =>
-            typeof data._options.from !== 'undefined' &&
-            data._options.from === from
         }
       }
 
@@ -244,11 +244,15 @@ class EventBrokerImpl extends EventBroker {
     if (funcs) {
       if (!singleton || funcs.length < 1) {
         funcs.push(callbackWrapper)
+
+        // send to main
+        this.postSubscription(subscription)
         return script
       }
       return null
     }
     handlers.set(eventName, [callbackWrapper])
+    this.postSubscription(subscription)
     return script
   }
 
