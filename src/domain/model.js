@@ -238,35 +238,30 @@ const Model = (() => {
       },
 
       /**
-       * Concurrency support: strategy is to merge with
-       * last update vs blindly overwriting. Concomitant
-       * strategy is to add props dynamically and/or as
-       * `Symbol`'s to avoid conflict. If updating same
-       * props, last one in wins.
+       * Concurrency support: strategy is to merge changes
+       * with last saved version. Changes should include
+       * only the subset of properties that are changing.
+       * Concomitant strategy is to add props dynamically
+       * or as `Symbol`'s to avoid conflict. If conflict
+       * does occur, last one in wins.
        *
        * @param {*} changes - object containing updated props
        * @param {boolean} validate - run validation by default
-       * @param {boolean} overwrite - do not merge with last saved
        * copy - the default behavior is to merge
        */
-      async update (changes, validate = true, overwrite = false) {
-        const model = optionalValidation(this, changes, validate)
-        const saved = await datasource.find(model[ID])
+      async update (changes, validate = true) {
+        const delta = optionalValidation(this, changes, validate)
+        const saved = await datasource.find(delta[ID])
 
-        // preserve the most recent updates
-        const [fresh, stale] =
-          model.updateTime > saved.updateTime ? [model, saved] : [saved, model]
-
-        // by default merge the incoming model with the last one saved
-        const merge = overwrite ? model : { ...stale, ...fresh }
-
-        const final = await datasource.save(model[ID], {
-          ...merge,
+        // merge changes with latest known version
+        const merge = await datasource.save(delta[ID], {
+          ...saved,
+          ...delta,
           [UPDATETIME]: Date.now()
         })
 
-        queueNotice(final)
-        return final
+        queueNotice(merge)
+        return merge
       },
 
       /**
