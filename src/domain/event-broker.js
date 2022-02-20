@@ -193,7 +193,7 @@ class EventBrokerImpl extends EventBroker {
       once = false,
       filter = {},
       singleton = false,
-      private = null,
+      priviledged = null,
       delay = 0,
       from = null
     } = {}
@@ -212,9 +212,9 @@ class EventBrokerImpl extends EventBroker {
           applies: filterKeys.length > 0,
           satisfied: data => filterKeys.every(k => filterKeys[k] === data[k])
         },
-        private: {
-          applies: private,
-          satisfied: data => data._options?.private === hash(private)
+        priviledged: {
+          applies: priviledged,
+          satisfied: data => data._options?.priviledged === hash(priviledged)
         },
         from: {
           applies: typeof from === 'string',
