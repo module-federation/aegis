@@ -45,7 +45,7 @@ function getContent (httpRequest, configs) {
           #configs {
             font-family: Arial, Helvetica, sans-serif;
             border-collapse: collapse;
-            width: 50%;
+            width: 60%;
           }
           #configs td, #configs th {
             border: 1px solid #ddd;

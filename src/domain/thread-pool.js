@@ -142,13 +142,13 @@ function postJob ({ pool, jobName, jobData, thread, cb }) {
 }
 
 /**
- * Contains handles, queued jobs, metrics and settings for a collection of threads
- * that support a common type of work, i.e. a functional domain (e.g. Order model),
- * a non-functional quality (e.g. CPU-bound) or both.
+ * Contains threads, queued jobs, metrics and settings for a group of threads
+ * that all do the same or similar kind of work, which could mean they all do the same functional onf 
+ * functional domain (e.g. Order model), or a non-functional quality (CPU-bound) 
+ * or both.
  *
  * - Start and stop threads (and vice versa)
- * - Track and expose pool metrics.
- *   - total, max, min, free threads
+d *   - total, max, min, free threads
  *   - requested, running, waiting jobs
  *   - lifetime stats: avg/h/l wait/run times by jobname, total jobs, avg jobs / sec
  * - Increase pool capacity automatically as needed up to max threads.
@@ -316,10 +316,10 @@ export class ThreadPool extends EventEmitter {
       return this.startThread()
   }
 
-  /**@typedef {import('./use-cases').UseCaseService UseCaseService*/
+  /** @typedef {import('./use-cases').UseCaseService UseCaseService  */
 
   /**
-   * Run a job (use case function) on an available thread or queue the job
+   * Run a job (use case function) on an available thread; or queue the job
    * until one becomes available. Return the result asynchronously.
    *
    * @param {string} jobName name of a use case function in {@link UseCaseService}

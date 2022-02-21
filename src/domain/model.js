@@ -247,7 +247,6 @@ const Model = (() => {
        *
        * @param {*} changes - object containing updated props
        * @param {boolean} validate - run validation by default
-       * copy - the default behavior is to merge
        */
       async update (changes, validate = true) {
         const delta = optionalValidation(this, changes, validate)
