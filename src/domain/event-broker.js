@@ -4,11 +4,9 @@
  */
 
 import Event from './event'
-import domainEvents from './domain-events'
 import hash from './util/hash'
 
-const { forwardEvent } = domainEvents
-const DEBUG = process.env.DEBUG
+const debug = process.env.DEBUG
 
 /**
  * @callback eventHandler
@@ -18,36 +16,25 @@ const DEBUG = process.env.DEBUG
 
 /**
  * @typedef {object} brokerOptions
- * @property {object} [filter] - matching key-value pairs, e.g. {id:123}, have to be found in the event data
- * @property {boolean} [subscriber] - the subscription id `eventId` has to be found in the event data
- * @property {boolean} [singleton] - there should be only one instance of this handler in the system
- * @property {boolean} [once] - run this handler only once, then unsubscribe. To code it manually:
+ * @property {object} [filter] - the event data object must be a superset of the filter
+ * @property {boolean} [priviledged] - the handler must possess the original value of a hashkey found in the event metadata
+ * @property {boolean} [singleton] - the event can only have one handler (attempts to add multiple are ignored)
+ * @property {number} [delay] - run the handler at least `delay` milliseconds after the event is fired
+ * @property {boolean} [once] - run the handler and then unsubscribe. See code below to perform programmaticly.
+ * ```js
+ *  const listener = model.addListener(eventName, function (eventData) {
+ *    // ...do something
+ *    listener.unsubscribe()
+ *  })
  * ```
- * const listener = model.addListener(eventName, function (eventData) {
- *   // ...do something
- *   listener.unsubscribe()
- * })
- * ```
- * @property {number} [delay] - run handler at least `delay` milliseconds after the event is fired
  */
 
-/**
- * @type {brokerOptions}
- */
-const brokerOptions = {
-  once: false,
-  filter: {},
-  singleton: false,
-  subscriber: false,
-  delay: 0
-}
-
-/**@type {Map<string | RegExp, eventHandler[]>}  */
+/** @type {Map<string | RegExp, eventHandler[]>} */
 const handlers = new Map()
 
 /**
  * @abstract
- * Event broker - universal subject (a la observer pattern)
+ * Event broker - universal subject of observers
  */
 export class EventBroker {
   /**
@@ -57,12 +44,12 @@ export class EventBroker {
   constructor () {}
 
   /**
-   * Register callback `handler` to fire on event `eventName`
+   * Register callback to fire on event `eventName`
    * @param {String | RegExp} eventName
    * @param {eventHandler} handler
    * @param {brokerOptions} [options]
    */
-  on (eventName, handler, { ...brokerOptions }) {
+  on (eventName, handler, options = {}) {
     throw new Error('unimplemented abstract method')
   }
 
@@ -104,7 +91,7 @@ const handleError = error => {
 async function runHandler (eventName, eventData = {}, handle, forward) {
   const abort = eventData ? false : true
 
-  console.assert(!DEBUG, 'handler running', {
+  console.assert(!debug, 'handler running', {
     eventName,
     eventUuid: eventData?.eventUuid,
     handle: handle.toString(),
@@ -119,7 +106,7 @@ async function runHandler (eventName, eventData = {}, handle, forward) {
     return
   }
 
-  /**@type {eventHandler} */
+  /** @type {eventHandler} */
   await handle(eventData)
 }
 
@@ -127,25 +114,25 @@ async function runHandler (eventName, eventData = {}, handle, forward) {
  *
  * @param {string} eventName
  * @param {import('./event').Event} eventData
- * @param {{from?:'worker'|'main'}} options
+ * @param {} options
  * @fires eventName
  */
-async function notify (eventName, eventData, options = {}) {
+async function notify (eventName, eventData = {}, options = {}) {
   const run = runHandler.bind(this)
 
-  if (!eventData) {
-    console.warn('no data to publish', eventName)
-    return
-  }
-
   // record options
-  eventData._options = options
+  const data = {
+    ...(typeof eventData !== 'object'
+      ? { ['eventData']: eventData }
+      : eventData),
+    _options: options
+  }
 
   try {
     if (handlers.has(eventName)) {
       await Promise.allSettled(
         handlers.get(eventName).map(async handler => {
-          await run(eventName, eventData, handler, options)
+          await run(eventName, data, handler, options)
         })
       )
     }
@@ -154,7 +141,7 @@ async function notify (eventName, eventData, options = {}) {
       [...handlers]
         .filter(([k]) => k instanceof RegExp && k.test(eventName))
         .map(([, v]) =>
-          v.map(async f => await run(eventName, eventData, f, options))
+          v.map(async f => await run(eventName, data, f, options))
         )
     )
   } catch (error) {
@@ -190,16 +177,21 @@ class EventBrokerImpl extends EventBroker {
     eventName,
     handler,
     {
+      from = 'worker',
       once = false,
+      delay = 0,
       filter = {},
       singleton = false,
-      priviledged = null,
-      delay = 0,
-      from = null
+      priviledged = null
     } = {}
   ) {
     if (!eventName || typeof handler !== 'function') {
-      console.error(EventBrokerImpl.name, 'invalid arg', eventName, handler)
+      console.error({
+        fn: EventBrokerImpl.name,
+        errmsg: 'invalid arg',
+        eventName,
+        handler
+      })
       return null
     }
     const filterKeys = Object.keys(filter)
@@ -219,8 +211,8 @@ class EventBrokerImpl extends EventBroker {
         from: {
           applies: typeof from === 'string',
           satisfied: data =>
-            typeof data._options.from === 'string' &&
-            data._options.from.toUpperCase() === from.toUpperCase()
+            typeof data._options?.from === 'string' &&
+            data._options?.from?.toUpperCase() === from.toUpperCase()
         }
       }
 
@@ -235,7 +227,7 @@ class EventBrokerImpl extends EventBroker {
       }
     }
 
-    const script = {
+    const sub = {
       ...subscription,
       unsubscribe: () => this.off(eventName, callbackWrapper)
     }
@@ -247,13 +239,13 @@ class EventBrokerImpl extends EventBroker {
 
         // send to main
         this.postSubscription(subscription)
-        return script
+        return sub
       }
       return null
     }
     handlers.set(eventName, [callbackWrapper])
     this.postSubscription(subscription)
-    return script
+    return sub
   }
 
   /**

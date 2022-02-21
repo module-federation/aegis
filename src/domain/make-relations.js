@@ -101,11 +101,8 @@ export function requireRemoteObject (model, relation, broker, ...args) {
 
   return new Promise(async function (resolve) {
     setTimeout(resolve, maxwait)
-    broker.on(response, execute(resolve)) //,{
-    //   filter: { modelId: model.getId() },
-    //   once: true
-    // })
-    broker.notify(request, requestData)
+    broker.on(response, execute(resolve), { from: 'main' })
+    broker.notify(request, requestData, { from: 'worker' })
   })
 }
 
