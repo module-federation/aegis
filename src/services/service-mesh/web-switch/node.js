@@ -15,6 +15,7 @@
 import os from 'os'
 import WebSocket from 'ws'
 import Dns from 'multicast-dns'
+import ModelFactory from '../../../domain/index'
 
 const HOSTNAME = 'webswitch.local'
 const SERVICENAME = 'webswitch'
@@ -316,12 +317,12 @@ const handshake = {
   serialize () {
     return JSON.stringify({
       ...this,
-      models: models?.getModelSpecs().map(spec => spec.modelName) || []
+      models: ModelFactory.getModelSpecs().map(spec => spec.modelName) || []
     })
   },
   validate (message) {
     if (message) {
-      let msg = message
+      let msg
       const valid = message.proto === this.proto || message.eventName
       if (typeof message === 'object') {
         msg = message = JSON.stringify(message)

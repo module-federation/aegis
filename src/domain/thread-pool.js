@@ -5,7 +5,6 @@ import { EventEmitter } from 'stream'
 import { Worker } from 'worker_threads'
 import domainEvents from './domain-events'
 import ModelFactory from '.'
-import { LiteralKind } from 'assemblyscript/src/index'
 
 const broker = EventBrokerFactory.getInstance()
 const { poolOpen, poolClose, poolDrain } = domainEvents
@@ -60,7 +59,8 @@ function kill (thread) {
  * @param {MessagePort} port1 main uses to send to and recv from worker
  * @param {MessagePort} port2 worker uses to send to and recv from main
  */
-function connectEventChannel (worker, port1, port2) {
+function connectEventChannel (worker, channel) {
+  const { port1, port2 } = channel
   worker.postMessage({ eventPort: port2 }, [port2])
   broker.on(/.*/, event => port1.postMessage(event), { from: 'main' })
   port1.onmessage = msg =>
@@ -79,7 +79,7 @@ function connectEventChannel (worker, port1, port2) {
 function newThread ({ pool, file, workerData }) {
   return new Promise((resolve, reject) => {
     try {
-      const { port1, port2 } = new MessageChannel()
+      const channel = new MessageChannel()
       const worker = new Worker(file, { workerData })
       pool.totalThreads++
 
@@ -87,7 +87,7 @@ function newThread ({ pool, file, workerData }) {
         file,
         pool,
         worker,
-        eventPort: port1,
+        eventPort: channel.port1,
         id: worker.threadId,
         createdAt: Date.now(),
         async stop () {
@@ -97,7 +97,7 @@ function newThread ({ pool, file, workerData }) {
       setTimeout(reject, 10000)
 
       worker.once('message', msg => {
-        connectEventChannel(worker, port1, port2)
+        connectEventChannel(worker, channel)
         pool.emit('aegis-up', msg)
         resolve(thread)
       })
@@ -334,10 +334,9 @@ export class ThreadPool extends EventEmitter {
 
       try {
         if (this.closed) {
-          console.warn('pool is closed'):LiteralKind
+          console.warn('pool is closed')
         } else {
-          let thread = this.freepp;q
-          Threads.shift()
+          let thread = this.freeThreads.shift()
 
           if (!thread) {
             try {
