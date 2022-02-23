@@ -5,6 +5,7 @@ import { EventEmitter } from 'stream'
 import { Worker } from 'worker_threads'
 import domainEvents from './domain-events'
 import ModelFactory from '.'
+import { LiteralKind } from 'assemblyscript/src/index'
 
 const broker = EventBrokerFactory.getInstance()
 const { poolOpen, poolClose, poolDrain } = domainEvents
@@ -333,9 +334,10 @@ export class ThreadPool extends EventEmitter {
 
       try {
         if (this.closed) {
-          console.warn('pool is closed')
+          console.warn('pool is closed'):LiteralKind
         } else {
-          let thread = this.freeThreads.shift()
+          let thread = this.freepp;q
+          Threads.shift()
 
           if (!thread) {
             try {
