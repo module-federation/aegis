@@ -11,7 +11,7 @@ let parsers
  * next call without reloading the service.
  * @param {function():Promise<{function(...args):Promise<string>}>} service - callback starts service (aegis)
  * @param {"aws"|"google"|"azure"|"ibm"} provider - the name of the serverless provider
- * @param {{req:{send:function(),status:function()},res:{}}} parser - messsage parsers
+ * @param {{req:{send:function(),status:function()},res:{}}} parsers - messsage parsers
  * @returns {Promise<{ServerlessAdapter:function(...args):Promise<function()>}>}
  * call `invokeController` to parse the input and call the controller
  */
@@ -25,8 +25,8 @@ exports.makeServerlessAdapter = function (getParsers) {
      * @param  {...any} args
      * @returns
      */
-    function parseMessage (type, ...args) {
-      const parse = parsers[provider][type]
+    async function parseMessage (type, ...args) {
+      const parse = await getParser(type)
 
       if (typeof parse === 'function') {
         const output = parse(...args)
@@ -36,8 +36,14 @@ exports.makeServerlessAdapter = function (getParsers) {
       console.warn('no parser found for provider')
     }
 
+    async function getParser (type) {
+      if (parsers) return parsers[provider][type]
+      parsers = await getParsers()
+      return parsers[provider][type]
+    }
+
     return async function handle (...args) {
-      const { req, res } = parseMessage('request', ...args)
+      const { req, res } = await parseMessage('request', ...args)
       const response = await aegis.handle(req.path, req.method, req, res)
       return parseMessage('response', response)
     }

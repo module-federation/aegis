@@ -4,6 +4,7 @@ import { EventBrokerFactory } from './event-broker'
 import { EventEmitter } from 'stream'
 import { Worker } from 'worker_threads'
 import domainEvents from './domain-events'
+import ModelFactory from '.'
 
 const broker = EventBrokerFactory.getInstance()
 const { poolOpen, poolClose, poolDrain } = domainEvents
@@ -58,7 +59,7 @@ function kill (thread) {
  * @param {MessagePort} port1 main uses to send to and recv from worker
  * @param {MessagePort} port2 worker uses to send to and recv from main
  */
-function createEventChannel (worker, port1, port2) {
+function connectEventChannel (worker, port1, port2) {
   worker.postMessage({ eventPort: port2 }, [port2])
   broker.on(/.*/, event => port1.postMessage(event), { from: 'main' })
   port1.onmessage = msg =>
@@ -95,7 +96,7 @@ function newThread ({ pool, file, workerData }) {
       setTimeout(reject, 10000)
 
       worker.once('message', msg => {
-        createEventChannel(worker, port1, port2)
+        connectEventChannel(worker, port1, port2)
         pool.emit('aegis-up', msg)
         resolve(thread)
       })
@@ -143,12 +144,12 @@ function postJob ({ pool, jobName, jobData, thread, cb }) {
 
 /**
  * Contains threads, queued jobs, metrics and settings for a group of threads
- * that all do the same or similar kind of work, which could mean they all do the same functional onf 
- * functional domain (e.g. Order model), or a non-functional quality (CPU-bound) 
- * or both.
+ * that all do the same or similar kind of work, which could mean they all do
+ * the same functional on functional domain (e.g. Order model), or a non-functional
+ * quality (CPU-bound) or both.
  *
  * - Start and stop threads (and vice versa)
-d *   - total, max, min, free threads
+ *   - total, max, min, free threads
  *   - requested, running, waiting jobs
  *   - lifetime stats: avg/h/l wait/run times by jobname, total jobs, avg jobs / sec
  * - Increase pool capacity automatically as needed up to max threads.
@@ -541,9 +542,9 @@ const ThreadPoolFactory = (() => {
 
   async function removeUndeployedPools () {
     const pools = ThreadPoolFactory.listPools().map(pool => pool.toUpperCase())
-    const allModels = models
-      .getModelSpecs()
-      .map(spec => spec.modelName.toUpperCase())
+    const allModels = ModelFactory.getModelSpecs().map(spec =>
+      spec.modelName.toUpperCase()
+    )
 
     await Promise.all(
       pools

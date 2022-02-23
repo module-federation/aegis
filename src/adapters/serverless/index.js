@@ -1,8 +1,7 @@
 import { makeServerlessAdapter } from './serverless-adapter'
 import * as localParsers from './parsers'
 
-const getRemoteParsers = async () => import('aegis-services/parsers')
-
+const getRemoteParsers = async () => import('aegis-services/parsers')``
 export const getParsers = async function () {
   try {
     const remoteParsers = await getRemoteParsers()
