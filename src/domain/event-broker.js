@@ -122,9 +122,7 @@ async function notify (eventName, eventData = {}, options = {}) {
 
   // record options
   const data = {
-    ...(typeof eventData !== 'object'
-      ? { ['eventData']: eventData }
-      : eventData),
+    ...(typeof eventData !== 'object' ? { eventData } : eventData),
     _options: options
   }
 
@@ -140,9 +138,7 @@ async function notify (eventName, eventData = {}, options = {}) {
     await Promise.allSettled(
       [...handlers]
         .filter(([k]) => k instanceof RegExp && k.test(eventName))
-        .map(([, v]) =>
-          v.map(async f => await run(eventName, data, f, options))
-        )
+        .map(([, v]) => v.map(f => run(eventName, data, f, options)))
     )
   } catch (error) {
     handleError(notify.name, error)
@@ -162,11 +158,9 @@ class EventBrokerImpl extends EventBroker {
     this.notify = notify.bind(this)
     this.postSubscription = x => x
   }
-
   onSubscription (modelName, cb) {
     this.postSubscription = subInfo => cb({ ...subInfo, modelName })
   }
-
   /**
    * @override
    * @param {string | RegExp} eventName
@@ -212,7 +206,7 @@ class EventBrokerImpl extends EventBroker {
           applies: typeof from === 'string',
           satisfied: data =>
             typeof data._options?.from === 'string' &&
-            data._options?.from?.toUpperCase() === from.toUpperCase()
+            data._options.from.toUpperCase() === from.toUpperCase()
         }
       }
 

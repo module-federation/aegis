@@ -13,14 +13,13 @@ export default function makeLiveUpdate (hotReload) {
 
       const result = await hotReload(httpRequest.query.modelName)
 
-      console.debug({ fn: liveUpdate.name, result })
       return {
         headers: {
           'Content-Type': 'application/json',
           'Last-Modified': new Date().toUTCString()
         },
         statusCode: 200,
-        body: { result }
+        body: { fn: liveUpdate.name, result }
       }
     } catch (error) {
       console.error({ error })

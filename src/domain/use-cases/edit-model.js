@@ -43,7 +43,6 @@ export default function makeEditModel ({
    * worker then has to rehydrate the object, since anything crossing a thread
    * boundary is cloned and de/serialized.
    *
-   *
    * @param {*} input
    * @returns
    */

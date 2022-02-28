@@ -286,8 +286,6 @@ function startHeartbeat () {
       ws.ping(0x9)
     } else {
       try {
-        clearInterval(intervalId)
-
         if (broker) await broker.notify(TIMEOUTEVENT, 'server unresponsive')
 
         console.error({
@@ -296,7 +294,7 @@ function startHeartbeat () {
           msg: 'no response, trying new conn'
         })
 
-        await reconnect()
+        await _connect()
       } catch (error) {
         console.error(startHeartbeat.name, error)
       }

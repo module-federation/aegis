@@ -46,6 +46,6 @@ export default function buildCallback (controller) {
         res.status(httpResponse.statusCode).send(httpResponse.body)
         return httpResponse
       })
-      .catch(e => res.status(500).send({ error: 'An unkown error occurred.' }))
+      .catch(e => res.status(500).send({ error: 'An unkown error occurred.', e }))
   }
 }
