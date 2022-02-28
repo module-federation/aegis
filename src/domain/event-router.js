@@ -39,3 +39,13 @@
  * Assign bits to all these types in a bitmap so we can easily combine types
  *
  */
+
+/**
+ *
+ * @param {import('./domain-events')} events
+ */
+const EventRouter = function (events, subscriptions) {
+  return {
+    addSubscription
+  }
+}

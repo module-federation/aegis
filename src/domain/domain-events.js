@@ -27,7 +27,8 @@ const domainEvents = {
   hotReload: modelName => `hotReload_${modelName}`,
   poolOpen: modelName => `poolOpen_${modelName}`,
   poolClose: modelName => `poolClose_${modelName}`,
-  poolDrain: modelName => `poolDrain_${modelName}`
+  poolDrain: modelName => `poolDrain_${modelName}`,
+  subscription: 'subscription'
 }
 
 export default domainEvents

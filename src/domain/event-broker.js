@@ -3,6 +3,7 @@
  * @typedef {import('.').Model} Model
  */
 
+import domainEvents from './domain-events'
 import Event from './event'
 import hash from './util/hash'
 
@@ -158,9 +159,12 @@ class EventBrokerImpl extends EventBroker {
     this.notify = notify.bind(this)
     this.postSubscription = x => x
   }
+
   onSubscription (modelName, cb) {
-    this.postSubscription = subInfo => cb({ ...subInfo, modelName })
+    const eventName = domainEvents.subscription
+    this.postSubscription = subInfo => cb({ ...subInfo, modelName, eventName })
   }
+
   /**
    * @override
    * @param {string | RegExp} eventName
