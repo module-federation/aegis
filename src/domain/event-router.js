@@ -45,7 +45,5 @@
  * @param {import('./domain-events')} events
  */
 const EventRouter = function (events, subscriptions) {
-  return {
-    addSubscription
-  }
+  return {}
 }
