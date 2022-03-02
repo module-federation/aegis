@@ -57,24 +57,6 @@ let activateBackup = false
 let isSwitch = config.isSwitch || false
 
 /**
- *
- * @returns
- */
-function getLocalAddress () {
-  const interfaces = os.networkInterfaces()
-  const addresses = []
-  for (var k in interfaces) {
-    for (var k2 in interfaces[k]) {
-      const address = interfaces[k][k2]
-      if (!address.internal) {
-        addresses.push(address.address)
-      }
-    }
-    return addresses
-  }
-}
-
-/**
  * Use multicast DNS to find the host
  * instance configured as the "switch"
  * node for the local area network.
@@ -305,10 +287,10 @@ function startHeartbeat () {
  *
  */
 const handshake = {
+  eventName: 'handshake',
   proto: SERVICENAME,
   role: 'node',
   pid: process.pid,
-  addresses: getLocalAddress(),
   hostname: os.hostname(),
   isBackupSwitch,
   activateBackup,
@@ -323,7 +305,8 @@ const handshake = {
   validate (message) {
     if (message) {
       let msg
-      const valid = message.proto === this.proto || message.eventName
+      console.debug(message)
+      const valid = message.eventName || message.proto === this.proto
 
       if (typeof message === 'object') {
         msg = message = JSON.stringify(message)
