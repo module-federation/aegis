@@ -5,13 +5,16 @@ import EventBus from '../../services/event-bus'
 import { ServiceMeshAdapter as ServiceMesh } from '../../adapters'
 import { forwardEvents } from './forward-events'
 import uuid from '../util/uuid'
+import ThreadPoolFactory from '../thread-pool'
 
 // use external event bus for distributed object cache?
 const useEvtBus = process.env.EVENTBUS_ENABLE || false
 // what channel to broadcast cache events?
 const BROADCAST = process.env.TOPIC_BROADCAST || 'broadcastChannel'
 /**
- * Broker events between local and remote domains.
+ * Broker events between threadpools and remote mesh instances.
+ * - an event raised by one pool may need to be processed by another
+ * - an event raised by one aegis instance may need to be processed by another
  * - event forwarding
  * - distributed object cache
  *    - crud lifecycle events
@@ -22,6 +25,7 @@ const BROADCAST = process.env.TOPIC_BROADCAST || 'broadcastChannel'
  */
 export default function brokerEvents (broker, datasources, models) {
   console.debug({ fn: brokerEvents.name })
+  
   const svcMshPub = event => ServiceMesh.publish(event)
   const svcMshSub = (event, cb) => ServiceMesh.subscribe(event, cb)
 
@@ -37,6 +41,8 @@ export default function brokerEvents (broker, datasources, models) {
 
   const publish = useEvtBus ? evtBusPub : svcMshPub
   const subscribe = useEvtBus ? evtBusSub : svcMshSub
+
+  broker.on(/.*/, event => ThreadPoolFactory.postAll(event), { from: 'main' })
 
   const manager = DistributedCache({
     broker,

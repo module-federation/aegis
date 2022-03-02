@@ -45,11 +45,12 @@ function getContent (httpRequest, configs) {
           #configs {
             font-family: Arial, Helvetica, sans-serif;
             border-collapse: collapse;
-            width: 60%;
-          }
+            width: 50%;
+          } 
           #configs td, #configs th {
             border: 1px solid #ddd;
             padding: 8px;
+            width:30%
           }
           #configs tr:nth-child(even){background-color: #f2f2f2;}
           #configs tr:hover {background-color: #ddd;}
@@ -57,6 +58,7 @@ function getContent (httpRequest, configs) {
             padding-top: 12px;
             padding-bottom: 12px;
             text-align: left;
+            width: 100%;
             background-color: #04AA6D;
             color: white;
           }

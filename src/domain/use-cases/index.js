@@ -8,7 +8,6 @@ import makeRemoveModel from './remove-model'
 import makeLoadModels from './load-models'
 import makeListConfig from './list-configs'
 import makeHotReload from './hot-reload'
-
 import ModelFactory from '../model-factory'
 import DataSourceFactory from '../datasource-factory'
 import ThreadPoolFactory from '../thread-pool.js'

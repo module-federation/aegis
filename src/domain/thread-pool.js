@@ -1,6 +1,6 @@
 'use strict'
 
-import { EventBrokerFactory } from './event-broker'
+import EventBrokerFactory from './event-broker'
 import { EventEmitter } from 'stream'
 import { Worker } from 'worker_threads'
 import domainEvents from './domain-events'
@@ -11,6 +11,7 @@ const { poolOpen, poolClose, poolDrain } = domainEvents
 const DEFAULT_THREADPOOL_MIN = 1
 const DEFAULT_THREADPOOL_MAX = 2
 const DEFAULT_JOBQUEUE_TOLERANCE = 25
+const EVENTCHANNEL_MAXRETRY = 20
 
 /**
  * @typedef {object} Thread
@@ -62,7 +63,7 @@ function kill (thread) {
 function connectEventChannel (worker, channel) {
   const { port1, port2 } = channel
   worker.postMessage({ eventPort: port2 }, [port2])
-  broker.on(/.*/, event => port1.postMessage(event), { from: 'main' })
+  broker.on(/.*/, event => ThreadPoolFactory.postAll(event), { from: 'main' })
   port1.onmessage = msg =>
     broker.notify(msg.data.eventName, msg.data, { from: 'worker' })
 }
@@ -186,6 +187,7 @@ export class ThreadPool extends EventEmitter {
         this.waitingJobs.shift()(this.freeThreads.shift())
       }
     }
+
     setInterval(dequeue.bind(this), 1500)
 
     if (options.preload) {
@@ -381,6 +383,25 @@ export class ThreadPool extends EventEmitter {
     return this
   }
 
+  postMessage (event, retries = 0) {
+    // don't retry forever
+    if (retries > EVENTCHANNEL_MAXRETRY) {
+      console.error('event channel retry timeout', event)
+      return
+    }
+    const thread = this.freeThreads[0]
+
+    if (thread) {
+      // don't send to the sender (infinite loop)
+      if (event.port === thread.eventPort) return
+      // send over thread's event subchannel
+      thread.eventPort.postMessage(event)
+    } else {
+      // all threads busy, keep trying
+      setTimeout(this.postMessage, 1000, event, retries++)
+    }
+  }
+
   /**
    * Prevent new jobs from running by closing
    * the pool, then for any jobs already running,
@@ -503,6 +524,19 @@ const ThreadPoolFactory = (() => {
   }
 
   /**
+   * post a message to all pools (at least one thread l)
+   * @param {import('./event').Event} event
+   */
+  function postAll (event) {
+    threadPools.forEach(pool => pool.postMessage(event))
+  }
+
+  function postMessage (event) {
+    const pool = threadPools.get(event.eventName)
+    if (pool) pool.postMessage(event)
+  }
+
+  /**
    * This is the hot reload. Drain the pool,
    * stop the existing threads & start new
    * ones, which will have the latest code
@@ -593,6 +627,8 @@ const ThreadPoolFactory = (() => {
     getThreadPool,
     listPools,
     reloadAll,
+    postMessage,
+    postAll,
     reload,
     status,
     listen,

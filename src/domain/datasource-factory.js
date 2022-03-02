@@ -5,17 +5,18 @@
 import ModelFactory from '.'
 import * as adapters from '../adapters/datasources'
 import dbconfig from '../adapters/datasources'
-
 import sysconf from '../config'
 
-//const defaultAdapter = process.env.DATASOURCE_ADAPTER || config.MEMORYADAPTER
 const defaultAdapter = sysconf.hostConfig.adapters.defaultDatasource
 const DefaultDataSource = adapters[defaultAdapter]
 
 /**
  * Creates or returns the dedicated datasource for the domain model.
  * @todo handle all state same way
- * @typedef {{getDataSource:function(string):import("./datasource").default,listDataSources:Map[]}} DataSourceFactory
+ * @typedef {{
+ *  getDataSource:function(string):import("./datasource").default,
+ *  listDataSources:Map[]
+ * }} DataSourceFactory
  * @type {DataSourceFactory}
  */
 const DataSourceFactory = (() => {
@@ -37,9 +38,9 @@ const DataSourceFactory = (() => {
 
   /**
    * Get datasource from model spec or return default for server.
-   * @param {*} ds
-   * @param {*} factory this factory
-   * @param {*} name datasource name
+   * @param {Map} ds - data structure
+   * @param {DataSourceFactory} factory this factory
+   * @param {string} name datasource name
    * @returns
    */
   function getSpecDataSource (ds, factory, name) {
@@ -63,11 +64,19 @@ const DataSourceFactory = (() => {
   }
 
   /**
+   * @typedef {object} dsOpts
+   * @property {boolean} memoryOnly - if true returns memory adapter and caches it
+   * @property {boolean} ephemeral - if true returns memory adapter but doesn't cache it
+   * @property {string} adapterName - name of adapter to use
+   */
+
+  /**
    * Get the datasource for each model.
    * @param {string} name - model name
-   * @param {boolean} cacheOnly - if true returns memory adapter, default is false
+   * @param {dsOpts} options - memory only, ephemeral, adapter ame
+   * @returns {import('./datasource').default}
    */
-  function getDataSource (name, { memoryOnly, adapterName } = {}) {
+  function getDataSource (name, { memoryOnly, ephemeral, adapterName } = {}) {
     if (!dataSources) {
       dataSources = new Map()
     }
@@ -76,10 +85,10 @@ const DataSourceFactory = (() => {
       return dataSources.get(name)
     }
 
-    if (memoryOnly) {
+    if (memoryOnly || ephemeral) {
       const MemoryDs = dbconfig.getBaseClass(dbconfig.MEMORYADAPTER)
       const newDs = new MemoryDs(new Map(), this, name)
-      dataSources.set(name, newDs)
+      if (!ephemeral) dataSources.set(name, newDs)
       return newDs
     }
 
