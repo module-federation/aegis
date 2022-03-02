@@ -161,8 +161,8 @@ class EventBrokerImpl extends EventBroker {
   }
 
   onSubscription (modelName, cb) {
-    const eventName = domainEvents.subscription
-    this.postSubscription = subInfo => cb({ ...subInfo, modelName, eventName })
+    this.postSubscription = subInfo =>
+      cb({ ...subInfo, modelName, eventName: domainEvents.subscription })
   }
 
   /**
