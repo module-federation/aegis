@@ -157,7 +157,7 @@ async function resolveServiceUrl () {
 
         console.warn({
           fn: runQuery.name,
-          msg: 'primary unresponsive: backup taking over',
+          msg: 'primary switch unresponsive: taking over',
           isBackupSwitch,
           activateBackup
         })
@@ -286,15 +286,14 @@ function startHeartbeat () {
       ws.ping(0x9)
     } else {
       try {
+        clearInterval(intervalId)
         if (broker) await broker.notify(TIMEOUTEVENT, 'server unresponsive')
-
         console.error({
           fn: startHeartbeat.name,
           receivedPong,
           msg: 'no response, trying new conn'
         })
-
-        await _connect()
+        await reconnect()
       } catch (error) {
         console.error(startHeartbeat.name, error)
       }
@@ -310,18 +309,22 @@ const handshake = {
   role: 'node',
   pid: process.pid,
   addresses: getLocalAddress(),
+  hostname: os.hostname(),
   isBackupSwitch,
   activateBackup,
+
   serialize () {
     return JSON.stringify({
       ...this,
       models: ModelFactory.getModelSpecs().map(spec => spec.modelName) || []
     })
   },
+
   validate (message) {
     if (message) {
       let msg
       const valid = message.proto === this.proto || message.eventName
+
       if (typeof message === 'object') {
         msg = message = JSON.stringify(message)
       }
@@ -330,6 +333,7 @@ const handshake = {
     }
     return false
   },
+
   becomeBackupSwitch (message) {
     return message.isBackupSwitch === true
   }
@@ -362,7 +366,7 @@ async function _connect () {
         debug && console.debug('received event:', eventData)
 
         if (handshake.validate(eventData)) {
-          // check if the webswitch wants us to be a backup
+          // check if the switch wants us to be a backup
           isBackupSwitch = handshake.becomeBackupSwitch(eventData)
 
           // process event
@@ -370,7 +374,7 @@ async function _connect () {
             // call broker if there is one
             if (broker)
               await broker.notify(eventData.eventName, eventData, {
-                fromMesh: true
+                from: 'main'
               })
             // send to uplink if there is one
             if (uplinkCallback) await uplinkCallback(message)
@@ -405,7 +409,11 @@ async function reconnect () {
   serviceUrl = null
   ws = null
   await _connect()
-  if (!ws) setTimeout(reconnect, 60000)
+  if (ws) {
+    console.info('reconnected to switch', serviceUrl)
+    return
+  }
+  setTimeout(reconnect, 60000)
 }
 
 /**

@@ -1,6 +1,7 @@
 'use strict'
 
 import { nanoid } from 'nanoid'
+import os from 'os'
 
 const SERVICENAME = 'webswitch'
 const startTime = Date.now()
@@ -52,6 +53,7 @@ export function attachServer (server) {
       clientsConnected: server.clients.size,
       uplink: server.uplink ? server.uplink.info : 'no uplink',
       isPrimarySwitch: isSwitch,
+      hostname: os.hostname(),
       clients: [...server.clients].map(c => ({ ...c.info, open: c.OPEN }))
     })
   }
@@ -67,7 +69,7 @@ export function attachServer (server) {
   server.reassignBackupSwitch = function (client) {
     if (client.info.id === backupSwitch) {
       for (let c of server.clients) {
-        if (c.info.id !== backupSwitch) {
+        if (c.info.id !== backupSwitch && os.hostname() !== c.info.hostname) {
           backupSwitch = c.info.id
           c.isBackupSwitch = true
           return

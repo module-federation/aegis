@@ -5,7 +5,6 @@ import EventBus from '../../services/event-bus'
 import { ServiceMeshAdapter as ServiceMesh } from '../../adapters'
 import { forwardEvents } from './forward-events'
 import uuid from '../util/uuid'
-import ThreadPoolFactory from '../thread-pool'
 
 // use external event bus for distributed object cache?
 const useEvtBus = process.env.EVENTBUS_ENABLE || false
@@ -22,10 +21,16 @@ const BROADCAST = process.env.TOPIC_BROADCAST || 'broadcastChannel'
  * @param {import('../event-broker').EventBroker} broker
  * @param {import("../datasource-factory")} datasources
  * @param {import("../model-factory").ModelFactory} models
+ * @param {import("../thread-pool").default} threadpools
  */
-export default function brokerEvents (broker, datasources, models) {
+export default function brokerEvents (
+  broker,
+  datasources,
+  models,
+  threadpools
+) {
   console.debug({ fn: brokerEvents.name })
-  
+
   const svcMshPub = event => ServiceMesh.publish(event)
   const svcMshSub = (event, cb) => ServiceMesh.subscribe(event, cb)
 
@@ -42,7 +47,7 @@ export default function brokerEvents (broker, datasources, models) {
   const publish = useEvtBus ? evtBusPub : svcMshPub
   const subscribe = useEvtBus ? evtBusSub : svcMshSub
 
-  broker.on(/.*/, event => ThreadPoolFactory.postAll(event), { from: 'main' })
+  broker.on(/.*/, event => threadpools.postAll(event), { from: 'worker' })
 
   const manager = DistributedCache({
     broker,

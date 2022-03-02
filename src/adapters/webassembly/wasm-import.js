@@ -7,7 +7,7 @@ import {
 } from './wasm-decorators'
 
 import loader from '@assemblyscript/loader'
-import { EventBrokerFactory } from '../../domain/event-broker'
+import EventBrokerFactory from '../../domain/event-broker'
 import { WasmInterop } from './wasm-interop'
 import { RepoClient } from './repo-client'
 

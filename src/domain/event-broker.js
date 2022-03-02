@@ -284,7 +284,7 @@ class EventBrokerImpl extends EventBroker {
  * Create / return broker singleton instance
  * @todo handle all state same way
  */
-export const EventBrokerFactory = (() => {
+const EventBrokerFactory = (() => {
   let instance
 
   function createInstance () {

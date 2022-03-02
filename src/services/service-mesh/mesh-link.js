@@ -2,7 +2,7 @@
 
 const mlink = require('mesh-link')
 const nanoid = require('nanoid').nanoid
-const broker = require('../../domain/event-broker').EventBrokerFactory.getInstance()
+const broker = require('../../domain/event-broker').default.getInstance()
 const begins = Date.now()
 const uptime = () => Math.round(Math.abs((Date.now() - begins) / 1000 / 60))
 const userConfig = require('../../config').hostConfig

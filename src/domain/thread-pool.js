@@ -147,7 +147,7 @@ function postJob ({ pool, jobName, jobData, thread, cb }) {
 /**
  * Contains threads, queued jobs, metrics and settings for a group of threads
  * that all do the same or similar kind of work, which could mean they all do
- * the same functional on functional domain (e.g. Order model), or a non-functional
+ * the same functional domain (e.g. Order model), or a non-functional
  * quality (CPU-bound) or both.
  *
  * - Start and stop threads (and vice versa)
@@ -389,7 +389,9 @@ export class ThreadPool extends EventEmitter {
       console.error('event channel retry timeout', event)
       return
     }
-    const thread = this.freeThreads[0]
+    const threads = this.freeThreads
+    if (!threads || threads.length < 1) return
+    const thread = threads[0]
 
     if (thread) {
       // don't send to the sender (infinite loop)

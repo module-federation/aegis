@@ -333,6 +333,6 @@ export async function importRemoteCache (name) {
 
 export { UseCaseService } from './use-cases'
 
-export { EventBrokerFactory } from './event-broker'
+export { default as EventBrokerFactory } from './event-broker'
 
 export default ModelFactory

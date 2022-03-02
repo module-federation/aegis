@@ -16,11 +16,15 @@ import brokerEvents from './broker-events'
 import { isMainThread } from 'worker_threads'
 
 export function registerEvents () {
-  brokerEvents(
-    EventBrokerFactory.getInstance(),
-    DataSourceFactory,
-    ModelFactory
-  )
+  // main thread handles event dispatch
+  if (isMainThread) {
+    brokerEvents(
+      EventBrokerFactory.getInstance(),
+      DataSourceFactory,
+      ModelFactory,
+      ThreadPoolFactory
+    )
+  }
 }
 
 /**
@@ -32,15 +36,17 @@ function buildOptions (model) {
     modelName: model.modelName,
     models: ModelFactory,
     broker: EventBrokerFactory.getInstance(),
-    handlers: model.eventHandlers,
-    threadpool: null
+    handlers: model.eventHandlers
   }
+
   if (isMainThread) {
     return {
       ...options,
+      // main thread does not write to persistent store
       repository: DataSourceFactory.getDataSource(model.modelName, {
         memoryOnly: true
       }),
+      // only main thread knows about thread pools (no nesting)
       threadpool: ThreadPoolFactory.getThreadPool(model.modelName, {
         preload: false
       })
@@ -48,11 +54,20 @@ function buildOptions (model) {
   } else {
     return {
       ...options,
+      // only worker threads can write to persistent storage
       repository: DataSourceFactory.getDataSource(model.modelName)
     }
   }
 }
 
+/** @typedef {import('../datasource-factory').Model} Model */
+
+/**
+ * Generate use case functions for every model
+ * @param {string} modelName
+ * @param {function({}):function():Promise<Model>} factory
+ * @returns
+ */
 function make (factory) {
   const specs = ModelFactory.getModelSpecs()
   return specs.map(spec => ({
@@ -61,6 +76,12 @@ function make (factory) {
   }))
 }
 
+/**
+ * Generate use case functions for just one model
+ * @param {string} modelName
+ * @param {function({}):function():Promise<Model>} factory
+ * @returns
+ */
 function makeOne (modelName, factory) {
   const spec = ModelFactory.getModelSpec(modelName, { preload: false })
   return factory(buildOptions(spec))
