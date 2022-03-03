@@ -335,4 +335,6 @@ export { UseCaseService } from './use-cases'
 
 export { default as EventBrokerFactory } from './event-broker'
 
+export { default as DistributedCache } from './distributed-cache'
+
 export default ModelFactory

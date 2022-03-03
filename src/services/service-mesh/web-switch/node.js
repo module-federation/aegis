@@ -340,7 +340,6 @@ async function _connect () {
 
     ws.on('error', function (error) {
       console.error({ fn: _connect.name, error })
-      ws = null // get fresh socket on reconnect
     })
 
     ws.on('message', async function (message) {
@@ -390,15 +389,14 @@ export async function connect (serviceInfo = {}) {
  */
 async function reconnect () {
   serviceUrl = null
-  ws = null
   await _connect()
-  if (ws) {
+  if (ws?.CONNECTING || ws?.OPEN) {
     console.info('reconnected to switch', serviceUrl)
     return
   }
-  setTimeout(reconnect, 60000)
+  setTimeout(reconnect, 3000)
 }
-
+ 
 /**
  * Call this method to broadcast a message on the web-switch network
  * @param {object} event

@@ -59,7 +59,7 @@ export default function removeModelFactory ({
         const event = await models.createEvent(eventType, modelName, deleted)
 
         const [obsResult, repoResult] = await Promise.allSettled([
-          broker.notify(event.eventName, event),
+          broker.notify(eventName, event),
           repository.delete(input.id)
         ])
 

@@ -108,7 +108,7 @@ async function runHandler (eventName, eventData = {}, handle, forward) {
   }
 
   /** @type {eventHandler} */
-  await handle(eventData)
+  await handle(JSON.parse(JSON.stringify(eventData)))
 }
 
 /**
@@ -171,7 +171,7 @@ class EventBrokerImpl extends EventBroker {
     eventName,
     handler,
     {
-      from = 'worker',
+      from = null,
       once = false,
       delay = 0,
       filter = {},
@@ -215,13 +215,22 @@ class EventBrokerImpl extends EventBroker {
       }
 
       if (
-        Object.values(conditions).every(
-          condition => !condition.applies || condition.satisfied(eventData)
-        )
+        Object.values(conditions).every(condition => {
+          const met = !condition.applies || condition.satisfied(eventData)
+          console.debug({
+            ...condition,
+            satisfied: condition.satisfied.toString(),
+            met,
+            eventData
+          })
+          return met
+        })
       ) {
         if (once) this.off(eventName, callbackWrapper)
         if (delay > 0) setTimeout(handler, delay, eventData)
         else return handler(eventData)
+      } else {
+        console.debug('one or more conditions not met', eventName)
       }
     }
 
@@ -236,13 +245,13 @@ class EventBrokerImpl extends EventBroker {
         funcs.push(callbackWrapper)
 
         // send to main
-        this.postSubscription(subscription)
+        //this.postSubscription(subscription)
         return sub
       }
       return null
     }
     handlers.set(eventName, [callbackWrapper])
-    this.postSubscription(subscription)
+    //this.postSubscription(subscription)
     return sub
   }
 

@@ -51,7 +51,7 @@ export default function makeAddModel ({
 
       try {
         const event = models.createEvent(eventType, modelName, model)
-        await broker.notify(event.eventName, event)
+        await broker.notify(eventName, event)
       } catch (error) {
         // remote the object if not processed
         await repository.delete(model.getId())

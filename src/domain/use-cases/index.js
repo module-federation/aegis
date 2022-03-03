@@ -17,14 +17,14 @@ import { isMainThread } from 'worker_threads'
 
 export function registerEvents () {
   // main thread handles event dispatch
-  if (isMainThread) {
-    brokerEvents(
-      EventBrokerFactory.getInstance(),
-      DataSourceFactory,
-      ModelFactory,
-      ThreadPoolFactory
-    )
-  }
+  // if (isMainThread) {
+  brokerEvents(
+    EventBrokerFactory.getInstance(),
+    DataSourceFactory,
+    ModelFactory,
+    ThreadPoolFactory
+  )
+  //}
 }
 
 /**
@@ -83,7 +83,7 @@ function make (factory) {
  * @returns
  */
 function makeOne (modelName, factory) {
-  const spec = ModelFactory.getModelSpec(modelName, { preload: false })
+  const spec = ModelFactory.getModelSpec(modelName)
   return factory(buildOptions(spec))
 }
 

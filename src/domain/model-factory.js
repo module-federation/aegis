@@ -12,7 +12,7 @@ import Event from './event'
  * @typedef {Object} ModelFactory Low-level port functions for creating, updating, deleting domain models. To be called by
  * application use-case functions, which in turn are called by driving/primary adapters.
  * @property {function(broker,Datasource,string,...args):Promise<Readonly<Model>>} createModel Create a new model instance
- * @property {function(string,string,*):Promise<Readonly<Event>>} createEvent
+ * @property {function(string,string,*):Readonly<Event>} createEvent
  * @property {function(Model,object):Model} updateModel
  * @property {function(Model):Model} deleteModel
  * @property {function(string,string):string} getEventName
@@ -170,9 +170,9 @@ const ModelFactory = {
    * @param {EventType} eventType
    * @param {String} modelName
    * @param {*} args
-   * @returns {Promise<Readonly<Event>>} the event instance
+   * @returns {Readonly<Event>} the event instance
    */
-  createEvent: async (eventType, modelName, args) => {
+  createEvent: (eventType, modelName, args) => {
     const name = checkModelName(modelName)
     const type = checkEventType(eventType)
     const factory = eventFactories[type].get(name)

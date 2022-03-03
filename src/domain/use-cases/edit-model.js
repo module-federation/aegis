@@ -93,7 +93,7 @@ export default function makeEditModel ({
         })
 
         try {
-          await broker.notify(event.eventName, event)
+          await broker.notify(eventName, event)
 
           if (command) {
             const result = await async(
