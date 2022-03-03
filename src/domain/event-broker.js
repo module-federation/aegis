@@ -23,7 +23,7 @@ const debug = process.env.DEBUG
  * @property {number} [delay] - run the handler at least `delay` milliseconds after the event is fired
  * @property {boolean} [once] - run the handler and then unsubscribe. See code below to perform programmaticly.
  * ```js
- *  const listener = model.addListener(eventName, function (eventData) {
+ *  const listener = model.(eventName, function (eventData) {
  *    // ...do something
  *    listener.unsubscribe()
  *  })
@@ -121,19 +121,13 @@ async function runHandler (eventName, eventData = {}, handle, forward) {
 async function notify (eventName, eventData = {}, options = {}) {
   const run = runHandler.bind(this)
 
-  // record options
-  const data = {
-    ...(typeof eventData !== 'object' ? { eventData } : eventData),
-    _options: options
-  }
-
-  console.debug({ desc: 'notify', eventName, options, data })
+  console.debug({ eventData })
 
   try {
     if (handlers.has(eventName)) {
       await Promise.allSettled(
         handlers.get(eventName).map(async handler => {
-          await run(eventName, data, handler, options)
+          await run(eventName, eventData, handler, options)
         })
       )
     }
@@ -141,7 +135,7 @@ async function notify (eventName, eventData = {}, options = {}) {
     await Promise.allSettled(
       [...handlers]
         .filter(([k]) => k instanceof RegExp && k.test(eventName))
-        .map(([, v]) => v.map(f => run(eventName, data, f, options)))
+        .map(([, v]) => v.map(f => run(eventName, eventData, f, options)))
     )
   } catch (error) {
     handleError(notify.name, error)
