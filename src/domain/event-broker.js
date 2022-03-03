@@ -127,6 +127,8 @@ async function notify (eventName, eventData = {}, options = {}) {
     _options: options
   }
 
+  console.debug({ desc: 'notify', eventName, options, data })
+
   try {
     if (handlers.has(eventName)) {
       await Promise.allSettled(
@@ -203,8 +205,12 @@ class EventBrokerImpl extends EventBroker {
           satisfied: data => filterKeys.every(k => filterKeys[k] === data[k])
         },
         priviledged: {
-          applies: priviledged,
-          satisfied: data => data._options?.priviledged === hash(priviledged)
+          applies: true, // have to check the data to know
+          satisfied: data =>
+            !data ||
+            !data._options ||
+            !data._options.priviledged ||
+            data._options.priviledged === hash(priviledged)
         },
         from: {
           applies: typeof from === 'string',
