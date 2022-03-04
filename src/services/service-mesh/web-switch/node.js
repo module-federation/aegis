@@ -354,10 +354,7 @@ async function _connect () {
           // process event
           if (eventData.eventName) {
             // call broker if there is one
-            if (broker)
-              await broker.notify(eventData.eventName, eventData, {
-                from: 'main'
-              })
+            if (broker) await broker.notify(eventData.even)
             // send to uplink if there is one
             if (uplinkCallback) await uplinkCallback(message)
           }
@@ -396,7 +393,7 @@ async function reconnect () {
   }
   setTimeout(reconnect, 3000)
 }
- 
+
 /**
  * Call this method to broadcast a message on the web-switch network
  * @param {object} event

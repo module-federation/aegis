@@ -47,7 +47,7 @@ export default function brokerEvents (
   const publish = useEvtBus ? evtBusPub : svcMshPub
   const subscribe = useEvtBus ? evtBusSub : svcMshSub
 
-  broker.on(/.*/, event => threadpools.postAll(event), { from: 'worker' })
+  broker.on(/.*/, event => threadpools.postAll(event))
 
   const manager = DistributedCache({
     broker,
