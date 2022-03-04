@@ -153,7 +153,6 @@ class EventBrokerImpl extends EventBroker {
   constructor () {
     super()
     this.notify = notify.bind(this)
-    this.postSubscription = x => x
   }
 
   onSubscription (modelName, cb) {
@@ -205,25 +204,27 @@ class EventBrokerImpl extends EventBroker {
             !data._options ||
             !data._options.priviledged ||
             data._options.priviledged === hash(priviledged)
-        },
-        from: {
-          applies: typeof from === 'string',
-          satisfied: data =>
-            typeof data._options?.from === 'string' &&
-            data._options.from.toUpperCase() === from.toUpperCase()
         }
+        // from: {
+        //   applies: typeof from === 'string',
+        //   satisfied: data =>
+        //     data &&
+        //     data._options &&
+        //     typeof data._options.from === 'string' &&
+        //     data._options.from.toUpperCase() !== from.toUpperCase()
+        // }
       }
 
       if (
         Object.values(conditions).every(condition => {
-          const met = !condition.applies || condition.satisfied(eventData)
+          const ok = !condition.applies || condition.satisfied(eventData)
           console.debug({
             ...condition,
             satisfied: condition.satisfied.toString(),
-            met,
-            eventData
+            eventName,
+            ok
           })
-          return met
+          return ok
         })
       ) {
         if (once) this.off(eventName, callbackWrapper)
@@ -241,14 +242,10 @@ class EventBrokerImpl extends EventBroker {
 
     const funcs = handlers.get(eventName)
     if (funcs) {
-      if (!singleton || funcs.length < 1) {
-        funcs.push(callbackWrapper)
-
-        // send to main
-        //this.postSubscription(subscription)
-        return sub
-      }
-      return null
+      if (singleton) return
+      funcs.push(callbackWrapper)
+      // send to main
+      return sub
     }
     handlers.set(eventName, [callbackWrapper])
     //this.postSubscription(subscription)
