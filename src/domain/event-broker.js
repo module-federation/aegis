@@ -153,12 +153,6 @@ class EventBrokerImpl extends EventBroker {
   constructor () {
     super()
     this.notify = notify.bind(this)
-    this.postSubscription = x => x
-  }
-
-  onSubscription (modelName, cb) {
-    this.postSubscription = subInfo =>
-      cb({ ...subInfo, modelName, eventName: domainEvents.subscription })
   }
 
   /**
@@ -217,11 +211,10 @@ class EventBrokerImpl extends EventBroker {
       if (
         Object.values(conditions).every(condition => {
           const met = !condition.applies || condition.satisfied(eventData)
-          console.debug({
+          console.assert(!debug, {
             ...condition,
-            satisfied: condition.satisfied.toString(),
-            met,
-            eventData
+            test: condition.satisfied.toString(),
+            eventName
           })
           return met
         })
@@ -241,17 +234,12 @@ class EventBrokerImpl extends EventBroker {
 
     const funcs = handlers.get(eventName)
     if (funcs) {
-      if (!singleton || funcs.length < 1) {
-        funcs.push(callbackWrapper)
-
-        // send to main
-        //this.postSubscription(subscription)
-        return sub
-      }
-      return null
+      if (singleton) return
+      funcs.push(callbackWrapper)
+      // send to main
+      return sub
     }
     handlers.set(eventName, [callbackWrapper])
-    //this.postSubscription(subscription)
     return sub
   }
 
