@@ -89,7 +89,7 @@ const handleError = error => {
  * @param {eventHandler} handle
  * @param {boolean} forward
  */
-async function runHandler (eventName, eventData = {}, handle, forward) {
+async function runHandler (eventName, eventData = {}, handle) {
   const abort = eventData ? false : true
 
   console.assert(!debug, 'handler running', {
@@ -97,9 +97,7 @@ async function runHandler (eventName, eventData = {}, handle, forward) {
     eventUuid: eventData?.eventUuid,
     handle: handle.toString(),
     model: eventData?.modelName,
-    modelId: eventData?.modleId,
-    abort,
-    forward
+    modelId: eventData?.modleId
   })
 
   if (abort) {
@@ -107,7 +105,11 @@ async function runHandler (eventName, eventData = {}, handle, forward) {
     return
   }
 
-  /** @type {eventHandler} */
+  /**
+   * Git rid of unserializable types in the message
+   * to avoid rejection if passed between threads
+   * @type {eventHandler}
+   */
   await handle(JSON.parse(JSON.stringify(eventData)))
 }
 
@@ -120,14 +122,18 @@ async function runHandler (eventName, eventData = {}, handle, forward) {
  */
 async function notify (eventName, eventData = {}, options = {}) {
   const run = runHandler.bind(this)
+  let data = eventData
 
-  console.debug({ eventData })
+  if (options) {
+    data = { ...eventData, _options: { ...options } }
+  }
+  console.debug({ fn: notify.name, data })
 
   try {
     if (handlers.has(eventName)) {
       await Promise.allSettled(
-        handlers.get(eventName).map(async handler => {
-          await run(eventName, eventData, handler, options)
+        handlers.get(eventName).map(async fn => {
+          await run(eventName, data, fn)
         })
       )
     }
@@ -135,7 +141,7 @@ async function notify (eventName, eventData = {}, options = {}) {
     await Promise.allSettled(
       [...handlers]
         .filter(([k]) => k instanceof RegExp && k.test(eventName))
-        .map(([, v]) => v.map(f => run(eventName, eventData, f, options)))
+        .map(([, v]) => v.map(fn => run(eventName, data, fn)))
     )
   } catch (error) {
     handleError(notify.name, error)
@@ -155,11 +161,6 @@ class EventBrokerImpl extends EventBroker {
     this.notify = notify.bind(this)
   }
 
-  onSubscription (modelName, cb) {
-    this.postSubscription = subInfo =>
-      cb({ ...subInfo, modelName, eventName: domainEvents.subscription })
-  }
-
   /**
    * @override
    * @param {string | RegExp} eventName
@@ -175,6 +176,7 @@ class EventBrokerImpl extends EventBroker {
       delay = 0,
       filter = {},
       singleton = false,
+      forwarded = false,
       priviledged = null
     } = {}
   ) {
@@ -204,26 +206,37 @@ class EventBrokerImpl extends EventBroker {
             !data._options ||
             !data._options.priviledged ||
             data._options.priviledged === hash(priviledged)
+        },
+        from: {
+          applies: typeof from === 'string',
+          satisfied: data =>
+            data &&
+            data._options &&
+            typeof data._options.from === 'string' &&
+            data._options.from.toUpperCase() === from.toUpperCase()
+        },
+        forwarded: {
+          applies: typeof forwarded === 'boolean',
+          satisfied: data =>
+            data &&
+            data._options &&
+            typeof data._options.forwarded === 'boolean' &&
+            data._options.forwarded === forwarded
         }
-        // from: {
-        //   applies: typeof from === 'string',
-        //   satisfied: data =>
-        //     data &&
-        //     data._options &&
-        //     typeof data._options.from === 'string' &&
-        //     data._options.from.toUpperCase() !== from.toUpperCase()
-        // }
       }
 
       if (
         Object.values(conditions).every(condition => {
           const ok = !condition.applies || condition.satisfied(eventData)
+
           console.debug({
+            fn: notify.name,
             ...condition,
             satisfied: condition.satisfied.toString(),
             eventName,
             ok
           })
+
           return ok
         })
       ) {
@@ -231,7 +244,7 @@ class EventBrokerImpl extends EventBroker {
         if (delay > 0) setTimeout(handler, delay, eventData)
         else return handler(eventData)
       } else {
-        console.debug('one or more conditions not met', eventName)
+        console.debug('at least one condition not satisfied', eventName)
       }
     }
 
@@ -248,7 +261,6 @@ class EventBrokerImpl extends EventBroker {
       return sub
     }
     handlers.set(eventName, [callbackWrapper])
-    //this.postSubscription(subscription)
     return sub
   }
 

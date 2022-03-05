@@ -57,7 +57,7 @@ export default function brokerEvents (
     subscribe
   })
 
-  // start mesh regardless
+  // start mesh
   ServiceMesh.connect({ models, broker }).then(() => {
     console.debug('service mesh connecting')
     manager.start()
