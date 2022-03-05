@@ -206,38 +206,38 @@ class EventBrokerImpl extends EventBroker {
             !data._options ||
             !data._options.priviledged ||
             data._options.priviledged === hash(priviledged)
-        },
-        from: {
-          applies: typeof from === 'string',
-          satisfied: data =>
-            data &&
-            data._options &&
-            typeof data._options.from === 'string' &&
-            data._options.from.toUpperCase() === from.toUpperCase()
-        },
-        forwarded: {
-          applies: typeof forwarded === 'boolean',
-          satisfied: data =>
-            data &&
-            data._options &&
-            typeof data._options.forwarded === 'boolean' &&
-            data._options.forwarded === forwarded
         }
+        // from: {
+        //   applies: typeof from === 'string',
+        //   satisfied: data =>
+        //     data &&
+        //     data._options &&
+        //     typeof data._options.from === 'string' &&
+        //     data._options.from.toUpperCase() === from.toUpperCase()
+        // }
+        // forwarded: {
+        //   applies: typeof forwarded === 'boolean',
+        //   satisfied: data =>
+        //     data &&
+        //     data._options &&
+        //     typeof data._options.forwarded === 'boolean' &&
+        //     data._options.forwarded === forwarded
+        // }
       }
 
       if (
-        Object.values(conditions).every(condition => {
-          const ok = !condition.applies || condition.satisfied(eventData)
+        Object.keys(conditions).every(key => {
+          const result =
+            !conditions[key].applies || conditions[key].satisfied(eventData)
 
           console.debug({
             fn: notify.name,
-            ...condition,
-            satisfied: condition.satisfied.toString(),
+            condition: key,
             eventName,
-            ok
+            satisfied: result
           })
 
-          return ok
+          return result
         })
       ) {
         if (once) this.off(eventName, callbackWrapper)

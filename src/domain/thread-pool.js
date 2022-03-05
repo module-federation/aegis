@@ -63,7 +63,9 @@ function kill (thread) {
 function connectEventChannel (worker, channel) {
   const { port1, port2 } = channel
   worker.postMessage({ eventPort: port2 }, [port2])
-  broker.on(/.*/, event => ThreadPoolFactory.postAll(event))
+  broker.on(/.*/, event => ThreadPoolFactory.postAll(event), {
+    forwarded: true
+  })
   port1.onmessage = msg =>
     broker.notify(msg.data.eventName, msg.data, { forwarded: true })
 }
@@ -526,7 +528,7 @@ const ThreadPoolFactory = (() => {
   }
 
   /**
-   * post a message to all pools (at least one thread l)
+   * post a message to all pools (at least one thread)
    * @param {import('./event').Event} event
    */
   function postAll (event) {
