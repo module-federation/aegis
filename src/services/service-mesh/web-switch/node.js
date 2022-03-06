@@ -15,7 +15,6 @@
 import os from 'os'
 import WebSocket from 'ws'
 import Dns from 'multicast-dns'
-import ModelFactory from '../../../domain/index'
 
 const HOSTNAME = 'webswitch.local'
 const SERVICENAME = 'webswitch'
@@ -79,48 +78,6 @@ async function resolveServiceUrl () {
         url = _url(protocol, answer.data.target, answer.data.port)
         console.info({ msg: 'found dns service record for', SERVICENAME, url })
         resolve(url)
-      }
-    })
-
-    dns.on('query', function (query) {
-      debug && console.debug('got a query packet:', query)
-
-      const questions = query.questions.filter(
-        q => q.name === SERVICENAME || q.name === HOSTNAME
-      )
-
-      if (!questions[0]) {
-        console.debug({ fn: dns.on.name, msg: 'no questions', questions })
-        return
-      }
-
-      if (isSwitch || (isBackupSwitch && activateBackup)) {
-        const answer = {
-          answers: [
-            {
-              name: SERVICENAME,
-              type: 'SRV',
-              data: {
-                port: port,
-                weight: 0,
-                priority: 10,
-                target: host
-              }
-            }
-          ]
-        }
-
-        console.info({
-          fn: dns.on.name + "('query')",
-          isSwitch,
-          isBackupSwitch,
-          activateBackup,
-          msg: 'answering query packet',
-          questions,
-          answer
-        })
-
-        dns.respond(answer)
       }
     })
 
@@ -363,7 +320,7 @@ async function _connect () {
             if (broker)
               await broker.notify('EVENT_FROM_MESH', eventData, {
                 origin: 'mesh'
-              })
+              }) 
             // send to uplink if there is one
             if (uplinkCallback) await uplinkCallback(message)
           }
@@ -395,7 +352,7 @@ export async function connect (serviceInfo = {}) {
  */
 async function reconnect (retries = 0) {
   if (retries % 10 == 0) {
-    serviceUrl = null
+    serviceUrl = _url(protocol, host, port)
     ws = null
     await _connect()
   }
