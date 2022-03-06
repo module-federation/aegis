@@ -43,6 +43,9 @@ const _url = (proto, host, port) =>
   proto && host && port ? `${proto}://${host}:${port}` : null
 
 let serviceUrl = _url(protocol, host, port)
+let isBackupSwitch = false
+let activateBackup = false
+let uplinkCallback
 
 /** @type {import('../../../domain/event-broker').EventBroker} */
 let broker
@@ -50,9 +53,6 @@ let broker
 let models
 /** @type {WebSocket} */
 let ws
-let uplinkCallback
-let isBackupSwitch = false
-let activateBackup = false
 
 /**
  * Use multicast DNS to find the host
@@ -227,7 +227,8 @@ function startHeartbeat () {
     } else {
       try {
         clearInterval(intervalId)
-        if (broker) await broker.notify(TIMEOUTEVENT, 'server unresponsive')
+        if (broker)
+          await broker.notify(TIMEOUTEVENT, { error: 'server unresponsive' })
 
         console.error({
           fn: startHeartbeat.name,
@@ -258,6 +259,7 @@ const handshake = {
 
   serialize () {
     return JSON.stringify({
+      ...this,
       mem: process.memoryUsage(),
       cpu: process.cpuUsage(),
       models: models()
@@ -267,7 +269,7 @@ const handshake = {
   validate (message) {
     if (message) {
       let msg
-      console.debug(message.toJSON())
+      console.debug(message)
       const valid = message.eventName || message.proto === this.proto
 
       if (typeof message === 'object') {
@@ -287,7 +289,7 @@ const handshake = {
 /**
  *
  */
-async function eee_connect () {
+async function _connect () {
   if (!ws) {
     // null unless this is a switch or set manually by config file
     if (!serviceUrl) serviceUrl = await resolveServiceUrl()

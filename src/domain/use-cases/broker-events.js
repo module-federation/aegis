@@ -33,11 +33,6 @@ export default function brokerEvents (broker, datasources, models) {
       // publish worker thread events to the mesh
       broker.on('EVENT_FROM_WORKER', event => ServiceMesh.publish(event))
 
-      // forward mesh events sto subscribed workers
-      broker.on('EVENT_FROM_MESH', event =>
-        broker.notify('SEND_TO_WORKERS', event)
-      )
-
       if (useEvtBus) {
         return {
           publish: event => EventBus.notify(BROADCAST, JSON.stringify(event)),
@@ -61,10 +56,9 @@ export default function brokerEvents (broker, datasources, models) {
           )
       }
     } else {
-      ffd
       return {
-        publish: event => broker.notify('SEND_TO_MESH', event),
-        subscribe: broker.on('eeeaa')
+        publish: event => broker.notify('EVENT_FROM_WORKER', event),
+        subscribe: (event, cb) => broker.on('EVENT_FROM_MESH', () => cb(event))
       }
     }
   }

@@ -21,10 +21,10 @@ const debug = process.env.DEBUG
  * @property {boolean} [priviledged] - the handler must possess the original value of a hashkey found in the event metadata
  * @property {boolean} [singleton] - the event can only have one handler (attempts to add multiple are ignored)
  * @property {number} [delay] - run the handler at least `delay` milliseconds after the event is fired
- * @property {string} [origin] - if an event specifies an origin then the handler must have the same origin
+ * @property {string} [origin] - if an event specifies an origin    then the handler must have the same origin
  * @property {boolean} [once] - run the handler and then unsubscribe. See code below to perform programmaticly.
  * ```js
- *  const listener = model.(eventName, function (eventData) {
+ *  const listener = model.eventName, function (eventData) {
  *    // ...do something
  *    listener.unsubscribe()
  *  })
@@ -118,7 +118,7 @@ async function runHandler (eventName, eventData = {}, handle) {
  *
  * @param {string} eventName
  * @param {import('./event').Event} eventData
- * @param {} options
+ * @param {brokerOptions} options
  * @fires eventName
  */
 async function notify (eventName, eventData = {}, options = {}) {
