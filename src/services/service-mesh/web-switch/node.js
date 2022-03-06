@@ -53,7 +53,6 @@ let ws
 let uplinkCallback
 let isBackupSwitch = false
 let activateBackup = false
-let isSwitch = config.isSwitch || false
 
 /**
  * Use multicast DNS to find the host
@@ -288,7 +287,7 @@ const handshake = {
 /**
  *
  */
-async function _connect () {
+async function eee_connect () {
   if (!ws) {
     // null unless this is a switch or set manually by config file
     if (!serviceUrl) serviceUrl = await resolveServiceUrl()
@@ -320,7 +319,7 @@ async function _connect () {
             if (broker)
               await broker.notify('EVENT_FROM_MESH', eventData, {
                 origin: 'mesh'
-              }) 
+              })
             // send to uplink if there is one
             if (uplinkCallback) await uplinkCallback(message)
           }

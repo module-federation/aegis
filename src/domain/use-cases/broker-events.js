@@ -11,6 +11,7 @@ import { isMainThread } from 'worker_threads'
 const useEvtBus = process.env.EVENTBUS_ENABLE || false
 // what channel to broadcast cache events?
 const BROADCAST = process.env.TOPIC_BROADCAST || 'broadcastChannel'
+
 /**
  * Broker events between threadpools and remote mesh instances.
  * - an event raised by one pool may need to be processed by another
@@ -32,9 +33,9 @@ export default function brokerEvents (broker, datasources, models) {
       // publish worker thread events to the mesh
       broker.on('EVENT_FROM_WORKER', event => ServiceMesh.publish(event))
 
-      // forward mesh events to subscribed workers
-      ServiceMesh.subscribe('EVENT_FROM_MESH', event =>
-        broker.notify('EVENT_FROM_MESH', event)
+      // forward mesh events sto subscribed workers
+      broker.on('EVENT_FROM_MESH', event =>
+        broker.notify('SEND_TO_WORKERS', event)
       )
 
       if (useEvtBus) {
@@ -54,11 +55,16 @@ export default function brokerEvents (broker, datasources, models) {
       return {
         publish: event => ServiceMesh.publish(event),
         subscribe: (event, cb) =>
-          console.log('sending to workers', event, cb.toString())
+          ServiceMesh.subscribe(
+            event,
+            (event = broker.notify('SEND_TO_WORKERS', event))
+          )
       }
     } else {
+      ffd
       return {
-        publish: broker.notify()
+        publish: event => broker.notify('SEND_TO_MESH', event),
+        subscribe: broker.on('eeeaa')
       }
     }
   }

@@ -162,6 +162,7 @@ export function attachServer (server) {
           }
           if (msg == 'retask') {
             isSwitch = true
+            return
           }
           server.broadcast(message, client)
           return
