@@ -265,17 +265,22 @@ function startHeartbeat () {
   const intervalId = setInterval(async function () {
     if (receivedPong) {
       receivedPong = false
+
+      // expect a pong back
       ws.ping(0x9)
     } else {
       try {
         clearInterval(intervalId)
         if (broker) await broker.notify(TIMEOUTEVENT, 'server unresponsive')
+
         console.error({
           fn: startHeartbeat.name,
           receivedPong,
           msg: 'no response, trying new conn'
         })
-        await reconnect()
+
+        // keep trying
+        reconnect()
       } catch (error) {
         console.error(startHeartbeat.name, error)
       }
@@ -297,15 +302,16 @@ const handshake = {
 
   serialize () {
     return JSON.stringify({
-      ...this,
-      models: ModelFactory.getModelSpecs().map(spec => spec.modelName) || []
+      mem: process.memoryUsage(),
+      cpu: process.cpuUsage(),
+      models: models()
     })
   },
 
   validate (message) {
     if (message) {
       let msg
-      console.debug(message)
+      console.debug(message.toJSON())
       const valid = message.eventName || message.proto === this.proto
 
       if (typeof message === 'object') {
@@ -355,14 +361,14 @@ async function _connect () {
           if (eventData.eventName) {
             // call broker if there is one
             if (broker)
-              await broker.notify(eventData.eventName, eventData, {
-                from: 'main'
+              await broker.notify('EVENT_FROM_MESH', eventData, {
+                origin: 'mesh'
               })
             // send to uplink if there is one
             if (uplinkCallback) await uplinkCallback(message)
           }
         }
-        console.warn('invalid message', message)
+        console.warn('unknown message type', message.toJSON())
       } catch (error) {
         console.error({ fn: ws.on.name + '("message")', error })
       }
@@ -387,16 +393,20 @@ export async function connect (serviceInfo = {}) {
 /**
  *
  */
-async function reconnect () {
-  serviceUrl = null
-  await _connect()
-  if (ws?.CONNECTING || ws?.OPEN) {
+async function reconnect (retries = 0) {
+  if (retries % 10 == 0) {
+    serviceUrl = null
+    ws = null
+    await _connect()
+  }
+
+  if (ws?.OPEN) {
     console.info('reconnected to switch', serviceUrl)
     return
   }
-  setTimeout(reconnect, 3000)
+  setTimeout(reconnect, 3000, retries++)
 }
- 
+
 /**
  * Call this method to broadcast a message on the web-switch network
  * @param {object} event

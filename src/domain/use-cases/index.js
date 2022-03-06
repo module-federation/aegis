@@ -17,14 +17,12 @@ import { isMainThread } from 'worker_threads'
 
 export function registerEvents () {
   // main thread handles event dispatch
-  if (isMainThread) {
-    brokerEvents(
-      EventBrokerFactory.getInstance(),
-      DataSourceFactory,
-      ModelFactory,
-      ThreadPoolFactory
-    )
-  }
+  brokerEvents(
+    EventBrokerFactory.getInstance(),
+    DataSourceFactory,
+    ModelFactory,
+    ThreadPoolFactory
+  )
 }
 
 /**

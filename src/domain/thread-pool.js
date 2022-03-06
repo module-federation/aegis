@@ -63,11 +63,8 @@ function kill (thread) {
 function connectEventChannel (worker, channel) {
   const { port1, port2 } = channel
   worker.postMessage({ eventPort: port2 }, [port2])
-  broker.on(/.*/, event => ThreadPoolFactory.postAll(event), {
-    forwarded: true
-  })
-  port1.onmessage = msg =>
-    broker.notify(msg.data.eventName, msg.data, { forwarded: true })
+  broker.on('EVENT_FROM_MESH', event => port1.postMessage(event))
+  port1.onmessage = event => broker.notify('EVENT_FROM_WORKER', event.data)
 }
 
 /**

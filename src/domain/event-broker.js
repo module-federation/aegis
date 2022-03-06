@@ -21,6 +21,7 @@ const debug = process.env.DEBUG
  * @property {boolean} [priviledged] - the handler must possess the original value of a hashkey found in the event metadata
  * @property {boolean} [singleton] - the event can only have one handler (attempts to add multiple are ignored)
  * @property {number} [delay] - run the handler at least `delay` milliseconds after the event is fired
+ * @property {string} [origin] - if an event specifies an origin then the handler must have the same origin
  * @property {boolean} [once] - run the handler and then unsubscribe. See code below to perform programmaticly.
  * ```js
  *  const listener = model.(eventName, function (eventData) {
@@ -171,12 +172,11 @@ class EventBrokerImpl extends EventBroker {
     eventName,
     handler,
     {
-      from = null,
       once = false,
       delay = 0,
       filter = {},
+      origin = false,
       singleton = false,
-      forwarded = false,
       priviledged = null
     } = {}
   ) {
@@ -206,23 +206,15 @@ class EventBrokerImpl extends EventBroker {
             !data._options ||
             !data._options.priviledged ||
             data._options.priviledged === hash(priviledged)
+        },
+        origin: {
+          applies: typeof origin === 'string',
+          satisfied: data =>
+            data &&
+            data._options &&
+            typeof data._options.origin === 'string' &&
+            data._options.origin.toUpperCase() === origin.toUpperCase()
         }
-        // from: {
-        //   applies: typeof from === 'string',
-        //   satisfied: data =>
-        //     data &&
-        //     data._options &&
-        //     typeof data._options.from === 'string' &&
-        //     data._options.from.toUpperCase() === from.toUpperCase()
-        // }
-        // forwarded: {
-        //   applies: typeof forwarded === 'boolean',
-        //   satisfied: data =>
-        //     data &&
-        //     data._options &&
-        //     typeof data._options.forwarded === 'boolean' &&
-        //     data._options.forwarded === forwarded
-        // }
       }
 
       if (
