@@ -221,7 +221,7 @@ class EventBrokerImpl extends EventBroker {
           satisfied: event => {
             console.log({
               event,
-              keys: Object.keys(event),
+              keys: Object.entries(event),
               met: !ignore.includes(event.eventName)
             })
             return !ignore.includes(event.eventName)
