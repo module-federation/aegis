@@ -34,7 +34,11 @@ export function attachServer (server) {
     )
 
     if (!questions[0]) {
-      console.debug({ fn: dns.on.name, msg: 'no questions', questions })
+      console.assert(!debug, {
+        fn: 'dns query',
+        msg: 'no questions',
+        questions
+      })
       return
     }
 

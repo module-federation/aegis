@@ -24,10 +24,14 @@ const BROADCAST = process.env.TOPIC_BROADCAST || 'broadcastChannel'
  * @param {import("../datasource-factory")} datasources  n
  * @param {import("../model-factory").ModelFactory} models
  * @param {import("../thread-pool").default} threadpools
- */
+ */ 
 export default function brokerEvents (broker, datasources, models) {
   console.debug({ fn: brokerEvents.name })
 
+  broker.on('TO_SERVICE_MESH', event => {
+    console.debug(event)
+    ServiceMesh.publish(event)
+  }
   function buildPubSubFunctions () {
     if (isMainThread) {
       // publish worker thread events to the mesh

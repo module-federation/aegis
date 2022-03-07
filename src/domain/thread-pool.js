@@ -64,7 +64,7 @@ function connectEventChannel (worker, channel) {
   const { port1, port2 } = channel
   worker.postMessage({ eventPort: port2 }, [port2])
   broker.on('TO_WORKER', event => port1.postMessage(event))
-  port1.onmessage = event => broker.notify(event.data.event, event.data)
+  port1.onmessage = event => broker.notify('TO_SERVICE_MESH', event)
 }
 
 /**

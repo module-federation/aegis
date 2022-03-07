@@ -198,23 +198,23 @@ class EventBrokerImpl extends EventBroker {
       const conditions = {
         filter: {
           applies: filterKeys.length > 0,
-          satisfied: data => filterKeys.every(k => filterKeys[k] === data[k])
+          satisfied: event => filterKeys.every(k => filterKeys[k] === event[k])
         },
         priviledged: {
           applies: true, // have to check the data to know
-          satisfied: data =>
-            !data ||
-            !data._options ||
-            !data._options.priviledged ||
-            data._options.priviledged === hash(priviledged)
+          satisfied: event =>
+            !event ||
+            !event._options ||
+            !event._options.priviledged ||
+            event._options.priviledged === hash(priviledged)
         },
         origin: {
           applies: typeof origin === 'string',
-          satisfied: data =>
-            data &&
-            data._options &&
-            typeof data._options.origin === 'string' &&
-            data._options.origin.toUpperCase() === origin.toUpperCase()
+          satisfied: event =>
+            event &&
+            event._options &&
+            typeof event._options.origin === 'string' &&
+            event._options.origin.toUpperCase() === origin.toUpperCase()
         },
         ignore: {
           applies: ignore?.length > 0,
