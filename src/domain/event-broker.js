@@ -279,9 +279,12 @@ class EventBrokerImpl extends EventBroker {
   serialize () {
     return JSON.stringify(
       [...handlers].map(([k, v]) => ({ [k]: v.map(fn => fn.toString()) })),
-      null,
-      2
+      null
     )
+  }
+
+  getEvents () {
+    return [...handlers].map(([k, v]) => ({ [k]: v.length }))
   }
 
   toString () {
