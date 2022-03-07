@@ -218,13 +218,13 @@ class EventBrokerImpl extends EventBroker {
         },
         ignore: {
           applies: ignore?.length > 0,
-          satisfied: data => {
+          satisfied: event => {
             console.log({
-              data,
+              event,
               keys: Object.keys(data),
-              met: !ignore.includes(Object.keys(data))
+              met: !ignore.includes(event.eventName)
             })
-            return ignore.includes(Object.keys(data))
+            return !ignore.includes(event.eventName)
           }
         }
       }
