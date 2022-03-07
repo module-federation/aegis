@@ -326,7 +326,7 @@ async function _connect () {
             if (uplinkCallback) await uplinkCallback(message)
           }
         }
-        console.warn('unknown message type', message.toJSON())
+        console.warn('unknown message type', message.toString())
       } catch (error) {
         console.error({ fn: ws.on.name + '("message")', error })
       }

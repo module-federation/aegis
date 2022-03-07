@@ -49,12 +49,11 @@ export default function brokerEvents (broker, datasources, models) {
 
       return {
         publish: event => ServiceMesh.publish(event),
-        subscribe: (event, cb) =>
-          ServiceMesh.subscribe(
-            event,
-            (event = broker.notify('SEND_TO_WORKERS', event))
+        subscribe: (event, cb = x => x) =>
+          ServiceMesh.subscribe(event, event =>
+            cb(event, broker.notify('EVENT_FROM_MESH', event))
           )
-      }
+      }                                                                       
     } else {
       return {
         publish: event => broker.notify('EVENT_FROM_WORKER', event),
