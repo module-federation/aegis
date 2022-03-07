@@ -8,7 +8,7 @@ import uuid from '../util/uuid'
 import { isMainThread } from 'worker_threads'
 
 // use external event bus for distributed object cache?
-const useEvtBus = process.env.EVENTBUS_ENABLE || false
+const useEvtBus = /true/i.test(process.env.EVENTBUS_ENABLE) || false
 // what channel to broadcast cache events?
 const BROADCAST = process.env.TOPIC_BROADCAST || 'broadcastChannel'
 
@@ -52,18 +52,15 @@ export default function brokerEvents (broker, datasources, models) {
           console.debug('main publish', event)
           ServiceMesh.publish(event)
         },
-        subscribe: (event, cb = x => x) =>
-          ServiceMesh.subscribe(event, event =>
-            cb(event, broker.notify('EVENT_FROM_MESH', event))
-          )
+        subscribe: (event, cb) => ServiceMesh.subscribe(event, cb)
       }
     } else {
       return {
         publish: event => {
           console.debug('worker publish', event)
-          broker.notify('EVENT_FROM_WORKER', event)
+          broker.notify(event.eventName, event)
         },
-        subscribe: (event, cb) => broker.on('EVENT_FROM_MESH', () => cb(event))
+        subscribe: (event, cb) => broker.on(event, cb)
       }
     }
   }

@@ -401,6 +401,8 @@ export default function DistributedCache ({
     })
   }
 
+  console.info('distributed object cache runnings')
+
   return {
     start
   }

@@ -129,7 +129,7 @@ async function notify (eventName, eventData = {}, options = {}) {
     data = { ...eventData, _options: { ...options } }
   }
   console.debug({ fn: notify.name, data })
-
+  console.log([...handlers])
   try {
     if (handlers.has(eventName)) {
       await Promise.allSettled(
@@ -284,7 +284,7 @@ class EventBrokerImpl extends EventBroker {
   }
 
   getEvents () {
-    return [...handlers].map(([k, v]) => ({ [k]: v.length }))
+    return [...handlers]
   }
 
   toString () {
