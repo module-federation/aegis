@@ -63,9 +63,8 @@ function kill (thread) {
 function connectEventChannel (worker, channel) {
   const { port1, port2 } = channel
   worker.postMessage({ eventPort: port2 }, [port2])
-  broker.on(/.*/, event => port1.postMessage(event), { origin: 'worker' })
-  port1.onmessage = event =>
-    broker.notify(event.data.event, event.data, { origin: 'mesh' })
+  broker.on('TO_WORKER', event => port1.postMessage(event))
+  port1.onmessage = event => broker.notify(event.data.event, event.data)
 }
 
 /**
@@ -74,7 +73,7 @@ function connectEventChannel (worker, channel) {
  *  pool:ThreadPool
  *  file:string
  *  workerData:WorkerOptions.workerData
- * }} params
+ * }} paramsq
  * @returns {Promise<Thread>}
  */
 function newThread ({ pool, file, workerData }) {

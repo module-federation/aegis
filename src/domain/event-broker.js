@@ -175,6 +175,7 @@ class EventBrokerImpl extends EventBroker {
       once = false,
       delay = 0,
       filter = {},
+      ignore = [],
       origin = false,
       singleton = false,
       priviledged = null
@@ -214,6 +215,17 @@ class EventBrokerImpl extends EventBroker {
             data._options &&
             typeof data._options.origin === 'string' &&
             data._options.origin.toUpperCase() === origin.toUpperCase()
+        },
+        ignore: {
+          applies: ignore?.length > 0,
+          satisfied: data => {
+            console.log({
+              data,
+              keys: Object.keys(data),
+              met: !ignore.includes(Object.keys(data))
+            })
+            return ignore.includes(Object.keys(data))
+          }
         }
       }
 
