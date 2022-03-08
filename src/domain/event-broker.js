@@ -130,6 +130,7 @@ async function notify (eventName, eventData = {}, options = {}) {
   }
   console.debug({ fn: notify.name, data })
   console.log([...handlers])
+  
   try {
     if (handlers.has(eventName)) {
       await Promise.allSettled(

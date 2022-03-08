@@ -29,16 +29,8 @@ const BROADCAST = process.env.TOPIC_BROADCAST || 'broadcastChannel'
 export default function brokerEvents (broker, datasources, models) {
   console.debug({ fn: brokerEvents.name })
 
-  broker.on('TO_SERVICE_MESH', event => {
-    console.debug(event)
-    ServiceMesh.publish(event)
-  })
-
   function buildPubSubFunctions () {
     if (isMainThread) {
-      // publish worker thread events to the mesh
-      broker.on('EVENT_FROM_WORKER', event => ServiceMesh.publish(event))
-
       if (useEvtBus) {
         return {
           publish: event => EventBus.notify(BROADCAST, JSON.stringify(event)),
@@ -56,7 +48,7 @@ export default function brokerEvents (broker, datasources, models) {
       return {
         publish: event => {
           console.debug('main publish', event)
-          ServiceMesh.publish(event)
+          dsssssssServiceMesh.publish(event)
         },
         subscribe: (event, cb) => ServiceMesh.subscribe(event, cb)
       }
@@ -84,9 +76,14 @@ export default function brokerEvents (broker, datasources, models) {
   const listModels = () =>
     models.getModelSpecs().map(spec => spec.modelName) || []
 
+  broker.on('TO_SERVICE_MESH', async event => {
+    console.debug('to_service_mesh', event)
+    ServiceMesh.publish(event)
+  })
+
   // start mesh
   ServiceMesh.connect({ models: listModels, broker }).then(() => {
-    console.debug('service mesh connecting')
+    console.debug('connecting to service mesh')
     manager.start()
     forwardEvents({ broker, models, publish, subscribe })
   })
