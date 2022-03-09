@@ -29,8 +29,7 @@ const domainEvents = {
   publishEvent: modelName => `publishEvent_${modelName.toUpperCase()}`,
   sendToWorker: 'to_worker',
   sendToMesh: 'to_mesh',
-  hotReload: modelName =>
-    `hotReload_${modelName ? modelName.toUpperCase() : ''}`,
+  hotReload: modelName => `hotReload_${modelName}`,
   poolOpen: modelName => `poolOpen_${modelName.toUpperCase()}`,
   poolClose: modelName => `poolClose_${modelName.toUpperCase()}`,
   poolDrain: modelName => `poolDrain_${modelName.toUpperCase()}`,
