@@ -1,3 +1,5 @@
+import getContent from './get-content'
+
 /**
  * @param {import("../use-cases/find-model").findModel} findModel
  * @returns {import("../adapters/http-adapter").httpController}
@@ -12,12 +14,18 @@ export default function getModelByIdFactory (findModel) {
 
       const model = await findModel({ id, query })
 
+      const { content, contentType } = getContent(
+        httpRequest,
+        model,
+        model.modelName
+      )
+
       return {
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': contentType
         },
         statusCode: 200,
-        body: model
+        body: content
       }
     } catch (e) {
       console.error(e.message)

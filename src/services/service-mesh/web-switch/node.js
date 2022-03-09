@@ -15,7 +15,6 @@
 import os from 'os'
 import WebSocket from 'ws'
 import Dns from 'multicast-dns'
-import ModelFactory from '../../../domain/index'
 
 const HOSTNAME = 'webswitch.local'
 const SERVICENAME = 'webswitch'
@@ -44,6 +43,9 @@ const _url = (proto, host, port) =>
   proto && host && port ? `${proto}://${host}:${port}` : null
 
 let serviceUrl = _url(protocol, host, port)
+let isBackupSwitch = false
+let activateBackup = false
+let uplinkCallback
 
 /** @type {import('../../../domain/event-broker').EventBroker} */
 let broker
@@ -51,10 +53,6 @@ let broker
 let models
 /** @type {WebSocket} */
 let ws
-let uplinkCallback
-let isBackupSwitch = false
-let activateBackup = false
-let isSwitch = config.isSwitch || false
 
 /**
  * Use multicast DNS to find the host
@@ -79,48 +77,6 @@ async function resolveServiceUrl () {
         url = _url(protocol, answer.data.target, answer.data.port)
         console.info({ msg: 'found dns service record for', SERVICENAME, url })
         resolve(url)
-      }
-    })
-
-    dns.on('query', function (query) {
-      debug && console.debug('got a query packet:', query)
-
-      const questions = query.questions.filter(
-        q => q.name === SERVICENAME || q.name === HOSTNAME
-      )
-
-      if (!questions[0]) {
-        console.debug({ fn: dns.on.name, msg: 'no questions', questions })
-        return
-      }
-
-      if (isSwitch || (isBackupSwitch && activateBackup)) {
-        const answer = {
-          answers: [
-            {
-              name: SERVICENAME,
-              type: 'SRV',
-              data: {
-                port: port,
-                weight: 0,
-                priority: 10,
-                target: host
-              }
-            }
-          ]
-        }
-
-        console.info({
-          fn: dns.on.name + "('query')",
-          isSwitch,
-          isBackupSwitch,
-          activateBackup,
-          msg: 'answering query packet',
-          questions,
-          answer
-        })
-
-        dns.respond(answer)
       }
     })
 
@@ -265,17 +221,23 @@ function startHeartbeat () {
   const intervalId = setInterval(async function () {
     if (receivedPong) {
       receivedPong = false
+
+      // expect a pong back
       ws.ping(0x9)
     } else {
       try {
         clearInterval(intervalId)
-        if (broker) await broker.notify(TIMEOUTEVENT, 'server unresponsive')
+        if (broker)
+          await broker.notify(TIMEOUTEVENT, { error: 'server unresponsive' })
+
         console.error({
           fn: startHeartbeat.name,
           receivedPong,
           msg: 'no response, trying new conn'
         })
-        await reconnect()
+
+        // keep trying
+        reconnect()
       } catch (error) {
         console.error(startHeartbeat.name, error)
       }
@@ -298,7 +260,9 @@ const handshake = {
   serialize () {
     return JSON.stringify({
       ...this,
-      models: ModelFactory.getModelSpecs().map(spec => spec.modelName) || []
+      mem: process.memoryUsage(),
+      cpu: process.cpuUsage(),
+      models: models()
     })
   },
 
@@ -344,22 +308,24 @@ async function _connect () {
 
     ws.on('message', async function (message) {
       try {
-        const eventData = JSON.parse(message.toString())
-        debug && console.debug('received event:', eventData)
+        const event = JSON.parse(message.toString())
+        debug && console.debug('received event:', event)
 
-        if (handshake.validate(eventData)) {
+        if (handshake.validate(event)) {
           // check if the switch wants us to be a backup
-          isBackupSwitch = handshake.becomeBackupSwitch(eventData)
+          isBackupSwitch = handshake.becomeBackupSwitch(event)
 
           // process event
-          if (eventData.eventName) {
+          if (event.eventName) {
             // call broker if there is one
-            if (broker) await broker.notify(eventData.even)
+            if (broker) await broker.notify(event.eventName, event.eventData)
+
             // send to uplink if there is one
             if (uplinkCallback) await uplinkCallback(message)
           }
+          return
         }
-        console.warn('invalid message', message)
+        console.warn('unknown message type', message.toString())
       } catch (error) {
         console.error({ fn: ws.on.name + '("message")', error })
       }
@@ -384,14 +350,18 @@ export async function connect (serviceInfo = {}) {
 /**
  *
  */
-async function reconnect () {
-  serviceUrl = null
-  await _connect()
-  if (ws?.CONNECTING || ws?.OPEN) {
+async function reconnect (retries = 0) {
+  if (retries % 10 == 0) {
+    serviceUrl = _url(protocol, host, port)
+    ws = null
+    await _connect()
+  }
+
+  if (ws?.OPEN) {
     console.info('reconnected to switch', serviceUrl)
     return
   }
-  setTimeout(reconnect, 3000)
+  setTimeout(reconnect, 3000, retries++)
 }
 
 /**

@@ -17,21 +17,47 @@ const debug = process.env.DEBUG
 
 /**
  * @typedef {object} brokerOptions
- * @property {object} [filter] - the event data object must be a superset of the filter
+ * @property {object} [filter] - the event object must be a superset of the filter
  * @property {boolean} [priviledged] - the handler must possess the original value of a hashkey found in the event metadata
  * @property {boolean} [singleton] - the event can only have one handler (attempts to add multiple are ignored)
  * @property {number} [delay] - run the handler at least `delay` milliseconds after the event is fired
+ * @property {string} [origin] - if an event specifies an origin then the handler must have the same origin
  * @property {boolean} [once] - run the handler and then unsubscribe. See code below to perform programmaticly.
  * ```js
- *  const listener = model.(eventName, function (eventData) {
+ *  const listener = model.eventName, function (eventData) {
  *    // ...do something
  *    listener.unsubscribe()
  *  })
  * ```
+ * @property {function(import('./event').Event):boolean} [custom] write a custom validation function
+ * @property {string[]} [ignore] a list of eventNames for which the handler will not run
+ *
  */
 
 /** @type {Map<string | RegExp, eventHandler[]>} */
 const handlers = new Map()
+
+class RegexMap extends Map {
+  has (key) {
+    for (const k of super.keys) {
+      if (k instanceof RegExp && k.test(key)) {
+        this.value = super.get(k)
+        return true
+      }
+    }
+    const val = super.get(key)
+    if (val) {
+      this.value = val
+      return true
+    }
+    return false
+  }
+
+  get (key) {
+    if (this.value) return this.value
+    return super.get(key)
+  }
+}
 
 /**
  * @abstract
@@ -89,7 +115,7 @@ const handleError = error => {
  * @param {eventHandler} handle
  * @param {boolean} forward
  */
-async function runHandler (eventName, eventData = {}, handle, forward) {
+async function runHandler (eventName, eventData = {}, handle) {
   const abort = eventData ? false : true
 
   console.assert(!debug, 'handler running', {
@@ -97,9 +123,7 @@ async function runHandler (eventName, eventData = {}, handle, forward) {
     eventUuid: eventData?.eventUuid,
     handle: handle.toString(),
     model: eventData?.modelName,
-    modelId: eventData?.modleId,
-    abort,
-    forward
+    modelId: eventData?.modleId
   })
 
   if (abort) {
@@ -107,7 +131,11 @@ async function runHandler (eventName, eventData = {}, handle, forward) {
     return
   }
 
-  /** @type {eventHandler} */
+  /**
+   * Git rid of unserializable types in the message
+   * to avoid rejection if passed between threads
+   * @type {eventHandler}
+   */
   await handle(JSON.parse(JSON.stringify(eventData)))
 }
 
@@ -115,19 +143,22 @@ async function runHandler (eventName, eventData = {}, handle, forward) {
  *
  * @param {string} eventName
  * @param {import('./event').Event} eventData
- * @param {} options
+ * @param {brokerOptions} options
  * @fires eventName
  */
 async function notify (eventName, eventData = {}, options = {}) {
   const run = runHandler.bind(this)
+  let data = eventData
 
-  console.debug({ eventData })
+  if (options) {
+    data = { ...eventData, _options: { ...options } }
+  }
 
   try {
     if (handlers.has(eventName)) {
       await Promise.allSettled(
-        handlers.get(eventName).map(async handler => {
-          await run(eventName, eventData, handler, options)
+        handlers.get(eventName).map(async fn => {
+          await run(eventName, data, fn)
         })
       )
     }
@@ -135,7 +166,7 @@ async function notify (eventName, eventData = {}, options = {}) {
     await Promise.allSettled(
       [...handlers]
         .filter(([k]) => k instanceof RegExp && k.test(eventName))
-        .map(([, v]) => v.map(f => run(eventName, eventData, f, options)))
+        .map(([, v]) => v.map(fn => run(eventName, data, fn)))
     )
   } catch (error) {
     handleError(notify.name, error)
@@ -165,10 +196,13 @@ class EventBrokerImpl extends EventBroker {
     eventName,
     handler,
     {
-      from = null,
       once = false,
       delay = 0,
       filter = {},
+      ignore = [],
+      origin = false,
+      custom = null,
+      forward = [],
       singleton = false,
       priviledged = null
     } = {}
@@ -186,44 +220,69 @@ class EventBrokerImpl extends EventBroker {
     const subscription = Event.create({ eventName })
 
     /** @type {eventHandler} */
-    const callbackWrapper = eventData => {
+    const callbackWrapper = async eventData => {
       const conditions = {
         filter: {
           applies: filterKeys.length > 0,
-          satisfied: data => filterKeys.every(k => filterKeys[k] === data[k])
+          satisfied: event => filterKeys.every(k => filterKeys[k] === event[k])
         },
         priviledged: {
           applies: true, // have to check the data to know
-          satisfied: data =>
-            !data ||
-            !data._options ||
-            !data._options.priviledged ||
-            data._options.priviledged === hash(priviledged)
+          satisfied: event =>
+            !event ||
+            !event._options ||
+            !event._options.priviledged ||
+            event._options.priviledged === hash(priviledged)
         },
-        from: {
-          applies: typeof from === 'string',
-          satisfied: data =>
-            typeof data._options?.from === 'string' &&
-            data._options.from.toUpperCase() === from.toUpperCase()
+        origin: {
+          applies: typeof origin === 'string',
+          satisfied: event =>
+            event &&
+            event._options &&
+            typeof event._options.origin === 'string' &&
+            event._options.origin.toUpperCase() === origin.toUpperCase()
+        },
+        ignore: {
+          applies: ignore?.length > 0,
+          satisfied: event => {
+            console.log({
+              event,
+              keys: Object.entries(event),
+              met: !ignore.includes(event.eventName)
+            })
+            return !ignore.includes(event.eventName)
+          }
+        },
+        custom: {
+          applies: typeof custom === 'function',
+          satisfied: event => custom(event)
         }
       }
 
       if (
-        Object.values(conditions).every(condition => {
-          const met = !condition.applies || condition.satisfied(eventData)
-          console.assert(!debug, {
-            ...condition,
-            test: condition.satisfied.toString(),
-            eventName
+        Object.keys(conditions).every(key => {
+          const result =
+            !conditions[key].applies || conditions[key].satisfied(eventData)
+
+          console.debug({
+            fn: notify.name,
+            condition: key,
+            eventName,
+            satisfied: result
           })
-          return met
+
+          return result
         })
       ) {
         if (once) this.off(eventName, callbackWrapper)
         if (delay > 0) setTimeout(handler, delay, eventData)
-        else return handler(eventData)
+        else handler(eventData)
+
+        const eventNames = forward instanceof Array ? forward : [forward]
+        if (eventNames.length > 0)
+          await Promise.allSettled(eventNames.map(handle => handle(eventData)))
       } else {
-        console.debug('one or more conditions not met', eventName)
+        console.debug('at least one condition not satisfied', eventName)
       }
     }
 
@@ -232,7 +291,7 @@ class EventBrokerImpl extends EventBroker {
       unsubscribe: () => this.off(eventName, callbackWrapper)
     }
 
-    const funcs = handlers.get(eventName)
+    const funcs = handlers.has(eventName)
     if (funcs) {
       if (singleton) return
       funcs.push(callbackWrapper)
@@ -266,9 +325,12 @@ class EventBrokerImpl extends EventBroker {
   serialize () {
     return JSON.stringify(
       [...handlers].map(([k, v]) => ({ [k]: v.map(fn => fn.toString()) })),
-      null,
-      2
+      null
     )
+  }
+
+  getEvents () {
+    return [...handlers]
   }
 
   toString () {

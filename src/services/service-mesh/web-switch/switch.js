@@ -2,14 +2,19 @@
 
 import { nanoid } from 'nanoid'
 import os from 'os'
+import Dns from 'multicast-dns'
 
 const SERVICENAME = 'webswitch'
+const HOSTNAME = 'webswitch.local'
 const startTime = Date.now()
 const uptime = () => Math.round(Math.abs((Date.now() - startTime) / 1000 / 60))
 const configRoot = require('../../../config').hostConfig
 const config = configRoot.services.serviceMesh.WebSwitch
-const DEBUG = /true/i.test(config.debug)
-const isSwitch = /true/i.test(process.env.IS_SWITCH) || config.isSwitch
+const debug = /true/i.test(config.debug)
+
+let isSwitch = config.isSwitch || /true/i.test(process.env.IS_SWITCH)
+let isBackupSwitch
+let activateBackup
 let messagesSent = 0
 let backupSwitch
 
@@ -19,6 +24,54 @@ let backupSwitch
  * @returns {import('ws').Server}
  */
 export function attachServer (server) {
+  const dns = new Dns()
+
+  dns.on('query', function (query) {
+    debug && console.debug('got a query packet:', query)
+
+    const questions = query.questions.filter(
+      q => q.name === SERVICENAME || q.name === HOSTNAME
+    )
+
+    if (!questions[0]) {
+      console.assert(!debug, {
+        fn: 'dns query',
+        msg: 'no questions',
+        questions
+      })
+      return
+    }
+
+    if (isSwitch || (isBackupSwitch && activateBackup)) {
+      const answer = {
+        answers: [
+          {
+            name: SERVICENAME,
+            type: 'SRV',
+            data: {
+              port: server.address().port,
+              weight: 0,
+              priority: 10,
+              target: server.address().address
+            }
+          }
+        ]
+      }
+
+      console.info({
+        fn: dns.on.name + "('query')",
+        isSwitch,
+        isBackupSwitch,
+        activateBackup,
+        msg: 'answering query packet',
+        questions,
+        answer
+      })
+
+      dns.respond(answer)
+    }
+  })
+
   /**
    * @param {object} data
    * @param {WebSocket} sender
@@ -26,7 +79,7 @@ export function attachServer (server) {
   server.broadcast = function (data, sender) {
     server.clients.forEach(function (client) {
       if (client.OPEN && client !== sender) {
-        console.assert(!DEBUG, 'sending client', client.info, data.toString())
+        console.assert(!debug, 'sending client', client.info, data.toString())
         client.send(data)
         messagesSent++
       }
@@ -53,8 +106,11 @@ export function attachServer (server) {
       clientsConnected: server.clients.size,
       uplink: server.uplink ? server.uplink.info : 'no uplink',
       isPrimarySwitch: isSwitch,
+      isBackupSwitch: !isSwitch && isBackupSwitch,
       hostname: os.hostname(),
-      clients: [...server.clients].map(c => ({ ...c.info, open: c.OPEN }))
+      address: server.address().address,
+      port: server.address().port,
+      clients: [...server.clients].map(client => client.info)
     })
   }
 
@@ -85,7 +141,7 @@ export function attachServer (server) {
     client.info = { address: client._socket.address(), id: nanoid() }
 
     client.addListener('ping', function () {
-      console.assert(!DEBUG, 'responding to client ping', client.info)
+      console.assert(!debug, 'responding to client ping', client.info)
       client.pong(0xa)
     })
 
@@ -108,6 +164,10 @@ export function attachServer (server) {
             server.sendStatus(client)
             return
           }
+          if (msg == 'retask') {
+            isSwitch = true
+            return
+          }
           server.broadcast(message, client)
           return
         }
@@ -123,6 +183,7 @@ export function attachServer (server) {
 
           client.info = {
             ...msg,
+            ...client.info,
             initialized: true,
             isBackupSwitch: backupSwitch === client.info.id
           }

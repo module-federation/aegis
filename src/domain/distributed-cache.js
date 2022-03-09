@@ -297,7 +297,9 @@ export default function DistributedCache ({
   const receiveSearchResponse = (responseName, internalName) =>
     subscribe(
       responseName,
-      updateCache(async event => broker.notify(internalName, event))
+      updateCache(async event =>
+        broker.notify(internalName, event, { forward: 'TO_WORKER' })
+      )
     )
 
   /**
@@ -400,6 +402,8 @@ export default function DistributedCache ({
       ].forEach(broadcastCrudEvent)
     })
   }
+
+  console.info('distributed object cache runnings')
 
   return {
     start

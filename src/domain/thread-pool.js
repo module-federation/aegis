@@ -48,7 +48,7 @@ function kill (thread) {
       resolve(thread.id)
     })
 
-    thread.eventPort.postMessage({ name: 'shutdown' })
+    thread.eventPort.postMessage({ name: 'shutdown', data: 0 })
   }).catch(console.error)
 }
 
@@ -57,14 +57,15 @@ function kill (thread) {
 /**
  * Connect event subchannel to {@link EventBroker}
  * @param {Worker} worker worker thread
- * @param {MessagePort} port1 main uses to send to and recv from worker
- * @param {MessagePort} port2 worker uses to send to and recv from main
+ * @param {MessageChannel} channel event channel
+ * {@link MessagePort} port1 main uses to send to and recv from worker
+ * {@link MessagePort} port2 worker uses to send to and recv from main
  */
 function connectEventChannel (worker, channel) {
   const { port1, port2 } = channel
   worker.postMessage({ eventPort: port2 }, [port2])
-  broker.on(/.*/, event => ThreadPoolFactory.postAll(event))
-  port1.onmessage = event => broker.notify(event.data.eventName, event.data)
+  broker.on('TO_WORKER', event => port1.postMessage(event))
+  port1.onmessage = event => broker.notify('TO_SERVICE_MESH', event.data)
 }
 
 /**
@@ -73,7 +74,7 @@ function connectEventChannel (worker, channel) {
  *  pool:ThreadPool
  *  file:string
  *  workerData:WorkerOptions.workerData
- * }} params
+ * }} paramsq
  * @returns {Promise<Thread>}
  */
 function newThread ({ pool, file, workerData }) {
@@ -525,7 +526,7 @@ const ThreadPoolFactory = (() => {
   }
 
   /**
-   * post a message to all pools (at least one thread l)
+   * post a message to all pools (at least one thread)
    * @param {import('./event').Event} event
    */
   function postAll (event) {

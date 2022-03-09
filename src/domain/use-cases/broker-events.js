@@ -5,11 +5,13 @@ import EventBus from '../../services/event-bus'
 import { ServiceMeshAdapter as ServiceMesh } from '../../adapters'
 import { forwardEvents } from './forward-events'
 import uuid from '../util/uuid'
+import { isMainThread } from 'worker_threads'
 
 // use external event bus for distributed object cache?
-const useEvtBus = process.env.EVENTBUS_ENABLE || false
+const useEvtBus = /true/i.test(process.env.EVENTBUS_ENABLE) || false
 // what channel to broadcast cache events?
 const BROADCAST = process.env.TOPIC_BROADCAST || 'broadcastChannel'
+
 /**
  * Broker events between threadpools and remote mesh instances.
  * - an event raised by one pool may need to be processed by another
@@ -19,35 +21,49 @@ const BROADCAST = process.env.TOPIC_BROADCAST || 'broadcastChannel'
  *    - crud lifecycle events
  *    - find obj / cache miss
  * @param {import('../event-broker').EventBroker} broker
- * @param {import("../datasource-factory")} datasources
+ * @param {import("../datasource-factory")} datasources  n
  * @param {import("../model-factory").ModelFactory} models
  * @param {import("../thread-pool").default} threadpools
  */
-export default function brokerEvents (
-  broker,
-  datasources,
-  models,
-  threadpools
-) {
+
+export default function brokerEvents (broker, datasources, models) {
   console.debug({ fn: brokerEvents.name })
 
-  const svcMshPub = event => ServiceMesh.publish(event)
-  const svcMshSub = (event, cb) => ServiceMesh.subscribe(event, cb)
+  function buildPubSubFunctions () {
+    if (isMainThread) {
+      if (useEvtBus) {
+        return {
+          publish: event => EventBus.notify(BROADCAST, JSON.stringify(event)),
+          subscribe: (event, cb) =>
+            EventBus.listen({
+              topic: BROADCAST,
+              id: uuid(),
+              once: false,
+              filters: [event],
+              callback: msg => cb(JSON.parse(msg))
+            })
+        }
+      }
 
-  const evtBusPub = event => EventBus.notify(BROADCAST, JSON.stringify(event))
-  const evtBusSub = (event, cb) =>
-    EventBus.listen({
-      topic: BROADCAST,
-      id: uuid(),
-      once: false,
-      filters: [event],
-      callback: msg => cb(JSON.parse(msg))
-    })
+      return {
+        publish: event => {
+          console.debug('main publish', event)
+          ServiceMesh.publish(event)
+        },
+        subscribe: (event, cb) => ServiceMesh.subscribe(event, cb)
+      }
+    } else {
+      return {
+        publish: event => {
+          console.debug('worker publish', event)
+          broker.notify(event.eventName, event)
+        },
+        subscribe: (event, cb) => broker.on(event, cb)
+      }
+    }
+  }
 
-  const publish = useEvtBus ? evtBusPub : svcMshPub
-  const subscribe = useEvtBus ? evtBusSub : svcMshSub
-
-  broker.on(/.*/, event => threadpools.postAll(event))
+  const { publish, subscribe } = buildPubSubFunctions()
 
   const manager = DistributedCache({
     broker,
@@ -57,9 +73,17 @@ export default function brokerEvents (
     subscribe
   })
 
-  // start mesh regardless
-  ServiceMesh.connect({ models, broker }).then(() => {
-    console.debug('service mesh connecting')
+  const listModels = () =>
+    models.getModelSpecs().map(spec => spec.modelName) || []
+
+  broker.on('TO_SERVICE_MESH', async event => {
+    console.debug('to_service_mesh', event)
+    ServiceMesh.publish(event)
+  })
+
+  // start mesh
+  ServiceMesh.connect({ models: listModels, broker }).then(() => {
+    console.debug('connecting to service mesh')
     manager.start()
     forwardEvents({ broker, models, publish, subscribe })
   })

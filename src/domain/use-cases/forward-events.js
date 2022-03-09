@@ -77,7 +77,6 @@ export function forwardEvents ({ broker, models, publish, subscribe }) {
       })
     )
   }
-  ;``
 
   /**
    * Forward events so marked.
@@ -91,10 +90,10 @@ export function forwardEvents ({ broker, models, publish, subscribe }) {
       mesh: true
     })
 
-    broker.on(domainEvents.forwardEvent(), eventData => {
-      console.debug(forwardUserEvents.name, 'called')
-      publish(eventData)
-    })
+    // broker.on(domainEvents.sendToMesh, eventData => {
+    //   console.debug(forwardUserEvents.name, 'called')
+    //   publish(eventData)
+    // })
   }
 
   forwardPortEvents()

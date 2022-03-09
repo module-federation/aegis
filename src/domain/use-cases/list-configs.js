@@ -8,12 +8,16 @@ import ThreadPoolFactory from '../thread-pool'
  * data:import("../datasource-factory").DataSourceFactory
  * }} options
  */
-export default function listConfigsFactory ({ models, data } = {}) {
+export default function listConfigsFactory ({ models, data, broker } = {}) {
   return async function listConfigs (query) {
     if (query?.details === 'data') {
       return JSON.stringify(data.listDataSources().map(([, v]) => v))
     } else if (query.details === 'threads') {
       return ThreadPoolFactory.status()
-    } else return models.getModelSpecs()
+    } else if (query.details === 'events') {
+      return broker.getEvents()
+    } else {
+      return models.getModelSpecs()
+    }
   }
 }
