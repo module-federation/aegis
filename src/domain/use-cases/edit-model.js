@@ -87,7 +87,7 @@ export default function makeEditModel ({
         const updated = models.updateModel(hydratedModel, changes)
         await repository.save(id, updated)
 
-        const event = await models.createEvent(eventType, modelName, {
+        const event = models.createEvent(eventType, modelName, {
           updated,
           changes
         })

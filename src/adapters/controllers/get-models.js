@@ -1,3 +1,6 @@
+'use strict'
+import getContent from './get-content'
+
 /**
  *
  * @param {import("../use-cases/list-models").listModels} listModels
@@ -10,12 +13,18 @@ export default function getModelsFactory (listModels) {
 
       const models = await listModels(httpRequest.query)
 
+      const { content, contentType } = getContent(
+        httpRequest,
+        models,
+        models.length > 0 ? models[0].modelName : 'Not Found'
+      )
+
       return {
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': contentType
         },
         statusCode: 200,
-        body: models
+        body: content
       }
     } catch (e) {
       console.error(e)

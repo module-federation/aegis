@@ -48,7 +48,7 @@ export default function brokerEvents (broker, datasources, models) {
       return {
         publish: event => {
           console.debug('main publish', event)
-          dsssssssServiceMesh.publish(event)
+          ServiceMesh.publish(event)
         },
         subscribe: (event, cb) => ServiceMesh.subscribe(event, cb)
       }
