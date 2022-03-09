@@ -308,23 +308,21 @@ async function _connect () {
 
     ws.on('message', async function (message) {
       try {
-        const eventData = JSON.parse(message.toString())
-        debug && console.debug('received event:', eventData)
+        const event = JSON.parse(message.toString())
+        debug && console.debug('received event:', event)
 
-        if (handshake.validate(eventData)) {
+        if (handshake.validate(event)) {
           // check if the switch wants us to be a backup
-          isBackupSwitch = handshake.becomeBackupSwitch(eventData)
+          isBackupSwitch = handshake.becomeBackupSwitch(event)
 
           // process event
-          if (eventData.eventName) {
+          if (event.eventName) {
             // call broker if there is one
-            if (broker)
-              await broker.notify('EVENT_FROM_MESH', eventData, {
-                origin: 'mesh'
-              })
+            if (broker) await broker.notify(event.eventName, event.eventData)
             // send to uplink if there is one
             if (uplinkCallback) await uplinkCallback(message)
           }
+          return
         }
         console.warn('unknown message type', message.toString())
       } catch (error) {

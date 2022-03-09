@@ -17,11 +17,11 @@ const debug = process.env.DEBUG
 
 /**
  * @typedef {object} brokerOptions
- * @property {object} [filter] - the event data object must be a superset of the filter
+ * @property {object} [filter] - the event object must be a superset of the filter
  * @property {boolean} [priviledged] - the handler must possess the original value of a hashkey found in the event metadata
  * @property {boolean} [singleton] - the event can only have one handler (attempts to add multiple are ignored)
  * @property {number} [delay] - run the handler at least `delay` milliseconds after the event is fired
- * @property {string} [origin] - if an event specifies an origin    then the handler must have the same origin
+ * @property {string} [origin] - if an event specifies an origin then the handler must have the same origin
  * @property {boolean} [once] - run the handler and then unsubscribe. See code below to perform programmaticly.
  * ```js
  *  const listener = model.eventName, function (eventData) {
@@ -29,6 +29,9 @@ const debug = process.env.DEBUG
  *    listener.unsubscribe()
  *  })
  * ```
+ * @property {function(import('./event').Event):boolean} [custom] write a custom validation function
+ * @property {string[]} [ignore] a list of eventNames for which the handler will not run
+ *
  */
 
 /** @type {Map<string | RegExp, eventHandler[]>} */
@@ -130,7 +133,7 @@ async function notify (eventName, eventData = {}, options = {}) {
   }
   console.debug({ fn: notify.name, data })
   console.log([...handlers])
-  
+
   try {
     if (handlers.has(eventName)) {
       await Promise.allSettled(
@@ -178,6 +181,8 @@ class EventBrokerImpl extends EventBroker {
       filter = {},
       ignore = [],
       origin = false,
+      custom = null,
+      forward = [],
       singleton = false,
       priviledged = null
     } = {}
@@ -195,7 +200,7 @@ class EventBrokerImpl extends EventBroker {
     const subscription = Event.create({ eventName })
 
     /** @type {eventHandler} */
-    const callbackWrapper = eventData => {
+    const callbackWrapper = async eventData => {
       const conditions = {
         filter: {
           applies: filterKeys.length > 0,
@@ -227,6 +232,10 @@ class EventBrokerImpl extends EventBroker {
             })
             return !ignore.includes(event.eventName)
           }
+        },
+        custom: {
+          applies: typeof custom === 'function',
+          satisfied: event => custom(event)
         }
       }
 
@@ -247,7 +256,11 @@ class EventBrokerImpl extends EventBroker {
       ) {
         if (once) this.off(eventName, callbackWrapper)
         if (delay > 0) setTimeout(handler, delay, eventData)
-        else return handler(eventData)
+        else handler(eventData)
+
+        const eventNames = forward instanceof Array ? forward : [forward]
+        if (eventNames.length > 0)
+          await Promise.allSettled(eventNames.map(handle => handle(eventData)))
       } else {
         console.debug('at least one condition not satisfied', eventName)
       }
