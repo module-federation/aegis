@@ -319,6 +319,7 @@ async function _connect () {
           if (event.eventName) {
             // call broker if there is one
             if (broker) await broker.notify(event.eventName, event.eventData)
+
             // send to uplink if there is one
             if (uplinkCallback) await uplinkCallback(message)
           }
