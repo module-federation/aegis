@@ -29,7 +29,7 @@ let inProgress = false
  */
 export default function makeHotReload ({ models, broker } = {}) {
   // Add an event whose callback invokes this factory.
-  broker.on(domainEvents.hotReload(), hotReload)
+  broker.on(domainEvents.hotReload, hotReload)
 
   const events = Object.keys(domainEvents).filter(e => /^pool.*/.test(e))
   models
