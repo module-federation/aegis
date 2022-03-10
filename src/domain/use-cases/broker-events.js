@@ -85,7 +85,7 @@ export default function brokerEvents (broker, datasources, models) {
   ServiceMesh.connect({ models: listModels, broker }).then(() => {
     console.debug('connecting to service mesh')
     manager.start()
-    forwardEvents({ broker, models, publish, subscribe })
+    //forwardEvents({ broker, models, publish, subscribe })
   })
 
   /**

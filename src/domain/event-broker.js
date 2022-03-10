@@ -149,6 +149,7 @@ async function runHandler (eventName, eventData = {}, handle) {
 async function notify (eventName, eventData = {}, options = {}) {
   const run = runHandler.bind(this)
   let data = eventData
+  let match = false
 
   if (options) {
     data = { ...eventData, _options: { ...options } }
@@ -156,12 +157,15 @@ async function notify (eventName, eventData = {}, options = {}) {
 
   try {
     if (handlers.has(eventName)) {
+      match = true
       await Promise.allSettled(
         handlers.get(eventName).map(async fn => {
           await run(eventName, data, fn)
         })
       )
     }
+
+    if (options.regexOff && match) return
 
     await Promise.allSettled(
       [...handlers]
@@ -202,7 +206,6 @@ class EventBrokerImpl extends EventBroker {
       ignore = [],
       origin = false,
       custom = null,
-      forward = [],
       singleton = false,
       priviledged = null
     } = {}
@@ -277,10 +280,6 @@ class EventBrokerImpl extends EventBroker {
         if (once) this.off(eventName, callbackWrapper)
         if (delay > 0) setTimeout(handler, delay, eventData)
         else handler(eventData)
-
-        const eventNames = forward instanceof Array ? forward : [forward]
-        if (eventNames.length > 0)
-          await Promise.allSettled(eventNames.map(handle => handle(eventData)))
       } else {
         console.debug('at least one condition not satisfied', eventName)
       }
@@ -291,7 +290,7 @@ class EventBrokerImpl extends EventBroker {
       unsubscribe: () => this.off(eventName, callbackWrapper)
     }
 
-    const funcs = handlers.has(eventName)
+    const funcs = handlers.get(eventName)
     if (funcs) {
       if (singleton) return
       funcs.push(callbackWrapper)
