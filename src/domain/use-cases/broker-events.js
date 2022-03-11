@@ -21,7 +21,7 @@ const BROADCAST = process.env.TOPIC_BROADCAST || 'broadcastChannel'
  *    - crud lifecycle events
  *    - find obj / cache miss
  * @param {import('../event-broker').EventBroker} broker
- * @param {import("../datasource-factory")} datasources  n
+ * @param {import("../datasource-factory")} datasources
  * @param {import("../model-factory").ModelFactory} models
  * @param {import("../thread-pool").default} threadpools
  */
@@ -55,10 +55,13 @@ export default function brokerEvents (broker, datasources, models) {
     } else {
       return {
         publish: event => {
-          console.debug('worker publish', event)
-          broker.notify(event.eventName, event)
+          console.debug('to_main', event)
+          broker.notify('to_main', event)
         },
-        subscribe: (event, cb) => broker.on(event, cb)
+        subscribe: (eventName, cb) => {
+          console.debug('from_main', eventName)
+          broker.on('from_main', event => cb({ ...event, eventName }))
+        }
       }
     }
   }
@@ -74,12 +77,7 @@ export default function brokerEvents (broker, datasources, models) {
   })
 
   const listModels = () =>
-    models.getModelSpecs().map(spec => spec.modelName) || []
-
-  broker.on('TO_SERVICE_MESH', async event => {
-    console.debug('to_service_mesh', event)
-    ServiceMesh.publish(event)
-  })
+    models.getModelSpecs().map(spec => spec.modelName) || []``
 
   // start mesh
   ServiceMesh.connect({ models: listModels, broker }).then(() => {

@@ -37,28 +37,6 @@ const debug = process.env.DEBUG
 /** @type {Map<string | RegExp, eventHandler[]>} */
 const handlers = new Map()
 
-class RegexMap extends Map {
-  has (key) {
-    for (const k of super.keys) {
-      if (k instanceof RegExp && k.test(key)) {
-        this.value = super.get(k)
-        return true
-      }
-    }
-    const val = super.get(key)
-    if (val) {
-      this.value = val
-      return true
-    }
-    return false
-  }
-
-  get (key) {
-    if (this.value) return this.value
-    return super.get(key)
-  }
-}
-
 /**
  * @abstract
  * Event broker - universal subject of observers

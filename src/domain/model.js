@@ -62,7 +62,7 @@ import pipe from './util/pipe'
 import uuid from './util/uuid'
 
 /**
- * @namespace
+ *
  */
 const Model = (() => {
   // Protect core properties from user mixins
@@ -238,8 +238,8 @@ const Model = (() => {
       },
 
       /**
-       * Concurrency support: strategy is to merge changes
-       * with last saved version. Changes should include
+       * Concurrency strategy is to merge changes with
+       * last saved copy; {@link changes} should include
        * only the subset of properties that are changing.
        * Concomitant strategy is to add props dynamically
        * or as `Symbol`'s to avoid conflict. If conflict
@@ -368,7 +368,7 @@ const Model = (() => {
    * {@link make} to enrich the model with ports, relations, commands,
    * mixins, etc.
    *
-   * @lends Model
+   * @type {Model}
    * @class
    * @param {{
    *  args: any[],
