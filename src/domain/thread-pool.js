@@ -64,8 +64,14 @@ function kill (thread) {
 function connectEventChannel (worker, channel) {
   const { port1, port2 } = channel
   worker.postMessage({ eventPort: port2 }, [port2])
-  broker.on('to_worker', event => port1.postMessage(event))
-  port1.onmessage = event => broker.notify('from_worker', event.data)
+  broker.on('to_worker', event => {
+    console.debug('main:to_worker', event)
+    port1.postMessage(event)
+  })
+  port1.onmessage = event => {
+    console.debug('main:from_worker', event.data)
+    broker.notify('from_worker', event.data)
+  }
 }
 
 /**
@@ -125,6 +131,8 @@ function newThread ({ pool, file, workerData }) {
  */
 function postJob ({ pool, jobName, jobData, thread, cb }) {
   return new Promise((resolve, reject) => {
+    const startTime = Date.now()
+
     thread.worker.once('message', result => {
       if (pool.waitingJobs.length > 0) {
         pool.waitingJobs.shift()(thread)
@@ -135,11 +143,14 @@ function postJob ({ pool, jobName, jobData, thread, cb }) {
       if (pool.noJobsRunning()) {
         pool.emit('noJobsRunning')
       }
+      pool.jobTime(Date.now() - startTime)
 
       if (cb) return resolve(cb(result))
       return resolve(result)
     })
-    thread.worker.on('error', reject)
+
+    thread.worker.once('error', reject)
+
     thread.worker.postMessage({ name: jobName, data: jobData })
   }).catch(console.error)
 }
@@ -295,6 +306,15 @@ export class ThreadPool extends EventEmitter {
     return this.queueTolerance
   }
 
+  jobTime (millisec) {
+    this.totJobTime += millisec
+    this.avgJobTime = this.totJobTime / this.jobsRequested
+  }
+
+  avgDuration () {
+    return this.avgJobTime
+  }
+
   status () {
     return {
       name: this.name,
@@ -305,6 +325,7 @@ export class ThreadPool extends EventEmitter {
       waiting: this.jobQueueDepth(),
       available: this.availThreadCount(),
       transactions: this.totalTransactions(),
+      avgDuration: this.avgJobDuration(),
       queueRate: this.jobQueueRate(),
       tolerance: this.maxJobQueueRate(),
       reloads: this.deploymentCount()

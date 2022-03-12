@@ -237,15 +237,19 @@ const Model = (() => {
         )
       },
 
+      /** @typedef {import('./serializer.js').Serializer} Serializer */
+
       /**
        * Concurrency strategy is to merge changes with
-       * last saved copy; {@link changes} should include
+       * last saved copy; so {@link changes} should include
        * only the subset of properties that are changing.
-       * Concomitant strategy is to add props dynamically
-       * or as `Symbol`'s to avoid conflict. If conflict
-       * does occur, last one in wins.
+       * Concomitant strategy is to use `Symbol`s to
+       * avoid conflict, which requires a custom
+       * {@link Serializer} for network and storage 
+       * transmission. If conflict does occur , last 
+       * one in wins.
        *
-       * @param {*} changes - object containing updated props
+       * @param {object} changes - object containing updated props
        * @param {boolean} validate - run validation by default
        */
       async update (changes, validate = true) {

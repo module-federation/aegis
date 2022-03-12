@@ -6,6 +6,7 @@ import { ServiceMeshAdapter as ServiceMesh } from '../../adapters'
 import { forwardEvents } from './forward-events'
 import uuid from '../util/uuid'
 import { isMainThread } from 'worker_threads'
+import ThreadPoolFactory from '../thread-pool'
 
 // use external event bus for distributed object cache?
 const useEvtBus = /true/i.test(process.env.EVENTBUS_ENABLE) || false
@@ -44,22 +45,29 @@ export default function brokerEvents (broker, datasources, models) {
             })
         }
       }
+      broker.on('from_worker', event => ServiceMesh.publish(event))
 
       return {
         publish: event => {
-          console.debug('main publish', event)
+          console.debug('main:publish', event)
           ServiceMesh.publish(event)
+          //ThreadPoolFactory.post(event)
         },
-        subscribe: (event, cb) => ServiceMesh.subscribe(event, cb)
+        subscribe: (eventName, cb) => {
+          console.debug('main:subscribe', eventName)
+          ServiceMesh.subscribe(eventName, event =>
+            broker.notify('to_worker', event)
+          )
+        }
       }
     } else {
       return {
         publish: event => {
-          console.debug('to_main', event)
+          console.debug('worker:to_main', event)
           broker.notify('to_main', event)
         },
         subscribe: (eventName, cb) => {
-          console.debug('from_main', eventName)
+          console.debug('worker:from_main', eventName)
           broker.on('from_main', event => cb({ ...event, eventName }))
         }
       }
@@ -76,15 +84,19 @@ export default function brokerEvents (broker, datasources, models) {
     subscribe
   })
 
-  const listModels = () =>
-    models.getModelSpecs().map(spec => spec.modelName) || []``
+  if (isMainThread) {
+    const listModels = () =>
+      models.getModelSpecs().map(spec => spec.modelName) || []``
 
-  // start mesh
-  ServiceMesh.connect({ models: listModels, broker }).then(() => {
-    console.debug('connecting to service mesh')
+    // start mesh
+    ServiceMesh.connect({ models: listModels, broker }).then(() => {
+      console.debug('connecting to service mesh')
+      manager.start()
+      //forwardEvents({ broker, models, publish, subscribe })
+    })
+  } else {
     manager.start()
-    //forwardEvents({ broker, models, publish, subscribe })
-  })
+  }
 
   /**
    * This is the cluster cache sync listener - when data is

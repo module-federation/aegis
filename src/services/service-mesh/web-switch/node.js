@@ -165,10 +165,10 @@ export function setUplinkUrl (uplinkUrl) {
  * @param {import('../../../domain/event-broker').EventBroker} broker
  * @param {{allowMultiple:boolean, once:boolean}} [options]
  */
-export async function subscribe (eventName, callback, options = {}) {
+export async function subscribe (eventName, callback) {
   try {
     if (broker) {
-      broker.on(eventName, callback, options)
+      broker.on(eventName, callback)
       return
     }
     console.error(
@@ -319,7 +319,7 @@ async function _connect () {
           // process event
           if (event.eventName) {
             // call broker if there is one
-            if (broker) await broker.notify(event.eventName, event.eventData)
+            if (broker) await broker.notify('from_mesh', event.eventData)
 
             // send to uplink if there is one
             if (uplinkCallback) await uplinkCallback(message)

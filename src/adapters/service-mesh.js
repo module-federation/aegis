@@ -8,7 +8,7 @@ export function connect (service) {
 
 export function publish (service) {
   return async function (event) {
-    console.debug({ service, event })
+    //console.debug({ service, event })
     service.publish(event)
   }
 }

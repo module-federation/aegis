@@ -297,9 +297,7 @@ export default function DistributedCache ({
   const receiveSearchResponse = (responseName, internalName) =>
     subscribe(
       responseName,
-      updateCache(async event =>
-        broker.notify(internalName, event, { forward: 'TO_WORKER' })
-      )
+      updateCache(async event => broker.notify(internalName, event))
     )
 
   /**
@@ -311,7 +309,7 @@ export default function DistributedCache ({
   const answerSearchRequest = (request, response) =>
     subscribe(
       request,
-      searchCache(async event => publish({ ...event, eventName: response }))
+      searchCache(event => publish({ ...event, eventName: response }))
     )
 
   /**
@@ -320,7 +318,7 @@ export default function DistributedCache ({
    * @param {string} externalEvent name of external event
    */
   const forwardSearchRequest = (internalEvent, externalEvent) =>
-    broker.on(internalEvent, async event =>
+    broker.on(internalEvent, event =>
       publish({ ...event, eventName: externalEvent })
     )
 
@@ -375,10 +373,7 @@ export default function DistributedCache ({
         externalCacheRequest(modelName)
       )
       // listen for external responses to forwarded requests
-      receiveSearchResponse(
-        externalCacheResponse(modelName),
-        internalCacheResponse(modelName)
-      )
+      receiveSearchResponse(externalCacheResponse(modelName), 'to_worker')
       // listen for CRUD events from related, external models
       ;[
         models.getEventName(models.EventTypes.UPDATE, modelName),
