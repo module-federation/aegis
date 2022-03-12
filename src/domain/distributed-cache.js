@@ -275,10 +275,17 @@ export default function DistributedCache ({
           return await route(formatResponse(event, newModel))
         }
 
+        console.debug(
+          '###############',
+          event.relation,
+          datasources.getDataSource('CUSTOMER').listSync(),
+          datasources.getDataSource('customer').listSync()
+        )
+
         // find the requested object or objects
         const related = await relationType[event.relation.type](
           event.model,
-          datasources.getDataSource(event.relation.modelName),
+          datasources.getDataSource('CUSTOMER'),
           event.relation
         )
         console.debug(searchCache.name, 'related model ', related)

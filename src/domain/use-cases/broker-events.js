@@ -49,12 +49,12 @@ export default function brokerEvents (broker, datasources, models) {
 
       return {
         publish: event => {
-          console.debug('main:publish', event)
+          console.debug('main:publish:ServiceMesh.publish', event)
           ServiceMesh.publish(event)
           //ThreadPoolFactory.post(event)
         },
         subscribe: (eventName, cb) => {
-          console.debug('main:subscribe', eventName)
+          console.debug('main:subscribe:to_worker', eventName)
           ServiceMesh.subscribe(eventName, event => {
             broker.notify('to_worker', event)
             cb(event)
@@ -68,7 +68,7 @@ export default function brokerEvents (broker, datasources, models) {
           broker.notify('to_main', event)
         },
         subscribe: (eventName, cb) => {
-          console.debug('worker:from_main', eventName)
+          console.debug('worker:subscribe:from_main', eventName)
           broker.on('from_main', event => cb({ ...event, eventName }))
         }
       }
@@ -93,7 +93,7 @@ export default function brokerEvents (broker, datasources, models) {
     ServiceMesh.connect({ models: listModels, broker }).then(() => {
       console.debug('connecting to service mesh')
       manager.start()
-      //forwardEvents({ broker, models, publish, subscribe })
+      forwardEvents({ broker, models, publish, subscribe })
     })
   } else {
     manager.start()

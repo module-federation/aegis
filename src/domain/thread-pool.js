@@ -80,7 +80,7 @@ function connectEventChannel (worker, channel) {
  *  pool:ThreadPool
  *  file:string
  *  workerData:WorkerOptions.workerData
- * }} paramsq
+ * }} param0
  * @returns {Promise<Thread>}
  */
 function newThread ({ pool, file, workerData }) {
