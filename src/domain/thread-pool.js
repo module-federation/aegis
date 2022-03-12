@@ -191,6 +191,7 @@ export class ThreadPool extends EventEmitter {
     this.reloads = 0
     this.jobsRequested = 0
     this.jobsQueued = 0
+    this.totJobTime = 0
     this.totalThreads = 0
 
     function dequeue () {
@@ -311,7 +312,7 @@ export class ThreadPool extends EventEmitter {
     this.avgJobTime = this.totJobTime / this.jobsRequested
   }
 
-  avgDuration () {
+  avgJobDuration () {
     return this.avgJobTime
   }
 

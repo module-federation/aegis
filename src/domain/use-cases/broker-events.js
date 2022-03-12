@@ -55,9 +55,10 @@ export default function brokerEvents (broker, datasources, models) {
         },
         subscribe: (eventName, cb) => {
           console.debug('main:subscribe', eventName)
-          ServiceMesh.subscribe(eventName, event =>
+          ServiceMesh.subscribe(eventName, event => {
             broker.notify('to_worker', event)
-          )
+            cb(event)
+          })
         }
       }
     } else {

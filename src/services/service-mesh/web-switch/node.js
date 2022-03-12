@@ -269,7 +269,6 @@ const handshake = {
   validate (message) {
     if (message) {
       let msg
-      console.debug(message)
       const valid = message.eventName || message.proto === this.proto
 
       if (typeof message === 'object') {
@@ -319,7 +318,7 @@ async function _connect () {
           // process event
           if (event.eventName) {
             // call broker if there is one
-            if (broker) await broker.notify('from_mesh', event.eventData)
+            if (broker) await broker.notify(event.eventName, event)
 
             // send to uplink if there is one
             if (uplinkCallback) await uplinkCallback(message)
