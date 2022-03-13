@@ -126,6 +126,10 @@ export default function DistributedCache ({
       model: model.modelName,
       ds: datasource.name
     })
+    if (model.modelName.toUpperCase() !== datasource.name.toUpperCase()) {
+      console.error('wrong dataset, aborting')
+      return
+    }
     return datasource.save(models.getModelId(model), model)
   }
 
@@ -153,7 +157,8 @@ export default function DistributedCache ({
     return async function (message) {
       try {
         const event = parse(message)
-        const { eventName, modelName, model } = event
+        const { eventName, model } = event
+        const modelName = model.modelName
         console.debug('handle cache event', eventName)
 
         if (!model || model.length < 1) {
@@ -283,7 +288,7 @@ export default function DistributedCache ({
         // find the requested object or objects
         const related = await relationType[event.relation.type](
           event.model,
-          datasources.getDataSource(event.relation.modelName),
+          datasources.getDataSource(event.relation.modelName.toUpperCase()),
           event.relation
         )
         console.debug(searchCache.name, 'related model ', related)
