@@ -31,6 +31,7 @@ const debug = process.env.DEBUG
  * ```
  * @property {function(import('./event').Event):boolean} [custom] write a custom validation function
  * @property {string[]} [ignore] a list of eventNames for which the handler will not run
+ * @property {string} [checkName] check the eventName property in the data, which can differ when used for routing
  *
  */
 
@@ -185,6 +186,7 @@ class EventBrokerImpl extends EventBroker {
       origin = false,
       custom = null,
       singleton = false,
+      checkName = null,
       priviledged = null
     } = {}
   ) {
@@ -201,7 +203,7 @@ class EventBrokerImpl extends EventBroker {
     const subscription = Event.create({ eventName })
 
     /** @type {eventHandler} */
-    const callbackWrapper = async eventData => {
+    const eventCallbackWrapper = async eventData => {
       const conditions = {
         filter: {
           applies: filterKeys.length > 0,
@@ -225,37 +227,24 @@ class EventBrokerImpl extends EventBroker {
         },
         ignore: {
           applies: ignore?.length > 0,
-          satisfied: event => {
-            console.log({
-              event,
-              keys: Object.entries(event),
-              met: !ignore.includes(event.eventName)
-            })
-            return !ignore.includes(event.eventName)
-          }
+          satisfied: event => !ignore.includes(event.eventName)
         },
         custom: {
           applies: typeof custom === 'function',
           satisfied: event => custom(event)
+        },
+        checkName: {
+          applies: checkName,
+          satisfied: event => event.eventName === checkName
         }
       }
 
       if (
-        Object.keys(conditions).every(key => {
-          const result =
-            !conditions[key].applies || conditions[key].satisfied(eventData)
-
-          // console.debug({
-          //   fn: notify.name,
-          //   condition: key,
-          //   eventName,
-          //   satisfied: result
-          // })
-
-          return result
-        })
+        Object.values(conditions).every(
+          condition => !condition.applies || condition.satisfied(eventData)
+        )
       ) {
-        if (once) this.off(eventName, callbackWrapper)
+        if (once) this.off(eventName, eventCallbackWrapper)
         if (delay > 0) setTimeout(handler, delay, eventData)
         else handler(eventData)
       } else {
@@ -265,17 +254,17 @@ class EventBrokerImpl extends EventBroker {
 
     const sub = {
       ...subscription,
-      unsubscribe: () => this.off(eventName, callbackWrapper)
+      unsubscribe: () => this.off(eventName, eventCallbackWrapper)
     }
 
     const funcs = handlers.get(eventName)
     if (funcs) {
       if (singleton) return
-      funcs.push(callbackWrapper)
+      funcs.push(eventCallbackWrapper)
       // send to main
       return sub
     }
-    handlers.set(eventName, [callbackWrapper])
+    handlers.set(eventName, [eventCallbackWrapper])
     return sub
   }
 

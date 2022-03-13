@@ -101,7 +101,11 @@ const hotReload = () => [
   }
 ]
 const listConfigs = () =>
-  makeListConfig({ models: ModelFactory, data: DataSourceFactory })
+  makeListConfig({
+    models: ModelFactory,
+    data: DataSourceFactory,
+    broker: EventBrokerFactory.getInstance()
+  })
 
 export const UseCases = {
   addModels,

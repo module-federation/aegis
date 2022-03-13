@@ -49,20 +49,14 @@ export default function brokerEvents (broker, datasources, models) {
         }
       }
       broker.on(fromWorker, event => ServiceMesh.publish(event))
+      broker.on('from_mesh', event => broker.notify(toWorker, event))
 
       return {
-        publish: event => {
-          console.debug('main:publish:ServiceMesh', event)
-          ServiceMesh.publish(event)
-          //ThreadPoolFactory.post(event)
-        },
-        subscribe: (eventName, _cb) => {
-          console.debug('main:subscribe:to_worker', eventName)
-          ServiceMesh.subscribe(eventName, event => {
-            broker.notify(toWorker, event)
-            //cb(event)
-          })
-        }
+        publish: event =>
+          console.debug('main:publish:ServiceMesh no-op', event),
+
+        subscribe: (eventName, _cb) =>
+          console.debug('main:subscribe:to_worker no-op', eventName)
       }
     } else {
       return {
@@ -72,7 +66,7 @@ export default function brokerEvents (broker, datasources, models) {
         },
         subscribe: (eventName, cb) => {
           console.debug('worker:subscribe:from_main', eventName)
-          broker.on(fromMain, event => cb({ ...event, eventName }))
+          broker.on(fromMain, cb, { checkName: eventName })
         }
       }
     }

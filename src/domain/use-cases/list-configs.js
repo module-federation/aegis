@@ -5,7 +5,8 @@ import ThreadPoolFactory from '../thread-pool'
 /**
  * @param {{
  * models:import("../model").Model,
- * data:import("../datasource-factory").DataSourceFactory
+ * data:import("../datasource-factory").DataSourceFactory,
+ * broker:import('../event-broker').EventBroker)
  * }} options
  */
 export default function listConfigsFactory ({ models, data, broker } = {}) {

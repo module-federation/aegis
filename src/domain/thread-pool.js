@@ -6,15 +6,7 @@ import { Worker } from 'worker_threads'
 import domainEvents from './domain-events'
 import ModelFactory from '.'
 
-const {
-  poolOpen,
-  poolClose,
-  poolDrain,
-  toWorker,
-  toMain,
-  fromWorker,
-  fromMain
-} = domainEvents
+const { poolOpen, poolClose, poolDrain, toWorker, fromWorker } = domainEvents
 const broker = EventBrokerFactory.getInstance()
 const DEFAULT_THREADPOOL_MIN = 1
 const DEFAULT_THREADPOOL_MAX = 2
@@ -72,6 +64,7 @@ function kill (thread) {
 function connectEventChannel (worker, channel) {
   const { port1, port2 } = channel
   worker.postMessage({ eventPort: port2 }, [port2])
+
   broker.on(toWorker, event => {
     console.debug('main:to_worker', event)
     port1.postMessage(event)
@@ -142,6 +135,8 @@ function postJob ({ pool, jobName, jobData, thread, cb }) {
     const startTime = Date.now()
 
     thread.worker.once('message', result => {
+      pool.jobTime(Date.now() - startTime)
+
       if (pool.waitingJobs.length > 0) {
         pool.waitingJobs.shift()(thread)
       } else {
@@ -151,14 +146,11 @@ function postJob ({ pool, jobName, jobData, thread, cb }) {
       if (pool.noJobsRunning()) {
         pool.emit('noJobsRunning')
       }
-      pool.jobTime(Date.now() - startTime)
 
       if (cb) return resolve(cb(result))
       return resolve(result)
     })
-
     thread.worker.once('error', reject)
-
     thread.worker.postMessage({ name: jobName, data: jobData })
   }).catch(console.error)
 }

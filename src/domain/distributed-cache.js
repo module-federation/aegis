@@ -280,17 +280,10 @@ export default function DistributedCache ({
           return await route(formatResponse(event, newModel))
         }
 
-        console.debug(
-          '###############',
-          event.relation,
-          datasources.getDataSource('CUSTOMER').listSync(),
-          datasources.getDataSource('customer').listSync()
-        )
-
         // find the requested object or objects
         const related = await relationType[event.relation.type](
           event.model,
-          datasources.getDataSource('CUSTOMER'),
+          datasources.getDataSource(event.relation.modelName),
           event.relation
         )
         console.debug(searchCache.name, 'related model ', related)
@@ -385,7 +378,7 @@ export default function DistributedCache ({
         externalCacheRequest(modelName)
       )
       // listen for external responses to forwarded requests
-      receiveSearchResponse(externalCacheResponse(modelName), 'to_worker')
+      receiveSearchResponse(externalCacheResponse(modelName))
       // listen for CRUD events from related, external models
       ;[
         models.getEventName(models.EventTypes.UPDATE, modelName),

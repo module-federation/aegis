@@ -318,7 +318,7 @@ async function _connect () {
           // process event
           if (event.eventName) {
             // call broker if there is one
-            if (broker) await broker.notify(event.eventName, event)
+            if (broker) await broker.notify('from_mesh', event)
 
             // send to uplink if there is one
             if (uplinkCallback) await uplinkCallback(message)
