@@ -252,7 +252,7 @@ class EventBrokerImpl extends EventBroker {
         if (triggers?.length > 0)
           await Promise.all(triggers.map(name => notify(name, eventData)))
       } else {
-        console.debug('at least one condition not satisfied', eventName)
+        console.debug('at least one condition not satisfied', eventData               )
       }
     }
 
