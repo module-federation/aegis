@@ -66,7 +66,7 @@ export default function getContent (httpRequest, content, defaultTitle) {
           <body>`
 
     contentArr.forEach(contents => {
-      text += `<div style="margin-bottom: 12px;">
+      text += `<div style="margin-bottom: 20px;">
                     <table id="configs">`
 
       Object.keys(contents).forEach(key => {

@@ -309,7 +309,7 @@ export class ThreadPool extends EventEmitter {
 
   jobTime (millisec) {
     this.totJobTime += millisec
-    this.avgJobTime = this.totJobTime / this.jobsRequested
+    this.avgJobTime = Math.round(this.totJobTime / this.jobsRequested)
   }
 
   avgJobDuration () {

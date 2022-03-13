@@ -121,6 +121,11 @@ export default function DistributedCache ({
    * @param {function(m)=>m.id} return id to save
    */
   async function saveModel (model, datasource) {
+    console.debug({
+      fn: saveModel.name,
+      model: model.modelName,
+      ds: datasource.name
+    })
     return datasource.save(models.getModelId(model), model)
   }
 
