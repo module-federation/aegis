@@ -351,17 +351,23 @@ export async function connect (serviceInfo = {}) {
  *
  */
 async function reconnect (retries = 0) {
-  if (retries % 10 == 0) {
-    serviceUrl = _url(protocol, host, port)
-  }
-  ws = null
-  await _connect()
+  try {
+    console.log({ retries })
+    // if (retries % 10 == 0) {
+    //   serviceUrl = _url(protocol, host, port)
+    // }
+    ws = null
+    await _connect()
 
-  if (ws?.OPEN) {
-    console.info('reconnected to switch', serviceUrl)
-    return
+    if (ws?.OPEN) {
+      console.info('reconnected to switch', serviceUrl)
+      return
+    }
+  } catch (error) {
+    console.error({ fn: reconnect.name, error })
+  } finally {
+    if (!ws) setTimeout(reconnect, 3000, retries++)
   }
-  setTimeout(reconnect, 3000, retries++)
 }
 
 /**

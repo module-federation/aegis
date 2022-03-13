@@ -383,7 +383,10 @@ export default function DistributedCache ({
         externalCacheRequest(modelName)
       )
       // listen for external responses to forwarded requests
-      receiveSearchResponse(externalCacheResponse(modelName))
+      receiveSearchResponse(
+        externalCacheResponse(modelName),
+        internalCacheResponse(modelName)
+      )
       // listen for CRUD events from related, external models
       ;[
         models.getEventName(models.EventTypes.UPDATE, modelName),

@@ -185,6 +185,7 @@ class EventBrokerImpl extends EventBroker {
       ignore = [],
       origin = false,
       custom = null,
+      triggers = [],
       singleton = false,
       checkName = null,
       priviledged = null
@@ -247,6 +248,9 @@ class EventBrokerImpl extends EventBroker {
         if (once) this.off(eventName, eventCallbackWrapper)
         if (delay > 0) setTimeout(handler, delay, eventData)
         else handler(eventData)
+
+        if (triggers?.length > 0)
+          await Promise.all(triggers.map(name => notify(name, eventData)))
       } else {
         console.debug('at least one condition not satisfied', eventName)
       }
@@ -256,6 +260,8 @@ class EventBrokerImpl extends EventBroker {
       ...subscription,
       unsubscribe: () => this.off(eventName, eventCallbackWrapper)
     }
+
+    //console.debug([...handlers])
 
     const funcs = handlers.get(eventName)
     if (funcs) {
