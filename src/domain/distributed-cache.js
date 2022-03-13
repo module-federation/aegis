@@ -3,6 +3,7 @@
 import { relationType } from './make-relations'
 import { importRemoteCache } from '.'
 import domainEvents from '../domain/domain-events'
+import { wrapWasmAdapter } from '../adapters/webassembly/wasm-decorators'
 const {
   internalCacheRequest,
   internalCacheResponse,
