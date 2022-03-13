@@ -7,11 +7,14 @@ import { forwardEvents } from './forward-events'
 import uuid from '../util/uuid'
 import { isMainThread } from 'worker_threads'
 import ThreadPoolFactory from '../thread-pool'
+import domainEvents from '../domain-events'
+
+const { fromWorker, toWorker, fromMain, toMain } = domainEvents
 
 // use external event bus for distributed object cache?
-const useEvtBus = /true/i.test(process.env.EVENTBUS_ENABLE) || false
+const useEventBus = /true/i.test(process.env.EVENTBUS_ENABLED) || false
 // what channel to broadcast cache events?
-const BROADCAST = process.env.TOPIC_BROADCAST || 'broadcastChannel'
+const broadcast = process.env.TOPIC_BROADCAST || 'broadcastChannel'
 
 /**
  * Broker events between threadpools and remote mesh instances.
@@ -32,12 +35,12 @@ export default function brokerEvents (broker, datasources, models) {
 
   function buildPubSubFunctions () {
     if (isMainThread) {
-      if (useEvtBus) {
+      if (useEventBus) {
         return {
-          publish: event => EventBus.notify(BROADCAST, JSON.stringify(event)),
+          publish: event => EventBus.notify(broadcast, JSON.stringify(event)),
           subscribe: (event, cb) =>
             EventBus.listen({
-              topic: BROADCAST,
+              topic: broadcast,
               id: uuid(),
               once: false,
               filters: [event],
@@ -45,19 +48,19 @@ export default function brokerEvents (broker, datasources, models) {
             })
         }
       }
-      broker.on('from_worker', event => ServiceMesh.publish(event))
+      broker.on(fromWorker, event => ServiceMesh.publish(event))
 
       return {
         publish: event => {
-          console.debug('main:publish:ServiceMesh.publish', event)
+          console.debug('main:publish:ServiceMesh', event)
           ServiceMesh.publish(event)
           //ThreadPoolFactory.post(event)
         },
-        subscribe: (eventName, cb) => {
+        subscribe: (eventName, _cb) => {
           console.debug('main:subscribe:to_worker', eventName)
           ServiceMesh.subscribe(eventName, event => {
-            broker.notify('to_worker', event)
-            cb(event)
+            broker.notify(toWorker, event)
+            //cb(event)
           })
         }
       }
@@ -65,11 +68,11 @@ export default function brokerEvents (broker, datasources, models) {
       return {
         publish: event => {
           console.debug('worker:to_main', event)
-          broker.notify('to_main', event)
+          broker.notify(toMain, event)
         },
         subscribe: (eventName, cb) => {
           console.debug('worker:subscribe:from_main', eventName)
-          broker.on('from_main', event => cb({ ...event, eventName }))
+          broker.on(fromMain, event => cb({ ...event, eventName }))
         }
       }
     }
