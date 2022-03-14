@@ -66,7 +66,10 @@ export default function brokerEvents (broker, datasources, models) {
         },
         subscribe: (eventName, cb) => {
           console.debug('worker:subscribe:from_main', eventName)
-          broker.on(fromMain, cb, { checkName: eventName })
+          broker.on(
+            fromMain,
+            event => event.eventName === eventName && cb(event)
+          )
         }
       }
     }
@@ -96,7 +99,7 @@ export default function brokerEvents (broker, datasources, models) {
     manager.start()
   }
 
-  /** 
+  /**
    * This is the cluster cache sync listener - when data is
    * saved in another process, the master forwards the data to
    * all the other workers, so they can update their cache.
