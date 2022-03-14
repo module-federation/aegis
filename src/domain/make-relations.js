@@ -89,6 +89,7 @@ export function requireRemoteObject (model, relation, broker, ...args) {
   const response = internalCacheResponse(relation.modelName)
   const execute = resolve => event => resolve(event)
 
+  console.debug({ fn: requireRemoteObject.name })
   const requestData = {
     relation,
     eventName: request,
@@ -143,15 +144,20 @@ export default function makeRelations (relations, datasource, broker) {
                 broker,
                 ...args
               )
+              console.debug({ fn: relation, event })
 
               // each arg contains input to create a new object
               if (event && event.args.length > 0) {
                 const updated = await updateForeignKeys(this, event, rel, ds)
                 setTimeout(updateForeignKeys, 3000, this, event, rel, ds)
-                return relationType[rel.type](updated, ds, rel)
+                //const result = await relationType[rel.type](updated, ds, rel)
+                console.debug({ model: event.model })
+                return event.model
               }
 
-              return relationType[rel.type](this, ds, rel)
+              //const result = await relationType[rel.type](this, ds, rel)
+              console.debug({ model: event.model })
+              return event.model
             }
             return model
           }
