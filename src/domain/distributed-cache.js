@@ -308,7 +308,9 @@ export default function DistributedCache ({
   const receiveSearchResponse = (responseName, internalName) =>
     subscribe(
       responseName,
-      updateCache(async event => broker.notify(internalName, event))
+      updateCache(async event =>
+        broker.notify(internalName, { ...event, eventName: internalName })
+      )
     )
 
   /**

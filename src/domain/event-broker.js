@@ -241,9 +241,22 @@ class EventBrokerImpl extends EventBroker {
       }
 
       if (
-        Object.values(conditions).every(
-          condition => !condition.applies || condition.satisfied(eventData)
-        )
+        Object.keys(conditions).every(key => {
+          const result =
+            !conditions[key].applies || conditions[key].satisfied(eventData)
+
+          // if (result)
+          //   console.debug({
+          //     fn: notify.name,
+          //     condition: key,
+          //     applies: conditions[key].applies,
+          //     eventName,
+          //     eventDataEventName: eventData.eventName,
+          //     satisfied: result
+          //   })
+
+          return result
+        })
       ) {
         if (once) this.off(eventName, eventCallbackWrapper)
         if (delay > 0) setTimeout(handler, delay, eventData)
@@ -252,7 +265,7 @@ class EventBrokerImpl extends EventBroker {
         if (triggers?.length > 0)
           await Promise.all(triggers.map(name => notify(name, eventData)))
       } else {
-        console.debug('at least one condition not satisfied', eventData               )
+        //console.debug('at least one condition not satisfied', eventData)
       }
     }
 
