@@ -351,7 +351,7 @@ export async function connect (serviceInfo = {}) {
 async function reconnect () {
   try {
     ws = null
-    const id = setInterval(() => (!ws ? _connect() : clearInterval(id)), 6000)
+    const id = setInterval(() => (!ws ? _connect() : clearInterval(id)), 3825)
   } catch (error) {
     console.error({ fn: reconnect.name, error })
   }

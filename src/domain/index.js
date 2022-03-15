@@ -337,4 +337,6 @@ export { default as EventBrokerFactory } from './event-broker'
 
 export { default as DistributedCache } from './distributed-cache'
 
+export { default as DataSourceFactory } from './datasource-factory'
+
 export default ModelFactory
