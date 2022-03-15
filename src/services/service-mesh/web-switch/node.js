@@ -302,7 +302,7 @@ async function _connect () {
 
     ws.on('error', function (error) {
       console.error({ fn: _connect.name, error })
-      if (!ws.OPEN) reconnect()
+      reconnect()
     })
 
     ws.on('message', async function (message) {
@@ -318,7 +318,6 @@ async function _connect () {
           if (event.eventName) {
             // call broker if there is one
             if (broker) await broker.notify('from_mesh', event)
-
             // send to uplink if there is one
             if (uplinkCallback) await uplinkCallback(message)
           }
@@ -352,8 +351,7 @@ export async function connect (serviceInfo = {}) {
 async function reconnect () {
   try {
     ws = null
-    const id = setInterval(() => (!ws ? _connect() : clearInterval(id)), 3000)
-    _connect()
+    const id = setInterval(() => (!ws ? _connect() : clearInterval(id)), 6000)
   } catch (error) {
     console.error({ fn: reconnect.name, error })
   }

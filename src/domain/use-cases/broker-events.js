@@ -55,8 +55,8 @@ export default function brokerEvents (broker, datasources, models) {
         subscribe: (eventName, cb) =>
           console.debug(
             'main:subscribe:to_worker no-op',
-            eventName,
-            cb.toString()
+            eventName
+            //wcb.toString()
           )
       }
     } else {
