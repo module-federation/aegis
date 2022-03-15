@@ -177,8 +177,8 @@ export async function subscribe (eventName, callback) {
       eventName,
       JSON.stringify(callback.toString(), null, 2)
     )
-  } catch (e) {
-    console.error('subscribe', e)
+  } catch (error) {
+    console.error({ fn: 'subscribe', error })
   }
 }
 
@@ -221,7 +221,6 @@ function startHeartbeat () {
   const intervalId = setInterval(async function () {
     if (receivedPong) {
       receivedPong = false
-
       // expect a pong back
       ws.ping(0x9)
     } else {
@@ -350,23 +349,13 @@ export async function connect (serviceInfo = {}) {
 /**
  *
  */
-async function reconnect (retries = 0) {
+async function reconnect () {
   try {
-    console.log({ retries })
-    // if (retries % 10 == 0) {
-    //   serviceUrl = _url(protocol, host, port)
-    // }
     ws = null
-    await _connect()
-
-    if (ws?.OPEN) {
-      console.info('reconnected to switch', serviceUrl)
-      return
-    }
+    const id = setInterval(() => (!ws ? _connect() : clearInterval(id)), 3000)
+    _connect()
   } catch (error) {
     console.error({ fn: reconnect.name, error })
-  } finally {
-    if (!ws) setTimeout(reconnect, 3000, retries++)
   }
 }
 

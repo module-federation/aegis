@@ -78,7 +78,7 @@ export default function DistributedCache ({
 
       return {
         ...payload,
-        modelName: (payload.modelName || payload.model.modelName).toUpperCase(),
+        modelName: payload.modelName || payload.model.modelName,
         modelId: payload.modelId || payload.model.id,
         args: payload.args || []
       }

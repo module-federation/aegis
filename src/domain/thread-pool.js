@@ -6,7 +6,7 @@ import { Worker } from 'worker_threads'
 import domainEvents from './domain-events'
 import ModelFactory from '.'
 
-const { poolOpen, poolClose, poolDrain, toWorker, fromWorker } = domainEvents
+const { poolOpen, poolClose, poolDrain } = domainEvents
 const broker = EventBrokerFactory.getInstance()
 const DEFAULT_THREADPOOL_MIN = 1
 const DEFAULT_THREADPOOL_MAX = 2
@@ -65,13 +65,13 @@ function connectEventChannel (worker, channel) {
   const { port1, port2 } = channel
   worker.postMessage({ eventPort: port2 }, [port2])
 
-  broker.on(toWorker, event => {
+  broker.on('to_worker', event => {
     console.debug('main:to_worker', event)
     port1.postMessage(event)
   })
   port1.onmessage = event => {
     console.debug('main:from_worker', event.data)
-    broker.notify(fromWorker, event.data)
+    broker.notify('from_worker', event.data)
   }
 }
 

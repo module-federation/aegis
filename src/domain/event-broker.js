@@ -31,7 +31,6 @@ const debug = process.env.DEBUG
  * ```
  * @property {function(import('./event').Event):boolean} [custom] write a custom validation function
  * @property {string[]} [ignore] a list of eventNames for which the handler will not run
- * @property {string} [checkName] check the eventName property in the data, which can differ when used for routing
  *
  */
 
@@ -183,11 +182,9 @@ class EventBrokerImpl extends EventBroker {
       delay = 0,
       filter = {},
       ignore = [],
-      origin = false,
       custom = null,
       triggers = [],
       singleton = false,
-      checkName = null,
       priviledged = null
     } = {}
   ) {
@@ -218,14 +215,6 @@ class EventBrokerImpl extends EventBroker {
             !event._options.priviledged ||
             event._options.priviledged === hash(priviledged)
         },
-        origin: {
-          applies: typeof origin === 'string',
-          satisfied: event =>
-            event &&
-            event._options &&
-            typeof event._options.origin === 'string' &&
-            event._options.origin.toUpperCase() === origin.toUpperCase()
-        },
         ignore: {
           applies: ignore?.length > 0,
           satisfied: event => !ignore.includes(event.eventName)
@@ -233,10 +222,6 @@ class EventBrokerImpl extends EventBroker {
         custom: {
           applies: typeof custom === 'function',
           satisfied: event => custom(event)
-        },
-        checkName: {
-          applies: checkName,
-          satisfied: event => event.eventName === checkName
         }
       }
 
@@ -245,15 +230,15 @@ class EventBrokerImpl extends EventBroker {
           const result =
             !conditions[key].applies || conditions[key].satisfied(eventData)
 
-          // if (result)
-          //   console.debug({
-          //     fn: notify.name,
-          //     condition: key,
-          //     applies: conditions[key].applies,
-          //     eventName,
-          //     eventDataEventName: eventData.eventName,
-          //     satisfied: result
-          //   })
+          debug &&
+            console.debug({
+              fn: notify.name,
+              condition: key,
+              applies: conditions[key].applies,
+              eventName,
+              eventDataEventName: eventData.eventName,
+              satisfied: result
+            })
 
           return result
         })

@@ -6,10 +6,6 @@ import { ServiceMeshAdapter as ServiceMesh } from '../../adapters'
 import { forwardEvents } from './forward-events'
 import uuid from '../util/uuid'
 import { isMainThread } from 'worker_threads'
-import ThreadPoolFactory from '../thread-pool'
-import domainEvents from '../domain-events'
-
-const { fromWorker, toWorker, fromMain, toMain } = domainEvents
 
 // use external event bus for distributed object cache?
 const useEventBus = /true/i.test(process.env.EVENTBUS_ENABLED) || false
@@ -29,7 +25,6 @@ const broadcast = process.env.TOPIC_BROADCAST || 'broadcastChannel'
  * @param {import("../model-factory").ModelFactory} models
  * @param {import("../thread-pool").default} threadpools
  */
-
 export default function brokerEvents (broker, datasources, models) {
   console.debug({ fn: brokerEvents.name })
 
@@ -48,26 +43,32 @@ export default function brokerEvents (broker, datasources, models) {
             })
         }
       }
-      broker.on(fromWorker, event => ServiceMesh.publish(event))
-      broker.on('from_mesh', event => broker.notify(toWorker, event))
+      // forward anything from a worker to the service mesh
+      broker.on('from_worker', event => ServiceMesh.publish(event))
+      // forward anything from the servivce mesh to the workers
+      broker.on('from_mesh', event => broker.notify('to_worker', event))
 
       return {
         publish: event =>
           console.debug('main:publish:ServiceMesh no-op', event),
 
-        subscribe: (eventName, _cb) =>
-          console.debug('main:subscribe:to_worker no-op', eventName)
+        subscribe: (eventName, cb) =>
+          console.debug(
+            'main:subscribe:to_worker no-op',
+            eventName,
+            cb.toString()
+          )
       }
     } else {
       return {
         publish: event => {
           console.debug('worker:to_main', event)
-          broker.notify(toMain, event)
+          broker.notify('to_main', event)
         },
         subscribe: (eventName, cb) => {
           console.debug('worker:subscribe:from_main', eventName)
           broker.on(
-            fromMain,
+            'from_main',
             event => event.eventName === eventName && cb(event)
           )
         }
@@ -87,7 +88,7 @@ export default function brokerEvents (broker, datasources, models) {
 
   if (isMainThread) {
     const listModels = () =>
-      models.getModelSpecs().map(spec => spec.modelName) || []``
+      models.getModelSpecs().map(spec => spec.modelName) || []
 
     // start mesh
     ServiceMesh.connect({ models: listModels, broker }).then(() => {
