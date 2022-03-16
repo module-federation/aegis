@@ -3,7 +3,7 @@
 import { relationType } from './make-relations'
 import { importRemoteCache } from '.'
 import domainEvents from '../domain/domain-events'
-import { wrapWasmAdapter } from '../adapters/webassembly/wasm-decorators'
+import asyncPipe from './util/async-pipe'
 const {
   internalCacheRequest,
   internalCacheResponse,
@@ -105,14 +105,18 @@ export default function DistributedCache ({
   }
 
   /**
-   * Unmarshal deserialized JSON object.
+   * Unmarshal deserialized object.
    * @param {Array<Model>} model
    * @param {import("./datasource").default} datasource
    * @param {string} modelName
    * @returns {Model}
    */
-  function hydrateModel (model, datasource, modelName) {
-    return models.loadModel(broker, datasource, model, modelName)
+  function hydrate (input) {
+    const { model, datasource, modelName } = input
+    return {
+      ...input,
+      model: models.loadModel(broker, datasource, model, modelName)
+    }
   }
 
   /**
@@ -121,31 +125,50 @@ export default function DistributedCache ({
    * @param {import("./datasource").default} datasource
    * @param {function(m)=>m.id} return id to save
    */
-  async function saveModel (model, datasource) {
+  async function save (input) {
+    const { model, datasource } = input
+
     console.debug({
-      fn: saveModel.name,
+      fn: save.name,
       model: model.modelName,
       ds: datasource.name
     })
+
     if (model.modelName.toUpperCase() !== datasource.name.toUpperCase()) {
       console.error('wrong dataset, aborting')
-      return
+      return input
     }
-    return datasource.save(models.getModelId(model), model)
+
+    datasource.save(models.getModelId(model), model)
+    return input
   }
 
   /**
    * Fetch {@link ModelSpecification} modules for `modelName` from repo.
    * @param {string} modelName
    */
-  async function streamRemoteModules (modelName) {
+  async function streamCode (input) {
+    const { modelName } = input
     console.debug('check if we have the code for this object...')
+
     if (!models.getModelSpec(modelName)) {
-      console.debug("we don't, import it...")
+      console.debug("...we don't, stream it.")
+
       // Stream the code for the model
       await importRemoteCache(modelName)
+      return input
     }
+    console.debug('...we do.')
+    return input
   }
+
+  async function route (input) {
+    const { route, event, model } = input
+    if (route) await route({ ...event, model })
+    return input
+  }
+
+  const cacheModel = asyncPipe(streamCode, hydrate, save, route)
 
   /**
    *
@@ -160,6 +183,7 @@ export default function DistributedCache ({
         const event = parse(message)
         const { eventName, model } = event
         const modelName = model.modelName
+
         console.debug('handle cache event', eventName)
 
         if (!model || model.length < 1) {
@@ -171,12 +195,13 @@ export default function DistributedCache ({
 
         if (await handleDelete(eventName, modelName, event)) return
 
-        await streamRemoteModules(modelName)
-        const datasource = datasources.getDataSource(modelName, true)
-        const hydratedModel = hydrateModel(model, datasource, modelName)
-        await saveModel(hydratedModel, datasource)
-
-        if (route) await route({ ...event, model: hydratedModel })
+        await cacheModel({
+          modelName,
+          datasource: datasources.getDataSource(modelName),
+          model,
+          event,
+          route
+        })
       } catch (error) {
         console.error(updateCache.name, error)
       }
@@ -221,7 +246,7 @@ export default function DistributedCache ({
    * Updated source model (model that defines the relation)
    * @throws
    */
-  async function createRelatedObject (event) {
+  async function createRelatedModel (event) {
     if (event.args.length < 1 || !event.relation || !event.modelName) {
       console.error('missing required params', event)
       return null
@@ -232,7 +257,7 @@ export default function DistributedCache ({
       const datasource = datasources.getDataSource(event.relation.modelName)
       return datasource.save(model.getId(), model)
     } catch (error) {
-      console.error(createRelatedObject.name, error)
+      console.error(createRelatedModel.name, error)
       return null
     }
   }
@@ -281,7 +306,7 @@ export default function DistributedCache ({
 
         // args mean create an object
         if (event.args?.length > 0) {
-          const newModel = await createRelatedObject(event)
+          const newModel = await createRelatedModel(event)
           console.debug('new model created: ', newModel)
           return await route(formatResponse(event, newModel))
         }
