@@ -44,9 +44,13 @@ export default function brokerEvents (broker, datasources, models) {
         }
       }
       // forward anything from a worker to the service mesh
-      broker.on('from_worker', event => ServiceMesh.publish(event))
+      broker.on('from_worker', event => ServiceMesh.publish(event), {
+        enabled: ['from_worker']
+      })
       // forward anything from the servivce mesh to the workers
-      broker.on('from_mesh', event => broker.notify('to_worker', event))
+      broker.on('from_mesh', event => broker.notify('to_worker', event), {
+        enabled: ['to_worker', 'from_mesh']
+      })
 
       return {
         publish: event =>

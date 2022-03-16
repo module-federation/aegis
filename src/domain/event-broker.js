@@ -155,6 +155,9 @@ async function notify (eventName, eventData = {}, options = {}) {
   }
 }
 
+const disabledEvents = []
+const enabledEvents = []
+
 /**
  * @type {EventBroker}
  * @extends EventBroker
@@ -183,7 +186,8 @@ class EventBrokerImpl extends EventBroker {
       filter = {},
       ignore = [],
       custom = null,
-      triggers = [],
+      enabled = [],
+      disabled = [],
       singleton = false,
       priviledged = null
     } = {}
@@ -199,6 +203,8 @@ class EventBrokerImpl extends EventBroker {
     }
     const filterKeys = Object.keys(filter)
     const subscription = Event.create({ eventName })
+    disabledEvents.concat(disabled)
+    enabledEvents.concat(enabled)
 
     /** @type {eventHandler} */
     const eventCallbackWrapper = async eventData => {
@@ -222,6 +228,14 @@ class EventBrokerImpl extends EventBroker {
         custom: {
           applies: typeof custom === 'function',
           satisfied: event => custom(event)
+        },
+        enabled: {
+          applies: enabledEvents.length > 0,
+          satisfied: event => enabled.includes(event.eventName)
+        },
+        disabled: {
+          applies: disabledEvents.length > 0,
+          satisfied: event => !disabled.includes(event.eventName)
         }
       }
 
@@ -246,9 +260,6 @@ class EventBrokerImpl extends EventBroker {
         if (once) this.off(eventName, eventCallbackWrapper)
         if (delay > 0) setTimeout(handler, delay, eventData)
         else handler(eventData)
-
-        if (triggers?.length > 0)
-          await Promise.all(triggers.map(name => notify(name, eventData)))
       } else {
         //console.debug('at least one condition not satisfied', eventData)
       }
