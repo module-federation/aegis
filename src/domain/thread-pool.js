@@ -11,6 +11,7 @@ const broker = EventBrokerFactory.getInstance()
 const DEFAULT_THREADPOOL_MIN = 1
 const DEFAULT_THREADPOOL_MAX = 2
 const DEFAULT_JOBQUEUE_TOLERANCE = 25
+const DEFAULT_DURATION_TOLERANCE = 1000
 const EVENTCHANNEL_MAXRETRY = 20
 
 /**
@@ -186,6 +187,7 @@ export class ThreadPool extends EventEmitter {
     this.maxThreads = options.maxThreads || DEFAULT_THREADPOOL_MAX
     this.minThreads = options.minThreads || DEFAULT_THREADPOOL_MIN
     this.queueTolerance = options.queueTolerance || DEFAULT_JOBQUEUE_TOLERANCE
+    this.timeTolerance = options.timeTolerance || DEFAULT_DURATION_TOLERANCE
     this.closed = false
     this.options = options
     this.reloads = 0
@@ -303,13 +305,17 @@ export class ThreadPool extends EventEmitter {
     return Math.round((this.jobsQueued / this.jobsRequested) * 100)
   }
 
-  maxJobQueueRate () {
+  jobQueueThreshold () {
     return this.queueTolerance
   }
 
   jobTime (millisec) {
     this.totJobTime += millisec
     this.avgJobTime = Math.round(this.totJobTime / this.jobsRequested)
+  }
+
+  jobTimeThreshold () {
+    return this.timeTolerance
   }
 
   avgJobDuration () {
@@ -327,19 +333,37 @@ export class ThreadPool extends EventEmitter {
       available: this.availThreadCount(),
       transactions: this.totalTransactions(),
       avgDuration: this.avgJobDuration(),
+      timeTolerance: this.jobTimeThreshold(),
       queueRate: this.jobQueueRate(),
-      tolerance: this.maxJobQueueRate(),
-      reloads: this.deploymentCount()
+      queueTolerance: this.jobQueueThreshold(),
+      deployments: this.deploymentCount()
     }
   }
 
-  async threadAlloc () {
-    if (
-      this.poolSize() === 0 ||
-      (this.poolSize() < this.maxPoolSize() &&
-        this.jobQueueRate() > this.maxJobQueueRate())
+  capacityAvailable () {
+    return pool.poolSize() < pool.maxPoolSize()
+  }
+
+  thresholdExceeded (pool = this) {
+    const thresholds = {
+      zeroThreads () {
+        return pool.poolSize() === 0
+      },
+      queueRate () {
+        return pool.jobQueueRate() > pool.jobQueueThreshold()
+      },
+      duration () {
+        return pool.avgJobTime() > pool.jobTimeThreshold()
+      }
+    }
+    return (
+      Object.values(thresholds).some(exceeded => exceeded()) &&
+      pool.capacityAvailable()
     )
-      return this.startThread()
+  }
+
+  async threadAlloc () {
+    if (this.thresholdExceeded()) return this.startThread()
   }
 
   /** @typedef {import('./use-cases').UseCaseService UseCaseService  */
@@ -405,7 +429,7 @@ export class ThreadPool extends EventEmitter {
     return this
   }
 
-  postMessage (event, retries = 0) {
+  fireEvent (event, retries = 0) {
     return new Promise((resolve, reject) => {
       // don't retry forever
       if (retries > EVENTCHANNEL_MAXRETRY) {
@@ -426,7 +450,7 @@ export class ThreadPool extends EventEmitter {
         thread.eventPort.postMessage(event)
       } else {
         // all threads busy, keep trying
-        setTimeout(this.postMessage, 1000, event, retries++)
+        setTimeout(this.fireEvent, 1000, event, retries++)
       }
     })
   }
@@ -556,13 +580,13 @@ const ThreadPoolFactory = (() => {
    * post a message to all pools (at least one thread)
    * @param {import('./event').Event} event
    */
-  function postAll (event) {
-    threadPools.forEach(pool => pool.postMessage(event))
+  function fireAll (event) {
+    threadPools.forEach(pool => pool.fireEvent(event))
   }
 
-  function postMessage (event) {
+  function fireEvent (event) {
     const pool = threadPools.get(event.data)
-    if (pool) return pool.postMessage(event)
+    if (pool) return pool.fireEvent(event)
   }
 
   /**
@@ -656,8 +680,8 @@ const ThreadPoolFactory = (() => {
     getThreadPool,
     listPools,
     reloadAll,
-    postMessage,
-    postAll,
+    postMessage: fireEvent,
+    postAll: fireAll,
     reload,
     status,
     listen,

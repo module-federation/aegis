@@ -1,3 +1,5 @@
+'use strict'
+
 function prettifyJson (json) {
   if (typeof json !== 'string') {
     json = JSON.stringify(json, null, 2)
@@ -29,7 +31,7 @@ function getResourceName (httpRequest, defaultTitle) {
 }
 
 export default function getContent (httpRequest, content, defaultTitle) {
-  const contentArr = content instanceof Array ? content : [content]
+  const contents = content instanceof Array ? content : [content]
 
   if (!httpRequest.query.html)
     return { contentType: 'application/json', content }
@@ -40,7 +42,15 @@ export default function getContent (httpRequest, content, defaultTitle) {
     let text = `
           <!DOCTYPE html>
           <html>
-          <h2 style='color: black'>${title}</h2> 
+          <head>
+          <meta charset="utf-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+          <link rel="icon" type="image/png" href="/aegis-logo.png" />
+          <h3 style='color: black'>
+            <a> <img src="/aegis-logo.png" alt="aegis" width="35" height="35" />ÆGIS Domain Model API</a>
+          </h3> 
+          <h2>${title}</h2>
+          </head>
           <style>
           #configs {
             font-family: Arial, Helvetica, sans-serif;
@@ -65,12 +75,12 @@ export default function getContent (httpRequest, content, defaultTitle) {
           </style>       
           <body>`
 
-    contentArr.forEach(contents => {
-      text += `<div style="margin-bottom: 20px;">
+    contents.forEach(function (content) {
+      text += `<div style="margin-bottom: 40px;">
                     <table id="configs">`
 
-      Object.keys(contents).forEach(key => {
-        let val = contents[key]
+      Object.keys(content).forEach(key => {
+        let val = content[key]
         if (typeof val === 'object')
           val = `<pre><code>${prettifyJson(
             JSON.stringify(val, null, 2)
