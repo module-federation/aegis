@@ -406,24 +406,29 @@ export class ThreadPool extends EventEmitter {
   }
 
   postMessage (event, retries = 0) {
-    // don't retry forever
-    if (retries > EVENTCHANNEL_MAXRETRY) {
-      console.error('event channel retry timeout', event)
-      return
-    }
-    const threads = this.freeThreads
-    if (!threads || threads.length < 1) return
-    const thread = threads[0]
+    return new Promise((resolve, reject) => {
+      // don't retry forever
+      if (retries > EVENTCHANNEL_MAXRETRY) {
+        console.error('event channel retry timeout', event)
+        return reject('timeout')
+      }
+      const threads = this.freeThreads
+      if (!threads || threads.length < 1) return reject('no threads')
+      const thread = threads[0]
 
-    if (thread) {
-      // don't send to the sender (infinite loop)
-      if (event.port === thread.eventPort) return
-      // send over thread's event subchannel
-      thread.eventPort.postMessage(event)
-    } else {
-      // all threads busy, keep trying
-      setTimeout(this.postMessage, 1000, event, retries++)
-    }
+      if (thread) {
+        // don't send to the sender (infinite loop)
+        if (event.port === thread.eventPort) return reject('same sender')
+        // return the response
+        thread.eventPort.once('message', msgEvent => resolve(msgEvent))
+        // send over thread's event subchannel
+        console.log('sending', event)
+        thread.eventPort.postMessage(event)
+      } else {
+        // all threads busy, keep trying
+        setTimeout(this.postMessage, 1000, event, retries++)
+      }
+    })
   }
 
   /**
@@ -556,8 +561,8 @@ const ThreadPoolFactory = (() => {
   }
 
   function postMessage (event) {
-    const pool = threadPools.get(event.eventName)
-    if (pool) pool.postMessage(event)
+    const pool = threadPools.get(event.data)
+    if (pool) return pool.postMessage(event)
   }
 
   /**

@@ -130,13 +130,13 @@ export default function DistributedCache ({
 
     console.debug({
       fn: save.name,
-      model: model.modelName,
+      modelName: model.modelName,
       ds: datasource.name
     })
 
     if (model.modelName.toUpperCase() !== datasource.name.toUpperCase()) {
       console.error('wrong dataset, aborting')
-      return input
+      return inputrrr
     }
 
     datasource.save(models.getModelId(model), model)

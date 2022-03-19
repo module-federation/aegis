@@ -244,15 +244,15 @@ class EventBrokerImpl extends EventBroker {
           const result =
             !conditions[key].applies || conditions[key].satisfied(eventData)
 
-          debug &&
-            console.debug({
-              fn: notify.name,
-              condition: key,
-              applies: conditions[key].applies,
-              eventName,
-              eventDataEventName: eventData.eventName,
-              satisfied: result
-            })
+        adebug &&
+          console.debug({
+            fn: notify.name,
+            condition: key,
+            applies: conditions[key].applies,
+            eventName,
+            eventDataEventName: eventData.eventName,
+            satisfied: result
+          })
 
           return result
         })
