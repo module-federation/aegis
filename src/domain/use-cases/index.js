@@ -104,7 +104,8 @@ const listConfigs = () =>
   makeListConfig({
     models: ModelFactory,
     data: DataSourceFactory,
-    broker: EventBrokerFactory.getInstance()
+    broker: EventBrokerFactory.getInstance(),
+    threadpools: ThreadPoolFactory
   })
 
 export const UseCases = {

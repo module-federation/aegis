@@ -44,24 +44,13 @@ export default function brokerEvents (broker, datasources, models) {
         }
       }
       // forward anything from a worker to the service mesh
-      broker.on('from_worker', event => ServiceMesh.publish(event), {
-        enabled: ['from_worker']
-      })
+      broker.on('from_worker', event => ServiceMesh.publish(event))
       // forward anything from the servivce mesh to the workers
-      broker.on('from_mesh', event => broker.notify('to_worker', event), {
-        enabled: ['to_worker', 'from_mesh']
-      })
+      broker.on('from_mesh', event => broker.notify('to_worker', event))
 
       return {
-        publish: event =>
-          console.debug('main:publish:ServiceMesh no-op', event),
-
-        subscribe: (eventName, cb) =>
-          console.debug(
-            'main:subscribe:to_worker no-op',
-            eventName
-            //wcb.toString()
-          )
+        publish: event => console.debug('no-op', event),
+        subscribe: (eventName, cb) => console.log('no-op', eventName)
       }
     } else {
       return {

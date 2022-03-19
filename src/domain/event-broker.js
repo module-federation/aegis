@@ -110,11 +110,9 @@ async function runHandler (eventName, eventData = {}, handle) {
   }
 
   /**
-   * Git rid of unserializable types in the message
-   * to avoid rejection if passed between threads
    * @type {eventHandler}
    */
-  await handle(JSON.parse(JSON.stringify(eventData)))
+  await handle(eventData)
 }
 
 /**

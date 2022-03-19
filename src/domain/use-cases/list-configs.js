@@ -1,30 +1,39 @@
 'use strict'
 
-import ThreadPoolFactory from '../thread-pool'
-
 /**
  * @param {{
- * models:import("../model").Model,
- * data:import("../datasource-factory").DataSourceFactory,
- * broker:import('../event-broker').EventBroker)
- * }} options
+ *  models:import("../model").Model,
+ *  data:import("../datasource-factory").DataSourceFactory
+ *  broker:import('../event-broker').EventBroker
+ *  threadpools:import('../thread-pool').default
+ * }} injectedDependencies
  */
-export default function listConfigsFactory ({ models, data, broker } = {}) {
+export default function listConfigsFactory ({
+  models,
+  data,
+  broker,
+  threadpools
+} = {}) {
   return async function listConfigs (query) {
     if (query?.details === 'data') {
-      return {
-        main: data.listDataSources().map(
-          ([k]) => data.getDataSource(k).listSync()
-          //.filter(m => typeof m['getName'] !== 'function')
-        ),
-        threads: await ThreadPoolFactory.postMessage({
+      if (query.modelName) {
+        return threadpools.fireEvent({
           name: 'showData',
-          data: query.modelName || 'ORDER'
+          data: query.modelName
         })
       }
+      return data
+        .listDataSources()
+        .map(([k]) => data.getDataSource(k).listSync())
     } else if (query.details === 'threads') {
-      return ThreadPoolFactory.status()
+      return threadpools.status()
     } else if (query.details === 'events') {
+      if (query.modelName) {
+        return threadpools.fireEvent({
+          name: 'showEvents',
+          data: query.modelName
+        })
+      }
       return broker.getEvents()
     } else {
       return models.getModelSpecs()

@@ -4,8 +4,10 @@ import { isMainThread } from 'worker_threads'
 import domainEvents from '../domain-events'
 import AppError from '../util/app-error'
 
+/** @todo abstract away thread library */
+
 /**
- * @typedef {Object} dependencies injected dependencies
+ * @typedef {Object} injectedDependencies injected dependencies
  * @property {String} modelName - name of the domain model
  * @property {import('../model-factory').ModelFactory} models - model factory
  * @property {import('../datasource').default } repository - model datasource adapter
@@ -14,10 +16,11 @@ import AppError from '../util/app-error'
  * @property {...import('../index').eventHandler} handlers - {@link eventHandler} configured in the model spec.
  */
 
+/** @typedef {function(*):Promise<import("../domain").Model>} addModel */
+
 /**
- * @typedef {function(ModelParam):Promise<import("../domain").Model>} addModel
- * @param {dependencies} param0
- * @returns {function():Promise<import('../domain').Model>}
+ * @param {injectedDependencies} param0
+ * @returns {addModel}
  */
 export default function makeAddModel ({
   modelName,
@@ -34,6 +37,7 @@ export default function makeAddModel ({
   // Add an event whose callback invokes this factory.
   broker.on(domainEvents.addModel(modelName), addModel)
 
+  /** @type {addModel} */
   async function addModel (input) {
     let model
 

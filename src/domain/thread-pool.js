@@ -68,7 +68,7 @@ function connectEventChannel (worker, channel) {
 
   broker.on('to_worker', event => {
     console.debug('main:to_worker', event)
-    port1.postMessage(event)
+    port1.postMessage(JSON.parse(JSON.stringify(event)))
   })
   port1.onmessage = event => {
     console.debug('main:from_worker', event.data)
@@ -341,7 +341,7 @@ export class ThreadPool extends EventEmitter {
   }
 
   capacityAvailable () {
-    return pool.poolSize() < pool.maxPoolSize()
+    return this.poolSize() < this.maxPoolSize()
   }
 
   thresholdExceeded (pool = this) {
@@ -680,8 +680,8 @@ const ThreadPoolFactory = (() => {
     getThreadPool,
     listPools,
     reloadAll,
-    postMessage: fireEvent,
-    postAll: fireAll,
+    fireEvent,
+    fireAll,
     reload,
     status,
     listen,
