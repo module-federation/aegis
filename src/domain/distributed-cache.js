@@ -136,10 +136,10 @@ export default function DistributedCache ({
 
     if (model.modelName.toUpperCase() !== datasource.name.toUpperCase()) {
       console.error('wrong dataset, aborting')
-      return inputrrr
+      return input
     }
 
-    datasource.save(models.getModelId(model), model)
+    await datasource.save(models.getModelId(model), model)
     return input
   }
 
@@ -168,7 +168,7 @@ export default function DistributedCache ({
     return input
   }
 
-  const cacheModel = asyncPipe(streamCode, hydrate, save, route)
+  const handleUpsert = asyncPipe(streamCode, hydrate, save, route)
 
   /**
    *
@@ -195,7 +195,7 @@ export default function DistributedCache ({
 
         if (await handleDelete(eventName, modelName, event)) return
 
-        await cacheModel({
+        await handleUpsert({
           modelName,
           datasource: datasources.getDataSource(modelName),
           model,
