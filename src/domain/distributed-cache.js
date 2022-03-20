@@ -197,7 +197,7 @@ export default function DistributedCache ({
 
         await handleUpsert({
           modelName,
-          datasource: datasources.getDataSource(modelName),
+          datasource: datasources.getDataSource(modelName.toUpperCase()),
           model,
           event,
           route
@@ -221,8 +221,8 @@ export default function DistributedCache ({
         try {
           return await models.createModel(
             broker,
-            datasources.getDataSource(event.relation.modelName),
-            event.relation.modelName,
+            datasources.getDataSource(event.relation.modelName.toUpperCase()),
+            event.relation.modelName.toUpperCase(),
             arg
           )
         } catch (error) {
@@ -257,7 +257,6 @@ export default function DistributedCache ({
       const datasource = datasources.getDataSource(
         event.relation.modelName.toUpperCase()
       )
-
       return datasource.save(model.getId(), model)
     } catch (error) {
       console.error(createRelatedModel.name, error)
@@ -266,7 +265,7 @@ export default function DistributedCache ({
   }
 
   /**
-   *s
+   *
    * @param {Event} event
    * @param {Model|Model[]} model models
    * @returns {Event} w/ updated model, modelId, modelName
