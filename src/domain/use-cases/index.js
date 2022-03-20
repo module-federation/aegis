@@ -123,13 +123,14 @@ export const UseCases = {
 /**@typedef */
 export function UseCaseService (modelName = null) {
   if (modelName) {
+    const modelNameUpper = modelName.toUpperCase()
     return {
-      addModel: makeOne(modelName, makeAddModel),
-      editModel: makeOne(modelName, makeEditModel),
-      listModels: makeOne(modelName, makeListModels),
-      findModel: makeOne(modelName, makeFindModel),
-      removeModel: makeOne(modelName, makeRemoveModel),
-      loadModelSpecs: makeOne(modelName, makeLoadModels),
+      addModel: makeOne(modelNameUpper, makeAddModel),
+      editModel: makeOne(modelNameUpper, makeEditModel),
+      listModels: makeOne(modelNameUpper, makeListModels),
+      findModel: makeOne(modelNameUpper, makeFindModel),
+      removeModel: makeOne(modelNameUpper, makeRemoveModel),
+      loadModelSpecs: makeOne(modelNameUpper, makeLoadModels),
       listConfigs: listConfigs()
     }
   }

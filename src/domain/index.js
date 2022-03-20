@@ -295,7 +295,7 @@ export async function importRemoteCache (name) {
       return
     }
 
-    if (ModelFactory.getModelSpec(name)) return
+    if (ModelFactory.getModelSpec(name.toUpperCase())) return
 
     if (!modelCache) {
       modelCache = await importModelCache(remotesConfig)

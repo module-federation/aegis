@@ -151,11 +151,11 @@ export default function DistributedCache ({
     const { modelName } = input
     console.debug('check if we have the code for this object...')
 
-    if (!models.getModelSpec(modelName)) {
+    if (!models.getModelSpec(modelName.toUpperCase())) {
       console.debug("...we don't, stream it.")
 
       // Stream the code for the model
-      await importRemoteCache(modelName)
+      await importRemoteCache(modelName.toUpperCase())
       return input
     }
     console.debug('...we do.')
@@ -182,7 +182,7 @@ export default function DistributedCache ({
       try {
         const event = parse(message)
         const { eventName, model } = event
-        const modelName = model.modelName
+        const modelName = model.modelName.toUpperCase()
 
         console.debug('handle cache event', eventName)
 

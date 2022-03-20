@@ -11,7 +11,7 @@ export default function makeLiveUpdate (hotReload) {
     try {
       httpRequest.log(liveUpdate.name)
 
-      const result = await hotReload(httpRequest.query.modelName)
+      const result = await hotReload(httpRequest.query.modelName.toUpperCase())
 
       return {
         headers: {

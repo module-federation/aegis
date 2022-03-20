@@ -5,6 +5,7 @@ import { EventEmitter } from 'stream'
 import { Worker } from 'worker_threads'
 import domainEvents from './domain-events'
 import ModelFactory from '.'
+import os from 'os'
 
 const { poolOpen, poolClose, poolDrain } = domainEvents
 const broker = EventBrokerFactory.getInstance()
@@ -27,30 +28,34 @@ const EVENTCHANNEL_MAXRETRY = 20
  * @param {Thread} thread
  * @returns {Promise<number>}
  */
-function kill (thread) {
-  return new Promise((resolve, reject) => {
-    console.info('killing thread', thread.id)
+async function kill (thread) {
+  try {
+    return await new Promise((resolve, reject) => {
+      console.info('killing thread', thread.id)
 
-    const timerId = setTimeout(async () => {
-      try {
-        const threadId = await thread.worker.terminate()
-        console.warn('forcefully terminated thread', threadId)
-        resolve(threadId)
-      } catch (error) {
-        console.error({ fn: kill.name, error })
-        reject(error)
-      }
-    }, 5000)
+      const timerId = setTimeout(async () => {
+        try {
+          const threadId = await thread.worker.terminate()
+          console.warn('forcefully terminated thread', threadId)
+          resolve(threadId)
+        } catch (error) {
+          console.error({ fn: kill.name, error })
+          reject(error)
+        }
+      }, 5000)
 
-    thread.worker.once('exit', () => {
-      clearTimeout(timerId)
-      thread.eventPort.close()
-      console.info('clean exit of thread', thread.id)
-      resolve(thread.id)
+      thread.worker.once('exit', () => {
+        clearTimeout(timerId)
+        thread.eventPort.close()
+        console.info('clean exit of thread', thread.id)
+        resolve(thread.id)
+      })
+
+      thread.eventPort.postMessage({ name: 'shutdown', data: 0 })
     })
-
-    thread.eventPort.postMessage({ name: 'shutdown', data: 0 })
-  }).catch(console.error)
+  } catch (error) {
+    return console.error({ fn: kill.name, error })
+  }
 }
 
 /** @typedef {import('./event-broker').EventBroker} EventBroker */
@@ -184,7 +189,7 @@ export class ThreadPool extends EventEmitter {
     this.file = file
     this.name = name
     this.workerData = workerData
-    this.maxThreads = options.maxThreads || DEFAULT_THREADPOOL_MAX
+    this.maxThreads = options.maxThreads // def. set by ThreadPoolFactory
     this.minThreads = options.minThreads || DEFAULT_THREADPOOL_MIN
     this.queueTolerance = options.queueTolerance || DEFAULT_JOBQUEUE_TOLERANCE
     this.timeTolerance = options.timeTolerance || DEFAULT_DURATION_TOLERANCE
@@ -333,7 +338,7 @@ export class ThreadPool extends EventEmitter {
       available: this.availThreadCount(),
       transactions: this.totalTransactions(),
       avgDuration: this.avgJobDuration(),
-      timeTolerance: this.jobTimeThreshold(),
+      durTolerance: this.jobTimeThreshold(),
       queueRate: this.jobQueueRate(),
       queueTolerance: this.jobQueueThreshold(),
       deployments: this.deploymentCount()
@@ -513,11 +518,26 @@ export class ThreadPool extends EventEmitter {
 }
 
 /**
- * Create, reload, destroy, observe & report thread pools.
+ * Create, reload, destroy, observe & report on thread pools.
  */
 const ThreadPoolFactory = (() => {
   /** @type {Map<string, ThreadPool>} */
   let threadPools = new Map()
+
+  /**
+   * By default the framework allocates a total of one thread per core.
+   * The default behavior is to spread threads/cores evenly between models.
+   * @param {*} options
+   * @returns
+   */
+  function determineMaxThreads (options) {
+    if (options?.maxThreads) return options.maxThreads
+    const max = ModelFactory.getModelSpecs().filter(spec => !spec.isCached)
+      .length
+    return (
+      Math.floor(os.cpus().length / (max || DEFAULT_THREADPOOL_MAX || 2)) || 1
+    )
+  }
 
   /**
    * Typical way to create a pool for use by a domain model
@@ -528,12 +548,14 @@ const ThreadPoolFactory = (() => {
   function createThreadPool (modelName, options) {
     console.debug({ fn: createThreadPool.name, modelName, options })
 
+    const maxThreads = determineMaxThreads()
+
     try {
       const pool = new ThreadPool({
         file: './dist/worker.js',
         name: modelName,
         workerData: { modelName },
-        options
+        options: { ...options, maxThreads }
       })
 
       threadPools.set(modelName, pool)
