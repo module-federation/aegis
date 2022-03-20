@@ -93,7 +93,7 @@ export function requireRemoteObject (model, relation, broker, ...args) {
   const requestData = {
     relation,
     eventName: request,
-    modelName: model.getName(),
+    modelName: model.getName().toUpperCase(),
     modelId: model.getId(),
     model,
     args
@@ -132,7 +132,7 @@ export default function makeRelations (relations, datasource, broker) {
             // specify cache-only in case the object is remote
             const ds = datasource
               .getFactory()
-              .getDataSource(rel.modelName, true)
+              .getDataSource(rel.modelName.toUpperCase(), true)
 
             const model = await relationType[rel.type](this, ds, rel)
 

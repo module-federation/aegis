@@ -217,7 +217,7 @@ function register (model, services, adapters, workers, isCached = false) {
     modelName: model.modelName.toUpperCase(),
     dependencies,
     factory: model.factory(dependencies),
-    worker: workers[model.modelName],
+    worker: workers[model.modelName.toUpperCase()],
     isCached
   })
 
@@ -310,7 +310,7 @@ export async function importRemoteCache (name) {
       }
     }
 
-    if (ModelFactory.getModelSpec(name)) return
+    if (ModelFactory.getModelSpec(name.toUpperCase())) return
 
     if (!modelCache) {
       console.error('no models found in cache')
@@ -322,7 +322,7 @@ export async function importRemoteCache (name) {
       .find(model => model.modelName.toUpperCase() === name.toUpperCase())
 
     if (!model) {
-      console.error('could not find model in cache', name)
+      console.error('could not find model in cache', name.toUpperCase())
       return
     }
     register(model, serviceCache, adapterCache, true)
