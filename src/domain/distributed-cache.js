@@ -254,7 +254,10 @@ export default function DistributedCache ({
 
     try {
       const model = await createRelated(event)
-      const datasource = datasources.getDataSource(event.relation.modelName)
+      const datasource = datasources.getDataSource(
+        event.relation.modelName.toUpperCase()
+      )
+
       return datasource.save(model.getId(), model)
     } catch (error) {
       console.error(createRelatedModel.name, error)
