@@ -25,8 +25,44 @@ const broadcast = process.env.TOPIC_BROADCAST || 'broadcastChannel'
  * @param {import("../model-factory").ModelFactory} models
  * @param {import("../thread-pool").default} threadpools
  */
-export default function brokerEvents (broker, datasources, models) {
+export default function brokerEvents (
+  broker,
+  datasources,
+  models,
+  threadpools
+) {
   console.debug({ fn: brokerEvents.name })
+
+  /**
+   * Consider instead creating a message channel between
+   * related models
+   * @param {*} event
+   * @returns
+   */
+  async function publishLocally (event) {
+    const pools = models
+      .getModelSpecs()
+      .filter(spec => spec.modelName !== event.modelName)
+
+    if (pools.length > 0) {
+      pools.forEach(async pool => {
+        const result = await threadpools.fireEvent({
+          pool,
+          name: 'fireEvent',
+          data: event
+        })
+        if (result) {
+          await threadpools.fireEvent({
+            pool: result.modelName,
+            name: 'fireEvent',
+            data: result
+          })
+          return true
+        }
+      })
+    }
+    return false
+  }
 
   function buildPubSubFunctions () {
     if (isMainThread) {
@@ -51,6 +87,13 @@ export default function brokerEvents (broker, datasources, models) {
       return {
         publish: event => console.debug('no-op', event),
         subscribe: (eventName, cb) => console.log('no-op', eventName)
+
+        // publish: event => console.log('main:publish no-op'),
+        // subscribe: (eventName, cb) =>
+        //   broker.on(
+        //     'from_worker',
+        //     event => event.eventName === eventName && publishLocally(event)
+        //   )
       }
     } else {
       return {

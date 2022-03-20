@@ -40,10 +40,19 @@
  *
  */
 
-/**
- *
- * @param {import('./domain-events')} events
- */
-const EventRouter = function (events, subscriptions) {
-  return {}
-}
+// const { default: ThreadPoolFactory } = require('./thread-pool')
+
+// /**
+//  *
+//  * @param {import('./domain-events')} events
+//  */
+// const EventRouter = function (event) {
+//   return {
+//     [event.modelName]: {
+//       [event.evenRoute]: event.eventRoute === ThreadPoolFactory.fireEvent ?
+//     },
+//     external: {
+
+//     }
+//   }
+// }

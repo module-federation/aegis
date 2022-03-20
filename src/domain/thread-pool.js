@@ -337,8 +337,8 @@ export class ThreadPool extends EventEmitter {
       waiting: this.jobQueueDepth(),
       available: this.availThreadCount(),
       transactions: this.totalTransactions(),
-      avgDuration: this.avgJobDuration(),
-      durTolerance: this.jobTimeThreshold(),
+      avgResponseTime: this.avgJobDuration(),
+      rspTimeTolerance: this.jobTimeThreshold(),
       queueRate: this.jobQueueRate(),
       queueTolerance: this.jobQueueThreshold(),
       deployments: this.deploymentCount()
