@@ -189,7 +189,7 @@ export class ThreadPool extends EventEmitter {
     this.file = file
     this.name = name
     this.workerData = workerData
-    this.maxThreads = options.maxThreads // def. set by ThreadPoolFactory
+    this.maxThreads = options.maxThreads // set by ThreadPoolFactory
     this.minThreads = options.minThreads || DEFAULT_THREADPOOL_MIN
     this.queueTolerance = options.queueTolerance || DEFAULT_JOBQUEUE_TOLERANCE
     this.timeTolerance = options.timeTolerance || DEFAULT_DURATION_TOLERANCE
@@ -211,9 +211,7 @@ export class ThreadPool extends EventEmitter {
 
     if (options.preload) {
       console.info('preload enabled for', this.name)
-      this.startThreads().then(
-        () => (this.totalThreads = this.freeThreads.length)
-      )
+      this.startThreads()
     }
   }
 
@@ -319,7 +317,7 @@ export class ThreadPool extends EventEmitter {
     this.avgJobTime = Math.round(this.totJobTime / this.jobsRequested)
   }
 
-  jobTimeThreshold () {
+  jobDurationThreshold () {
     return this.timeTolerance
   }
 
@@ -338,7 +336,7 @@ export class ThreadPool extends EventEmitter {
       available: this.availThreadCount(),
       transactions: this.totalTransactions(),
       averageDuration: this.avgJobDuration(),
-      durationTolerance: this.jobTimeThreshold(),
+      durationTolerance: this.jobDurationThreshold(),
       queueRate: this.jobQueueRate(),
       queueRateTolerance: this.jobQueueThreshold(),
       deployments: this.deploymentCount()
@@ -358,7 +356,7 @@ export class ThreadPool extends EventEmitter {
         return pool.jobQueueRate() > pool.jobQueueThreshold()
       },
       duration () {
-        return pool.avgJobTime() > pool.jobTimeThreshold()
+        return pool.avgJobDuration() > pool.jobDurationThreshold()
       }
     }
     return (
@@ -525,17 +523,16 @@ const ThreadPoolFactory = (() => {
   let threadPools = new Map()
 
   /**
-   * By default the framework allocates a total of one thread per core.
+   * By default the system-wide thread upper limit is the total # of cores.
    * The default behavior is to spread threads/cores evenly between models.
    * @param {*} options
    * @returns
    */
   function determineMaxThreads (options) {
     if (options?.maxThreads) return options.maxThreads
-    const max = ModelFactory.getModelSpecs().filter(spec => !spec.isCached)
-      .length
+    const nApps = ModelFactory.getModelSpecs().filter(s => !s.isCached).length
     return (
-      Math.floor(os.cpus().length / (max || DEFAULT_THREADPOOL_MAX || 2)) || 1
+      Math.floor(os.cpus().length / (nApps || DEFAULT_THREADPOOL_MAX || 2)) || 1
     )
   }
 
