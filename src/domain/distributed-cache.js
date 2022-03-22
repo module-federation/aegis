@@ -272,7 +272,7 @@ export default function DistributedCache ({
    */
   function formatResponse (event, model) {
     if (!model || model.length < 1) {
-      console.debug(formatResponse.name, 'no model provided')
+      console.debug(formatResponse.name, 'no model provided', model)
       return {
         ...event,
         model: null

@@ -4,17 +4,23 @@ import checkAcl from '../util/check-acl'
 import async from '../util/async-error'
 import domainEvents from '../domain-events'
 
+const { unauthorizedCommand, unknownCommand } = domainEvents
+
+/** @typedef {import("../model").Model} Model */
+/** @typedef {import('../index').ModelSpecification} ModelSpecification */
+
 const commandType = {
   /**
-   *
-   * @param {function(import("../domain/model").Model)} command
-   * @param {import("../domain/model").Model} model
+   * Call a function specified in `commands`
+   * section of the {@link ModelSpecification}
+   * @param {function(Model)} command
+   * @param {Model} model
    */
   function: async (command, model) => command(model),
   /**
-   *
+   * Call a {@link Model} method
    * @param {string} command
-   * @param {import("../model").Model} model
+   * @param {Model} model
    */
   string: async (command, model) => model[command]()
 }
@@ -24,13 +30,17 @@ function commandAuthorized (spec, command, permission) {
     command &&
     spec.commands &&
     spec.commands[command] &&
+    !spec.commands[command].disabled &&
     checkAcl(spec.commands[command].acl, permission)
   )
 }
 
 /**
+ * Execute any of the {@link Model}'s methods or any in-lined
+ * or referenced function specified in the `commands` section
+ * of the {@link ModelSpecification}.
  *
- * @param {import("../model").Model} model
+ * @param {Model} model
  * @param {command:string} command - name of command
  * @param {string} permission - permission of caller
  */
@@ -49,10 +59,10 @@ export default async function executeCommand (model, command, permission) {
         return { ...model, ...result.data }
       }
     } else {
-      console.warn('command not found', command)
+      model.emit(unknownCommand, command.toString())
     }
   } else {
-    model.emit(domainEvents.unauthorizedCommand(model.getName()), command, true)
+    model.emit(unauthorizedCommand(model.getName()), command)
   }
 
   return model

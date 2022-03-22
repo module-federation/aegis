@@ -27,9 +27,9 @@ function prettifyJson (json) {
 }
 
 function getResourceName (httpRequest, defaultTitle = '') {
+  if (/events/i.test(httpRequest.query.details)) return 'Domain Events'
   if (/threads/i.test(httpRequest.query.details)) return 'Thread Pools'
   if (/data/i.test(httpRequest.query.details)) return 'Data Sources'
-  if (/events/i.test(httpRequest.query.details)) return 'Domain Events'
   return defaultTitle
 }
 /**
@@ -124,7 +124,7 @@ export default function getContent (httpRequest, content, defaultTitle) {
       ModelFactory.getModelSpecs()
         .filter(s => !s.isCached)
         .forEach(s => {
-          text += `<a href="${httpRequest.path}?${queryText}modelName=${s.modelName}"> View thread info for ${s.modelName}</a><br>`
+          text += `<a href="${httpRequest.path}?${queryText}modelName=${s.modelName}">View thread info for ${s.modelName}</a><br>`
         })
       text += '</div>'
     }

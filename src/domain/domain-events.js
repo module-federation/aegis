@@ -15,6 +15,7 @@ const domainEvents = {
   cacheUpdateEvent: modelName => `cacheUpdateEvent_${modelName.toUpperCase()}`,
   unauthorizedCommand: modelName =>
     `unauthorizedCommand_${modelName.toUpperCase()}`,
+  unknownCommand: modelName => `unknownCommand__${modelName.toUpperCase()}`,
   undoStarted: modelName => `undoStart_${modelName.toUpperCase()}`,
   undoFailed: modelName => `undoFailed_${modelName.toUpperCase()}`,
   undoWorked: modelName => `undoWorked_${modelName.toUpperCase()}`,
