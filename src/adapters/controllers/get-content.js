@@ -85,7 +85,7 @@ export default function getContent (httpRequest, content, defaultTitle) {
           <body>`
 
     contents.forEach(function (content) {
-      text += `<div style="margin-bottom: 20px;">
+      text += `<div style="margin-bottom: 40px;">
                     <table id="configs">`
 
       Object.keys(content).forEach(key => {
@@ -120,7 +120,7 @@ export default function getContent (httpRequest, content, defaultTitle) {
       let queryText = ''
       queryParams.forEach(p => (queryText += p + '&'))
 
-      text += '<div style="margin-top: 30px">'
+      text += '<div style="margin-bottom: 20px">'
       ModelFactory.getModelSpecs()
         .filter(s => !s.isCached)
         .forEach(s => {

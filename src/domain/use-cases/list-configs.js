@@ -39,7 +39,7 @@ export default function listConfigsFactory ({
             })),
 
       models: () =>
-        query.modelName
+        query?.modelName
           ? threadpools.fireEvent({
               name: 'showModels',
               data: query.modelName
@@ -49,8 +49,11 @@ export default function listConfigsFactory ({
       threads: () => threadpools.status()
     }
 
-    if (query && !query.details) return configTypes[configTypes.models.name]()
-
-    if (query.details) return configTypes[query.details]()
+    try {
+      if (query?.details) return configTypes[query.details]()
+    } catch (error) {
+      console.error(error)
+    }
+    return configTypes.models()
   }
 }
