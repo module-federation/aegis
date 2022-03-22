@@ -111,9 +111,8 @@ export default function getContent (httpRequest, content, defaultTitle) {
      */
     if (
       /config/i.test(httpRequest.path) &&
-      Object.keys(httpRequest.query).filter(k =>
-        ['modelName', 'threads'].includes(k)
-      ).length < 1
+      !Object.keys(httpRequest.query).includes('modelName') &&
+      !Object.values(httpRequest.query).includes('threads')
     ) {
       const queryParams = Object.keys(httpRequest.query).map(
         k => `${k}=${httpRequest.query[k]}`
@@ -125,8 +124,7 @@ export default function getContent (httpRequest, content, defaultTitle) {
       ModelFactory.getModelSpecs()
         .filter(s => !s.isCached)
         .forEach(s => {
-          text += `<a href="${httpRequest.path}?${queryText}modelName=
-          "${s.modelName}"> View thread info for ${s.modelName}</a><br>`
+          text += `<a href="${httpRequest.path}?${queryText}modelName=${s.modelName}"> View thread info for ${s.modelName}</a><br>`
         })
       text += '</div>'
     }
