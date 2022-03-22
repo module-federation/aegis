@@ -24,7 +24,7 @@ export default function listConfigsFactory ({
       }
       return data
         .listDataSources()
-        .map(([k]) => data.getDataSource(k).listSync())
+        .map(([k, v]) => ({ dsname: k, records: [...v.dataSource].length }))
     } else if (query.details === 'threads') {
       return threadpools.status()
     } else if (query.details === 'events') {
@@ -34,7 +34,10 @@ export default function listConfigsFactory ({
           data: query.modelName
         })
       }
-      return broker.getEvents()
+      return [...broker.getEvents()].map(([k, v]) => ({
+        name: k,
+        handlers: v.map(v => v.toString())
+      }))
     } else {
       return models.getModelSpecs()
     }

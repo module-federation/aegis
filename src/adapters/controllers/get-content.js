@@ -1,5 +1,7 @@
 'use strict'
 
+import ModelFactory from '../../domain'
+
 function prettifyJson (json) {
   if (typeof json !== 'string') {
     json = JSON.stringify(json, null, 2)
@@ -24,7 +26,7 @@ function prettifyJson (json) {
   )
 }
 
-function getResourceName (httpRequest, defaultTitle) {
+function getResourceName (httpRequest, defaultTitle = '') {
   if (/threads/i.test(httpRequest.query.details)) return 'Thread Pools'
   if (/data/i.test(httpRequest.query.details)) return 'Data Sources'
   return defaultTitle
@@ -89,6 +91,24 @@ export default function getContent (httpRequest, content, defaultTitle) {
       })
       text += '</table></div>'
     })
+
+    if (
+      /config/i.test(httpRequest.path) &&
+      !Object.keys(httpRequest.query).includes('modelName')
+    ) {
+      const queryParams = Object.keys(httpRequest.query).map(
+        k => `${k}=${httpRequest.query[k]}`
+      )
+      let queryText = ''
+      queryParams.forEach(p => (queryText += p + '&'))
+
+      ModelFactory.getModelSpecs()
+        .filter(s => !s.isCached)
+        .forEach(s => {
+          text += `<a href="${httpRequest.path}?${queryText}modelName=${s.modelName}">View thread data for ${s.modelName}</a><br>`
+        })
+      text += '</div>'
+    }
     text += '</body></html>'
 
     return { contentType: 'text/html', content: text }
