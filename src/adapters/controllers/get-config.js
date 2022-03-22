@@ -7,11 +7,7 @@ export default function getConfigFactory (listConfigs) {
       httpRequest.log(getConfig.name)
 
       const configs = await listConfigs(httpRequest.query)
-      const { contentType, content } = getContent(
-        httpRequest,
-        configs,
-        'Model Specifications'
-      )
+      const { contentType, content } = getContent(httpRequest, configs)
 
       return {
         headers: {

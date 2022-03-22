@@ -29,9 +29,16 @@ function prettifyJson (json) {
 function getResourceName (httpRequest, defaultTitle = '') {
   if (/threads/i.test(httpRequest.query.details)) return 'Thread Pools'
   if (/data/i.test(httpRequest.query.details)) return 'Data Sources'
+  if (/events/i.test(httpRequest.query.details)) return 'Domain Events'
   return defaultTitle
 }
-
+/**
+ * Return JSON or HTML
+ * @param {*} httpRequest
+ * @param {*} content
+ * @param {*} defaultTitle
+ * @returns
+ */
 export default function getContent (httpRequest, content, defaultTitle) {
   const contents = content instanceof Array ? content : [content]
 
@@ -78,23 +85,35 @@ export default function getContent (httpRequest, content, defaultTitle) {
           <body>`
 
     contents.forEach(function (content) {
-      text += `<div style="margin-bottom: 40px;">
+      text += `<div style="margin-bottom: 20px;">
                     <table id="configs">`
 
       Object.keys(content).forEach(key => {
         let val = content[key]
+
         if (typeof val === 'object')
           val = `<pre><code>${prettifyJson(
             JSON.stringify(val, null, 2)
           )}</code></pre>`
+
         text += `<tr><td>${key}</td><td>${val}</td></tr>`
       })
       text += '</table></div>'
     })
 
+    /**
+     * If the content applies to both the main thread
+     * and worker threads, display links to the thread
+     * equivalent of the main content.
+     *
+     * E.g. Both the main and worker threads have events and
+     * data but only the main thread knows about threadpools
+     */
     if (
       /config/i.test(httpRequest.path) &&
-      !Object.keys(httpRequest.query).includes('modelName')
+      Object.keys(httpRequest.query).filter(k =>
+        ['modelName', 'threads'].includes(k)
+      ).length < 1
     ) {
       const queryParams = Object.keys(httpRequest.query).map(
         k => `${k}=${httpRequest.query[k]}`
@@ -102,10 +121,12 @@ export default function getContent (httpRequest, content, defaultTitle) {
       let queryText = ''
       queryParams.forEach(p => (queryText += p + '&'))
 
+      text += '<div style="margin-top: 30px">'
       ModelFactory.getModelSpecs()
         .filter(s => !s.isCached)
         .forEach(s => {
-          text += `<a href="${httpRequest.path}?${queryText}modelName=${s.modelName}">View thread data for ${s.modelName}</a><br>`
+          text += `<a href="${httpRequest.path}?${queryText}modelName=
+          "${s.modelName}"> View thread info for ${s.modelName}</a><br>`
         })
       text += '</div>'
     }

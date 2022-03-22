@@ -15,31 +15,42 @@ export default function listConfigsFactory ({
   threadpools
 } = {}) {
   return async function listConfigs (query) {
-    if (query?.details === 'data') {
-      if (query.modelName) {
-        return threadpools.fireEvent({
-          name: 'showData',
-          data: query.modelName
-        })
-      }
-      return data
-        .listDataSources()
-        .map(([k, v]) => ({ dsname: k, records: [...v.dataSource].length }))
-    } else if (query.details === 'threads') {
-      return threadpools.status()
-    } else if (query.details === 'events') {
-      if (query.modelName) {
-        return threadpools.fireEvent({
-          name: 'showEvents',
-          data: query.modelName
-        })
-      }
-      return [...broker.getEvents()].map(([k, v]) => ({
-        name: k,
-        handlers: v.map(v => v.toString())
-      }))
-    } else {
-      return models.getModelSpecs()
+    const configTypes = {
+      data: () =>
+        query.modelName
+          ? threadpools.fireEvent({
+              name: 'showData',
+              data: query.modelName
+            })
+          : data.listDataSources().map(([k, v]) => ({
+              dsname: k,
+              records: [...v.dataSource].length
+            })),
+
+      events: () =>
+        query.modelname
+          ? threadpools.fireEvent({
+              name: 'showEvents',
+              data: query.modelName
+            })
+          : [...broker.getEvents()].map(([k, v]) => ({
+              name: k,
+              handlers: v.map(v => v.toString())
+            })),
+
+      models: () =>
+        query.modelName
+          ? threadpools.fireEvent({
+              name: 'showModels',
+              data: query.modelName
+            })
+          : models.getModelSpecs(),
+
+      threads: () => threadpools.status()
     }
+
+    if (query && !query.details) return configTypes[configTypes.models.name]()
+
+    if (query.details) return configTypes[query.details]()
   }
 }
