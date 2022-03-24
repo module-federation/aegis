@@ -34,7 +34,7 @@ export default function listConfigsFactory ({
               data: query.modelName
             })
           : [...broker.getEvents()].map(([k, v]) => ({
-              name: k,
+              eventName: k,
               handlers: v.map(v => v.toString())
             })),
 

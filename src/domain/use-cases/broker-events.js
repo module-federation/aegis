@@ -6,6 +6,7 @@ import { ServiceMeshAdapter as ServiceMesh } from '../../adapters'
 import { forwardEvents } from './forward-events'
 import uuid from '../util/uuid'
 import { isMainThread } from 'worker_threads'
+import { EventRouter } from '../event-router'
 
 // use external event bus for distributed object cache?
 const useEventBus = /true/i.test(process.env.EVENTBUS_ENABLED) || false
@@ -33,37 +34,6 @@ export default function brokerEvents (
 ) {
   console.debug({ fn: brokerEvents.name })
 
-  /**
-   * Consider instead creating a message channel between
-   * related models
-   * @param {*} event
-   * @returns
-   */
-  async function publishLocally (event) {
-    const pools = models
-      .getModelSpecs()
-      .filter(spec => spec.modelName !== event.modelName)
-
-    if (pools.length > 0) {
-      pools.forEach(async pool => {
-        const result = await threadpools.fireEvent({
-          pool,
-          name: 'fireEvent',
-          data: event
-        })
-        if (result) {
-          await threadpools.fireEvent({
-            pool: result.modelName,
-            name: 'fireEvent',
-            data: result
-          })
-          return true
-        }
-      })
-    }
-    return false
-  }
-
   function buildPubSubFunctions () {
     if (isMainThread) {
       if (useEventBus) {
@@ -79,21 +49,51 @@ export default function brokerEvents (
             })
         }
       }
-      // forward anything from a worker to the service mesh
-      broker.on('from_worker', event => ServiceMesh.publish(event))
+
+      /**
+       * Forward the event to any local thread that can handle it.
+       *
+       * @param {import('../event').Event} event
+       * @returns {Promise<boolean>} true if routed
+       */
+      async function route (event) {
+        try {
+          console.debug({ fn: route.name, events: EventRouter.listEvents() })
+          const routedEvent = EventRouter.route(event)
+
+          if (!routedEvent.eventTarget) return false
+
+          const targetPool = threadpools.getThreadPool(routedEvent.eventTarget)
+
+          if (targetPool) {
+            await targetPool.fireEvent({
+              name: 'fireEvent',
+              data: routedEvent
+            })
+            return true
+          }
+          console.warn({
+            fn: route.name,
+            msg: 'no pool found for target',
+            target: routedEvent.evenTarget
+          })
+        } catch (error) {
+          console.error(error)
+        }
+        return false
+      }
+
+      // forward everything from workers to service mesh, unless handled locally
+      broker.on(
+        'from_worker',
+        async event => (await route(event)) || ServiceMesh.publish(event)
+      )
       // forward anything from the servivce mesh to the workers
       broker.on('from_mesh', event => broker.notify('to_worker', event))
 
       return {
         publish: event => console.debug('no-op', event),
         subscribe: (eventName, cb) => console.log('no-op', eventName)
-
-        // publish: event => console.log('main:publish no-op'),
-        // subscribe: (eventName, cb) =>
-        //   broker.on(
-        //     'from_worker',
-        //     event => event.eventName === eventName && publishLocally(event)
-        //   )
       }
     } else {
       return {
@@ -127,11 +127,7 @@ export default function brokerEvents (
       models.getModelSpecs().map(spec => spec.modelName) || []
 
     // start mesh
-    ServiceMesh.connect({ models: listModels, broker }).then(() => {
-      console.debug('connecting to service mesh')
-      manager.start()
-      forwardEvents({ broker, models, publish, subscribe })
-    })
+    ServiceMesh.connect({ models: listModels, broker })
   } else {
     manager.start()
   }

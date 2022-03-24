@@ -50,6 +50,7 @@ const Event = (() => {
       eventType && modelName && eventType.concat(modelName).toUpperCase(),
     eventType,
     modelName,
+    eventSource: modelName?.toUpperCase(),
     ...(factory ? factory(args) : args)
   })
 

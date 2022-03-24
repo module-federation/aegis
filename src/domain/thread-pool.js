@@ -6,6 +6,7 @@ import { Worker } from 'worker_threads'
 import domainEvents from './domain-events'
 import ModelFactory from '.'
 import os from 'os'
+import { EventRouter } from './event-router'
 
 const { poolOpen, poolClose, poolDrain } = domainEvents
 const broker = EventBrokerFactory.getInstance()
@@ -112,6 +113,8 @@ function newThread ({ pool, file, workerData }) {
 
       worker.once('message', msg => {
         connectEventChannel(worker, channel)
+        // broker.addEvents(pool.name, msg.events)
+        // broker.addEventPort(thread.eventPort)
         pool.emit('aegis-up', msg)
         resolve(thread)
       })
@@ -432,7 +435,7 @@ export class ThreadPool extends EventEmitter {
     return this
   }
 
-  fireEvent (event, retries = 0) {
+  async fireEvent (event, retries = 0) {
     return new Promise((resolve, reject) => {
       // don't retry forever
       if (retries > EVENTCHANNEL_MAXRETRY) {
@@ -445,7 +448,7 @@ export class ThreadPool extends EventEmitter {
 
       if (thread) {
         // don't send to the sender (infinite loop)
-        if (event.port === thread.eventPort) return reject('same sender')
+        if (event.port === thread.eventPort) return
         // return the response
         thread.eventPort.once('message', msgEvent => resolve(msgEvent))
         // send over thread's event subchannel

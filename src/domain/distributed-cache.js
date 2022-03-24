@@ -15,6 +15,7 @@ const {
 /**
  * @typedef {import("./model").Model} Model
  */
+
 /**
  * Implements distributed object cache. Find any model
  * referenced by a relation that is not registered in
