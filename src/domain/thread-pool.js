@@ -2,7 +2,7 @@
 
 import EventBrokerFactory from './event-broker'
 import { EventEmitter } from 'stream'
-import { Worker } from 'worker_threads'
+import { setEnvironmentData, Worker } from 'worker_threads'
 import domainEvents from './domain-events'
 import ModelFactory from '.'
 import os from 'os'
@@ -94,6 +94,7 @@ function newThread ({ pool, file, workerData }) {
     try {
       const channel = new MessageChannel()
       const worker = new Worker(file, { workerData })
+      setEnvironmentData('modelName', pool.name)
       pool.workerRef.push(worker)
       pool.totalThreads++
 

@@ -4,6 +4,7 @@ import { relationType } from './make-relations'
 import { importRemoteCache } from '.'
 import domainEvents from '../domain/domain-events'
 import asyncPipe from './util/async-pipe'
+import { getEnvironmentData, isMainThread, workerData } from 'worker_threads'
 const {
   internalCacheRequest,
   internalCacheResponse,
@@ -336,9 +337,7 @@ export default function DistributedCache ({
   const receiveSearchResponse = (responseName, internalName) =>
     subscribe(
       responseName,
-      updateCache(async event =>
-        broker.notify(internalName, { ...event, eventName: internalName })
-      )
+      updateCache(async event => broker.notify(responseName, event))
     )
 
   /**
@@ -386,7 +385,7 @@ export default function DistributedCache ({
    */
   function start () {
     const modelSpecs = models.getModelSpecs()
-    const localModels = modelSpecs.map(m => m.modelName.toUpperCase())
+    const localModels = [workerData.modelName.toUpperCase()]
     const remoteModels = [
       ...new Set( // deduplicate
         modelSpecs

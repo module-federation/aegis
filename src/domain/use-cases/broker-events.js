@@ -116,14 +116,6 @@ export default function brokerEvents (
 
   const { publish, subscribe } = buildPubSubFunctions()
 
-  const manager = DistributedCache({
-    broker,
-    datasources,
-    models,
-    publish,
-    subscribe
-  })
-
   if (isMainThread) {
     const listModels = () =>
       models.getModelSpecs().map(spec => spec.modelName) || []
@@ -131,6 +123,13 @@ export default function brokerEvents (
     // start mesh
     ServiceMesh.connect({ models: listModels, broker })
   } else {
+    const manager = DistributedCache({
+      broker,
+      datasources,
+      models,
+      publish,
+      subscribe
+    })
     manager.start()
   }
 
