@@ -345,13 +345,21 @@ export async function connect (serviceInfo = {}) {
   await _connect()
 }
 
+let reconnTimerId
 /**
  *
  */
 async function reconnect () {
   try {
     ws = null
-    const id = setInterval(() => (!ws ? _connect() : clearInterval(id)), 3825)
+    if (!reconnTimerId)
+      reconnTimerId = setInterval(
+        () =>
+          !ws
+            ? _connect()
+            : clearInterval(reconnTimerId) && (reconnTimerId = null),
+        30000
+      )
   } catch (error) {
     console.error({ fn: reconnect.name, error })
   }

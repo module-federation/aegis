@@ -34,6 +34,8 @@ export default function brokerEvents (
 ) {
   console.debug({ fn: brokerEvents.name })
 
+  const routes = new Map()
+
   function buildPubSubFunctions () {
     if (isMainThread) {
       if (useEventBus) {
@@ -58,29 +60,29 @@ export default function brokerEvents (
        */
       async function route (event) {
         try {
-          console.debug({ fn: route.name, events: EventRouter.listEvents() })
-          const routedEvent = EventRouter.route(event)
-
-          if (!routedEvent.eventTarget) return false
-
-          const targetPool = threadpools.getThreadPool(routedEvent.eventTarget)
-
-          if (targetPool) {
-            await targetPool.fireEvent({
-              name: 'fireEvent',
-              data: routedEvent
-            })
+          if (event.metaEvent) {
+            if (event.metaEvent === 'subscription') {
+              if (routes.has(event.eventName))
+                routes.get(event.eventName).push(event.eventSource)
+              else routes.set(event.eventName, [event.eventSource])
+            }
             return true
           }
-          console.warn({
-            fn: route.name,
-            msg: 'no pool found for target',
-            target: routedEvent.evenTarget
+          if (!routes.has(event.eventName)) return false
+          routes.get(event.eventName).forEach(async eventTarget => {
+            if (eventName.endsWith(eventTarget)) {
+              const pool = threadpools.getThreadPool(eventTarget)
+
+              if (pool) {
+                await pool.fireEvent({ name: 'fireEvent', data: event })
+                return true
+              }
+            }
           })
+          return false
         } catch (error) {
-          console.error(error)
+          console.error({ fn: route.name, error })
         }
-        return false
       }
 
       // forward everything from workers to service mesh, unless handled locally
@@ -131,6 +133,8 @@ export default function brokerEvents (
   } else {
     manager.start()
   }
+
+  //router = EventRouter({ models, threadpools })
 
   /**
    * This is the cluster cache sync listener - when data is

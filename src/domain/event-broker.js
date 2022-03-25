@@ -167,6 +167,7 @@ class EventBrokerImpl extends EventBroker {
   constructor () {
     super()
     this.notify = notify.bind(this)
+    this.subscriptionCb = x => x
   }
 
   /**
@@ -203,6 +204,14 @@ class EventBrokerImpl extends EventBroker {
     const subscription = Event.create({ eventName })
     disabledEvents.concat(disabled)
     enabledEvents.concat(enabled)
+
+    // if (this.eventPort) {
+    //   this.eventPort.postMessage({
+    //     metaEvent: 'new_subscription',
+    //     eventName,
+    //     eventSource: this.eventSource
+    //   })
+    // }
 
     /** @type {eventHandler} */
     const eventCallbackWrapper = async eventData => {
@@ -274,10 +283,12 @@ class EventBrokerImpl extends EventBroker {
     if (funcs) {
       if (singleton) return
       funcs.push(eventCallbackWrapper)
+      this.subscriptionCb(eventName)
       // send to main
       return sub
     }
     handlers.set(eventName, [eventCallbackWrapper])
+    this.subscriptionCb(eventName)
     return sub
   }
 
@@ -299,6 +310,15 @@ class EventBrokerImpl extends EventBroker {
       })
     }
     return retval
+  }
+
+  // setEventPort(eventPort, eventSource) {
+  //   this.eventPort = eventPort
+  //   this.eventSource = eventSource
+  // }
+
+  onSubcribe (cb) {
+    this.subscriptionCb = eventName => typeof cb === 'function' && cb(eventName)
   }
 
   serialize () {

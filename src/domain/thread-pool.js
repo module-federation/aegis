@@ -6,8 +6,6 @@ import { Worker } from 'worker_threads'
 import domainEvents from './domain-events'
 import ModelFactory from '.'
 import os from 'os'
-import { EventRouter } from './event-router'
-
 const { poolOpen, poolClose, poolDrain } = domainEvents
 const broker = EventBrokerFactory.getInstance()
 const DEFAULT_THREADPOOL_MIN = 1
@@ -96,6 +94,7 @@ function newThread ({ pool, file, workerData }) {
     try {
       const channel = new MessageChannel()
       const worker = new Worker(file, { workerData })
+      pool.workerRef.push(worker)
       pool.totalThreads++
 
       const thread = {
@@ -113,8 +112,6 @@ function newThread ({ pool, file, workerData }) {
 
       worker.once('message', msg => {
         connectEventChannel(worker, channel)
-        // broker.addEvents(pool.name, msg.events)
-        // broker.addEventPort(thread.eventPort)
         pool.emit('aegis-up', msg)
         resolve(thread)
       })
@@ -203,6 +200,7 @@ export class ThreadPool extends EventEmitter {
     this.jobsQueued = 0
     this.totJobTime = 0
     this.totalThreads = 0
+    this.workerRef = []
 
     function dequeue () {
       if (this.freeThreads.length > 0 && this.waitingJobs.length > 0) {
@@ -507,14 +505,25 @@ export class ThreadPool extends EventEmitter {
       this.totalThreads = 0
 
       setTimeout(
-        async () => await Promise.all(kill.map(thread => thread.stop())),
-        1000
+        async workerRef => {
+          await Promise.all(kill.map(async thread => thread.stop()))
+          // keep pointers until threads are stopped
+          workerRef.splice(0, workerRef.length)
+        },
+        1000,
+        this.workerRef
       )
 
       return this
     } catch (error) {
       console.error({ fn: this.stopThreads.name, error })
     }
+  }
+
+  reset () {
+    try {
+      this.workerRef.forEach(worker => worker.terminate())
+    } catch (error) {}
   }
 }
 
@@ -592,6 +601,9 @@ const ThreadPoolFactory = (() => {
       },
       status () {
         return getPool(poolName, options).status()
+      },
+      fireEvent (input) {
+        return getPool(poolName, options).fireEvent(input)
       }
     }
 
@@ -697,6 +709,32 @@ const ThreadPoolFactory = (() => {
         .find(pool => pool.name.toUpperCase() === poolName.toUpperCase())
         ?.on(eventName, cb)
   }
+
+  // look for stuck threads
+  setInterval(() => {
+    threadPools.forEach(pool => {
+      const workRequested = pool.totalTransactions()
+      const workWaiting = pool.jobQueueDepth()
+      const workersAvail = pool.availThreadCount()
+
+      // work is waiting but no workers available
+      if (workWaiting > 0 && workersAvail < 1) {
+        setTimeout(() => {
+          const workRequested2 = pool.totalTransactions()
+          const workWaiting2 = pool.jobQueueDepth()
+          const workersAvail2 = pool.availThreadCount()
+
+          if (workWaiting2 > 0 && workersAvail2 < 1) {
+            // has any work been done in the last minute?
+            if (workWaiting2 - workWaiting === workRequested2 - workRequested) {
+              // no, kill whatever's running - thread is stuck
+              pool.reset()
+            }
+          }
+        }, 60000)
+      }
+    })
+  }, 90000)
 
   return Object.freeze({
     getThreadPool,
