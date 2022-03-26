@@ -65,7 +65,7 @@ function checkEventType (eventType) {
  * @param {String} modelName
  */
 function createEventName (eventType, modelName) {
-  return checkEventType(eventType) + checkModelName(modelName)
+  return checkEventType(eventType) + modelName.toUpperCase() // create for non-loaded
 }
 
 /**
@@ -209,6 +209,12 @@ const ModelFactory = {
     const name = typeof model === 'object' ? Model.getName(model) : model
     return modelFactories.get(checkModelName(name))
   },
+
+  getEvents: () =>
+    Object.keys(eventFactories).map(k => ({
+      type: k,
+      events: [...eventFactories[k].keys()]
+    })),
 
   /**
    *

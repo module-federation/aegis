@@ -337,7 +337,7 @@ export default function DistributedCache ({
   const receiveSearchResponse = (responseName, internalName) =>
     subscribe(
       responseName,
-      updateCache(async event => broker.notify(responseName, event))
+      updateCache(async event => broker.notify(internalName, event))
     )
 
   /**
@@ -378,6 +378,8 @@ export default function DistributedCache ({
       publish({ ...event, eventName: externalCrudEvent(eventName) })
     )
 
+  let remoteModels = []
+  let localModels = [workerData.modelName.toUpperCase()]
   /**
    * Subcribe to external CRUD events for related models.
    * Also listen for request and response events for locally
@@ -385,8 +387,7 @@ export default function DistributedCache ({
    */
   function start () {
     const modelSpecs = models.getModelSpecs()
-    const localModels = [workerData.modelName.toUpperCase()]
-    const remoteModels = [
+    remoteModels = [
       ...new Set( // deduplicate
         modelSpecs
           .filter(m => m.relations) // only models with relations
@@ -443,7 +444,11 @@ export default function DistributedCache ({
 
   console.info('distributed object cache runnings')
 
-  return {
-    start
-  }
+  return Object.freeze({
+    start,
+    _relatedModels: remoteModels,
+    get relatedModels () {
+      return this._relatedModels
+    }
+  })
 }

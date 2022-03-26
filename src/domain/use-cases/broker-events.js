@@ -3,15 +3,12 @@
 import DistributedCache from '../distributed-cache'
 import EventBus from '../../services/event-bus'
 import { ServiceMeshAdapter as ServiceMesh } from '../../adapters'
-import { forwardEvents } from './forward-events'
-import uuid from '../util/uuid'
-import { isMainThread } from 'worker_threads'
-import { EventRouter } from '../event-router'
+import { isMainThread, workerData } from 'worker_threads'
 
 // use external event bus for distributed object cache?
-const useEventBus = /true/i.test(process.env.EVENTBUS_ENABLED) || false
+//const useEventBus = /true/i.test(process.env.EVENTBUS_ENABLED) || false
 // what channel to broadcast cache events?
-const broadcast = process.env.TOPIC_BROADCAST || 'broadcastChannel'
+//const broadcast = process.env.TOPIC_BROADCAST || 'broadcastChannel'
 
 /**
  * Broker events between threadpools and remote mesh instances.
@@ -34,73 +31,148 @@ export default function brokerEvents (
 ) {
   console.debug({ fn: brokerEvents.name })
 
-  const routes = new Map()
+  if (isMainThread) {
+    const mapRelations = () =>
+      models
+        .getModelSpecs()
+        .filter(spec => spec.relations)
+        .map(spec =>
+          Object.keys(spec.relations).map(k => ({
+            model: spec.modelName,
+            related: spec.relations[k].modelName.toUpperCase()
+          }))
+        )
+        .flat()
 
-  function buildPubSubFunctions () {
-    if (isMainThread) {
-      if (useEventBus) {
-        return {
-          publish: event => EventBus.notify(broadcast, JSON.stringify(event)),
-          subscribe: (event, cb) =>
-            EventBus.listen({
-              topic: broadcast,
-              id: uuid(),
-              once: false,
-              filters: [event],
-              callback: msg => cb(JSON.parse(msg))
-            })
-        }
+    const relations = mapRelations()
+
+    //console.debug({ relations })
+
+    const mapRelatedEvents = () =>
+      relations
+        .map(rel => [
+          [
+            rel.related,
+            [
+              ...Object.keys(models.EventTypes).map(type =>
+                models.getEventName(type, rel.model)
+              )
+            ]
+          ]
+        ])
+        .flat()
+
+    //console.debug(mapRelatedEvents())
+
+    const mapRoutes = () =>
+      mapRelatedEvents()
+        .map(([k, v]) => v.map(v => [v, k]))
+        .flat()
+
+    const routes = mapRoutes()
+
+    console.debug({ routes })
+
+    const searchRoutes = eventName => routes.filter(r => r[0] === eventName)
+
+    const searchTargets = eventTarget =>
+      routes.filter(r => r[1] === eventTarget)
+
+    const saveRoute = (eventName, modelName) =>
+      routes.concat([eventName, modelName])
+
+    async function sendEvent (event, poolName) {
+      try {
+        return await threadpools
+          .getThreadPool(poolName)
+          .run({ jobName: 'handleEvent', jobData: event })
+      } catch (error) {
+        console.error({ fn: sendEvent.name, error })
       }
+    }
 
-      /**
-       * Forward the event to any local thread that can handle it.
-       *
-       * @param {import('../event').Event} event
-       * @returns {Promise<boolean>} true if routed
-       */
-      async function route (event) {
-        try {
-          if (event.metaEvent) {
-            if (event.metaEvent === 'subscription') {
-              if (routes.has(event.eventName))
-                routes.get(event.eventName).push(event.eventSource)
-              else routes.set(event.eventName, [event.eventSource])
-            }
-            return true
-          }
-          if (!routes.has(event.eventName)) return false
-          routes.get(event.eventName).forEach(async eventTarget => {
-            if (eventName.endsWith(eventTarget)) {
-              const pool = threadpools.getThreadPool(eventTarget)
+    /**
+     * Forward the event to any local thread that can handle it.
+     * If the target pool is not running, start it.
+     *
+     * @param {import('../event').Event} event
+     * @returns {Promise<boolean>} true if routed
+     */
+    async function route (event) {
+      try {
+        const metaEvent = event.metaEvent
+        const eventName = event.eventName
+        const modelName = event.modelName
 
-              if (pool) {
-                await pool.fireEvent({ name: 'fireEvent', data: event })
-                return true
-              }
-            }
-          })
+        if (metaEvent) {
+          if (metaEvent === 'subscription') saveRoute(eventName, modelName)
           return false
-        } catch (error) {
-          console.error({ fn: route.name, error })
         }
-      }
 
-      // forward everything from workers to service mesh, unless handled locally
-      broker.on(
-        'from_worker',
-        async event => (await route(event)) || ServiceMesh.publish(event)
-      )
-      // forward anything from the servivce mesh to the workers
-      broker.on('from_mesh', event => broker.notify('to_worker', event))
+        const targets = searchRoutes(eventName)
+        if (targets.length < 1) {
+          console.debug({
+            fn: route.name,
+            msg: 'unknown event ' + eventName
+          })
 
-      return {
-        publish: event => console.debug('no-op', event),
-        subscribe: (eventName, cb) => console.log('no-op', eventName)
+          if (/request/i.test(eventName)) {
+            const eventTarget = eventName.slice(eventName.lastIndexOf('_') + 1)
+            const requestEvents = searchTargets(eventTarget)
+
+            if (requestEvents.length > 0) {
+              saveRoute(eventName, eventTarget)
+              await sendEvent(eventName, eventTarget)
+              return true
+            }
+          }
+          return false
+        }
+
+        let found = false
+        targets.forEach(async target => {
+          // don't send back to the senderd
+          const isResponse = /response/i.test(eventName)
+          const isResTarget = modelName === target
+          const isCrudEvent = /crud/i.test(eventName)
+
+          if (isResponse && isResTarget) {
+            await sendEvent(event, modelName)
+            found = true
+            return // only one target: the requester
+          }
+
+          if (isCrudEvent && !isResTarget) {
+            await sendEvent(event, target)
+            found = true
+          }
+        })
+        return found
+      } catch (error) {
+        console.debug({ fn: route.name, error })
       }
-    } else {
+      return false
+    }
+
+    // forward everything from workers to service mesh, unless handled locally
+    broker.on(
+      'from_worker',
+      async event => (await route(event)) || ServiceMesh.publish(event)
+    )
+
+    // forward anything from the servivce mesh to the workers
+    broker.on('from_mesh', event => broker.notify('to_worker', event))
+
+    const listModels = () =>
+      models.getModelSpecs().map(spec => spec.modelName) || []
+
+    // start mesh
+    ServiceMesh.connect({ models: listModels, broker })
+  } else {
+    function buildPubSubFunctions () {
       return {
         publish: event => {
-          console.debug('worker:to_main', event)
+          console.debug('worker:to_main', event.eventName, event.modelName)
           broker.notify('to_main', event)
         },
         subscribe: (eventName, cb) => {
@@ -112,28 +184,19 @@ export default function brokerEvents (
         }
       }
     }
-  }
 
-  const { publish, subscribe } = buildPubSubFunctions()
+    const { publish, subscribe } = buildPubSubFunctions()
 
-  if (isMainThread) {
-    const listModels = () =>
-      models.getModelSpecs().map(spec => spec.modelName) || []
-
-    // start mesh
-    ServiceMesh.connect({ models: listModels, broker })
-  } else {
     const manager = DistributedCache({
+      models,
       broker,
       datasources,
-      models,
       publish,
       subscribe
     })
+
     manager.start()
   }
-
-  //router = EventRouter({ models, threadpools })
 
   /**
    * This is the cluster cache sync listener - when data is

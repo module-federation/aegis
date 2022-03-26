@@ -71,11 +71,15 @@ function connectEventChannel (worker, channel) {
   worker.postMessage({ eventPort: port2 }, [port2])
 
   broker.on('to_worker', event => {
-    console.debug('main:to_worker', event)
+    console.debug('main:to_worker', event.eventName, event.modelName)
     port1.postMessage(JSON.parse(JSON.stringify(event)))
   })
   port1.onmessage = event => {
-    console.debug('main:from_worker', event.data)
+    console.debug(
+      'main:from_worker',
+      event.data.eventName,
+      event.data.modelName
+    )
     broker.notify('from_worker', event.data)
   }
 }
