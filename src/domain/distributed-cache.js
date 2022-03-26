@@ -4,7 +4,7 @@ import { relationType } from './make-relations'
 import { importRemoteCache } from '.'
 import domainEvents from '../domain/domain-events'
 import asyncPipe from './util/async-pipe'
-import { getEnvironmentData, isMainThread, workerData } from 'worker_threads'
+import { workerData } from 'worker_threads'
 const {
   internalCacheRequest,
   internalCacheResponse,
@@ -199,7 +199,7 @@ export default function DistributedCache ({
 
         await handleUpsert({
           modelName,
-          datasource: datasources.getDataSource(modelName.toUpperCase()),
+          datasource: datasources.getDataSource(modelName),
           model,
           event,
           route
@@ -378,16 +378,15 @@ export default function DistributedCache ({
       publish({ ...event, eventName: externalCrudEvent(eventName) })
     )
 
-  let remoteModels = []
-  let localModels = [workerData.modelName.toUpperCase()]
   /**
    * Subcribe to external CRUD events for related models.
    * Also listen for request and response events for locally
    * and remotely cached data.
    */
   function start () {
-    const modelSpecs = models.getModelSpecs()
-    remoteModels = [
+    //const modelSpecs = models.getModelSpecs()
+    const localModels = [workerData.modelName.toUpperCase()]
+    const remoteModels = [
       ...new Set( // deduplicate
         modelSpecs
           .filter(m => m.relations) // only models with relations
@@ -445,10 +444,6 @@ export default function DistributedCache ({
   console.info('distributed object cache runnings')
 
   return Object.freeze({
-    start,
-    _relatedModels: remoteModels,
-    get relatedModels () {
-      return this._relatedModels
-    }
+    start
   })
 }

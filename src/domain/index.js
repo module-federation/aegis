@@ -205,6 +205,8 @@ const deleteEvent = model => ({
  * @param {boolean} isCached
  */
 function register (model, services, adapters, workers, isCached = false) {
+  const modelName = model.modelName.toUpperCase()
+
   const serviceAdapters = bindAdapters(model.ports, adapters, services)
 
   const dependencies = {
@@ -214,28 +216,28 @@ function register (model, services, adapters, workers, isCached = false) {
 
   ModelFactory.registerModel({
     ...model,
-    modelName: model.modelName.toUpperCase(),
+    modelName: modelName,
     dependencies,
     factory: model.factory(dependencies),
-    worker: workers[model.modelName.toUpperCase()],
+    worker: workers[modelName],
     isCached
   })
 
   ModelFactory.registerEvent(
     ModelFactory.EventTypes.CREATE,
-    model.modelName.toUpperCase(),
+    modelName,
     createEvent
   )
 
   ModelFactory.registerEvent(
     ModelFactory.EventTypes.UPDATE,
-    model.modelName.toUpperCase(),
+    modelName,
     updateEvent
   )
 
   ModelFactory.registerEvent(
     ModelFactory.EventTypes.DELETE,
-    model.modelName.toUpperCase(),
+    modelName,
     deleteEvent
   )
 }

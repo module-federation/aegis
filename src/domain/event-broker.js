@@ -3,7 +3,6 @@
  * @typedef {import('.').Model} Model
  */
 
-import domainEvents from './domain-events'
 import Event from './event'
 import hash from './util/hash'
 
@@ -205,14 +204,6 @@ class EventBrokerImpl extends EventBroker {
     disabledEvents.concat(disabled)
     enabledEvents.concat(enabled)
 
-    // if (this.eventPort) {
-    //   this.eventPort.postMessage({
-    //     metaEvent: 'new_subscription',
-    //     eventName,
-    //     eventSource: this.eventSource
-    //   })
-    // }
-
     /** @type {eventHandler} */
     const eventCallbackWrapper = async eventData => {
       const conditions = {
@@ -284,7 +275,6 @@ class EventBrokerImpl extends EventBroker {
       if (singleton) return
       funcs.push(eventCallbackWrapper)
       this.subscriptionCb(eventName)
-      // send to main
       return sub
     }
     handlers.set(eventName, [eventCallbackWrapper])
