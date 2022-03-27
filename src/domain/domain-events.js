@@ -2,35 +2,38 @@
 
 const domainEvents = {
   internalCacheRequest: modelName =>
-    `internalCacheRequest_${modelName.toUpperCase()}`,
+    `internalCacheRequest_${String(modelName).toUpperCase()}`,
   externalCacheRequest: modelName =>
-    `externalCacheRequest_${modelName.toUpperCase()}`,
+    `externalCacheRequest_${String(modelName).toUpperCase()}`,
   internalCacheResponse: modelName =>
-    `internalCacheResponse_${modelName.toUpperCase()}`,
+    `internalCacheResponse_${String(modelName).toUpperCase()}`,
   externalCacheResponse: modelName =>
-    `externalCacheResponse_${modelName.toUpperCase()}`,
+    `externalCacheResponse_${String(modelName).toUpperCase()}`,
   externalCrudEvent: eventName => `externalCrudEvent_${eventName}`,
-  cacheSyncEvent: (modelName, id) => `${modelName.toUpperCase()}_${id}`,
-  cacheCreateEvent: modelName => `cacheCreateEvent_${modelName.toUpperCase()}`,
-  cacheUpdateEvent: modelName => `cacheUpdateEvent_${modelName.toUpperCase()}`,
+  cacheSyncEvent: (modelName, id) => `${String(modelName).toUpperCase()}_${id}`,
+  cacheCreateEvent: modelName =>
+    `cacheCreateEvent_${String(modelName).toUpperCase()}`,
+  cacheUpdateEvent: modelName =>
+    `cacheUpdateEvent_${String(modelName).toUpperCase()}`,
   unauthorizedCommand: modelName =>
-    `unauthorizedCommand_${modelName.toUpperCase()}`,
-  unknownCommand: modelName => `unknownCommand__${modelName.toUpperCase()}`,
-  undoStarted: modelName => `undoStart_${modelName.toUpperCase()}`,
-  undoFailed: modelName => `undoFailed_${modelName.toUpperCase()}`,
-  undoWorked: modelName => `undoWorked_${modelName.toUpperCase()}`,
-  addModel: modelName => `addModel_${modelName.toUpperCase()}`,
-  editModel: modelName => `editModel_${modelName.toUpperCase()}`,
+    `unauthorizedCommand_${String(modelName).toUpperCase()}`,
+  unknownCommand: modelName =>
+    `unknownCommand__${String(modelName).toUpperCase()}`,
+  undoStarted: modelName => `undoStart_${String(modelName).toUpperCase()}`,
+  undoFailed: modelName => `undoFailed_${String(modelName).toUpperCase()}`,
+  undoWorked: modelName => `undoWorked_${String(modelName).toUpperCase()}`,
+  addModel: modelName => `addModel_${String(modelName).toUpperCase()}`,
+  editModel: modelName => `editModel_${String(modelName).toUpperCase()}`,
   portTimeout: (modelName, port) =>
-    `portTimeout_${port}_${modelName.toUpperCase()}`,
+    `portTimeout_${port}_${String(modelName).toUpperCase()}`,
   portRetryFailed: (modelName, port) =>
-    `portRetryFailed_${port}_${modelName.toUpperCase()}`,
+    `portRetryFailed_${port}_${String(modelName).toUpperCase()}`,
   portRetryWorked: (modelName, port) =>
-    `portRetryWorked_${port}_${modelName.toUpperCase()}`,
-  publishEvent: modelName => `publishEvent_${modelName.toUpperCase()}`,
-  poolOpen: modelName => `poolOpen_${modelName.toUpperCase()}`,
-  poolClose: modelName => `poolClose_${modelName.toUpperCase()}`,
-  poolDrain: modelName => `poolDrain_${modelName.toUpperCase()}`,
+    `portRetryWorked_${port}_${String(modelName).toUpperCase()}`,
+  publishEvent: modelName => `publishEvent_${String(modelName).toUpperCase()}`,
+  poolOpen: modelName => `poolOpen_${String(modelName).toUpperCase()}`,
+  poolClose: modelName => `poolClose_${String(modelName).toUpperCase()}`,
+  poolDrain: modelName => `poolDrain_${String(modelName).toUpperCase()}`,
   subscription: 'subscription',
   toWorker: 'to_worker',
   toMain: 'to_main',

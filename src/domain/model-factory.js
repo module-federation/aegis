@@ -40,7 +40,7 @@ const EventTypes = {
  */
 function checkModelName (modelName) {
   if (typeof modelName === 'string') {
-    return modelName.toUpperCase()
+    return String(modelName).toUpperCase()
   }
   throw new Error('modelName missing or invalid')
 }
@@ -50,13 +50,7 @@ function checkModelName (modelName) {
  * @param {EventType} eventType
  */
 function checkEventType (eventType) {
-  if (typeof eventType === 'string') {
-    const upper = eventType.toUpperCase()
-    if (Object.values(EventTypes).includes(upper)) {
-      return upper
-    }
-  }
-  throw new Error('eventType missing or invalid')
+  return eventType
 }
 
 /**
@@ -65,7 +59,7 @@ function checkEventType (eventType) {
  * @param {String} modelName
  */
 function createEventName (eventType, modelName) {
-  return checkEventType(eventType) + modelName.toUpperCase() // create for non-loaded
+  return checkEventType(eventType) + String(modelName).toUpperCase() // create for non-loaded
 }
 
 /**

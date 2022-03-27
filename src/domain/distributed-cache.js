@@ -384,8 +384,8 @@ export default function DistributedCache ({
    * and remotely cached data.
    */
   function start () {
-    //const modelSpecs = models.getModelSpecs()
-    const localModels = [workerData.modelName.toUpperCase()]
+    const modelSpecs = models.getModelSpecs()
+    const localModels = [workerData.modelName]
     const remoteModels = [
       ...new Set( // deduplicate
         modelSpecs
@@ -441,7 +441,7 @@ export default function DistributedCache ({
     })
   }
 
-  console.info('distributed object cache runnings')
+  console.info('distributed object cache running')
 
   return Object.freeze({
     start

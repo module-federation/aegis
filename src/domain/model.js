@@ -245,8 +245,8 @@ const Model = (() => {
        * only the subset of properties that are changing.
        * Concomitant strategy is to use `Symbol`s to
        * avoid conflict, which requires a custom
-       * {@link Serializer} for network and storage 
-       * transmission. If conflict does occur , last 
+       * {@link Serializer} for network and storage
+       * transmission. If conflict does occur , last
        * one in wins.
        *
        * @param {object} changes - object containing updated props

@@ -46,7 +46,7 @@ export default function brokerEvents (
 
     const relations = mapRelations()
 
-    //console.debug({ relations })
+    console.debug({ relations })
 
     const mapRelatedEvents = () =>
       relations
@@ -62,7 +62,7 @@ export default function brokerEvents (
         ])
         .flat()
 
-    //console.debug(mapRelatedEvents())
+    console.debug(mapRelatedEvents())
 
     const mapRoutes = () =>
       mapRelatedEvents()
@@ -73,7 +73,7 @@ export default function brokerEvents (
 
     console.debug({ routes })
 
-    const searchRoutes = eventName => routes.filter(r => r[0] === eventName)
+    const searchEvents = eventName => routes.filter(r => r[0] === eventName)
 
     const searchTargets = eventTarget =>
       routes.filter(r => r[1] === eventTarget)
@@ -85,7 +85,7 @@ export default function brokerEvents (
       try {
         return await threadpools
           .getThreadPool(poolName)
-          .run({ jobName: 'handleEvent', jobData: event })
+          .run('handleEvent', JSON.parse(JSON.stringify(event)))
       } catch (error) {
         console.error({ fn: sendEvent.name, error })
       }
@@ -106,10 +106,10 @@ export default function brokerEvents (
 
         if (metaEvent) {
           if (metaEvent === 'subscription') saveRoute(eventName, modelName)
-          return false
+          return true
         }
 
-        const targets = searchRoutes(eventName)
+        const targets = searchEvents(eventName)
         if (targets.length < 1) {
           console.debug({
             fn: route.name,
@@ -122,10 +122,11 @@ export default function brokerEvents (
 
             if (requestEvents.length > 0) {
               saveRoute(eventName, eventTarget)
-              await sendEvent(eventName, eventTarget)
+              await sendEvent(event, eventTarget)
               return true
             }
           }
+
           return false
         }
 
@@ -135,6 +136,8 @@ export default function brokerEvents (
           const isResponse = /response/i.test(eventName)
           const isResTarget = modelName === target
           const isCrudEvent = /crud/i.test(eventName)
+
+          console.debug('known event', eventName)
 
           if (isResponse && isResTarget) {
             await sendEvent(event, modelName)
