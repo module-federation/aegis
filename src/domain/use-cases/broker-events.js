@@ -33,56 +33,42 @@ export default function brokerEvents (
   console.debug({ fn: brokerEvents.name })
 
   if (isMainThread) {
-    const mapRelations = () =>
+    const mapRoutes = () =>
       models
         .getModelSpecs()
         .filter(spec => spec.relations && !spec.isCashed)
-        .map(spec =>
+        .flatMap(spec =>
           Object.keys(spec.relations).map(k => ({
             model: spec.modelName,
             related: spec.relations[k].modelName.toUpperCase()
           }))
         )
-        .flat()
-
-    const relations = mapRelations()
-
-    console.debug({ relations })
-
-    const mapRelatedEvents = () =>
-      relations.map(rel => [
-        rel.model,
-        [
-          ...Object.keys(models.EventTypes)
-            .map(type => models.getEventName(type, rel.related))
-            .concat([
-              ...Object.keys(domainEvents).map(
-                k =>
-                  domainEvents[k] === 'function' && domainEvents[k](rel.related)
-              )
-            ])
-        ]
-      ])
-
-    const mapRoutes = () =>
-      mapRelatedEvents()
-        .map(([k, v]) => v.map(v => [v, k]))
-        .flat()
+        .map(spec => [
+          spec.model,
+          [
+            ...Object.keys(models.EventTypes)
+              .map(type => models.getEventName(type, spec.related))
+              .concat([
+                ...Object.values(domainEvents).map(de =>
+                  typeof de === 'function' ? de(spec.related) : de
+                )
+              ])
+          ]
+        ])
+        .flatMap(([k, v]) => v.map(v => [v, k]))
 
     const routes = mapRoutes()
 
     console.debug({ routes })
 
-    const searchEvents = eventName => routes.find(r => r[0] === eventName)
+    const searchEvents = eventName =>
+      routes.filter(r => r[0] === eventName).map(r => r[1])
 
     async function sendEvent (event, poolName) {
-      try {
-        const pool = threadpools.getThreadPool(poolName)
-        if (pool) pool.fireEvent({ name: 'emitEvent', data: event })
-        else console.error('no such pool', poolName)
-      } catch (error) {
-        console.error({ fn: sendEvent.name, error })
-      }
+      const pool = threadpools.getThreadPool(poolName)
+      if (pool) {
+        return pool.fireEvent({ name: 'emitEvent', data: event })
+      } else console.error('no such pool', poolName)
     }
 
     /**
@@ -95,32 +81,36 @@ export default function brokerEvents (
     async function route (event) {
       try {
         const eventName = event.eventName
-        const modelName = event.modelName
+        const isCrudEvent = /crud/i.test(eventName)
+        const targets = searchEvents(eventName)
 
-        const target = searchEvents(eventName)
-        if (target) {
-          const isResponse = /response/i.test(eventName)
-          const isCrudEvent = /crud/i.test(eventName)
+        const eventHandled = await Promise.resolve(
+          targets.reduce((target, handled) => {
+            return target.then(async () => {
+              console.debug({ msg: 'known event', eventName, target })
 
-          console.debug('known event', eventName)
+              // send to any non-cached local target for this event
+              const localTarget = models.getModelSpec(target)
+              if (!localTarget || localTarget.isCashed) return false
 
-          if (isResponse) {
-            // this is a reponse so target is reversed
-            await sendEvent(event, modelName)
-            return true
-          }
+              try {
+                await sendEvent(event, target)
+              } catch (error) {
+                return false
+              }
 
-          // send to the target for this event
-          await sendEvent(event, target)
+              if (isCrudEvent) {
+                // send this broadcast to mesh also
+                return false
+              }
 
-          if (isCrudEvent) {
-            // send this broadcast to mesh also
-            return false
-          }
+              // all targets handled locally: do not forward
+              return true && handled
+            })
+          }, Promise.resolve(false))
+        )
 
-          // event handled locally: do not forward
-          return true
-        }
+        return eventHandled
       } catch (error) {
         console.debug({ fn: route.name, error })
       }
