@@ -4,6 +4,7 @@ import DistributedCache from '../distributed-cache'
 import EventBus from '../../services/event-bus'
 import { ServiceMeshAdapter as ServiceMesh } from '../../adapters'
 import { isMainThread, workerData } from 'worker_threads'
+import domainEvents from '../domain-events'
 
 // use external event bus for distributed object cache?
 //const useEventBus = /true/i.test(process.env.EVENTBUS_ENABLED) || false
@@ -35,7 +36,7 @@ export default function brokerEvents (
     const mapRelations = () =>
       models
         .getModelSpecs()
-        .filter(spec => spec.relations)
+        .filter(spec => spec.relations && !spec.isCashed)
         .map(spec =>
           Object.keys(spec.relations).map(k => ({
             model: spec.modelName,
@@ -49,20 +50,19 @@ export default function brokerEvents (
     console.debug({ relations })
 
     const mapRelatedEvents = () =>
-      relations
-        .map(rel => [
-          [
-            rel.related,
-            [
-              ...Object.keys(models.EventTypes).map(type =>
-                models.getEventName(type, rel.model)
+      relations.map(rel => [
+        rel.model,
+        [
+          ...Object.keys(models.EventTypes)
+            .map(type => models.getEventName(type, rel.related))
+            .concat([
+              ...Object.keys(domainEvents).map(
+                k =>
+                  domainEvents[k] === 'function' && domainEvents[k](rel.related)
               )
-            ]
-          ]
-        ])
-        .flat()
-
-    console.debug(mapRelatedEvents())
+            ])
+        ]
+      ])
 
     const mapRoutes = () =>
       mapRelatedEvents()
@@ -73,84 +73,54 @@ export default function brokerEvents (
 
     console.debug({ routes })
 
-    const searchEvents = eventName => routes.filter(r => r[0] === eventName)
-
-    const searchTargets = eventTarget =>
-      routes.filter(r => r[1] === eventTarget)
-
-    const saveRoute = (eventName, modelName) =>
-      routes.concat([eventName, modelName])
+    const searchEvents = eventName => routes.find(r => r[0] === eventName)
 
     async function sendEvent (event, poolName) {
       try {
-        return await threadpools
-          .getThreadPool(poolName)
-          .run('handleEvent', JSON.parse(JSON.stringify(event)))
+        const pool = threadpools.getThreadPool(poolName)
+        if (pool) pool.fireEvent({ name: 'emitEvent', data: event })
+        else console.error('no such pool', poolName)
       } catch (error) {
         console.error({ fn: sendEvent.name, error })
       }
     }
 
     /**
-     * Forward the event to any local thread that can handle it.
-     * If the target pool is not running, start it.
+     * Send the event to the local target, if there is one. If not,
+     * send to mesh. If the target pool is not running, start it.
      *
      * @param {import('../event').Event} event
      * @returns {Promise<boolean>} true if routed
      */
     async function route (event) {
       try {
-        const metaEvent = event.metaEvent
         const eventName = event.eventName
         const modelName = event.modelName
 
-        if (metaEvent) {
-          if (metaEvent === 'subscription') saveRoute(eventName, modelName)
-          return true
-        }
-
-        const targets = searchEvents(eventName)
-        if (targets.length < 1) {
-          console.debug({
-            fn: route.name,
-            msg: 'unknown event ' + eventName
-          })
-
-          if (/request/i.test(eventName)) {
-            const eventTarget = eventName.slice(eventName.lastIndexOf('_') + 1)
-            const requestEvents = searchTargets(eventTarget)
-
-            if (requestEvents.length > 0) {
-              saveRoute(eventName, eventTarget)
-              await sendEvent(event, eventTarget)
-              return true
-            }
-          }
-
-          return false
-        }
-
-        let found = false
-        targets.forEach(async target => {
-          // don't send back to the senderd
+        const target = searchEvents(eventName)
+        if (target) {
           const isResponse = /response/i.test(eventName)
-          const isResTarget = modelName === target
           const isCrudEvent = /crud/i.test(eventName)
 
           console.debug('known event', eventName)
 
-          if (isResponse && isResTarget) {
+          if (isResponse) {
+            // this is a reponse so target is reversed
             await sendEvent(event, modelName)
-            found = true
-            return // only one target: the requester
+            return true
           }
 
-          if (isCrudEvent && !isResTarget) {
-            await sendEvent(event, target)
-            found = true
+          // send to the target for this event
+          await sendEvent(event, target)
+
+          if (isCrudEvent) {
+            // send this broadcast to mesh also
+            return false
           }
-        })
-        return found
+
+          // event handled locally: do not forward
+          return true
+        }
       } catch (error) {
         console.debug({ fn: route.name, error })
       }

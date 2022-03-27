@@ -9,7 +9,8 @@ const domainEvents = {
     `internalCacheResponse_${String(modelName).toUpperCase()}`,
   externalCacheResponse: modelName =>
     `externalCacheResponse_${String(modelName).toUpperCase()}`,
-  externalCrudEvent: eventName => `externalCrudEvent_${eventName}`,
+  externalCrudEvent: eventName =>
+    `externalCrudEvent_${String(eventName).toUpperCase()}`,
   cacheSyncEvent: (modelName, id) => `${String(modelName).toUpperCase()}_${id}`,
   cacheCreateEvent: modelName =>
     `cacheCreateEvent_${String(modelName).toUpperCase()}`,
