@@ -113,10 +113,10 @@ export default function DistributedCache ({
    * @param {string} modelName
    * @returns {Model}
    */
-  function hydrate (input) {
-    const { model, datasource, modelName } = input
+  function hydrate (o) {
+    const { model, datasource, modelName } = o
     return {
-      ...input,
+      ...o,
       model: models.loadModel(broker, datasource, model, modelName)
     }
   }
@@ -127,8 +127,8 @@ export default function DistributedCache ({
    * @param {import("./datasource").default} datasource
    * @param {function(m)=>m.id} return id to save
    */
-  async function save (input) {
-    const { model, datasource } = input
+  async function save (o) {
+    const { model, datasource } = o
 
     console.debug({
       fn: save.name,
@@ -138,19 +138,19 @@ export default function DistributedCache ({
 
     if (model.modelName.toUpperCase() !== datasource.name.toUpperCase()) {
       console.error('wrong dataset, aborting')
-      return input
+      return o
     }
 
     await datasource.save(models.getModelId(model), model)
-    return input
+    return o
   }
 
   /**
    * Fetch {@link ModelSpecification} modules for `modelName` from repo.
    * @param {string} modelName
    */
-  async function streamCode (input) {
-    const { modelName } = input
+  async function streamCode (o) {
+    const { modelName } = o
     console.debug('check if we have the code for this object...')
 
     if (!models.getModelSpec(modelName.toUpperCase())) {
@@ -158,18 +158,21 @@ export default function DistributedCache ({
 
       // Stream the code for the model
       await importRemoteCache(modelName.toUpperCase())
-      return input
+      return o
     }
     console.debug('...we do.')
-    return input
+    return o
   }
 
-  async function route (input) {
-    const { route, event, model } = input
+  async function route (o) {
+    const { route, event, model } = o
     if (route) await route({ ...event, model })
-    return input
+    return o
   }
 
+  /**
+   * Pipes functions that instantiate the remote object(s) and upsert the cache
+   */
   const handleUpsert = asyncPipe(streamCode, hydrate, save, route)
 
   /**
@@ -228,7 +231,7 @@ export default function DistributedCache ({
             arg
           )
         } catch (error) {
-          throw new Error(createRelated.name, error.message)
+          throw new Error(createRelated.name, error)
         }
       })
     )
@@ -349,7 +352,14 @@ export default function DistributedCache ({
   const answerSearchRequest = (request, response) =>
     subscribe(
       request,
-      searchCache(event => publish({ ...event, eventName: response }))
+      searchCache(event =>
+        publish({
+          ...event,
+          eventName: response,
+          eventTarget: event.eventSource,
+          eventSource: event.eventTarget
+        })
+      )
     )
 
   /**

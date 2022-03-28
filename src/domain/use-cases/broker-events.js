@@ -1,7 +1,7 @@
 'use strict'
 
 import DistributedCache from '../distributed-cache'
-import EventBus from '../../services/event-bus'
+// import EventBus from '../../services/event-bus'
 import { ServiceMeshAdapter as ServiceMesh } from '../../adapters'
 import { isMainThread, workerData } from 'worker_threads'
 import domainEvents from '../domain-events'
@@ -33,6 +33,12 @@ export default function brokerEvents (
   console.debug({ fn: brokerEvents.name })
 
   if (isMainThread) {
+    /**
+     * For each local model, find the related models in its spec
+     * and use them to generate a list of domain & crud events.
+     *
+     * @returns
+     */
     const mapRoutes = () =>
       models
         .getModelSpecs()
@@ -60,57 +66,69 @@ export default function brokerEvents (
     const routes = mapRoutes()
 
     console.debug({ routes })
-
+    /**
+     * Find the target models/pools with a matching event
+     */
     const searchEvents = eventName =>
       routes.filter(r => r[0] === eventName).map(r => r[1])
 
+    const parseEventTarget = event =>
+      Array.isArray(event.eventTarget) ? event.eventTarget : [event.eventTarget]
+
+    function inferEventTarget (event) {
+      if (event.inferTarget) return searchEvents(event)
+      return []
+    }
+
+    /**
+     * Get/start the pool and fire an event into the thread
+     *
+     * @param {import('../event').Event} event
+     * @param {string} poolName name of model/pool
+     */
     async function sendEvent (event, poolName) {
       const pool = threadpools.getThreadPool(poolName)
       if (pool) {
-        return pool.fireEvent({ name: 'emitEvent', data: event })
+        return pool.run('emitEvent', event)
       } else console.error('no such pool', poolName)
     }
 
     /**
-     * Send the event to the local target, if there is one. If not,
-     * send to mesh. If the target pool is not running, start it.
+     * Send the event to local targets, if there are any.
+     * If not, forward to the service mesh.
      *
      * @param {import('../event').Event} event
-     * @returns {Promise<boolean>} true if routed
+     * @returns {Promise<boolean>} if true don't forward
      */
     async function route (event) {
       try {
-        const eventName = event.eventName
-        const isCrudEvent = /crud/i.test(eventName)
-        const targets = searchEvents(eventName)
+        if (event.metaEvent) return true // don't forward these
 
-        const eventHandled = await Promise.resolve(
-          targets.reduce((target, handled) => {
-            return target.then(async () => {
-              console.debug({ msg: 'known event', eventName, target })
+        // if the event specifies a target, use that; otherwise, deduce from config
+        const targets = event.eventTarget
+          ? parseEventTarget(event)
+          : inferEventTarget(event)
 
-              // send to any non-cached local target for this event
-              const localTarget = models.getModelSpec(target)
-              if (!localTarget || localTarget.isCashed) return false
-
-              try {
-                await sendEvent(event, target)
-              } catch (error) {
-                return false
-              }
-
-              if (isCrudEvent) {
-                // send this broadcast to mesh also
-                return false
-              }
-
-              // all targets handled locally: do not forward
-              return true && handled
+        const handled = await Promise.all(
+          targets.map(async target => {
+            console.debug({
+              msg: 'known event',
+              eventName: event.eventName,
+              target
             })
-          }, Promise.resolve(false))
+
+            try {
+              await sendEvent(event, target)
+            } catch (error) {
+              return false
+            }
+
+            // if all targets handled locally, do not forward
+            return true
+          })
         )
 
-        return eventHandled
+        return handled.reduce((c, p) => c && p, []) && !event.broadcast
       } catch (error) {
         console.debug({ fn: route.name, error })
       }
@@ -135,21 +153,30 @@ export default function brokerEvents (
     function buildPubSubFunctions () {
       return {
         publish: event => {
-          console.debug('worker:to_main', event.eventName, event.modelName)
+          console.debug({
+            msg: 'worker: send to main',
+            eventName: event.eventName
+          })
           broker.notify('to_main', event)
         },
         subscribe: (eventName, cb) => {
-          console.debug('worker:subscribe:from_main', eventName)
-          broker.on(
-            'from_main',
-            event => event.eventName === eventName && cb(event)
-          )
+          console.debug('worker: subscribed to main', eventName)
+          broker.on('from_main', event => {
+            if (event.eventName === eventName) {
+              console.debug({
+                msg: 'worker: received from main',
+                eventName: event.eventName
+              })
+              cb(event)
+            }
+          })
         }
       }
     }
 
     const { publish, subscribe } = buildPubSubFunctions()
 
+    // start distributed object cache
     const manager = DistributedCache({
       models,
       broker,

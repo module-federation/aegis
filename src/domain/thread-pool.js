@@ -71,15 +71,23 @@ function connectEventChannel (worker, channel) {
   worker.postMessage({ eventPort: port2 }, [port2])
 
   broker.on('to_worker', event => {
-    console.debug('main:to_worker', event.eventName, event.modelName)
+    console.debug({
+      msg: 'main: sent to worker',
+      eventName: event.eventName,
+      modelName: event.modelName,
+      eventTarget: event.eventTarget,
+      eventSource: event.eventSource
+    })
     port1.postMessage(JSON.parse(JSON.stringify(event)))
   })
   port1.onmessage = event => {
-    console.debug(
-      'main:from_worker',
-      event.data.eventName,
-      event.data.modelName
-    )
+    console.debug({
+      msg: 'main: received from worker',
+      eventName: event.data.eventName,
+      modelName: event.data.modelName,
+      eventTarget: event.data.eventTarget,
+      eventSource: event.data.eventSource
+    })
     broker.notify('from_worker', event.data)
   }
 }
@@ -623,7 +631,7 @@ const ThreadPoolFactory = (() => {
     threadPools.forEach(pool => pool.fireEvent(event))
   }
 
-  function fireEvent (event) {
+  async function fireEvent (event) {
     const pool = threadPools.get(event.data)
     if (pool) return pool.fireEvent(event)
   }

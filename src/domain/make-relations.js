@@ -2,7 +2,7 @@
 import domainEvents from './domain-events'
 const { internalCacheRequest, internalCacheResponse } = domainEvents
 
-const maxwait = process.env.REMOTE_OBJECT_MAXWAIT || 2000
+const maxwait = process.env.REMOTE_OBJECT_MAXWAIT || 6000
 
 export const relationType = {
   /**
@@ -87,21 +87,22 @@ async function updateForeignKeys (model, event, relation, ds) {
 export function requireRemoteObject (model, relation, broker, ...args) {
   const request = internalCacheRequest(relation.modelName)
   const response = internalCacheResponse(relation.modelName)
-  const execute = resolve => event => resolve(event)
 
   console.debug({ fn: requireRemoteObject.name })
   const requestData = {
-    relation,
     eventName: request,
+    eventSource: model.getName().toUpperCase(),
+    eventTarget: relation.modelName.toUpperCase(),
     modelName: model.getName().toUpperCase(),
     modelId: model.getId(),
+    relation,
     model,
     args
   }
 
   return new Promise(async function (resolve) {
     setTimeout(resolve, maxwait)
-    broker.on(response, execute(resolve))
+    broker.on(response, resolve)
     await broker.notify(request, requestData)
   })
 }
