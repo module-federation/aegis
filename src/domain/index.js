@@ -126,6 +126,16 @@
  */
 
 /**
+ * @typedef {object} datasource
+ * @property {string} url - physical storage location: e.g. database url, file path
+ * @property {function()} adapterFactory - factory function to construct datasource adapter
+ * @property {string} baseClass - name of base class to extend
+ * @property {number} [cacheSize] - maxium number of cached instances before purging
+ * @property {number} [cacheSizeKb] - maximum size in kilobytes of cached instances before cache purge
+ * @property {boolean} [cachedWrite] - allow cached instances of an object to write to persistent storage
+ */
+
+/**
  * @typedef {Object} ModelSpecification Specify model data and behavior
  * @property {string} modelName name of model (case-insenstive)
  * @property {string} endpoint URI reference (e.g. plural of `modelName`)
@@ -147,6 +157,7 @@
  * URL parameter or query of the auto-generated REST API
  * @property {accessControlList} [accessControlList] - configure authorization
  * @property {number} [start] - create `start` instances of the model
+ * @property {datasource} [datasource] - define custom datasource
  */
 
 /**

@@ -130,10 +130,11 @@ export default function makeRelations (relations, datasource, broker) {
           // the relation function
           async [relation] (...args) {
             // Get the datasource of the related object
-            // specify cache-only in case the object is remote
             const ds = datasource
               .getFactory()
-              .getDataSource(rel.modelName.toUpperCase(), true)
+              .getDataSource(rel.modelName.toUpperCase(), {
+                memoryOnly: true // in case ds is remote
+              })
 
             const model = await relationType[rel.type](this, ds, rel)
 

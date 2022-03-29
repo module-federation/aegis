@@ -43,9 +43,7 @@ const DataSourceFactory = (() => {
    * @param {string} name datasource name
    * @returns
    */
-  function getSpecDataSource (ds, factory, name) {
-    const spec = ModelFactory.getModelSpec(name)
-
+  function getSpecDataSource (spec, ds, factory, name) {
     if (spec && spec.datasource) {
       const url = spec.datasource.url
       const cacheSize = spec.datasource.cacheSize
@@ -77,6 +75,9 @@ const DataSourceFactory = (() => {
    * @returns {import('./datasource').default}
    */
   function getDataSource (name, { memoryOnly, ephemeral, adapterName } = {}) {
+    const spec = ModelFactory.getModelSpec(name)
+    const cachedWrite = spec?.datasource?.cachedWrite || false
+
     if (!dataSources) {
       dataSources = new Map()
     }
@@ -85,7 +86,7 @@ const DataSourceFactory = (() => {
       return dataSources.get(name)
     }
 
-    if (memoryOnly || ephemeral) {
+    if ((memoryOnly && !cachedWrite) || ephemeral) {
       const MemoryDs = dbconfig.getBaseClass(dbconfig.MEMORYADAPTER)
       const newDs = new MemoryDs(new Map(), this, name)
       if (!ephemeral) dataSources.set(name, newDs)
@@ -103,7 +104,7 @@ const DataSourceFactory = (() => {
       return
     }
 
-    const newDs = getSpecDataSource(new Map(), this, name)
+    const newDs = getSpecDataSource(spec, new Map(), this, name)
     dataSources.set(name, newDs)
     return newDs
   }

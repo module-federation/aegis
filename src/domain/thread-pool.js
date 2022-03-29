@@ -214,6 +214,7 @@ export class ThreadPool extends EventEmitter {
     this.totJobTime = 0
     this.totalThreads = 0
     this.workerRef = []
+    this.startTime = Date.now()
 
     function dequeue () {
       if (this.freeThreads.length > 0 && this.waitingJobs.length > 0) {
@@ -353,7 +354,8 @@ export class ThreadPool extends EventEmitter {
       durationTolerance: this.jobDurationThreshold(),
       queueRate: this.jobQueueRate(),
       queueRateTolerance: this.jobQueueThreshold(),
-      deployments: this.deploymentCount()
+      deployments: this.deploymentCount(),
+      since: new Date(this.startTime).toUTCString()
     }
   }
 
