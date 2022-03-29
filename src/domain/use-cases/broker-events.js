@@ -80,7 +80,8 @@ export default function brokerEvents (
       return searchEvents(event)
     }
 
-    const targetIsRemote = targets => targets.filter(t => !localModels.includes(t))
+    const targetIsRemote = targets =>
+      targets.filter(t => !localModels.includes(t))
 
     /**
      * Get/start the pool and fire an event into the thread
@@ -109,7 +110,7 @@ export default function brokerEvents (
         // if the event specifies a target, use that; otherwise, deduce from config
         const targets = event.eventTarget
           ? parseEventTarget(event)
-          : aa(event)
+          : inferEventTarget(event)
 
         if (targetIsRemote(targets)) return false
 
