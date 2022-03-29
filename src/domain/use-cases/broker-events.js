@@ -33,6 +33,7 @@ export default function brokerEvents (
   console.debug({ fn: brokerEvents.name })
 
   if (isMainThread) {
+    const localModels = models.getModelSpecs().map(spec => spec.modelName)
     /**
      * For each local model, find the related models in its spec
      * and use them to generate a list of domain & crud events.
@@ -76,9 +77,10 @@ export default function brokerEvents (
       Array.isArray(event.eventTarget) ? event.eventTarget : [event.eventTarget]
 
     function inferEventTarget (event) {
-      if (event.inferTarget) return searchEvents(event)
-      return []
+      return searchEvents(event)
     }
+
+    const targetIsRemote = targets => targets.filter(t => !localModels.includes(t))
 
     /**
      * Get/start the pool and fire an event into the thread
@@ -107,7 +109,9 @@ export default function brokerEvents (
         // if the event specifies a target, use that; otherwise, deduce from config
         const targets = event.eventTarget
           ? parseEventTarget(event)
-          : inferEventTarget(event)
+          : aa(event)
+
+        if (targetIsRemote(targets)) return false
 
         const handled = await Promise.all(
           targets.map(async target => {
