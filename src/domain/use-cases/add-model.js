@@ -39,12 +39,12 @@ export default function makeAddModel ({
 
   /** @type {addModel} */
   async function addModel (input) {
-    try {
-      if (isMainThread) {
-        const model = await threadpool.run(addModel.name, input)
-        if (model.hasError) throw new Error(model.message)
-        return repository.save(model.id, model)
-      } else {
+    if (isMainThread) {
+      const model = await threadpool.run(addModel.name, input)
+      if (model.hasError) throw new Error(model.message)
+      return repository.save(model.id, model)
+    } else {
+      try {
         const model = await models.createModel(
           broker,
           repository,
@@ -64,9 +64,9 @@ export default function makeAddModel ({
 
         // Return the latest changes
         return repository.find(model.getId())
+      } catch (error) {
+        return AppError(error)
       }
-    } catch (error) {
-      return AppError(error)
     }
   }
 

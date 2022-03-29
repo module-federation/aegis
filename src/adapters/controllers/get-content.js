@@ -30,6 +30,9 @@ function getResourceName (httpRequest, defaultTitle = '') {
   if (/events/i.test(httpRequest.query.details)) return 'Domain Events'
   if (/threads/i.test(httpRequest.query.details)) return 'Thread Pools'
   if (/data/i.test(httpRequest.query.details)) return 'Data Sources'
+  if (/ports/i.test(httpRequest.query.details)) return 'Ports'
+  if (/commands/i.test(httpRequest.query.details)) return 'Commands'
+  if (/relation/i.test(httpRequest.query.details)) return 'Relations'
   return defaultTitle
 }
 /**

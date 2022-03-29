@@ -4,6 +4,7 @@ import { isMainThread } from 'worker_threads'
 import executeCommand from './execute-command'
 import fetchRelatedModels from './find-related-models'
 import async from '../util/async-error'
+import AppError from '../util/app-error'
 
 /**
  * @typedef {Object} ModelParam
@@ -47,34 +48,38 @@ export default function makeFindModel ({
       if (result.hasError) throw new Error(result.message)
       return result
     } else {
-      // unmarshall the model so we can use it
-      const hydratedModel = models.loadModel(
-        broker,
-        repository,
-        model,
-        modelName
-      )
-
-      if (query.relation) {
-        const related = await async(
-          fetchRelatedModels(hydratedModel, query.relation)
+      try {
+        // unmarshall the model so we can use it
+        const hydratedModel = models.loadModel(
+          broker,
+          repository,
+          model,
+          modelName
         )
-        if (related.ok) {
-          return related.data
-        }
-      }
 
-      if (query.command) {
-        const result = await async(
-          executeCommand(hydratedModel, query.command, 'read')
-        )
-        if (result.ok) {
-          return result.data
+        if (query.relation) {
+          const related = await async(
+            fetchRelatedModels(hydratedModel, query.relation)
+          )
+          if (related.ok) {
+            return related.data
+          }
         }
-      }
 
-      // gracefully degrade
-      return hydratedModel
+        if (query.command) {
+          const result = await async(
+            executeCommand(hydratedModel, query.command, 'read')
+          )
+          if (result.ok) {
+            return result.data
+          }
+        }
+
+        // gracefully degrade
+        return hydratedModel
+      } catch (error) {
+        return new AppError()
+      }
     }
   }
 }

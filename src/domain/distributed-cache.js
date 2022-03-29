@@ -186,8 +186,8 @@ export default function DistributedCache ({
     return async function (message) {
       try {
         const event = parse(message)
-        const { eventName, model } = event
-        const modelName = model.modelName.toUpperCase()
+        const { eventName, model, modelName } = event
+        const modelNameUpper = modelName.toUpperCase()
 
         console.debug('handle cache event', eventName)
 
@@ -198,11 +198,11 @@ export default function DistributedCache ({
           return
         }
 
-        if (await handleDelete(eventName, modelName, event)) return
+        if (await handleDelete(eventName, modelNameUpper, event)) return
 
         await handleUpsert({
-          modelName,
-          datasource: datasources.getDataSource(modelName),
+          modelName: modelNameUpper,
+          datasource: datasources.getDataSource(modelNameUpper),
           model,
           event,
           route

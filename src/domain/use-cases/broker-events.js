@@ -170,7 +170,8 @@ export default function brokerEvents (
             if (event.eventName === eventName) {
               console.debug({
                 msg: 'worker: received from main',
-                eventName: event.eventName
+                eventName: event.eventName,
+                event
               })
               cb(event)
             }

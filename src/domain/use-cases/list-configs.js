@@ -46,7 +46,40 @@ export default function listConfigsFactory ({
             })
           : models.getModelSpecs(),
 
-      threads: () => threadpools.status()
+      threads: () => threadpools.status(),
+
+      relations: () =>
+        query.modelName
+          ? threadpools.fireEvent({
+              name: 'showRelations',
+              data: query.modelName
+            })
+          : models.getModelSpecs().map(spec => ({
+              modelName: spec.modelName,
+              relations: spec.relations ? Object.values(spec.relations) : []
+            })),
+
+      commands: () =>
+        query.modelName
+          ? threadpools.fireEvent({
+              name: 'showCommands',
+              data: query.modelName
+            })
+          : models.getModelSpecs().map(spec => ({
+              modelName: spec.modelName,
+              commands: spec.commands ? Object.values(spec.commands) : []
+            })),
+
+      ports: () =>
+        query.modelName
+          ? threadpools.fireEvent({
+              name: 'showPorts',
+              data: query.modelName
+            })
+          : models.getModelSpecs().map(spec => ({
+              modelName: spec.modelName,
+              ports: spec.ports ? Object.values(spec.ports) : []
+            }))
     }
 
     if (query?.details && typeof configTypes[query.details] === 'function')
