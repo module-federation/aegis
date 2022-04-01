@@ -18,60 +18,20 @@ let activateBackup
 let messagesSent = 0
 let backupSwitch
 
+function calculatePriority () {
+  return isSwitch || (isBackupSwitch && activateBackup) ? 10 : 20
+}
+
+function calculateWeight () {
+  return isSwitch || (isBackupSwitch && activateBackup) ? 20 : 60
+}
+
 /**
  *
  * @param {import('ws').Server} server
  * @returns {import('ws').Server}
  */
 export function attachServer (server) {
-  const dns = new Dns()
-
-  dns.on('query', function (query) {
-    debug && console.debug('got a query packet:', query)
-
-    const questions = query.questions.filter(
-      q => q.name === SERVICENAME || q.name === HOSTNAME
-    )
-
-    if (!questions[0]) {
-      console.assert(!debug, {
-        fn: 'dns query',
-        msg: 'no questions',
-        questions
-      })
-      return
-    }
-
-    if (isSwitch || (isBackupSwitch && activateBackup)) {
-      const answer = {
-        answers: [
-          {
-            name: SERVICENAME,
-            type: 'SRV',
-            data: {
-              port: server.address().port,
-              weight: 0,
-              priority: 10,
-              target: server.address().address
-            }
-          }
-        ]
-      }
-
-      console.info({
-        fn: dns.on.name + "('query')",
-        isSwitch,
-        isBackupSwitch,
-        activateBackup,
-        msg: 'answering query packet',
-        questions,
-        answer
-      })
-
-      dns.respond(answer)
-    }
-  })
-
   /**
    * @param {object} data
    * @param {WebSocket} sender
@@ -110,7 +70,8 @@ export function attachServer (server) {
       hostname: os.hostname(),
       address: server.address().address,
       port: server.address().port,
-      clients: [...server.clients].map(client => client.info)
+      clients: [...server.clients].map(client => client.info),
+      metaEvent: true
     })
   }
 
@@ -138,7 +99,7 @@ export function attachServer (server) {
    * @param {WebSocket} client
    */
   server.on('connection', function (client) {
-    client.info = { address: client._socket.address(), id: nanoid() }
+    client.info = { id: nanoid() }
 
     client.addListener('ping', function () {
       console.assert(!debug, 'responding to client ping', client.info)
@@ -177,19 +138,24 @@ export function attachServer (server) {
             isSwitch &&
             !backupSwitch &&
             msg.role === 'node' &&
-            msg.hostname !== os.hostname()
-          )
+            msg.hostname !== os.hostname() &&
+            [...server.clients].filter(c => c.isBackupSwitch).length < 1
+          ) {
             backupSwitch = client.info.id
+          }
 
           client.info = {
             ...msg,
             ...client.info,
             initialized: true,
-            isBackupSwitch: backupSwitch === client.info.id
+            isBackupSwitch: backupSwitch === client.info.id,
+            backupPriority: 'low'
           }
           console.info('client initialized', client.info)
 
-          client.send(JSON.stringify({ ...msg, ...client.info }))
+          client.send(
+            JSON.stringify({ ...msg, ...client.info, metaEvent: true })
+          )
           return
         }
       } catch (e) {

@@ -42,7 +42,7 @@ function buildOptions (model) {
       ...options,
       // main thread does not write to persistent store
       repository: DataSourceFactory.getDataSource(model.modelName, {
-        memoryOnly: true
+        sharedMemory: true
       }),
       // only main thread knows about thread pools (no nesting)
       threadpool: ThreadPoolFactory.getThreadPool(model.modelName, {
@@ -53,7 +53,9 @@ function buildOptions (model) {
     return {
       ...options,
       // only worker threads can write to persistent storage
-      repository: DataSourceFactory.getDataSource(model.modelName)
+      repository: DataSourceFactory.getDataSource(model.modelName, {
+        sharedMap: true
+      })
     }
   }
 }

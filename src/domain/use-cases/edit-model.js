@@ -97,11 +97,7 @@ export default function makeEditModel ({
 
           if (command) {
             const result = await async(
-              executeCommand({
-                model: updated,
-                command,
-                permission: 'write'
-              })
+              executeCommand(updated, command, 'write')
             )
 
             if (result.ok) {

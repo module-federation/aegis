@@ -3,6 +3,14 @@
 import domainEvents from '../domain-events'
 import ThreadPoolFactory from '../thread-pool'
 
+// const config = require(path.resolve(process.cwd(), 'webpack.config.js'))
+// import webpack from 'webpack'
+// import path from 'path'
+// // import { cp } from 'fs'
+// // import compose from '../util/compose'
+
+// const compiler = webpack(config)
+
 /**
  * @typedef {object} factoryParam
  * @property {Object} dependencies injected dependencies
@@ -19,6 +27,18 @@ import ThreadPoolFactory from '../thread-pool'
  * @param {dependencies} param0
  * @returns {function():Promise<import('../domain').Model>}
  */
+
+  // async function compile () {
+  //   await new Promise((resolve, reject) => {
+  //     compiler.run((err, res) => {
+  //       if (err) {
+  //         return reject(err)
+  //       }
+  //       resolve(res)
+  //     })
+  //   })
+  // }
+
 
 let inProgress = false
 
@@ -62,6 +82,7 @@ export default function makeHotReload ({ models, broker } = {}) {
           await ThreadPoolFactory.reloadAll()
           return resolve(ThreadPoolFactory.status())
         }
+        compile()
       } catch (error) {
         return resolve({ fn: hotReload.name, error })
       } finally {

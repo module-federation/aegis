@@ -2,9 +2,10 @@
 
 import EventBrokerFactory from './event-broker'
 import { EventEmitter } from 'stream'
-import { setEnvironmentData, Worker } from 'worker_threads'
+import { setEnvironmentData, Worker, workerData } from 'worker_threads'
+import SharedMap from 'sharedmap'
 import domainEvents from './domain-events'
-import ModelFactory from '.'
+import ModelFactory, { DataSourceFactory } from '.'
 import os from 'os'
 const { poolOpen, poolClose, poolDrain } = domainEvents
 const broker = EventBrokerFactory.getInstance()
@@ -13,13 +14,22 @@ const DEFAULT_THREADPOOL_MAX = 2
 const DEFAULT_JOBQUEUE_TOLERANCE = 25
 const DEFAULT_DURATION_TOLERANCE = 1000
 const EVENTCHANNEL_MAXRETRY = 20
+const MAPSIZE = 655
+// Size is in UTF-16 codepointse
+const KEYSIZE = 48
+const OBJSIZE = 16
 
+export let threadId
 /**
  * @typedef {object} Thread
  * @property {Worker.threadId} id
  * @property {Worker} worker
  * @property {function()} stop
  * @property {MessagePort} eventPort
+ */
+
+/**
+ * @typedef {import('./model').Model} Model}
  */
 
 /**
@@ -70,25 +80,48 @@ function connectEventChannel (worker, channel) {
   const { port1, port2 } = channel
   worker.postMessage({ eventPort: port2 }, [port2])
 
-  broker.on('to_worker', event => {
+  broker.on('to_worker', async event => {
     console.debug({
       msg: 'main: sent to worker',
       eventName: event.eventName,
       modelName: event.modelName,
+      modelId: event.modelId,
       eventTarget: event.eventTarget,
       eventSource: event.eventSource
     })
-    port1.postMessage(JSON.parse(JSON.stringify(event)))
+
+    port1.postMessage(
+      JSON.parse(
+        JSON.stringify({
+          ...event,
+          model: null, // use shared mem
+          modelId: event.model.modelId,
+          modelName: event.model.modelName
+        })
+      )
+    )
   })
-  port1.onmessage = event => {
+
+  port1.onmessage = async event => {
     console.debug({
       msg: 'main: received from worker',
       eventName: event.data.eventName,
       modelName: event.data.modelName,
       eventTarget: event.data.eventTarget,
-      eventSource: event.data.eventSource
+      eventSource: event.data.eventSource,
+      model: event.data.model
     })
-    broker.notify('from_worker', event.data)
+
+    await broker.notify('from_worker', {
+      ...event.data,
+      // retrieve model from shared memory
+      // model: await DataSourceFactory.getDataSource(event.data.modelName).find(
+      //   event.data.modelId
+      // )
+      model: null,
+      modelId: event.data.modelId,
+      modelName: event.data.modelName
+    })
   }
 }
 
@@ -106,6 +139,7 @@ function newThread ({ pool, file, workerData }) {
     try {
       const channel = new MessageChannel()
       const worker = new Worker(file, { workerData })
+      threadId = worker.threadId
       setEnvironmentData('modelName', pool.name)
       pool.workerRef.push(worker)
       pool.totalThreads++
@@ -140,7 +174,7 @@ function newThread ({ pool, file, workerData }) {
  * wait until one is. An optional callback can be used by
  * the caller to pass an upstream promise.
  *
- * @param {{
+ * @param {{l
  *  pool:ThreadPool,
  *  jobName:string,
  *  jobData:any,
@@ -564,8 +598,11 @@ const ThreadPoolFactory = (() => {
   }
 
   /**
-   * Typical way to create a pool for use by a domain model
-   * @param {string} modelName named after model using it
+   * Creates a pool for use by a domain {@link Model}.
+   * Provides a thread-safe {@link SharedMap} for parallel
+   * access to the same memory by all threads.
+   *
+   * @param {string} modelName named after the {@link Model} using it
    * @param {{preload:boolean, waitingJobs:function(Thread)[]}} options
    * @returns
    */
@@ -573,6 +610,11 @@ const ThreadPoolFactory = (() => {
     console.debug({ fn: createThreadPool.name, modelName, options })
 
     const maxThreads = determineMaxThreads()
+
+    // setup shared storage, rehydrate SharedMap
+    Object.setPrototypeOf(workerData.map, SharedMap.prototype)
+    // previously created datasource that supports shared memory
+    DataSourceFactory.getDataSource(modelName, { sharedMap: workerData.map })
 
     try {
       const pool = new ThreadPool({
