@@ -637,12 +637,18 @@ const ThreadPoolFactory = (() => {
 
   /**
    * Returns existing or creates new threadpool called `poolName`
-   * @param {string} poolName typically named after `modelName` it handles
+   *
+   * @param {string} poolName named after `modelName`
    * @param {{preload:boolean}} options preload means we return the actual
    * threadpool instead of a facade, which will load the remotes at startup
-   * instead of loading them on the first request for `modelName`. The default
+   * instead of loading them on the first request for service. The default
    * is `false`, so that startup is faster and only the minimum number of threads
-   * and remote imports run.
+   * and remote imports run. If one service relies on another, but that service
+   * is dowm (not preloaded), the system will automatically spin up a thread and
+   * start the service in order to handle the request. This overhead of starting
+   * threads, which usually completes in under a second, occurs twice
+   * in a service's lifetime: when started for the first time and when restarted
+   * to handle a deployment.
    */
   function getThreadPool (poolName, options = { preload: false }) {
     function getPool (poolName, options) {
@@ -669,6 +675,7 @@ const ThreadPoolFactory = (() => {
 
   /**
    * post a message to all pools (at least one thread)
+   * eee
    * @param {import('./event').Event} event
    */
   function fireAll (event) {
