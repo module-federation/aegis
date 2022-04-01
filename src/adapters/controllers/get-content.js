@@ -59,9 +59,8 @@ export default function getContent (httpRequest, content, defaultTitle) {
           <meta name="viewport" content="width=device-width, initial-scale=1" />
           <link rel="icon" type="image/png" href="/aegis-logo.png" />
           <h3 style='color: black'>
-            <a> <img src="/aegis-logo.png" alt="aegis" width="35" height="35" />ÆGIS Domain Model API</a>
+            <a href="/index.html"> <img src="/aegis-logo.png" alt="aegis" width="35" height="35" style="font: Helvetica" />ÆGIS Domain Model API</a>
           </h3> 
-          <h2>${title}</h2>
           </head>
           <style>
           #configs {

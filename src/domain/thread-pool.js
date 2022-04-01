@@ -611,16 +611,13 @@ const ThreadPoolFactory = (() => {
 
     const maxThreads = determineMaxThreads()
 
-    // setup shared storage, rehydrate SharedMap
-    Object.setPrototypeOf(workerData.map, SharedMap.prototype)
-    // previously created datasource that supports shared memory
-    DataSourceFactory.getDataSource(modelName, { sharedMap: workerData.map })
+    const sharedMap = DataSourceFactory.getDataSource(modelName).dataSource
 
     try {
       const pool = new ThreadPool({
         file: './dist/worker.js',
         name: modelName,
-        workerData: { modelName },
+        workerData: { modelName, sharedMap },
         options: { ...options, maxThreads }
       })
 

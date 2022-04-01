@@ -42,7 +42,7 @@ function buildOptions (model) {
       ...options,
       // main thread does not write to persistent store
       repository: DataSourceFactory.getDataSource(model.modelName, {
-        sharedMemory: true
+        sharedMap: true
       }),
       // only main thread knows about thread pools (no nesting)
       threadpool: ThreadPoolFactory.getThreadPool(model.modelName, {

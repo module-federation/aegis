@@ -4,7 +4,8 @@ import { isMainThread } from 'worker_threads'
 import { SharedMap } from 'sharedmap'
 import pipe from './util/pipe'
 
-const MAPSIZE = 128 * 1024 * 1024
+// const MAPSIZE = 128 * 1024 * 1024
+const MAPSIZE = 2048
 // Size is in UTF-16 codepointse
 const KEYSIZE = 48
 const OBJSIZE = 16

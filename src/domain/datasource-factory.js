@@ -7,6 +7,7 @@ import * as adapters from '../adapters/datasources'
 import dbconfig from '../adapters/datasources'
 import sysconf from '../config'
 import { workerData } from 'worker_threads'
+import { sharedMemExtension } from './datasource-sharedmem'
 
 const defaultAdapter = sysconf.hostConfig.adapters.defaultDatasource
 const DefaultDataSource = adapters[defaultAdapter]
@@ -41,16 +42,6 @@ const DataSourceFactory = (() => {
     const newDs = sharedMap
       ? sharedMemExtension(ds, this, name, sharedMap)
       : new MemoryDs(new Map(), this, name)
-
-    if (sharedMap && name !== workerData.modelName) {
-      parentPort.postMessage(
-        {
-          name: 'sharedArrayBuffer',
-          data: { ds: newDs.dataSource, modelName: this.name }
-        },
-        [newDs.dataSource]
-      )
-    }
   }
 
   /**
