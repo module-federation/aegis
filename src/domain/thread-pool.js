@@ -3,7 +3,7 @@
 import EventBrokerFactory from './event-broker'
 import { EventEmitter } from 'stream'
 import { setEnvironmentData, Worker, workerData } from 'worker_threads'
-import SharedMap from 'sharedmap'
+import { SharedMap } from 'sharedmap'
 import domainEvents from './domain-events'
 import ModelFactory, { DataSourceFactory } from '.'
 import os from 'os'
@@ -611,8 +611,9 @@ const ThreadPoolFactory = (() => {
 
     const maxThreads = determineMaxThreads()
 
-    const sharedMap = DataSourceFactory.getDataSource(modelName).dataSource
-
+    const sharedMap = DataSourceFactory.getDataSource(modelName).map
+    console.debug({ sharedMap })
+    sharedMap.set(1, { test: 1 })
     try {
       const pool = new ThreadPool({
         file: './dist/worker.js',

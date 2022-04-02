@@ -1,17 +1,23 @@
 'use strict'
 
 /** @typedef {import('.').Model} Model */
+/**
+ * @typedef {object} dsOpts
+ * @property {boolean} memoryOnly - if true returns memory adapter and caches it
+ * @property {boolean} ephemeral - if true returns memory adapter but doesn't cache it
+ * @property {string} adapterName - name of adapter to use
+ */
 
 import ModelFactory from '.'
 import * as adapters from '../adapters/datasources'
-import dbconfig from '../adapters/datasources'
+import dsconfig from '../adapters/datasources'
 import sysconf from '../config'
-import { workerData } from 'worker_threads'
-import { sharedMemExtension } from './datasource-sharedmem'
+import { withSharedMem } from './shared-memory'
 
 const defaultAdapter = sysconf.hostConfig.adapters.defaultDatasource
 const DefaultDataSource = adapters[defaultAdapter]
 
+if (!DefaultDataSource) throw new Error('no default datasource')
 /**
  * Creates or returns the dedicated datasource for the domain model.
  * @todo handle all state same way
@@ -38,44 +44,25 @@ const DataSourceFactory = (() => {
     return [...dataSources]
   }
 
-  const createDataSource = (ds, name, sharedMap) => {
-    const newDs = sharedMap
-      ? sharedMemExtension(ds, this, name, sharedMap)
-      : new MemoryDs(new Map(), this, name)
-  }
+  function getDataSourceClass (spec, options) {
+    const { memoryOnly, cachedWrite, ephemeral, adapterName } = options
 
-  /**
-   * Get datasource from model spec or return default for server.
-   * @param {Map} ds - data structure
-   * @param {DataSourceFactory} factory this factory
-   * @param {string} name datasource name
-   * @returns
-   */
-  function getSpecDataSource (spec, ds, name, sharedMap) {
+    if ((memoryOnly && !cachedWrite) || ephemeral) {
+      return dsconfig.getBaseClass(dsconfig.MEMORYADAPTER)
+    }
+
+    if (adapterName) return adapters[adapterName] || DefaultDataSource
+
     if (spec && spec.datasource) {
       const url = spec.datasource.url
       const cacheSize = spec.datasource.cacheSize
       const adapterFactory = spec.datasource.factory
-      const BaseClass = dbconfig.getBaseClass(spec.datasource.baseClass)
-      try {
-        const DataSource = adapterFactory(url, cacheSize, BaseClass)
-        const newDs = createDataSource(DataSource, name, sharedMap)
-        //return new DataSource(ds, this, name)
-        return newDs
-      } catch (error) {
-        console.error(error)
-      }
+      const BaseClass = dsconfig.getBaseClass(spec.datasource.baseClass)
+      return adapterFactory(url, cacheSize, BaseClass)
     }
-    // use default datasource
-    return new DefaultDataSource(ds, this, name)
-  }
 
-  /**
-   * @typedef {object} dsOpts
-   * @property {boolean} memoryOnly - if true returns memory adapter and caches it
-   * @property {boolean} ephemeral - if true returns memory adapter but doesn't cache it
-   * @property {string} adapterName - name of adapter to use
-   */
+    return DefaultDataSource
+  }
 
   /**
    * Get the datasource for each model.
@@ -83,13 +70,7 @@ const DataSourceFactory = (() => {
    * @param {dsOpts} options - memory only, ephemeral, adapter ame
    * @returns {import('./datasource').default}
    */
-  function getDataSource (
-    name,
-    { memoryOnly, ephemeral, adapterName, sharedMap } = {}
-  ) {
-    const spec = ModelFactory.getModelSpec(name)
-    const cachedWrite = spec?.datasource?.cachedWrite || false
-
+  function getDataSource (name, options) {
     if (!dataSources) {
       dataSources = new Map()
     }
@@ -97,29 +78,22 @@ const DataSourceFactory = (() => {
     if (dataSources.has(name)) {
       return dataSources.get(name)
     }
+    const spec = ModelFactory.getModelSpec(name)
+    const dsMap = options.dsMap || new Map()
+    const DsClass = getDataSourceClass(spec, options)
+    const MixinClass = options.mixin ? options.mixin(DsClass) : DsClass
+    const newDs = new MixinClass(dsMap, this, name)
 
-    if ((memoryOnly && !cachedWrite) || ephemeral) {
-      const MemoryDs = dbconfig.getBaseClass(dbconfig.MEMORYADAPTER)
-      const newDs = createDataSource(MemoryDs, name, sharedMap)
-      //const newDs = new MemoryDs(new Map(), this, name)
-      if (!ephemeral) dataSources.set(name, newDs)
-      return newDs
-    }
+    if (!options.ephemeral) dataSources.set(name, newDs)
 
-    if (adapterName) {
-      const adapter = adapters[adapterName]
-      if (adapter) {
-        const newDs = new adapter(new Map(), this, name)
-        dataSources.set(name, newDs)
-        return newDs
-      }
-      console.error('no such adapter', adapterName)
-      return
-    }
-
-    const newDs = getSpecDataSource(spec, new Map(), name, sharedMap)
-    dataSources.set(name, newDs)
     return newDs
+  }
+
+  function getSharedDataSource (name, options) {
+    console.debug({ fn: getSharedDataSource.name, name, options })
+    const a = withSharedMem(getDataSource.bind(this, name), options)
+    console.debug({ a })
+    return a
   }
 
   function close () {
@@ -133,6 +107,7 @@ const DataSourceFactory = (() => {
      * @returns {import('./datasource').default} DataSource singleton
      */
     getDataSource,
+    getSharedDataSource,
     hasDataSource,
     listDataSources,
     close

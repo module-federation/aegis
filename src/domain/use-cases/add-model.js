@@ -42,7 +42,7 @@ export default function makeAddModel ({
     if (isMainThread) {
       const model = await threadpool.run(addModel.name, input)
       if (model.hasError) throw new Error(model.message)
-      return repository.save(model.id, model)
+      return model
     } else {
       try {
         const model = await models.createModel(

@@ -13,8 +13,8 @@ const cacheSize = configRoot.adapters.cacheSize || 3000
  * even when the database is offline.
  */
 export class DataSourceMongoDb extends DataSourceMemory {
-  constructor (datasource, factory, name) {
-    super(datasource, factory, name)
+  constructor (map, factory, name) {
+    super(map, factory, name)
     this.url = url
     this.cacheSize = cacheSize
   }
@@ -184,7 +184,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
    */
   flush () {
     try {
-      ;[...this.dataSource.values()].reduce(
+      ;[...this.map.values()].reduce(
         (a, b) => a.then(() => this.saveDb(b.getId(), b)),
         {}
       )

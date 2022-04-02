@@ -6,8 +6,8 @@ import IPFS from 'ipfs-core'
  * Storage on the distributed web {@link https://ipfs.io}
  */
 export class DataSourceIpfs extends DataSourceFile {
-  constructor (dataSource, factory, name) {
-    super(dataSource, factory, name)
+  constructor (map, factory, name) {
+    super(map, factory, name)
   }
 
   async save (id, data) {
@@ -62,7 +62,7 @@ export class DataSourceIpfs extends DataSourceFile {
     try {
       // add your data to to IPFS - this can be a string, a Buffer,
       // a stream of Buffers, etc
-      const { cid } = this.ipfs.add(JSON.stringify([...this.dataSource]))
+      const { cid } = this.ipfs.add(JSON.stringify([...this.map]))
       fs.writeFileSync(this.file, cid.toString())
       this.cid = cid
     } catch (error) {
