@@ -1,5 +1,7 @@
 'use strict'
 
+import { withSharedMem } from './shared-memory'
+
 function roughSizeOfObject (...objects) {
   let bytes = 0
 
@@ -39,6 +41,7 @@ export default class DataSource {
     this.dsMap = map
     this.factory = factory
     this.name = name
+    console.debug({ fn: DataSource.name, dsMap: this.dsMap })
   }
   /**
    * Upsert model instance

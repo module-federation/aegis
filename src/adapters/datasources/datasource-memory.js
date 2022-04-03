@@ -40,6 +40,7 @@ export class DataSourceMemory extends DataSource {
    * @override
    */
   async find (id) {
+    console.debug({ fn: this.find.name, self: this })
     return this.dsMap.get(id)
   }
 

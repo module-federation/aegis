@@ -85,7 +85,7 @@ const DataSourceFactory = (() => {
     const MixinClass = options.mixin ? options.mixin(DsClass) : DsClass
     const newDs = new MixinClass(dsMap, this, name)
 
-    if (!options.ephemeral) dataSources.set(name, newDs)
+    if (!options.ephemeral) dataSources.set(String(name).toUpperCase(), newDs)
 
     return newDs
   }

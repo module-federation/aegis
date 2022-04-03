@@ -4,7 +4,7 @@ import SharedMap, { SharedMapOptions } from 'sharedmap'
 import asyncPipe from './util/async-pipe'
 import ModelFactory from '.'
 import { isMainThread, workerData } from 'worker_threads'
-SharedMapOptions
+import { EventBrokerFactory } from '.'
 // const MAPSIZE = 128 * 1024 * 1024
 const MAPSIZE = 2048 * 128
 // Size is in UTF-16 codepointse
@@ -33,16 +33,13 @@ const SharedMemMixin = superclass =>
      * @returns
      */
     async find (id) {
-      const model = asyncPipe(super.find, JSON.parse)(id)
+      const model = JSON.stringify(await super.find(id))
       console.debug({ fn: this.find.name, model })
-      return model.then(model =>
-        // return fully hydrated
-        ModelFactory.loadModel(
-          EventBrokerFactory.getInstance(),
-          this,
-          model,
-          model.modelName
-        )
+      return ModelFactory.loadModel(
+        EventBrokerFactory.getInstance(),
+        this,
+        model,
+        String(model.modelName).toUpperCase()
       )
     }
 
