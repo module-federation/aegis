@@ -51,7 +51,8 @@ export class DataSourceFile extends DataSourceMemory {
       const dataStr = JSON.stringify([...this.dsMap], this.replace)
       fs.writeFileSync(this.file, dataStr)
     } catch (error) {
-      console.er                                                                       
+      console.error(error)
+    }
   }
 
   /**
