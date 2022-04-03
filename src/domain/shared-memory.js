@@ -1,15 +1,15 @@
 'use strict'
 
 import SharedMap, { SharedMapOptions } from 'sharedmap'
-import asyncPipe from './util/async-pipe'
 import ModelFactory from '.'
 import { isMainThread, workerData } from 'worker_threads'
 import { EventBrokerFactory } from '.'
-// const MAPSIZE = 128 * 1024 * 1024
+
 const MAPSIZE = 2048 * 128
 // Size is in UTF-16 codepointse
 const KEYSIZE = 32
 const OBJSIZE = 1024
+
 /**
  * composional class mixin - so any class
  * in the hierarchy can use shared memory
@@ -22,9 +22,7 @@ const SharedMemMixin = superclass =>
      * @override
      */
     async save (id, data) {
-      const serDat = JSON.stringify(data)
-      console.debug({ fn: this.save.name, serDat })
-      return super.save(id, serDat)
+      return super.save(id, JSON.stringify(data))
     }
 
     /**
@@ -33,8 +31,11 @@ const SharedMemMixin = superclass =>
      * @returns
      */
     async find (id) {
-      const model = JSON.stringify(await super.find(id))
-      console.debug({ fn: this.find.name, model })
+      const modelString = await super.find(id)
+      if (!modelString) return
+
+      const model = JSON.parse(modelString)
+
       return ModelFactory.loadModel(
         EventBrokerFactory.getInstance(),
         this,
@@ -63,10 +64,6 @@ const SharedMemMixin = superclass =>
       // do not fully hydrate by default
       const list = super.listSync(filter)
       return list.map(v => JSON.parse(v))
-    }
-
-    toJSON () {
-      return this.dataSource
     }
   }
 

@@ -14,10 +14,6 @@ const DEFAULT_THREADPOOL_MAX = 2
 const DEFAULT_JOBQUEUE_TOLERANCE = 25
 const DEFAULT_DURATION_TOLERANCE = 1000
 const EVENTCHANNEL_MAXRETRY = 20
-const MAPSIZE = 655
-// Size is in UTF-16 codepointse
-const KEYSIZE = 48
-const OBJSIZE = 16
 
 export let threadId
 /**
@@ -114,10 +110,6 @@ function connectEventChannel (worker, channel) {
 
     await broker.notify('from_worker', {
       ...event.data,
-      // retrieve model from shared memory
-      // model: await DataSourceFactory.getDataSource(event.data.modelName).find(
-      //   event.data.modelId
-      // )
       model: null,
       modelId: event.data?.modelId,
       modelName: event.data?.modelName
@@ -611,7 +603,6 @@ const ThreadPoolFactory = (() => {
     const maxThreads = determineMaxThreads()
 
     const sharedMap = DataSourceFactory.getDataSource(modelName).dsMap
-    console.debug({ sharedMap })
 
     try {
       const pool = new ThreadPool({
