@@ -135,10 +135,7 @@ export default function makeRelations (relations, datasource, broker) {
             // Get the datasource of the related object
             const ds = datasource
               .getFactory()
-              .getDataSource(rel.modelName.toUpperCase(), {
-                memoryOnly: true,
-                sharedMemory: true
-              })
+              .getSharedDataSource(rel.modelName.toUpperCase())
 
             const model = await relationType[rel.type](this, ds, rel)
 
@@ -162,7 +159,7 @@ export default function makeRelations (relations, datasource, broker) {
               }
 
               const result = await relationType[rel.type](this, ds, rel)
-              console.debug({ model: result })
+              console.debug({ fn: makeRelations.name, result })
               return result
             }
             return model

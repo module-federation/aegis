@@ -70,15 +70,16 @@ const DataSourceFactory = (() => {
    * @param {dsOpts} options - memory only, ephemeral, adapter ame
    * @returns {import('./datasource').default}
    */
-  function getDataSource (name, options) {
+  function getDataSource (name, options = {}) {
     if (!dataSources) {
       dataSources = new Map()
     }
 
     if (dataSources.has(name)) {
-      return dataSources.get(name)
+      return dataSources.get(String(name).toUpperCase())
     }
-    const spec = ModelFactory.getModelSpec(name)
+
+    const spec = ModelFactory.getModelSpec(String(name).toUpperCase())
     const dsMap = options.dsMap || new Map()
     const DsClass = getDataSourceClass(spec, options)
     const MixinClass = options.mixin ? options.mixin(DsClass) : DsClass
@@ -91,9 +92,9 @@ const DataSourceFactory = (() => {
 
   function getSharedDataSource (name, options) {
     console.debug({ fn: getSharedDataSource.name, name, options })
-    const a = withSharedMem(getDataSource.bind(this, name), options)
-    console.debug({ a })
-    return a
+    const ds = withSharedMem(getDataSource, this, name, options)
+    console.debug({ fn: getDataSource.name, ds })
+    return ds
   }
 
   function close () {

@@ -24,7 +24,7 @@ export default function listConfigsFactory ({
             })
           : data.listDataSources().map(([k, v]) => ({
               dsname: k,
-              records: [...v.dataSource].length
+              records: v.map.size()
             })),
 
       events: () =>

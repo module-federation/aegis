@@ -32,14 +32,15 @@ export class DataSourceMemory extends DataSource {
         id
       })
     }
-    return this.map.set(id, data).get(id)
+    this.dsMap.set(id, data)
+    return data
   }
 
   /**
    * @override
    */
   async find (id) {
-    return this.map.get(id)
+    return this.dsMap.get(id)
   }
 
   /**
@@ -56,7 +57,7 @@ export class DataSourceMemory extends DataSource {
    * @returns
    */
   listSync (query) {
-    const values = [...this.map.values()]
+    const values = [...this.dsMap.values()]
 
     if (!values) return []
 
@@ -89,6 +90,6 @@ export class DataSourceMemory extends DataSource {
         id
       })
     }
-    this.map.delete(id)
+    this.dsMap.delete(id)
   }
 }

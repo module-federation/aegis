@@ -1,15 +1,15 @@
 'use strict'
 
-import SharedMap from 'sharedmap'
+import SharedMap, { SharedMapOptions } from 'sharedmap'
 import asyncPipe from './util/async-pipe'
 import ModelFactory from '.'
 import { isMainThread, workerData } from 'worker_threads'
-
+SharedMapOptions
 // const MAPSIZE = 128 * 1024 * 1024
-const MAPSIZE = 2048
+const MAPSIZE = 2048 * 128
 // Size is in UTF-16 codepointse
-const KEYSIZE = 48
-const OBJSIZE = 16
+const KEYSIZE = 32
+const OBJSIZE = 1024
 /**
  * composional class mixin - so any class
  * in the hierarchy can use shared memory
@@ -79,14 +79,14 @@ const SharedMemMixin = superclass =>
  * @param {import('./datasource-factory').DataSourceFactory} factory
  * @returns {{dataSource: SharedMap}}
  */
-export function withSharedMem (getDataSource, factory) {
+export function withSharedMem (getDataSource, factory, name) {
   const sharedMap = isMainThread
     ? new SharedMap(MAPSIZE, KEYSIZE, OBJSIZE)
     : Object.setPrototypeOf(workerData.sharedMap, SharedMap.prototype)
 
-  console.debug({ sharedMap, workerData })
+  console.debug({ fn: withSharedMem.name, sharedMap, workerData })
 
-  return getDataSource.call(factory, ...arguments, {
+  return getDataSource.call(factory, name.toUpperCase(), {
     dsMap: sharedMap,
     mixin: DsClass => class SharedMemDs extends SharedMemMixin(DsClass) {}
   })

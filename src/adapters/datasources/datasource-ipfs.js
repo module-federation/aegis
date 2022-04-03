@@ -62,7 +62,7 @@ export class DataSourceIpfs extends DataSourceFile {
     try {
       // add your data to to IPFS - this can be a string, a Buffer,
       // a stream of Buffers, etc
-      const { cid } = this.ipfs.add(JSON.stringify([...this.map]))
+      const { cid } = this.ipfs.add(JSON.stringify([...this.dsMap]))
       fs.writeFileSync(this.file, cid.toString())
       this.cid = cid
     } catch (error) {

@@ -36,7 +36,7 @@ function roughSizeOfObject (...objects) {
  */
 export default class DataSource {
   constructor (map, factory, name) {
-    this.map = map
+    this.dsMap = map
     this.factory = factory
     this.name = name
   }
@@ -98,11 +98,11 @@ export default class DataSource {
    *
    */
   getCacheSize () {
-    return this.map.size
+    return this.dsMap.size
   }
 
   getCacheSizeBytes () {
-    return this.map.size * roughSizeOfObject([...this.map][0][1])
+    return this.dsMap.size * roughSizeOfObject([...this.dsMap][0][1])
   }
 
   /**

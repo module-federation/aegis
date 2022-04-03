@@ -95,8 +95,8 @@ function connectEventChannel (worker, channel) {
         JSON.stringify({
           ...event,
           model: null, // use shared mem
-          modelId: event.model.modelId,
-          modelName: event.model.modelName
+          modelId: event.model?.modelId,
+          modelName: event.model?.modelName
         })
       )
     )
@@ -105,11 +105,11 @@ function connectEventChannel (worker, channel) {
   port1.onmessage = async event => {
     console.debug({
       msg: 'main: received from worker',
-      eventName: event.data.eventName,
-      modelName: event.data.modelName,
-      eventTarget: event.data.eventTarget,
-      eventSource: event.data.eventSource,
-      model: event.data.model
+      eventName: event.data?.eventName,
+      modelName: event.data?.modelName,
+      eventTarget: event.data?.eventTarget,
+      eventSource: event.data?.eventSource,
+      model: event.data?.model
     })
 
     await broker.notify('from_worker', {
@@ -119,8 +119,8 @@ function connectEventChannel (worker, channel) {
       //   event.data.modelId
       // )
       model: null,
-      modelId: event.data.modelId,
-      modelName: event.data.modelName
+      modelId: event.data?.modelId,
+      modelName: event.data?.modelName
     })
   }
 }
@@ -139,7 +139,6 @@ function newThread ({ pool, file, workerData }) {
     try {
       const channel = new MessageChannel()
       const worker = new Worker(file, { workerData })
-      threadId = worker.threadId
       setEnvironmentData('modelName', pool.name)
       pool.workerRef.push(worker)
       pool.totalThreads++
@@ -611,9 +610,9 @@ const ThreadPoolFactory = (() => {
 
     const maxThreads = determineMaxThreads()
 
-    const sharedMap = DataSourceFactory.getDataSource(modelName).map
+    const sharedMap = DataSourceFactory.getDataSource(modelName).dsMap
     console.debug({ sharedMap })
-    sharedMap.set(1, { test: 1 })
+
     try {
       const pool = new ThreadPool({
         file: './dist/worker.js',
