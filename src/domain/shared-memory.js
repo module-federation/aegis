@@ -22,7 +22,6 @@ const serialize = process.env.SERIALIZE_ENABLED || false
  */
 const SharedMemMixin = superclass =>
   class extends superclass {
-    adsssssss
     /**
      * @overrideqq
      */
