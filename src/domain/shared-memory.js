@@ -4,13 +4,17 @@ import SharedMap, { SharedMapOptions } from 'sharedmap'
 import ModelFactory from '.'
 import { isMainThread, workerData } from 'worker_threads'
 import { EventBrokerFactory } from '.'
+import Serializer from './serializer'
 
 const MAPSIZE = 2048 * 128
 // Size is in UTF-16 codepointse
 const KEYSIZE = 32
 const OBJSIZE = 1024
 
-/**
+let serializer
+const serialize = process.env.SERIALIZE_ENABLED || false
+
+/**x
  * composional class mixin - so any class
  * in the hierarchy can use shared memory
  * @param {*} superclass
@@ -18,11 +22,12 @@ const OBJSIZE = 1024
  */
 const SharedMemMixin = superclass =>
   class extends superclass {
+    adsssssss
     /**
-     * @override
+     * @overrideqq
      */
     async save (id, data) {
-      return super.save(id, JSON.stringify(data))
+      return super.save(id, JSON.stringify(data, this.replace))
     }
 
     /**
@@ -34,8 +39,10 @@ const SharedMemMixin = superclass =>
       const modelString = await super.find(id)
       if (!modelString) return
 
-      const model = JSON.parse(modelString)
+      // deserialize
+      const model = JSON.parse(modelString, this.revive)
 
+      // unmarshal
       return ModelFactory.loadModel(
         EventBrokerFactory.getInstance(),
         this,
@@ -52,7 +59,7 @@ const SharedMemMixin = superclass =>
     async list (filter) {
       // do not fully hydrate by default
       const list = await super.list(filter)
-      return list.map(v => JSON.parse(v))
+      return list.map(v => JSON.parse(v, this.revive))
     }
 
     /**
@@ -63,7 +70,15 @@ const SharedMemMixin = superclass =>
     listSync (filter) {
       // do not fully hydrate by default
       const list = super.listSync(filter)
-      return list.map(v => JSON.parse(v))
+      return list.map(v => JSON.parse(v, this.revive))
+    }
+
+    replace (key, value) {
+      return serialize && this.serializer.serialize(key, value)
+    }
+
+    revive (key, value) {
+      return serialize && this.serializer.deserialize(key, value)
     }
   }
 
