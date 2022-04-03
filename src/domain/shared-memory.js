@@ -1,7 +1,6 @@
 'use strict'
 
 import SharedMap, { SharedMapOptions } from 'sharedmap'
-import asyncPipe from './util/async-pipe'
 import ModelFactory from '.'
 import { isMainThread, workerData } from 'worker_threads'
 import { EventBrokerFactory } from '.'
@@ -22,9 +21,8 @@ const SharedMemMixin = superclass =>
      * @override
      */
     async save (id, data) {
-      const serDat = JSON.stringify(data)
-      console.debug({ fn: this.save.name, serDat })
-      return super.save(id, serDat)
+      const modelString = JSON.stringify(data)
+      return super.save(id, modelString)
     }
 
     /**
@@ -33,8 +31,13 @@ const SharedMemMixin = superclass =>
      * @returns
      */
     async find (id) {
-      const model = JSON.stringify(await super.find(id))
-      console.debug({ fn: this.find.name, model })
+      const modelString = await super.find(id)
+      if (!modelString) return
+
+      // deserialize
+      const model = JSON.parse(modelString, this.revive)
+
+      // unmarshal
       return ModelFactory.loadModel(
         EventBrokerFactory.getInstance(),
         this,
@@ -67,6 +70,20 @@ const SharedMemMixin = superclass =>
 
     toJSON () {
       return this.dataSource
+    }
+
+    replace (key, value) {
+      if (value && this.serializer) {
+        return this.serializer.serialize(key, value)
+      }
+      return value
+    }
+
+    revive (key, value) {
+      if (value && this.serializer) {
+        return this.serializer.deserialize(key, value)
+      }
+      return value
     }
   }
 
