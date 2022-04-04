@@ -23,7 +23,7 @@ const serialize = process.env.SERIALIZE_ENABLED || false
 const SharedMemMixin = superclass =>
   class extends superclass {
     /**
-     * @overrideqq
+     * @override
      */
     async save (id, data) {
       return super.save(id, JSON.stringify(data, this.replace))
@@ -39,14 +39,19 @@ const SharedMemMixin = superclass =>
       if (!modelString) return
 
       // deserialize
-      const model = JSON.parse(modelString, this.revive)
+      const model = JSON.parse(modelString)
+
+      console.debug({
+        fn: this.find.name,
+        modelName: String(model.modelName).toUpperCase()
+      })
 
       // unmarshal
       return ModelFactory.loadModel(
         EventBrokerFactory.getInstance(),
         this,
         model,
-        String(model.modelName).toUpperCase()
+        String(this.name).toUpperCase()
       )
     }
 
@@ -58,7 +63,7 @@ const SharedMemMixin = superclass =>
     async list (filter) {
       // do not fully hydrate by default
       const list = await super.list(filter)
-      return list.map(v => JSON.parse(v, this.revive))
+      return list.map(v => JSON.parse(v))
     }
 
     /**
@@ -69,7 +74,7 @@ const SharedMemMixin = superclass =>
     listSync (filter) {
       // do not fully hydrate by default
       const list = super.listSync(filter)
-      return list.map(v => JSON.parse(v, this.revive))
+      return list.map(v => JSON.parse(v))
     }
 
     replace (key, value) {

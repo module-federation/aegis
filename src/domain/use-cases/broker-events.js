@@ -73,7 +73,9 @@ export default function brokerEvents (
       const targets = searchEvents(event.eventName)
       if (targets.length < 1) {
         const e = event.eventName
-        return searchEvents(e.slice(e.lastIndexOf('_') + 1))
+        const eventTarget = e.slice(e.lastIndexOf('_') + 1)
+        console.log({ eventTarget })
+        return searchEvents(eventTarget)
       }
       return targets
     }
@@ -150,13 +152,10 @@ export default function brokerEvents (
     }
 
     // forward everything from workers to service mesh, unless handled locally
-    broker.on(
-      'from_worker',
-      async event => {
-        //DataSourceFactory.getDataSource(event.eventSource).save
-        (await route(event)) || ServiceMesh.publish(event)
-      }
-    )
+    broker.on('from_worker', async event => {
+      //DataSourceFactory.getDataSource(event.eventSource).save
+      ;(await route(event)) || ServiceMesh.publish(event)
+    })
 
     // forward anything from the servivce mesh to the workers
     broker.on('from_mesh', event => broker.notify('to_worker', event))
@@ -181,7 +180,6 @@ export default function brokerEvents (
           console.debug('worker: subscribed to main', eventName)
 
           broker.on('from_main', event => {
-            
             if (event.eventName === eventName) {
               console.debug({
                 msg: 'worker: received from main',

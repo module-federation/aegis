@@ -601,7 +601,7 @@ const ThreadPoolFactory = (() => {
     console.debug({ fn: createThreadPool.name, modelName, options })
 
     const maxThreads = determineMaxThreads()
-
+    console.log(modelName)
     const sharedMap = DataSourceFactory.getDataSource(modelName).dsMap
 
     try {

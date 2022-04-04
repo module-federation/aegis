@@ -47,32 +47,32 @@ let isBackupSwitch = config.isBackupSwitch || false
 let activateBackup = false
 let uplinkCallback
 
+let dnsPriority
 /** @type {import('../../../domain/event-broker').EventBroker} */
 let broker
 /** @type {import('../../../domain/model-factory').ModelFactory} */
 let models
 /** @type {WebSocket} */
 let ws
-let dnsPrio
 
 const DnsPriority = {
   setHigh () {
-    dnsPrio = { priorities: 10, weight: 20 }
+    dnsPriority = { priorities: 10, weight: 20 }
   },
   setMedium () {
-    dnsPrio = { priorities: 20, weight: 40 }
+    dnsPriority = { priorities: 20, weight: 40 }
   },
   setLow () {
-    dnsPrio = { priorities: 40, weight: 80 }
+    dnsPriority = { priorities: 40, weight: 80 }
   },
   getCurrent () {
-    return dnsPrio
+    return dnsPriority
   },
   match (prio) {
     const { priority, weight } = this.getCurrent()
     return prio.priority === priority && prio.weight === weight
   },
-  setBackup () {
+  setBackupPriority () {
     // set to low
     config.priority = 40
     config.weight = 80
@@ -81,7 +81,7 @@ const DnsPriority = {
 
 DnsPriority.setHigh()
 
-function takeover () {
+function checkTakeover () {
   if (DnsPriority.getCurrent().priority === config.priority)
     activateBackup = true
 }
@@ -127,10 +127,10 @@ async function resolveServiceUrl () {
     function runQuery (retries = 0) {
       if (retries > maxRetries / 2) {
         DnsPriority.setMedium()
-        takeover()
+        checkTakeover()
       } else if (retries > maxRetries) {
         DnsPriority.setLow()
-        takeover()
+        checkTakeover()
       }
 
       // query the service name
@@ -304,6 +304,7 @@ function startHeartbeat () {
     } else {
       try {
         clearInterval(intervalId)
+
         if (broker)
           await broker.notify(TIMEOUTEVENT, { error: 'server unresponsive' })
 
@@ -353,7 +354,7 @@ const handshake = {
       }
 
       const dynamicBackup = this.becomeBackupSwitch(message)
-      if (dynamicBackup) DnsPriority.setBackup()
+      if (dynamicBackup) DnsPriority.setBackupPriority()
       isBackupSwitch = true
 
       console.assert(valid, `invalid message ${msg}`)
