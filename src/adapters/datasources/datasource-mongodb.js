@@ -184,10 +184,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
    */
   flush () {
     try {
-      ;[...this.dsMap.values()].reduce(
-        (a, b) => a.then(() => this.saveDb(b.getId(), b)),
-        {}
-      )
+      this.dsMap.reduce((a, b) => a.then(() => this.saveDb(b.getId(), b)), {})
     } catch (error) {
       console.error(error)
     }

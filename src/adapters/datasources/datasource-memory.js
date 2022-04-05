@@ -40,7 +40,6 @@ export class DataSourceMemory extends DataSource {
    * @override
    */
   async find (id) {
-    console.debug({ fn: this.find.name, self: this })
     return this.dsMap.get(id)
   }
 
@@ -58,7 +57,7 @@ export class DataSourceMemory extends DataSource {
    * @returns
    */
   listSync (query) {
-    const values = [...this.dsMap.values()]
+    const values = this.dsMap.map(v => v)
 
     if (!values) return []
 

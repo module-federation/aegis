@@ -80,7 +80,7 @@ function make (factory) {
  * @returns
  */
 function makeOne (modelName, factory) {
-  const spec = ModelFactory.getModelSpec(modelName)
+  const spec = ModelFactory.getModelSpec(modelName.toUpperCase())
   return factory(buildOptions(spec))
 }
 

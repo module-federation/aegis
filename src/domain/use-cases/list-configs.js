@@ -18,21 +18,14 @@ export default function listConfigsFactory ({
     const configTypes = {
       data: () =>
         query.modelName
-          ? threadpools.fireEvent({
-              name: 'showData',
-              data: query.modelName
-            })
-          : data.listDataSources().map(([k, v]) => ({
+          ? threadpools.getThreadPool(query.modelName).run('showData')
+          : data.listDataSources().map(k => ({
               dsname: k,
-              records: v.map.size()
+              records: data.getDataSource(k).totalRecords()
             })),
-
       events: () =>
         query.modelName
-          ? threadpools.fireEvent({
-              name: 'showEvents',
-              data: query.modelName
-            })
+          ? threadpools.getThreadPool(query.modelName).run('showEvents')
           : [...broker.getEvents()].map(([k, v]) => ({
               eventName: k,
               handlers: v.length
@@ -40,20 +33,14 @@ export default function listConfigsFactory ({
 
       models: () =>
         query.modelName
-          ? threadpools.fireEvent({
-              name: 'showModels',
-              data: query.modelName
-            })
+          ? threadpools.getThreadPool(query.modelName).run('showModels')
           : models.getModelSpecs(),
 
       threads: () => threadpools.status(),
 
       relations: () =>
         query.modelName
-          ? threadpools.fireEvent({
-              name: 'showRelations',
-              data: query.modelName
-            })
+          ? threadpools.getThreadPool(query.modelName).run('showRelations')
           : models.getModelSpecs().map(spec => ({
               modelName: spec.modelName,
               relations: spec.relations ? Object.values(spec.relations) : []
@@ -61,10 +48,7 @@ export default function listConfigsFactory ({
 
       commands: () =>
         query.modelName
-          ? threadpools.fireEvent({
-              name: 'showCommands',
-              data: query.modelName
-            })
+          ? threadpools.getThreadPool(query.modelName).run('showCommands')
           : models.getModelSpecs().map(spec => ({
               modelName: spec.modelName,
               commands: spec.commands ? Object.values(spec.commands) : []
@@ -72,10 +56,7 @@ export default function listConfigsFactory ({
 
       ports: () =>
         query.modelName
-          ? threadpools.fireEvent({
-              name: 'showPorts',
-              data: query.modelName
-            })
+          ? threadpools.getThreadPool(query.modelName).run('showPorts')
           : models.getModelSpecs().map(spec => ({
               modelName: spec.modelName,
               ports: spec.ports ? Object.values(spec.ports) : []

@@ -100,12 +100,16 @@ export default class DataSource {
   /**
    *
    */
+  totalRecords () {
+    return this.dsMap.length
+  }
+
   getCacheSize () {
-    return this.dsMap.size
+    return this.totalRecords()
   }
 
   getCacheSizeBytes () {
-    return this.dsMap.size * roughSizeOfObject([...this.dsMap][0][1])
+    return this.totalRecords() * roughSizeOfObject(this.dsMap.reduce(a => a))
   }
 
   /**

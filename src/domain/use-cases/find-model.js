@@ -40,6 +40,8 @@ export default function makeFindModel ({
       if (!model) {
         throw new Error('no such id')
       }
+
+      console.log({ fn: findModel.name, model })
       // Only send to app thread if data must be enriched
       if (!query.relation && !query.command) return model
 
@@ -49,13 +51,13 @@ export default function makeFindModel ({
       return result
     } else {
       try {
+        const hydrateModel = model =>
+          model.getId
+            ? model // already unmarshalled
+            : models.loadModel(broker, repository, model, modelName)
+            
         // unmarshall the model so we can use it
-        const hydratedModel = models.loadModel(
-          broker,
-          repository,
-          model,
-          modelName
-        )
+        const hydratedModel = hydrateModel(model)
 
         if (query.relation) {
           const related = await async(
@@ -75,10 +77,10 @@ export default function makeFindModel ({
           }
         }
 
-        // gracefully degrade
+        // gracefully cdegrade
         return hydratedModel
       } catch (error) {
-        return new AppError()
+        return new AppError(error)
       }
     }
   }

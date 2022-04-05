@@ -41,7 +41,7 @@ const DataSourceFactory = (() => {
   }
 
   function listDataSources () {
-    return [...dataSources]
+    return [...dataSources.keys()]
   }
 
   function getDataSourceClass (spec, options) {
@@ -75,7 +75,7 @@ const DataSourceFactory = (() => {
       dataSources = new Map()
     }
 
-    if (dataSources.has(name)) {
+    if (dataSources.has(String(name).toUpperCase())) {
       return dataSources.get(String(name).toUpperCase())
     }
 
@@ -83,7 +83,7 @@ const DataSourceFactory = (() => {
     const dsMap = options.dsMap || new Map()
     const DsClass = getDataSourceClass(spec, options)
     const MixinClass = options.mixin ? options.mixin(DsClass) : DsClass
-    const newDs = new MixinClass(dsMap, this, name)
+    const newDs = new MixinClass(dsMap, this, String(name).toUpperCase())
 
     if (!options.ephemeral) dataSources.set(String(name).toUpperCase(), newDs)
 
@@ -91,7 +91,13 @@ const DataSourceFactory = (() => {
   }
 
   function getSharedDataSource (name, options) {
-    console.debug({ fn: getSharedDataSource.name, name, options })
+    if (!dataSources) {
+      dataSources = new Map()
+    }
+
+    if (dataSources.has(String(name).toUpperCase())) {
+      return dataSources.get(String(name).toUpperCase())
+    }
     const ds = withSharedMem(getDataSource, this, name, options)
     console.debug({ fn: getDataSource.name, ds })
     return ds

@@ -24,40 +24,42 @@ const DateFunctions = {
  * @param {import("../datasource").default} repository
  * @returns
  */
-async function parseQuery(query, repository) {
-  if (query?.count) {
-    const dateFunc = DateFunctions[query.count]
+async function parseQuery (query, repository) {
+  return Array.from(repository.dsMap.keys())
 
-    if (dateFunc) {
-      const list = await repository.list()
-      return {
-        count: dateFunc(list)
-      }
-    }
+  // if (query?.count) {
+  // const dateFunc = DateFunctions[query.count]
 
-    const searchTerms = query.count.split(':')
+  // if (dateFunc) {
+  //   const list = await repository.list()
+  //   return {
+  //     count: dateFunc(list)
+  //   }
+  // }
 
-    if (searchTerms.length > 1) {
-      const filter = { [searchTerms[0]]: searchTerms[1] }
-      const filteredList = await repository.list(filter)
+  // const searchTerms = query.count.split(':')
 
-      return {
-        ...filter,
-        count: filteredList.length
-      }
-    }
+  // if (searchTerms.length > 1) {
+  //   const filter = { [searchTerms[0]]: searchTerms[1] }
+  //   const filteredList = await repository.list(filter)
 
-    if (!Number.isNaN(parseInt(query.count))) {
-      return repository.list(query)
-    }
+  //   return {
+  //     ...filter,
+  //     count: filteredList.length
+  //   }
+  // }
 
-    return {
-      total: (await repository.list(null, false)).length,
-      cached: repository.getCacheSize(),
-      bytes: repository.getCacheSizeBytes()
-    }
-  }
-  return repository.list(query)
+  // if (!Number.isNaN(parseInt(query.count))) {
+  //   return repository.list(query)
+  // }
+
+  // return {
+  //   total: (await repository.list(null, false)).length,
+  //   cached: repository.totalRecords(),
+  //   bytes: repository.getCacheSizeBytes()
+  // }
+  // }
+  // return repository.list(query)
 }
 
 /**
@@ -68,8 +70,8 @@ async function parseQuery(query, repository) {
  * @param {{repository:import('../datasource').default}}
  * @returns {listModels}
  */
-export default function makeListModels({ repository } = {}) {
-  return async function listModels(query) {
+export default function makeListModels ({ repository } = {}) {
+  return async function listModels (query) {
     return parseQuery(query, repository)
   }
 }

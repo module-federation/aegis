@@ -9,7 +9,7 @@ import Serializer from './serializer'
 const MAPSIZE = 2048 * 128
 // Size is in UTF-16 codepointse
 const KEYSIZE = 32
-const OBJSIZE = 1024
+const OBJSIZE = 4056
 
 let serializer
 const serialize = process.env.SERIALIZE_ENABLED || false
@@ -26,7 +26,7 @@ const SharedMemMixin = superclass =>
      * @override
      */
     async save (id, data) {
-      return super.save(id, JSON.stringify(data, this.replace))
+      return super.save(id, JSON.stringify(data))
     }
 
     /**
@@ -36,16 +36,7 @@ const SharedMemMixin = superclass =>
      */
     async find (id) {
       const modelString = await super.find(id)
-      if (!modelString) return
-
-      // deserialize
       const model = JSON.parse(modelString)
-
-      console.debug({
-        fn: this.find.name,
-        modelName: String(model.modelName).toUpperCase()
-      })
-
       // unmarshal
       return ModelFactory.loadModel(
         EventBrokerFactory.getInstance(),
@@ -94,7 +85,9 @@ const SharedMemMixin = superclass =>
  */
 export function withSharedMem (getDataSource, factory, name) {
   const sharedMap = isMainThread
-    ? new SharedMap(MAPSIZE, KEYSIZE, OBJSIZE)
+    ? Object.assign(new SharedMap(MAPSIZE, KEYSIZE, OBJSIZE), {
+        modelName: name
+      })
     : Object.setPrototypeOf(workerData.sharedMap, SharedMap.prototype)
 
   console.debug({ fn: withSharedMem.name, sharedMap, workerData })

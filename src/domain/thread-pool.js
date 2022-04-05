@@ -7,6 +7,7 @@ import { SharedMap } from 'sharedmap'
 import domainEvents from './domain-events'
 import ModelFactory, { DataSourceFactory } from '.'
 import os from 'os'
+import pipe from './util/pipe'
 const { poolOpen, poolClose, poolDrain } = domainEvents
 const broker = EventBrokerFactory.getInstance()
 const DEFAULT_THREADPOOL_MIN = 1
@@ -86,6 +87,7 @@ function connectEventChannel (worker, channel) {
       eventSource: event.eventSource
     })
 
+    pipe(JSON.stringify, JSON.parse, port1.postMessage)
     port1.postMessage(
       JSON.parse(
         JSON.stringify({
@@ -139,9 +141,15 @@ function newThread ({ pool, file, workerData }) {
         file,
         pool,
         worker,
-        eventPort: channel.port1,
         id: worker.threadId,
         createdAt: Date.now(),
+        eventPort: channel.port1,
+        mainChannel (data) {
+          worker.postMessage(data)
+        },
+        eventChannel (data) {
+          this.eventPort.postMessage(data)
+        },
         async stop () {
           await kill(this)
         }
@@ -150,6 +158,7 @@ function newThread ({ pool, file, workerData }) {
 
       worker.once('message', msg => {
         connectEventChannel(worker, channel)
+        DataSourceFactory.getDataSource(pool.name).save('prop1', 'val1')
         pool.emit('aegis-up', msg)
         resolve(thread)
       })
@@ -247,7 +256,7 @@ export class ThreadPool extends EventEmitter {
       }
     }
 
-    setInterval(dequeue.bind(this), 1500)
+    //setInterval(dequeue.bind(this), 1500)
 
     if (options.preload) {
       console.info('preload enabled for', this.name)
@@ -480,22 +489,21 @@ export class ThreadPool extends EventEmitter {
         console.error('event channel retry timeout', event)
         return reject('timeout')
       }
-      const threads = this.freeThreads
-      if (!threads || threads.length < 1) return reject('no threads')
-      const thread = threads[0]
 
-      if (thread) {
-        // don't send to the sender (infinite loop)
-        if (event.port === thread.eventPort) return
-        // return the response
-        thread.eventPort.once('message', msgEvent => resolve(msgEvent))
-        // send over thread's event subchannel
-        console.log('sending', event)
-        thread.eventPort.postMessage(event)
-      } else {
+      const thread = this.freeThreads.shift()
+      if (!thread) {
         // all threads busy, keep trying
         setTimeout(this.fireEvent, 1000, event, retries++)
+        return reject('no threads')
       }
+
+      // don't send to the sender (infinite loop)
+      if (event.port === thread.eventPort) return
+      // return the response
+      thread.eventPort.once('message', msgEvent => resolve(msgEvent))
+      // send over thread's event subchannel
+      console.log('sending', event)
+      thread.eventPort.postMessage(event)
     })
   }
 
@@ -583,32 +591,35 @@ const ThreadPoolFactory = (() => {
   function determineMaxThreads (options) {
     if (options?.maxThreads) return options.maxThreads
     const nApps = ModelFactory.getModelSpecs().filter(s => !s.isCached).length
-    return (
-      Math.floor(os.cpus().length / (nApps || DEFAULT_THREADPOOL_MAX || 2)) || 1
-    )
+    return Math.floor(os.cpus().length / (nApps || DEFAULT_THREADPOOL_MAX))
   }
 
   /**
-   * Creates a pool for use by a domain {@link Model}.
-   * Provides a thread-safe {@link SharedMap} for parallel
-   * access to the same memory by all threads.
+   * @typedef threadOptions
+   * @property {string} file path of file containing worker code
+   * @property {string} eval
    *
+   */
+  /**
+   * Creates a pool for use by a domain {@link Model}.
+   * Provides a thread-safe {@link Map}.
    * @param {string} modelName named after the {@link Model} using it
-   * @param {{preload:boolean, waitingJobs:function(Thread)[]}} options
+   * @param {threadOptions} options
    * @returns
    */
   function createThreadPool (modelName, options) {
     console.debug({ fn: createThreadPool.name, modelName, options })
 
     const maxThreads = determineMaxThreads()
-    console.log(modelName)
     const sharedMap = DataSourceFactory.getDataSource(modelName).dsMap
+    const initData = options.initData || {}
+    const file = options.file || options.eval || './dist/worker.js'
 
     try {
       const pool = new ThreadPool({
-        file: './dist/worker.js',
+        file,
         name: modelName,
-        workerData: { modelName, sharedMap },
+        workerData: { modelName, sharedMap, initData },
         options: { ...options, maxThreads }
       })
 
