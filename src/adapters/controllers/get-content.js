@@ -92,7 +92,7 @@ export default function getContent (httpRequest, content, defaultTitle) {
 
       Object.keys(content).forEach(key => {
         let val = content[key]
-d
+
         if (typeof val === 'object')
           val = `<pre><code>${prettifyJson(
             JSON.stringify(val, null, 2)
@@ -100,7 +100,7 @@ d
 
         text += `<tr><td>${key}</td><td>${val}</td></tr>`
       })
-      text += '</table></div>'                                                                                                                                                                                                                                                  
+      text += '</table></div>'
     })
 
     /**
