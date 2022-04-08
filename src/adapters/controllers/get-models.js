@@ -15,8 +15,7 @@ export default function getModelsFactory (listModels) {
 
       const { content, contentType } = getContent(
         httpRequest,
-        models,
-        models.length > 0 ? models[0].modelName.toUpperCase() : 'Not Found'
+        models
       )
 
       return {
