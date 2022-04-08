@@ -77,7 +77,7 @@ export default function makeFindModel ({
           }
         }
 
-        // gracefully cdegrade
+        // gracefully degrade
         return hydratedModel
       } catch (error) {
         return new AppError(error)

@@ -37,13 +37,15 @@ const SharedMemMixin = superclass =>
     async find (id) {
       const modelString = await super.find(id)
       const model = JSON.parse(modelString)
-      // unmarshal
-      return ModelFactory.loadModel(
-        EventBrokerFactory.getInstance(),
-        this,
-        model,
-        String(this.name).toUpperCase()
-      )
+
+      return isMainThread
+        ? model
+        : ModelFactory.loadModel(
+            EventBrokerFactory.getInstance(),
+            this,
+            model,
+            String(this.name).toUpperCase()
+          )
     }
 
     /**

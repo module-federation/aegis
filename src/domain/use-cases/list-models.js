@@ -25,41 +25,41 @@ const DateFunctions = {
  * @returns
  */
 async function parseQuery (query, repository) {
-  return Array.from(repository.dsMap.keys())
+  //return Array.from(repository.dsMap.keys())
 
-  // if (query?.count) {
-  // const dateFunc = DateFunctions[query.count]
+  if (query?.count) {
+    const dateFunc = DateFunctions[query.count]
 
-  // if (dateFunc) {
-  //   const list = await repository.list()
-  //   return {
-  //     count: dateFunc(list)
-  //   }
-  // }
+    if (dateFunc) {
+      const list = await repository.list()
+      return {
+        count: dateFunc(list)
+      }
+    }
 
-  // const searchTerms = query.count.split(':')
+    const searchTerms = query.count.split(':')
 
-  // if (searchTerms.length > 1) {
-  //   const filter = { [searchTerms[0]]: searchTerms[1] }
-  //   const filteredList = await repository.list(filter)
+    if (searchTerms.length > 1) {
+      const filter = { [searchTerms[0]]: searchTerms[1] }
+      const filteredList = await repository.list(filter)
 
-  //   return {
-  //     ...filter,
-  //     count: filteredList.length
-  //   }
-  // }
+      return {
+        ...filter,
+        count: filteredList.length
+      }
+    }
 
-  // if (!Number.isNaN(parseInt(query.count))) {
-  //   return repository.list(query)
-  // }
+    if (!Number.isNaN(parseInt(query.count))) {
+      return repository.list(query)
+    }
 
-  // return {
-  //   total: (await repository.list(null, false)).length,
-  //   cached: repository.totalRecords(),
-  //   bytes: repository.getCacheSizeBytes()
-  // }
-  // }
-  // return repository.list(query)
+    return {
+      total: (await repository.list(null, false)).length,
+      cached: repository.totalRecords(),
+      bytes: repository.getCacheSizeBytes()
+    }
+  }
+  return repository.list(query)
 }
 
 /**

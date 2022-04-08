@@ -44,7 +44,7 @@ const DataSourceFactory = (() => {
     return [...dataSources.keys()]
   }
 
-  function getDataSourceClass (spec, options) {
+  function createDataSourceClass (spec, options) {
     const { memoryOnly, cachedWrite, ephemeral, adapterName } = options
 
     if ((memoryOnly && !cachedWrite) || ephemeral) {
@@ -81,7 +81,7 @@ const DataSourceFactory = (() => {
 
     const spec = ModelFactory.getModelSpec(String(name).toUpperCase())
     const dsMap = options.dsMap || new Map()
-    const DsClass = getDataSourceClass(spec, options)
+    const DsClass = createDataSourceClass(spec, options)
     const MixinClass = options.mixin ? options.mixin(DsClass) : DsClass
     const newDs = new MixinClass(dsMap, this, String(name).toUpperCase())
 

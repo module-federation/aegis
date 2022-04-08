@@ -7,22 +7,20 @@ import { SharedMap } from 'sharedmap'
 import domainEvents from './domain-events'
 import ModelFactory, { DataSourceFactory } from '.'
 import os from 'os'
-import pipe from './util/pipe'
 const { poolOpen, poolClose, poolDrain } = domainEvents
 const broker = EventBrokerFactory.getInstance()
 const DEFAULT_THREADPOOL_MIN = 1
 const DEFAULT_THREADPOOL_MAX = 2
 const DEFAULT_JOBQUEUE_TOLERANCE = 25
 const DEFAULT_DURATION_TOLERANCE = 1000
-const EVENTCHANNEL_MAXRETRY = 20
 
-export let threadId
 /**
  * @typedef {object} Thread
  * @property {Worker.threadId} id
  * @property {Worker} worker
  * @property {function()} stop
- * @property {MessagePort} eventPort
+ * @property {function(*)} eventChannel
+ * @property {function(*)} mainChannel
  */
 
 /**
@@ -52,12 +50,12 @@ async function kill (thread) {
 
       thread.worker.once('exit', () => {
         clearTimeout(timerId)
-        thread.eventPort.close()
+        thread.eventChannel.close()
         console.info('clean exit of thread', thread.id)
         resolve(thread.id)
       })
 
-      thread.eventPort.postMessage({ name: 'shutdown', data: 0 })
+      thread.eventChannel.postMessage({ name: 'shutdown', data: 0 })
     })
   } catch (error) {
     return console.error({ fn: kill.name, error })
@@ -87,7 +85,7 @@ function connectEventChannel (worker, channel) {
       eventSource: event.eventSource
     })
 
-    pipe(JSON.stringify, JSON.parse, port1.postMessage)
+    //pipe(JSON.stringify, JSON.parse, port1.postMessage)
     port1.postMessage(
       JSON.parse(
         JSON.stringify({
@@ -131,7 +129,7 @@ function connectEventChannel (worker, channel) {
 function newThread ({ pool, file, workerData }) {
   return new Promise((resolve, reject) => {
     try {
-      const channel = new MessageChannel()
+      const eventChannel = new MessageChannel()
       const worker = new Worker(file, { workerData })
       setEnvironmentData('modelName', pool.name)
       pool.workerRef.push(worker)
@@ -143,12 +141,11 @@ function newThread ({ pool, file, workerData }) {
         worker,
         id: worker.threadId,
         createdAt: Date.now(),
-        eventPort: channel.port1,
         mainChannel (data) {
           worker.postMessage(data)
         },
         eventChannel (data) {
-          this.eventPort.postMessage(data)
+          eventChannel.port1.postMessage(data)
         },
         async stop () {
           await kill(this)
@@ -157,8 +154,7 @@ function newThread ({ pool, file, workerData }) {
       setTimeout(reject, 10000)
 
       worker.once('message', msg => {
-        connectEventChannel(worker, channel)
-        DataSourceFactory.getDataSource(pool.name).save('prop1', 'val1')
+        connectEventChannel(worker, eventChannel)
         pool.emit('aegis-up', msg)
         resolve(thread)
       })
@@ -174,16 +170,24 @@ function newThread ({ pool, file, workerData }) {
  * wait until one is. An optional callback can be used by
  * the caller to pass an upstream promise.
  *
- * @param {{l
+ * @param {{
  *  pool:ThreadPool,
  *  jobName:string,
  *  jobData:any,
  *  thread:Thread,
- *  cb:function()
+ *  channel?:string,
+ *  cb?:function()
  * }}
  * @returns {Promise<Thread>}
  */
-function postJob ({ pool, jobName, jobData, thread, cb }) {
+function postJob ({
+  pool,
+  jobName,
+  jobData,
+  thread,
+  channel = 'mainChannel',
+  callback
+}) {
   return new Promise((resolve, reject) => {
     const startTime = Date.now()
 
@@ -200,11 +204,11 @@ function postJob ({ pool, jobName, jobData, thread, cb }) {
         pool.emit('noJobsRunning')
       }
 
-      if (cb) return resolve(cb(result))
+      if (callback) return resolve(callback(result))
       return resolve(result)
     })
     thread.worker.once('error', reject)
-    thread.worker.postMessage({ name: jobName, data: jobData })
+    thread[channel]({ name: jobName, data: jobData })
   }).catch(console.error)
 }
 
@@ -429,7 +433,7 @@ export class ThreadPool extends EventEmitter {
    * @param {*} jobData anything that can be cloned
    * @returns {Promise<*>} anything that can be cloned
    */
-  run (jobName, jobData) {
+  run (jobName, jobData, channel = 'mainChannel') {
     return new Promise(async resolve => {
       this.jobsRequested++
 
@@ -452,7 +456,8 @@ export class ThreadPool extends EventEmitter {
               pool: this,
               jobName,
               jobData,
-              thread
+              thread,
+              channel
             })
 
             return resolve(result)
@@ -466,7 +471,8 @@ export class ThreadPool extends EventEmitter {
             jobName,
             jobData,
             thread,
-            cb: result => resolve(result)
+            channel,
+            callback: result => resolve(result)
           })
         )
 
@@ -482,29 +488,8 @@ export class ThreadPool extends EventEmitter {
     return this
   }
 
-  async fireEvent (event, retries = 0) {
-    return new Promise((resolve, reject) => {
-      // don't retry forever
-      if (retries > EVENTCHANNEL_MAXRETRY) {
-        console.error('event channel retry timeout', event)
-        return reject('timeout')
-      }
-
-      const thread = this.freeThreads.shift()
-      if (!thread) {
-        // all threads busy, keep trying
-        setTimeout(this.fireEvent, 1000, event, retries++)
-        return reject('no threads')
-      }
-
-      // don't send to the sender (infinite loop)
-      if (event.port === thread.eventPort) return
-      // return the response
-      thread.eventPort.once('message', msgEvent => resolve(msgEvent))
-      // send over thread's event subchannel
-      console.log('sending', event)
-      thread.eventPort.postMessage(event)
-    })
+  async fireEvent (event) {
+    return this.run(event.name, event.data, 'eventChannel')
   }
 
   /**
@@ -664,8 +649,11 @@ const ThreadPoolFactory = (() => {
       status () {
         return getPool(poolName, options).status()
       },
-      fireEvent (input) {
-        return getPool(poolName, options).fireEvent(input)
+      fireEvent (event) {
+        return getPool(poolName, options).run({
+          jobName: event.name,
+          jobData: event.data
+        })
       }
     }
 

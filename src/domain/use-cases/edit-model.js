@@ -48,43 +48,26 @@ export default function makeEditModel ({
    */
   async function editModel (input) {
     if (isMainThread) {
-      const { id, changes, command } = input
-
       // let main thread find it, might not exist in worker
-      const model = await repository.find(id)
+      const model = await repository.find(input.id)
 
       if (!model) {
         throw new Error('no such id')
       }
 
-      const updated = await threadpool.run(editModel.name, {
-        id,
-        model,
-        changes,
-        command
-      })
+      const updated = await threadpool.run(editModel.name, input)
 
       if (updated.hasError) throw new Error(updated.message)
-
-      return repository.save(id, updated)
     } else {
       try {
         // model has been found by main thread
-        const { id, changes, command, model } = input
+        const { id, changes, command } = input
 
-        // we need to unmarshal to use
-        const hydratedModel = models.loadModel(
-          broker,
-          repository,
-          model,
-          modelName
-        )
-
-        // save it in case this thread didn't create it
-        await repository.save(id, hydratedModel)
+        // get hydrated model
+        const model = await repository.find(id)
 
         // only the worker does the update
-        const updated = models.updateModel(hydratedModel, changes)
+        const updated = models.updateModel(model, changes)
         await repository.save(id, updated)
 
         const event = models.createEvent(eventType, modelName, {

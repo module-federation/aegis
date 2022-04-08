@@ -41,7 +41,6 @@ export default function makeAddModel ({
   async function addModel (input) {
     if (isMainThread) {
       const model = await threadpool.run(addModel.name, input)
-      console.debug({ fn: addModel.name, model })
       if (model.hasError) throw new Error(model.message)
       return model
     } else {
