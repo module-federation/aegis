@@ -58,6 +58,7 @@ export default function makeEditModel ({
       const updated = await threadpool.run(editModel.name, input)
 
       if (updated.hasError) throw new Error(updated.message)
+      return updated
     } else {
       try {
         // model has been found by main thread

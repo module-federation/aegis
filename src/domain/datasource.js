@@ -1,7 +1,5 @@
 'use strict'
 
-import { withSharedMem } from './shared-memory'
-
 function roughSizeOfObject (...objects) {
   let bytes = 0
 

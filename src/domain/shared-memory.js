@@ -36,7 +36,7 @@ const SharedMemMixin = superclass =>
      */
     async find (id) {
       const modelString = await super.find(id)
-      const model = JSON.parse(modelString)
+      const model = modelString.getId ? modelString : JSON.parse(modelString)
 
       return isMainThread
         ? model
@@ -56,7 +56,7 @@ const SharedMemMixin = superclass =>
     async list (filter) {
       // do not fully hydrate by default
       const list = await super.list(filter)
-      return list.map(v => JSON.parse(v))
+      return list.map(v => v)
     }
 
     /**
@@ -67,7 +67,7 @@ const SharedMemMixin = superclass =>
     listSync (filter) {
       // do not fully hydrate by default
       const list = super.listSync(filter)
-      return list.map(v => JSON.parse(v))
+      return list.map(v => v)
     }
 
     replace (key, value) {

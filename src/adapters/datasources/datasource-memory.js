@@ -57,7 +57,7 @@ export class DataSourceMemory extends DataSource {
    * @returns
    */
   listSync (query) {
-    const values = this.dsMap.map(v => v)
+    const values = this.dsMap.map(v => JSON.parse(v))
 
     if (!values) return []
 
