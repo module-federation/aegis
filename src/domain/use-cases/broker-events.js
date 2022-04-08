@@ -5,7 +5,6 @@ import DistributedCache from '../distributed-cache'
 import { ServiceMeshAdapter as ServiceMesh } from '../../adapters'
 import { isMainThread, workerData } from 'worker_threads'
 import domainEvents from '../domain-events'
-import { DataSourceFactory } from '..'
 
 /**
  * Broker events between threadpools and remote mesh instances.
@@ -151,10 +150,18 @@ export default function brokerEvents (
       return false
     }
 
+    function enrichEvent (event) {
+      if (event.modelId)
+        return {
+          ...event,
+          model: datasources.getDataSource(event.modelName).find(event.modelId)
+        }
+    }
+
     // forward everything from workers to service mesh, unless handled locally
     broker.on('from_worker', async event => {
       //DataSourceFactory.getDataSource(event.eventSource).save
-      ;(await route(event)) || ServiceMesh.publish(event)
+      ;(await route(event)) || ServiceMesh.publish(enrichEvent(event))
     })
 
     // forward anything from the servivce mesh to the workers
@@ -186,7 +193,7 @@ export default function brokerEvents (
                 eventName: event.eventName,
                 event
               })
-              cb(event)
+              cb(enrichEvent(event))
             }
           })
         }

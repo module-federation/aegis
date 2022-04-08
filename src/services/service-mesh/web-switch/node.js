@@ -328,6 +328,7 @@ function startHeartbeat () {
  */
 const handshake = {
   eventName: 'handshake',
+  metaEvent: true,
   proto: SERVICENAME,
   role: 'node',
   pid: process.pid,
