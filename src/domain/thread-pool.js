@@ -50,7 +50,7 @@ async function kill (thread) {
 
       thread.worker.once('exit', () => {
         clearTimeout(timerId)
-        thread.eventChannel.close()
+        thread.dispose()
         console.info('clean exit of thread', thread.id)
         resolve(thread.id)
       })
@@ -147,6 +147,9 @@ function newThread ({ pool, file, workerData }) {
         },
         async stop () {
           await kill(this)
+        },
+        dispose () {
+          eventChannel.port1.close()
         }
       }
       setTimeout(reject, 10000)
