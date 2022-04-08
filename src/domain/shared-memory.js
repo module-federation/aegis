@@ -1,6 +1,6 @@
 'use strict'
 
-import SharedMap, { SharedMapOptions } from 'sharedmap'
+import SharedMap from 'sharedmap'
 import ModelFactory from '.'
 import { isMainThread, workerData } from 'worker_threads'
 import { EventBrokerFactory } from '.'
@@ -51,7 +51,9 @@ const SharedMemMixin = superclass =>
  * Decorator adds support for thread-safe shared {@link Map} using
  * {@link SharedArrayBuffer}.
  *
- * @param {function():import('./datasource').default} getDataSource
+ * @typedef {import('./datasource-factory').default} DataSourceFactory
+ *
+ * @param {function():import('./datasource').default} getDataSource in {@link DataSourceFactory}
  * @param {import('./datasource-factory').DataSourceFactory} factory
  * @returns {import('./datasource').default}
  */

@@ -577,7 +577,7 @@ const ThreadPoolFactory = (() => {
   function determineMaxThreads (options) {
     if (options?.maxThreads) return options.maxThreads
     const nApps = ModelFactory.getModelSpecs().filter(s => !s.isCached).length
-    return Math.floor(os.cpus().length / (nApps || DEFAULT_THREADPOOL_MAX))
+    return Math.floor(os.cpus().length / (nApps || DEFAULT_THREADPOOL_MAX)) || 1
   }
 
   /**
