@@ -161,7 +161,7 @@ export default function brokerEvents (
     // forward everything from workers to service mesh, unless handled locally
     broker.on('from_worker', async event => {
       //DataSourceFactory.getDataSource(event.eventSource).save
-      ;(await route(event)) || ServiceMesh.publish(enrichEvent(event))
+      ;(await route(event)) || ServiceMesh.publish(event)
     })
 
     // forward anything from the servivce mesh to the workers
@@ -193,7 +193,7 @@ export default function brokerEvents (
                 eventName: event.eventName,
                 event
               })
-              cb(enrichEvent(event))
+              cb(event)
             }
           })
         }

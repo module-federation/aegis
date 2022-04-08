@@ -90,7 +90,6 @@ function connectEventChannel (worker, channel) {
       JSON.parse(
         JSON.stringify({
           ...event,
-          model: null, // use shared mem
           modelId: event.model?.modelId,
           modelName: event.model?.modelName
         })
@@ -110,7 +109,6 @@ function connectEventChannel (worker, channel) {
 
     await broker.notify('from_worker', {
       ...event.data,
-      model: null,
       modelId: event.data?.modelId,
       modelName: event.data?.modelName
     })
