@@ -50,7 +50,7 @@ async function kill (thread) {
 
       thread.worker.once('exit', () => {
         clearTimeout(timerId)
-        thread.dispose()
+        thread.eventChannel.close()
         console.info('clean exit of thread', thread.id)
         resolve(thread.id)
       })
@@ -139,17 +139,10 @@ function newThread ({ pool, file, workerData }) {
         worker,
         id: worker.threadId,
         createdAt: Date.now(),
-        mainChannel (data) {
-          worker.postMessage(data)
-        },
-        eventChannel (data) {
-          eventChannel.port1.postMessage(data)
-        },
+        mainChannel: worker,
+        eventChannel: eventChannel.port1,
         async stop () {
           await kill(this)
-        },
-        dispose () {
-          eventChannel.port1.close()
         }
       }
       setTimeout(reject, 10000)
@@ -192,7 +185,7 @@ function postJob ({
   return new Promise((resolve, reject) => {
     const startTime = Date.now()
 
-    thread.worker.once('message', result => {
+    thread[channel].once('message', result => {
       pool.jobTime(Date.now() - startTime)
 
       if (pool.waitingJobs.length > 0) {
@@ -208,8 +201,8 @@ function postJob ({
       if (callback) return resolve(callback(result))
       return resolve(result)
     })
-    thread.worker.once('error', reject)
-    thread[channel]({ name: jobName, data: jobData })
+    thread[channel].once('error', reject)
+    thread[channel].postMessage({ name: jobName, data: jobData })
   }).catch(console.error)
 }
 

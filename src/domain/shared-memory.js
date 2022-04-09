@@ -36,14 +36,22 @@ const SharedMemMixin = superclass =>
       const model =
         typeof modelString === 'string' ? JSON.parse(modelString) : modelString
 
-      return isMainThread
-        ? model
-        : ModelFactory.loadModel(
-            EventBrokerFactory.getInstance(),
-            this,
-            model,
-            String(this.name).toUpperCase()
-          )
+      if (!model) return null
+
+      try {
+        const rehydrated = isMainThread
+          ? model
+          : ModelFactory.loadModel(
+              EventBrokerFactory.getInstance(),
+              this,
+              model,
+              String(this.name).toUpperCase()
+            )
+        return rehydrated
+      } catch (error) {
+        console.error({ fn: 'SharedMem.find', error })
+      }
+      return model
     }
   }
 
