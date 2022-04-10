@@ -88,7 +88,7 @@ export default function getContent (httpRequest, content, defaultTitle) {
 
     contents.forEach(function (content) {
       text += `<div style="margin-bottom: 40px;">
-                    <table id="configs" border="3px solid black; border-collapse: collapse">`
+                    <table id="configs" border="3px solid #ddd; border-collapse: collapse">`
 
       Object.keys(content).forEach(key => {
         let val = content[key]

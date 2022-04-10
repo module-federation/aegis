@@ -17,10 +17,9 @@ const DEFAULT_DURATION_TOLERANCE = 1000
 /**
  * @typedef {object} Thread
  * @property {Worker.threadId} id
- * @property {Worker} worker
- * @property {function()} stop
- * @property {function(*)} eventChannel
- * @property {function(*)} mainChannel
+ * @property {function():Promise<void>} stop
+ * @property {MessagePort} eventChannel
+ * @property {Worker} mainChannel
  */
 
 /**
@@ -72,7 +71,7 @@ async function kill (thread) {
  * {@link MessagePort} port2 worker uses to send to and recv from main
  */
 function connectEventChannel (worker, channel) {
-  const { port2 } = channel
+  const { port1, port2 } = channel
   worker.postMessage({ eventPort: port2 }, [port2])
 
   broker.on('to_worker', async event => {
@@ -167,8 +166,8 @@ function newThread ({ pool, file, workerData }) {
  *  jobName:string,
  *  jobData:any,
  *  thread:Thread,
- *  channel?:string,
- *  cb?:function()
+ *  channel?:"mainChannel"|"eventChannel",
+ *  cb?:(p) => p
  * }}
  * @returns {Promise<Thread>}
  */
@@ -178,7 +177,7 @@ function postJob ({
   jobData,
   thread,
   channel = 'mainChannel',
-  callback
+  callback = p => p
 }) {
   return new Promise((resolve, reject) => {
     const startTime = Date.now()
@@ -196,8 +195,7 @@ function postJob ({
         pool.emit('noJobsRunning')
       }
 
-      if (callback) return resolve(callback(result))
-      return resolve(result)
+      return resolve(callback(result))
     })
     thread[channel].once('error', reject)
     thread[channel].postMessage({ name: jobName, data: jobData })
@@ -512,7 +510,7 @@ export class ThreadPool extends EventEmitter {
           resolve(this)
         })
       }
-    }).catch(console.error)
+    })
   }
 
   /**
@@ -557,7 +555,7 @@ export class ThreadPool extends EventEmitter {
  */
 const ThreadPoolFactory = (() => {
   /** @type {Map<string, ThreadPool>} */
-  let threadPools = new Map()
+  const threadPools = new Map()
 
   /**
    * By default the system-wide thread upper limit is the total # of cores.
