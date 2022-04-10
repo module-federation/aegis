@@ -1,15 +1,23 @@
 'use strict'
 
 /** @typedef {import('.').Model} Model */
+/**
+ * @typedef {object} dsOpts
+ * @property {boolean} memoryOnly - if true returns memory adapter and caches it
+ * @property {boolean} ephemeral - if true returns memory adapter but doesn't cache it
+ * @property {string} adapterName - name of adapter to use
+ */
 
 import ModelFactory from '.'
 import * as adapters from '../adapters/datasources'
-import dbconfig from '../adapters/datasources'
+import dsconfig from '../adapters/datasources'
 import sysconf from '../config'
+import { withSharedMem } from './shared-memory'
 
 const defaultAdapter = sysconf.hostConfig.adapters.defaultDatasource
 const DefaultDataSource = adapters[defaultAdapter]
 
+if (!DefaultDataSource) throw new Error('no default datasource')
 /**
  * Creates or returns the dedicated datasource for the domain model.
  * @todo handle all state same way
@@ -33,40 +41,28 @@ const DataSourceFactory = (() => {
   }
 
   function listDataSources () {
-    return [...dataSources]
+    return [...dataSources.keys()]
   }
 
-  /**
-   * Get datasource from model spec or return default for server.
-   * @param {Map} ds - data structure
-   * @param {DataSourceFactory} factory this factory
-   * @param {string} name datasource name
-   * @returns
-   */
-  function getSpecDataSource (spec, ds, factory, name) {
+  function createDataSourceClass (spec, options) {
+    const { memoryOnly, cachedWrite, ephemeral, adapterName } = options
+
+    if ((memoryOnly && !cachedWrite) || ephemeral) {
+      return dsconfig.getBaseClass(dsconfig.MEMORYADAPTER)
+    }
+
+    if (adapterName) return adapters[adapterName] || DefaultDataSource
+
     if (spec && spec.datasource) {
       const url = spec.datasource.url
       const cacheSize = spec.datasource.cacheSize
       const adapterFactory = spec.datasource.factory
-      const BaseClass = dbconfig.getBaseClass(spec.datasource.baseClass)
-
-      try {
-        const DataSource = adapterFactory(url, cacheSize, BaseClass)
-        return new DataSource(ds, factory, name)
-      } catch (error) {
-        console.error(error)
-      }
+      const BaseClass = dsconfig.getBaseClass(spec.datasource.baseClass)
+      return adapterFactory(url, cacheSize, BaseClass)
     }
-    // use default datasource
-    return new DefaultDataSource(ds, factory, name)
-  }
 
-  /**
-   * @typedef {object} dsOpts
-   * @property {boolean} memoryOnly - if true returns memory adapter and caches it
-   * @property {boolean} ephemeral - if true returns memory adapter but doesn't cache it
-   * @property {string} adapterName - name of adapter to use
-   */
+    return DefaultDataSource
+  }
 
   /**
    * Get the datasource for each model.
@@ -74,39 +70,37 @@ const DataSourceFactory = (() => {
    * @param {dsOpts} options - memory only, ephemeral, adapter ame
    * @returns {import('./datasource').default}
    */
-  function getDataSource (name, { memoryOnly, ephemeral, adapterName } = {}) {
-    const spec = ModelFactory.getModelSpec(name)
-    const cachedWrite = spec?.datasource?.cachedWrite || false
-
+  function getDataSource (name, options = {}) {
     if (!dataSources) {
       dataSources = new Map()
     }
 
-    if (dataSources.has(name)) {
-      return dataSources.get(name)
+    if (dataSources.has(String(name).toUpperCase())) {
+      return dataSources.get(String(name).toUpperCase())
     }
 
-    if ((memoryOnly && !cachedWrite) || ephemeral) {
-      const MemoryDs = dbconfig.getBaseClass(dbconfig.MEMORYADAPTER)
-      const newDs = new MemoryDs(new Map(), this, name)
-      if (!ephemeral) dataSources.set(name, newDs)
-      return newDs
-    }
+    const spec = ModelFactory.getModelSpec(String(name).toUpperCase())
+    const dsMap = options.dsMap || new Map()
+    const DsClass = createDataSourceClass(spec, options)
+    const MixinClass = options.mixin ? options.mixin(DsClass) : DsClass
+    const newDs = new MixinClass(dsMap, this, String(name).toUpperCase())
 
-    if (adapterName) {
-      const adapter = adapters[adapterName]
-      if (adapter) {
-        const newDs = new adapter(new Map(), this, name)
-        dataSources.set(name, newDs)
-        return newDs
-      }
-      console.error('no such adapter', adapterName)
-      return
-    }
+    if (!options.ephemeral) dataSources.set(String(name).toUpperCase(), newDs)
 
-    const newDs = getSpecDataSource(spec, new Map(), this, name)
-    dataSources.set(name, newDs)
     return newDs
+  }
+
+  function getSharedDataSource (name, options) {
+    if (!dataSources) {
+      dataSources = new Map()
+    }
+
+    if (dataSources.has(String(name).toUpperCase())) {
+      return dataSources.get(String(name).toUpperCase())
+    }
+    const ds = withSharedMem(getDataSource, this, name, options)
+    console.debug({ fn: getDataSource.name, ds })
+    return ds
   }
 
   function close () {
@@ -120,6 +114,7 @@ const DataSourceFactory = (() => {
      * @returns {import('./datasource').default} DataSource singleton
      */
     getDataSource,
+    getSharedDataSource,
     hasDataSource,
     listDataSources,
     close

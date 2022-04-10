@@ -24,7 +24,9 @@ const DateFunctions = {
  * @param {import("../datasource").default} repository
  * @returns
  */
-async function parseQuery(query, repository) {
+async function parseQuery (query, repository) {
+  //return Array.from(repository.dsMap.keys())
+
   if (query?.count) {
     const dateFunc = DateFunctions[query.count]
 
@@ -53,7 +55,7 @@ async function parseQuery(query, repository) {
 
     return {
       total: (await repository.list(null, false)).length,
-      cached: repository.getCacheSize(),
+      cached: repository.totalRecords(),
       bytes: repository.getCacheSizeBytes()
     }
   }
@@ -68,8 +70,8 @@ async function parseQuery(query, repository) {
  * @param {{repository:import('../datasource').default}}
  * @returns {listModels}
  */
-export default function makeListModels({ repository } = {}) {
-  return async function listModels(query) {
+export default function makeListModels ({ repository } = {}) {
+  return async function listModels (query) {
     return parseQuery(query, repository)
   }
 }

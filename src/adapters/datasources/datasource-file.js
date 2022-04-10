@@ -9,10 +9,10 @@ const dirPath = process.env.DATASOURCE_DIRECTORY
  */
 export class DataSourceFile extends DataSourceMemory {
   /**
-   * @param {Set} dataSource
+   * @param {Set} map
    */
-  constructor (dataSource, factory, name) {
-    super(dataSource, factory, name)
+  constructor (map, factory, name) {
+    super(d, factory, name)
   }
 
   getFilePath () {
@@ -29,7 +29,7 @@ export class DataSourceFile extends DataSourceMemory {
     this.file = this.getFilePath()
     console.log('path to filesystem storage:', this.file)
     this.serializer = serializer
-    this.dataSource = this.readFile(hydrate)
+    this.dsMap = this.readFile(hydrate)
   }
 
   replace (key, value) {
@@ -48,10 +48,10 @@ export class DataSourceFile extends DataSourceMemory {
 
   writeFile () {
     try {
-      const dataStr = JSON.stringify([...this.dataSource], this.replace)
+      const dataStr = JSON.stringify([...this.dsMap], this.replace)
       fs.writeFileSync(this.file, dataStr)
     } catch (error) {
-      console.error({ fn: this.writeFile.name, file: this.file, error })
+      console.error(error)
     }
   }
 

@@ -41,9 +41,8 @@ function buildOptions (model) {
     return {
       ...options,
       // main thread does not write to persistent store
-      repository: DataSourceFactory.getDataSource(model.modelName, {
-        memoryOnly: true
-      }),
+      repository: DataSourceFactory.getSharedDataSource(model.modelName),
+
       // only main thread knows about thread pools (no nesting)
       threadpool: ThreadPoolFactory.getThreadPool(model.modelName, {
         preload: false
@@ -53,7 +52,7 @@ function buildOptions (model) {
     return {
       ...options,
       // only worker threads can write to persistent storage
-      repository: DataSourceFactory.getDataSource(model.modelName)
+      repository: DataSourceFactory.getSharedDataSource(model.modelName)
     }
   }
 }
@@ -81,7 +80,7 @@ function make (factory) {
  * @returns
  */
 function makeOne (modelName, factory) {
-  const spec = ModelFactory.getModelSpec(modelName)
+  const spec = ModelFactory.getModelSpec(modelName.toUpperCase())
   return factory(buildOptions(spec))
 }
 

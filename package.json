@@ -38,6 +38,7 @@
     "nats": "2.5.0",
     "python-shell": "^3.0.1",
     "regenerator-runtime": "0.13.9",
+    "sharedmap": "^1.2.0",
     "webpack": "^5.66.0",
     "whois": "2.13.7",
     "yarn": "^1.22.17"

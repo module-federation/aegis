@@ -35,10 +35,11 @@ function roughSizeOfObject (...objects) {
  * Abstract datasource class
  */
 export default class DataSource {
-  constructor (dataSource, factory, name) {
-    this.dataSource = dataSource
+  constructor (map, factory, name) {
+    this.dsMap = map
     this.factory = factory
     this.name = name
+    console.debug({ fn: DataSource.name, dsMap: this.dsMap })
   }
   /**
    * Upsert model instance
@@ -97,12 +98,16 @@ export default class DataSource {
   /**
    *
    */
+  totalRecords () {
+    return this.dsMap.length
+  }
+
   getCacheSize () {
-    return this.dataSource.size
+    return this.totalRecords()
   }
 
   getCacheSizeBytes () {
-    return this.dataSource.size * roughSizeOfObject([...this.dataSource][0][1])
+    return this.totalRecords() * roughSizeOfObject(this.dsMap.reduce(a => a))
   }
 
   /**

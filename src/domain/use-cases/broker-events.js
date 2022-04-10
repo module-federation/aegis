@@ -6,11 +6,6 @@ import { ServiceMeshAdapter as ServiceMesh } from '../../adapters'
 import { isMainThread, workerData } from 'worker_threads'
 import domainEvents from '../domain-events'
 
-// use external event bus for distributed object cache?
-//const useEventBus = /true/i.test(process.env.EVENTBUS_ENABLED) || false
-// what channel to broadcast cache events?
-//const broadcast = process.env.TOPIC_BROADCAST || 'broadcastChannel'
-
 /**
  * Broker events between threadpools and remote mesh instances.
  * - an event raised by one pool may need to be processed by another
@@ -33,7 +28,6 @@ export default function brokerEvents (
   console.debug({ fn: brokerEvents.name })
 
   if (isMainThread) {
-    const localModels = models.getModelSpecs().map(spec => spec.modelName)
     /**
      * For each local model, find the related models in its spec
      * and use them to generate a list of domain & crud events.
@@ -73,15 +67,30 @@ export default function brokerEvents (
     const searchEvents = eventName =>
       routes.filter(r => r[0] === eventName).map(r => r[1])
 
-    const parseEventTarget = event =>
-      Array.isArray(event.eventTarget) ? event.eventTarget : [event.eventTarget]
-
-    function inferEventTarget (event) {
-      return searchEvents(event)
+    function _inferEventTargets (event) {
+      if (!event?.eventName) return []
+      const targets = searchEvents(event.eventName)
+      if (targets.length < 1) {
+        const e = event.eventName
+        const eventTarget = e.slice(e.lastIndexOf('_') + 1)
+        console.log({ eventTarget })
+        return searchEvents(eventTarget)
+      }
+      return targets
     }
 
-    const targetIsRemote = targets =>
-      targets.filter(t => !localModels.includes(t))
+    function inferEventTargets (event) {
+      const targets = _inferEventTargets(event)
+      console.log({ fn: inferEventTargets.name, targets, event })
+      return targets
+    }
+
+    const parseEventTargets = event =>
+      Array.isArray(event.eventTarget) ? event.eventTarget : [event.eventTarget]
+
+    const localModels = models.getModelSpecs().map(spec => spec.modelName)
+
+    const targetIsRemote = target => !localModels.includes(target)
 
     /**
      * Get/start the pool and fire an event into the thread
@@ -107,12 +116,12 @@ export default function brokerEvents (
       try {
         if (event.metaEvent) return true // don't forward these
 
-        // if the event specifies a target, use that; otherwise, deduce from config
+        // if no target specififed, deduce it from config
         const targets = event.eventTarget
-          ? parseEventTarget(event)
-          : inferEventTarget(event)
+          ? parseEventTargets(event)
+          : inferEventTargets(event)
 
-        if (targetIsRemote(targets)) return false
+        if (targets.length < 1) return false
 
         const handled = await Promise.all(
           targets.map(async target => {
@@ -122,29 +131,38 @@ export default function brokerEvents (
               target
             })
 
+            if (targetIsRemote(target)) return false
+
             try {
               await sendEvent(event, target)
             } catch (error) {
               return false
             }
 
-            // if all targets handled locally, do not forward
             return true
           })
         )
-
-        return handled.reduce((c, p) => c && p, []) && !event.broadcast
+        // if all targets handled locally, dont forward
+        return handled.reduce((c, p) => c && p, [])
       } catch (error) {
         console.debug({ fn: route.name, error })
       }
       return false
     }
 
+    function enrichEvent (event) {
+      if (event.modelId)
+        return {
+          ...event,
+          model: datasources.getDataSource(event.modelName).find(event.modelId)
+        }
+    }
+
     // forward everything from workers to service mesh, unless handled locally
-    broker.on(
-      'from_worker',
-      async event => (await route(event)) || ServiceMesh.publish(event)
-    )
+    broker.on('from_worker', async event => {
+      //DataSourceFactory.getDataSource(event.eventSource).save
+      ;(await route(event)) || ServiceMesh.publish(event)
+    })
 
     // forward anything from the servivce mesh to the workers
     broker.on('from_mesh', event => broker.notify('to_worker', event))
@@ -152,7 +170,7 @@ export default function brokerEvents (
     const listModels = () =>
       models.getModelSpecs().map(spec => spec.modelName) || []
 
-    // start mesh
+    // connect to the service mesh
     ServiceMesh.connect({ models: listModels, broker })
   } else {
     function buildPubSubFunctions () {
@@ -164,8 +182,10 @@ export default function brokerEvents (
           })
           broker.notify('to_main', event)
         },
+
         subscribe: (eventName, cb) => {
           console.debug('worker: subscribed to main', eventName)
+
           broker.on('from_main', event => {
             if (event.eventName === eventName) {
               console.debug({

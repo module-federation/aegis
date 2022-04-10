@@ -58,10 +58,9 @@ export default function getContent (httpRequest, content, defaultTitle) {
           <meta charset="utf-8" />
           <meta name="viewport" content="width=device-width, initial-scale=1" />
           <link rel="icon" type="image/png" href="/aegis-logo.png" />
-          <h3 style='color: black'>
-            <a> <img src="/aegis-logo.png" alt="aegis" width="35" height="35" />ÆGIS Domain Model API</a>
+          <h3 style='color: fusia'>
+            <a href="/index.html"> <img src="/aegis-logo.png" alt="aegis" width="65" height="65" style="font: x-large" /><sup><b>ÆGIS</b> Domain Model API</sup></a>
           </h3> 
-          <h2>${title}</h2>
           </head>
           <style>
           #configs {
@@ -89,7 +88,7 @@ export default function getContent (httpRequest, content, defaultTitle) {
 
     contents.forEach(function (content) {
       text += `<div style="margin-bottom: 40px;">
-                    <table id="configs">`
+                    <table id="configs" border="3px solid #ddd; border-collapse: collapse">`
 
       Object.keys(content).forEach(key => {
         let val = content[key]

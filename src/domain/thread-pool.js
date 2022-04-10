@@ -2,9 +2,9 @@
 
 import EventBrokerFactory from './event-broker'
 import { EventEmitter } from 'stream'
-import { setEnvironmentData, Worker } from 'worker_threads'
+import { Worker } from 'worker_threads'
 import domainEvents from './domain-events'
-import ModelFactory from '.'
+import ModelFactory, { DataSourceFactory } from '.'
 import os from 'os'
 const { poolOpen, poolClose, poolDrain } = domainEvents
 const broker = EventBrokerFactory.getInstance()
@@ -12,14 +12,17 @@ const DEFAULT_THREADPOOL_MIN = 1
 const DEFAULT_THREADPOOL_MAX = 2
 const DEFAULT_JOBQUEUE_TOLERANCE = 25
 const DEFAULT_DURATION_TOLERANCE = 1000
-const EVENTCHANNEL_MAXRETRY = 20
 
 /**
  * @typedef {object} Thread
  * @property {Worker.threadId} id
- * @property {Worker} worker
- * @property {function()} stop
- * @property {MessagePort} eventPort
+ * @property {function():Promise<void>} stop
+ * @property {MessagePort} eventChannel
+ * @property {Worker} mainChannel
+ */
+
+/**
+ * @typedef {import('./model').Model} Model}
  */
 
 /**
@@ -34,7 +37,7 @@ async function kill (thread) {
 
       const timerId = setTimeout(async () => {
         try {
-          const threadId = await thread.worker.terminate()
+          const threadId = await thread.mainChannel.terminate()
           console.warn('forcefully terminated thread', threadId)
           resolve(threadId)
         } catch (error) {
@@ -43,14 +46,14 @@ async function kill (thread) {
         }
       }, 5000)
 
-      thread.worker.once('exit', () => {
+      thread.mainChannel.once('exit', () => {
         clearTimeout(timerId)
-        thread.eventPort.close()
+        thread.eventChannel.close()
         console.info('clean exit of thread', thread.id)
         resolve(thread.id)
       })
 
-      thread.eventPort.postMessage({ name: 'shutdown', data: 0 })
+      thread.eventChannel.postMessage({ name: 'shutdown', data: 0 })
     })
   } catch (error) {
     return console.error({ fn: kill.name, error })
@@ -70,25 +73,43 @@ function connectEventChannel (worker, channel) {
   const { port1, port2 } = channel
   worker.postMessage({ eventPort: port2 }, [port2])
 
-  broker.on('to_worker', event => {
+  broker.on('to_worker', async event => {
     console.debug({
       msg: 'main: sent to worker',
       eventName: event.eventName,
       modelName: event.modelName,
+      modelId: event.modelId,
       eventTarget: event.eventTarget,
       eventSource: event.eventSource
     })
-    port1.postMessage(JSON.parse(JSON.stringify(event)))
+
+    //pipe(JSON.stringify, JSON.parse, port1.postMessage)
+    port1.postMessage(
+      JSON.parse(
+        JSON.stringify({
+          ...event,
+          modelId: event.model?.modelId,
+          modelName: event.model?.modelName
+        })
+      )
+    )
   })
-  port1.onmessage = event => {
+
+  port1.onmessage = async event => {
     console.debug({
       msg: 'main: received from worker',
-      eventName: event.data.eventName,
-      modelName: event.data.modelName,
-      eventTarget: event.data.eventTarget,
-      eventSource: event.data.eventSource
+      eventName: event.data?.eventName,
+      modelName: event.data?.modelName,
+      eventTarget: event.data?.eventTarget,
+      eventSource: event.data?.eventSource,
+      model: event.data?.model
     })
-    broker.notify('from_worker', event.data)
+
+    await broker.notify('from_worker', {
+      ...event.data,
+      modelId: event.data?.modelId,
+      modelName: event.data?.modelName
+    })
   }
 }
 
@@ -104,19 +125,18 @@ function connectEventChannel (worker, channel) {
 function newThread ({ pool, file, workerData }) {
   return new Promise((resolve, reject) => {
     try {
-      const channel = new MessageChannel()
+      const eventChannel = new MessageChannel()
       const worker = new Worker(file, { workerData })
-      setEnvironmentData('modelName', pool.name)
       pool.workerRef.push(worker)
       pool.totalThreads++
 
       const thread = {
         file,
         pool,
-        worker,
-        eventPort: channel.port1,
         id: worker.threadId,
         createdAt: Date.now(),
+        mainChannel: worker,
+        eventChannel: eventChannel.port1,
         async stop () {
           await kill(this)
         }
@@ -124,7 +144,7 @@ function newThread ({ pool, file, workerData }) {
       setTimeout(reject, 10000)
 
       worker.once('message', msg => {
-        connectEventChannel(worker, channel)
+        connectEventChannel(worker, eventChannel)
         pool.emit('aegis-up', msg)
         resolve(thread)
       })
@@ -145,15 +165,23 @@ function newThread ({ pool, file, workerData }) {
  *  jobName:string,
  *  jobData:any,
  *  thread:Thread,
- *  cb:function()
+ *  channel?:"mainChannel"|"eventChannel",
+ *  cb?:(p) => p
  * }}
  * @returns {Promise<Thread>}
  */
-function postJob ({ pool, jobName, jobData, thread, cb }) {
+function postJob ({
+  pool,
+  jobName,
+  jobData,
+  thread,
+  channel = 'mainChannel',
+  callback = p => p
+}) {
   return new Promise((resolve, reject) => {
     const startTime = Date.now()
 
-    thread.worker.once('message', result => {
+    thread[channel].once('message', result => {
       pool.jobTime(Date.now() - startTime)
 
       if (pool.waitingJobs.length > 0) {
@@ -166,11 +194,10 @@ function postJob ({ pool, jobName, jobData, thread, cb }) {
         pool.emit('noJobsRunning')
       }
 
-      if (cb) return resolve(cb(result))
-      return resolve(result)
+      return resolve(callback(result))
     })
-    thread.worker.once('error', reject)
-    thread.worker.postMessage({ name: jobName, data: jobData })
+    thread[channel].once('error', reject)
+    thread[channel].postMessage({ name: jobName, data: jobData })
   }).catch(console.error)
 }
 
@@ -222,7 +249,7 @@ export class ThreadPool extends EventEmitter {
       }
     }
 
-    setInterval(dequeue.bind(this), 1500)
+    //setInterval(dequeue.bind(this), 1500)
 
     if (options.preload) {
       console.info('preload enabled for', this.name)
@@ -395,7 +422,7 @@ export class ThreadPool extends EventEmitter {
    * @param {*} jobData anything that can be cloned
    * @returns {Promise<*>} anything that can be cloned
    */
-  run (jobName, jobData) {
+  run (jobName, jobData, channel = 'mainChannel') {
     return new Promise(async resolve => {
       this.jobsRequested++
 
@@ -418,7 +445,8 @@ export class ThreadPool extends EventEmitter {
               pool: this,
               jobName,
               jobData,
-              thread
+              thread,
+              channel
             })
 
             return resolve(result)
@@ -432,7 +460,8 @@ export class ThreadPool extends EventEmitter {
             jobName,
             jobData,
             thread,
-            cb: result => resolve(result)
+            channel,
+            callback: result => resolve(result)
           })
         )
 
@@ -448,30 +477,8 @@ export class ThreadPool extends EventEmitter {
     return this
   }
 
-  async fireEvent (event, retries = 0) {
-    return new Promise((resolve, reject) => {
-      // don't retry forever
-      if (retries > EVENTCHANNEL_MAXRETRY) {
-        console.error('event channel retry timeout', event)
-        return reject('timeout')
-      }
-      const threads = this.freeThreads
-      if (!threads || threads.length < 1) return reject('no threads')
-      const thread = threads[0]
-
-      if (thread) {
-        // don't send to the sender (infinite loop)
-        if (event.port === thread.eventPort) return
-        // return the response
-        thread.eventPort.once('message', msgEvent => resolve(msgEvent))
-        // send over thread's event subchannel
-        console.log('sending', event)
-        thread.eventPort.postMessage(event)
-      } else {
-        // all threads busy, keep trying
-        setTimeout(this.fireEvent, 1000, event, retries++)
-      }
-    })
+  async fireEvent (event) {
+    return this.run(event.name, event.data, 'eventChannel')
   }
 
   /**
@@ -502,7 +509,7 @@ export class ThreadPool extends EventEmitter {
           resolve(this)
         })
       }
-    }).catch(console.error)
+    })
   }
 
   /**
@@ -547,7 +554,7 @@ export class ThreadPool extends EventEmitter {
  */
 const ThreadPoolFactory = (() => {
   /** @type {Map<string, ThreadPool>} */
-  let threadPools = new Map()
+  const threadPools = new Map()
 
   /**
    * By default the system-wide thread upper limit is the total # of cores.
@@ -555,30 +562,38 @@ const ThreadPoolFactory = (() => {
    * @param {*} options
    * @returns
    */
-  function determineMaxThreads (options) {
+  function calculateMaxThreads (options) {
     if (options?.maxThreads) return options.maxThreads
     const nApps = ModelFactory.getModelSpecs().filter(s => !s.isCached).length
-    return (
-      Math.floor(os.cpus().length / (nApps || DEFAULT_THREADPOOL_MAX || 2)) || 1
-    )
+    return Math.floor(os.cpus().length / nApps || 1) || DEFAULT_THREADPOOL_MAX
   }
 
   /**
-   * Typical way to create a pool for use by a domain model
-   * @param {string} modelName named after model using it
-   * @param {{preload:boolean, waitingJobs:function(Thread)[]}} options
+   * @typedef threadOptions
+   * @property {string} file path of file containing worker code
+   * @property {string} eval
+   *
+   */
+  /**
+   * Creates a pool for use by a domain {@link Model}.
+   * Provides a thread-safe {@link Map}.
+   * @param {string} modelName named after the {@link Model} using it
+   * @param {threadOptions} options
    * @returns
    */
   function createThreadPool (modelName, options) {
     console.debug({ fn: createThreadPool.name, modelName, options })
 
-    const maxThreads = determineMaxThreads()
+    const maxThreads = calculateMaxThreads()
+    const sharedMap = DataSourceFactory.getDataSource(modelName).dsMap
+    const initData = options.initData || {}
+    const file = options.file || options.eval || './dist/worker.js'
 
     try {
       const pool = new ThreadPool({
-        file: './dist/worker.js',
+        file,
         name: modelName,
-        workerData: { modelName },
+        workerData: { modelName, sharedMap, initData },
         options: { ...options, maxThreads }
       })
 
@@ -595,12 +610,18 @@ const ThreadPoolFactory = (() => {
 
   /**
    * Returns existing or creates new threadpool called `poolName`
-   * @param {string} poolName typically named after `modelName` it handles
+   *
+   * @param {string} poolName named after `modelName`
    * @param {{preload:boolean}} options preload means we return the actual
    * threadpool instead of a facade, which will load the remotes at startup
-   * instead of loading them on the first request for `modelName`. The default
+   * instead of loading them on the first request for service. The default
    * is `false`, so that startup is faster and only the minimum number of threads
-   * and remote imports run.
+   * and remote imports run. If one service relies on another, but that service
+   * is dowm (not preloaded), the system will automatically spin up a thread and
+   * start the service in order to handle the request. This overhead of starting
+   * threads, which usually completes in under a second, occurs twice
+   * in a service's lifetime: when started for the first time and when restarted
+   * to handle a deployment.
    */
   function getThreadPool (poolName, options = { preload: false }) {
     function getPool (poolName, options) {
@@ -617,8 +638,12 @@ const ThreadPoolFactory = (() => {
       status () {
         return getPool(poolName, options).status()
       },
-      fireEvent (input) {
-        return getPool(poolName, options).fireEvent(input)
+      fireEvent (event) {
+        return getPool(poolName, options).run(
+          event.name,
+          event.data,
+          'eventChannel'
+        )
       }
     }
 
@@ -627,6 +652,7 @@ const ThreadPoolFactory = (() => {
 
   /**
    * post a message to all pools (at least one thread)
+   * eee
    * @param {import('./event').Event} event
    */
   function fireAll (event) {

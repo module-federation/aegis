@@ -6,8 +6,8 @@ import DataSource from '../../domain/datasource'
  * Temporary in-memory storage.
  */
 export class DataSourceMemory extends DataSource {
-  constructor (dataSource, factory, name) {
-    super(dataSource, factory, name)
+  constructor (map, factory, name) {
+    super(map, factory, name)
   }
 
   /**
@@ -32,14 +32,15 @@ export class DataSourceMemory extends DataSource {
         id
       })
     }
-    return this.dataSource.set(id, data).get(id)
+    this.dsMap.set(id, data)
+    return data
   }
 
   /**
    * @override
    */
   async find (id) {
-    return this.dataSource.get(id)
+    return this.dsMap.get(id)
   }
 
   /**
@@ -56,7 +57,7 @@ export class DataSourceMemory extends DataSource {
    * @returns
    */
   listSync (query) {
-    const values = [...this.dataSource.values()]
+    const values = this.dsMap.map(v => JSON.parse(v))
 
     if (!values) return []
 
@@ -89,6 +90,6 @@ export class DataSourceMemory extends DataSource {
         id
       })
     }
-    this.dataSource.delete(id)
+    this.dsMap.delete(id)
   }
 }

@@ -186,8 +186,8 @@ export default function DistributedCache ({
     return async function (message) {
       try {
         const event = parse(message)
-        const { eventName, model, modelName } = event
-        const modelNameUpper = modelName.toUpperCase()
+        const { eventName, model } = event
+        const modelNameUpper = model.modelName.toUpperCase()
 
         console.debug('handle cache event', eventName)
 
@@ -279,8 +279,7 @@ export default function DistributedCache ({
     if (!model || model.length < 1) {
       console.debug(formatResponse.name, 'no model provided', model)
       return {
-        ...event,
-        model: null
+        ...event
       }
     }
 
@@ -356,6 +355,7 @@ export default function DistributedCache ({
         publish({
           ...event,
           eventName: response,
+          modelName: event.evenTarget,
           eventTarget: event.eventSource,
           eventSource: event.eventTarget
         })

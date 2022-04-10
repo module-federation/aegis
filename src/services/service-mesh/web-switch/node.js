@@ -43,16 +43,48 @@ const _url = (proto, host, port) =>
   proto && host && port ? `${proto}://${host}:${port}` : null
 
 let serviceUrl = _url(protocol, host, port)
-let isBackupSwitch = false
+let isBackupSwitch = config.isBackupSwitch || false
 let activateBackup = false
 let uplinkCallback
 
+let dnsPriority
 /** @type {import('../../../domain/event-broker').EventBroker} */
 let broker
 /** @type {import('../../../domain/model-factory').ModelFactory} */
 let models
 /** @type {WebSocket} */
 let ws
+
+const DnsPriority = {
+  setHigh () {
+    dnsPriority = { priorities: 10, weight: 20 }
+  },
+  setMedium () {
+    dnsPriority = { priorities: 20, weight: 40 }
+  },
+  setLow () {
+    dnsPriority = { priorities: 40, weight: 80 }
+  },
+  getCurrent () {
+    return dnsPriority
+  },
+  match (prio) {
+    const { priority, weight } = this.getCurrent()
+    return prio.priority === priority && prio.weight === weight
+  },
+  setBackupPriority () {
+    // set to low
+    config.priority = 40
+    config.weight = 80
+  }
+}
+
+DnsPriority.setHigh()
+
+function checkTakeover () {
+  if (DnsPriority.getCurrent().priority === config.priority)
+    activateBackup = true
+}
 
 /**
  * Use multicast DNS to find the host
@@ -70,7 +102,10 @@ async function resolveServiceUrl () {
       debug && console.debug({ fn: resolveServiceUrl.name, response })
 
       const answer = response.answers.find(
-        a => a.name === SERVICENAME && a.type === 'SRV'
+        a =>
+          a.name === SERVICENAME &&
+          a.type === 'SRV' &&
+          DnsPriority.match(a.data)
       )
 
       if (answer) {
@@ -90,16 +125,12 @@ async function resolveServiceUrl () {
      * @returns
      */
     function runQuery (retries = 0) {
-      if (retries > maxRetries) {
-        activateBackup = true
-
-        console.warn({
-          fn: runQuery.name,
-          msg: 'primary switch unresponsive: taking over',
-          isBackupSwitch,
-          activateBackup
-        })
-        return
+      if (retries > maxRetries / 2) {
+        DnsPriority.setMedium()
+        checkTakeover()
+      } else if (retries > maxRetries) {
+        DnsPriority.setLow()
+        checkTakeover()
       }
 
       // query the service name
@@ -107,7 +138,8 @@ async function resolveServiceUrl () {
         questions: [
           {
             name: SERVICENAME,
-            type: 'SRV'
+            type: 'SRV',
+            data: DnsPriority.getCurrent()
           }
         ]
       })
@@ -121,6 +153,52 @@ async function resolveServiceUrl () {
     }
 
     runQuery()
+
+    dns.on('query', function (query) {
+      debug && console.debug('got a query packet:', query)
+
+      const questions = query.questions.filter(
+        q => q.name === SERVICENAME || q.name === HOSTNAME
+      )
+
+      if (!questions[0]) {
+        console.assert(!debug, {
+          fn: 'dns query',
+          msg: 'no questions',
+          questions
+        })
+        return
+      }
+
+      if (config.isSwitch || (isBackupSwitch && activateBackup)) {
+        const answer = {
+          answers: [
+            {
+              name: SERVICENAME,
+              type: 'SRV',
+              data: {
+                port: activePort,
+                weight: config.priority,
+                priority: config.weight,
+                target: activeHost
+              }
+            }
+          ]
+        }
+
+        console.info({
+          fn: dns.on.name + "('query')",
+          isSwitch: config.isSwitch,
+          isBackupSwitch,
+          activateBackup,
+          msg: 'answering query packet',
+          questions,
+          answer
+        })
+
+        dns.respond(answer)
+      }
+    })
   })
 }
 
@@ -226,6 +304,7 @@ function startHeartbeat () {
     } else {
       try {
         clearInterval(intervalId)
+
         if (broker)
           await broker.notify(TIMEOUTEVENT, { error: 'server unresponsive' })
 
@@ -249,6 +328,7 @@ function startHeartbeat () {
  */
 const handshake = {
   eventName: 'handshake',
+  metaEvent: true,
   proto: SERVICENAME,
   role: 'node',
   pid: process.pid,
@@ -273,6 +353,11 @@ const handshake = {
       if (typeof message === 'object') {
         msg = message = JSON.stringify(message)
       }
+
+      const dynamicBackup = this.becomeBackupSwitch(message)
+      if (dynamicBackup) DnsPriority.setBackupPriority()
+      isBackupSwitch = true
+
       console.assert(valid, `invalid message ${msg}`)
       return valid
     }
@@ -312,7 +397,6 @@ async function _connect () {
 
         if (handshake.validate(event)) {
           // check if the switch wants us to be a backup
-          isBackupSwitch = handshake.becomeBackupSwitch(event)
 
           // process event
           if (event.eventName) {
@@ -350,16 +434,23 @@ let reconnTimerId
  *
  */
 async function reconnect () {
+  let attempts = 0
   try {
     ws = null
-    if (!reconnTimerId)
-      reconnTimerId = setInterval(
-        () =>
-          !ws
-            ? _connect()
-            : clearInterval(reconnTimerId) && (reconnTimerId = null),
-        30000
-      )
+    if (!reconnTimerId) {
+      reconnTimerId = setInterval(() => {
+        if (++attempts % 10 === 0) {
+          // try new url after a minute
+          serviceUrl = null
+        }
+        if (ws) {
+          clearInterval(reconnTimerId)
+          reconnTimerId = null
+          return
+        }
+        _connect()
+      }, 6000)
+    }
   } catch (error) {
     console.error({ fn: reconnect.name, error })
   }

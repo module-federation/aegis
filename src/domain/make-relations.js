@@ -59,7 +59,10 @@ async function updateForeignKeys (model, event, relation, ds) {
     )
   ) {
     console.debug(updateForeignKeys.name, 'found', event)
-    return model.update({ [relation.foreignKey]: event.model.id }, false)
+    return model.update(
+      { [relation.foreignKey]: event.model.id || event.model.getId() },
+      false
+    )
   } else if (
     model instanceof Array &&
     (relation.type === relationType.oneToMany.name ||
@@ -132,9 +135,7 @@ export default function makeRelations (relations, datasource, broker) {
             // Get the datasource of the related object
             const ds = datasource
               .getFactory()
-              .getDataSource(rel.modelName.toUpperCase(), {
-                memoryOnly: true // in case ds is remote
-              })
+              .getSharedDataSource(rel.modelName.toUpperCase())
 
             const model = await relationType[rel.type](this, ds, rel)
 
@@ -151,15 +152,15 @@ export default function makeRelations (relations, datasource, broker) {
               // each arg contains input to create a new object
               if (event && event.args.length > 0) {
                 const updated = await updateForeignKeys(this, event, rel, ds)
-                setTimeout(updateForeignKeys, 3000, this, event, rel, ds)
+                //eesetTimeout(updateForeignKeys, 3000, this, event, rel, ds)
                 //const result = await relationType[rel.type](updated, ds, rel)
                 console.debug({ model: updated })
                 return updated
               }
 
-              //const result = await relationType[rel.type](this, ds, rel)
-              //console.debug({ model: event.model })
-              return event.model
+              const result = await relationType[rel.type](this, ds, rel)
+              console.debug({ fn: makeRelations.name, result })
+              return result
             }
             return model
           }
