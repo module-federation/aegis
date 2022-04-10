@@ -39,7 +39,7 @@ async function kill (thread) {
 
       const timerId = setTimeout(async () => {
         try {
-          const threadId = await thread.worker.terminate()
+          const threadId = await thread.mainChannel.terminate()
           console.warn('forcefully terminated thread', threadId)
           resolve(threadId)
         } catch (error) {
@@ -48,7 +48,7 @@ async function kill (thread) {
         }
       }, 5000)
 
-      thread.worker.once('exit', () => {
+      thread.mainChannel.once('exit', () => {
         clearTimeout(timerId)
         thread.eventChannel.close()
         console.info('clean exit of thread', thread.id)
@@ -72,7 +72,7 @@ async function kill (thread) {
  * {@link MessagePort} port2 worker uses to send to and recv from main
  */
 function connectEventChannel (worker, channel) {
-  const { port1, port2 } = channel
+  const { port2 } = channel
   worker.postMessage({ eventPort: port2 }, [port2])
 
   broker.on('to_worker', async event => {
@@ -129,14 +129,12 @@ function newThread ({ pool, file, workerData }) {
     try {
       const eventChannel = new MessageChannel()
       const worker = new Worker(file, { workerData })
-      setEnvironmentData('modelName', pool.name)
       pool.workerRef.push(worker)
       pool.totalThreads++
 
       const thread = {
         file,
         pool,
-        worker,
         id: worker.threadId,
         createdAt: Date.now(),
         mainChannel: worker,
@@ -567,10 +565,10 @@ const ThreadPoolFactory = (() => {
    * @param {*} options
    * @returns
    */
-  function determineMaxThreads (options) {
+  function calculateMaxThreads (options) {
     if (options?.maxThreads) return options.maxThreads
     const nApps = ModelFactory.getModelSpecs().filter(s => !s.isCached).length
-    return Math.floor(os.cpus().length / (nApps || DEFAULT_THREADPOOL_MAX)) || 1
+    return Math.floor(os.cpus().length / nApps || 1) || DEFAULT_THREADPOOL_MAX
   }
 
   /**
@@ -589,7 +587,7 @@ const ThreadPoolFactory = (() => {
   function createThreadPool (modelName, options) {
     console.debug({ fn: createThreadPool.name, modelName, options })
 
-    const maxThreads = determineMaxThreads()
+    const maxThreads = calculateMaxThreads()
     const sharedMap = DataSourceFactory.getDataSource(modelName).dsMap
     const initData = options.initData || {}
     const file = options.file || options.eval || './dist/worker.js'
@@ -644,10 +642,11 @@ const ThreadPoolFactory = (() => {
         return getPool(poolName, options).status()
       },
       fireEvent (event) {
-        return getPool(poolName, options).run({
-          jobName: event.name,
-          jobData: event.data
-        })
+        return getPool(poolName, options).run(
+          event.name,
+          event.data,
+          'eventChannel'
+        )
       }
     }
 
