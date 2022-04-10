@@ -2,8 +2,7 @@
 
 import EventBrokerFactory from './event-broker'
 import { EventEmitter } from 'stream'
-import { setEnvironmentData, Worker, workerData } from 'worker_threads'
-import { SharedMap } from 'sharedmap'
+import { Worker } from 'worker_threads'
 import domainEvents from './domain-events'
 import ModelFactory, { DataSourceFactory } from '.'
 import os from 'os'
