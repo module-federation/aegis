@@ -6,6 +6,7 @@ import { Worker } from 'worker_threads'
 import domainEvents from './domain-events'
 import ModelFactory, { DataSourceFactory } from '.'
 import os from 'os'
+import asyncPipe from './util/async-pipe'
 const { poolOpen, poolClose, poolDrain } = domainEvents
 const broker = EventBrokerFactory.getInstance()
 const DEFAULT_THREADPOOL_MIN = 1
@@ -542,6 +543,15 @@ export class ThreadPool extends EventEmitter {
     }
   }
 
+  bouncePool = asyncPipe(
+    this.close,
+    this.drain,
+    this.stopThreads,
+    this.startThreads,
+    this.open,
+    this.bumpDeployCount
+  )
+
   reset () {
     try {
       this.workerRef.forEach(worker => worker.terminate())
@@ -671,28 +681,33 @@ const ThreadPoolFactory = (() => {
    * @param {string} poolName i.e. modelName
    * @returns {Promise<ThreadPool>}
    */
+
   function reload (poolName) {
     return new Promise((resolve, reject) => {
       const pool = threadPools.get(poolName.toUpperCase())
 
       if (!pool) reject('no such pool')
 
-      return pool
-        .close()
-        .notify(poolClose)
-        .drain()
-        .then(pool => pool.stopThreads())
-        .then(pool => pool.startThreads())
-        .then(pool => {
-          pool
-            .open()
-            .bumpDeployCount()
-            .notify(poolOpen)
-          resolve(pool)
-        })
-        .catch(error => reject({ fn: reload.name, error }))
-    }).catch(console.error)
+      pool.emit(poolDrain(pool.name))
+
+      pool.bounce().then(pool => pool.emit(poolOpen(pool.name)))
+    })
   }
+  // .close()
+  // .notify(poolClose)
+  // .drain()
+  // .then(pool => pool.stopThreads())
+  // .then(pool => pool.startThreads())
+  // .then(pool => {
+  //   pool
+  //     .open()
+  //     aaaaaaaeeeeeaaaaaeeeaeaaaaaaaaaaaaaaaaaaaafddsdddsdddssssdsvdvddsdsddsddfsffffsfffs  .bumpDeployCount()
+  //     .notify(poolOpen)
+  //   resolve(pool)
+  // })
+  // .catch(error => reject({ fn: reload.name, error }))
+  // }).catch(console.error)
+  //ea }
 
   async function reloadAll () {
     try {
