@@ -25,8 +25,6 @@ export default function brokerEvents (
   models,
   threadpools
 ) {
-  console.debug({ fn: brokerEvents.name })
-
   if (isMainThread) {
     /**
      * For each local model, find the related models in its spec
@@ -73,7 +71,6 @@ export default function brokerEvents (
       if (targets.length < 1) {
         const e = event.eventName
         const eventTarget = e.slice(e.lastIndexOf('_') + 1)
-        console.log({ eventTarget })
         return searchEvents(eventTarget)
       }
       return targets
@@ -88,9 +85,9 @@ export default function brokerEvents (
     const parseEventTargets = event =>
       Array.isArray(event.eventTarget) ? event.eventTarget : [event.eventTarget]
 
-    const localModels = models.getModelSpecs().map(spec => spec.modelName)
+    const localModels = () => models.getModelSpecs().map(spec => spec.modelName)
 
-    const targetIsRemote = target => !localModels.includes(target)
+    const targetIsRemote = target => !localModels().includes(target)
 
     /**
      * Get/start the pool and fire an event into the thread
@@ -167,11 +164,8 @@ export default function brokerEvents (
     // forward anything from the servivce mesh to the workers
     broker.on('from_mesh', event => broker.notify('to_worker', event))
 
-    const listModels = () =>
-      models.getModelSpecs().map(spec => spec.modelName) || []
-
     // connect to the service mesh
-    ServiceMesh.connect({ models: listModels, broker })
+    ServiceMesh.connect({ models, broker })
   } else {
     function buildPubSubFunctions () {
       return {
