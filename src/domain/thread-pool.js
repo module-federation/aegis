@@ -62,6 +62,12 @@ async function kill (thread) {
 
 /** @typedef {import('./event-broker').EventBroker} EventBroker */
 
+function parse (message) {
+  if (typeof message === 'object') return JSON.parse(JSON.stringify(message))
+  if (typeof message === 'string') return JSON.parse(message)
+  return message
+}
+
 /**
  * Connect event subchannel to {@link EventBroker}
  * @param {Worker} worker worker thread
@@ -84,15 +90,7 @@ function connectEventChannel (worker, channel) {
     })
 
     //pipe(JSON.stringify, JSON.parse, port1.postMessage)
-    port1.postMessage(
-      JSON.parse(
-        JSON.stringify({
-          ...event,
-          modelId: event.model?.modelId,
-          modelName: event.model?.modelName
-        })
-      )
-    )
+    port1.postMessage(event)
   })
 
   port1.onmessage = async event => {

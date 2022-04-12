@@ -15,7 +15,7 @@ import domainEvents from '../domain-events'
  *    - crud lifecycle events
  *    - find obj / cache miss
  * @param {import('../event-broker').EventBroker} broker
- * @param {import("../datasource-factory")} datasources
+ * @param {import("../datasource-factory").DataSourceFactory} datasources
  * @param {import("../model-factory").ModelFactory} models
  * @param {import("../thread-pool").default} threadpools
  */
@@ -150,28 +150,19 @@ export default function brokerEvents (
       return false
     }
 
-    function enrichEvent (event) {
-      if (event.modelId)
-        return {
-          ...event,
-          model: datasources.getDataSource(event.modelName).find(event.modelId)
-        }
-    }
-
     // forward everything from workers to service mesh, unless handled locally
-    broker.on('from_worker', async event => {
-      //DataSourceFactory.getDataSource(event.eventSource).save
-      ;(await route(event)) || ServiceMesh.publish(event)
-    })
+    broker.on(
+      'from_worker',
+      async event =>
+        //DataSourceFactory.getDataSource(event.eventSource).save
+        (await route(event)) || ServiceMesh.publish(event)
+    )
 
     // forward anything from the servivce mesh to the workers
     broker.on('from_mesh', event => broker.notify('to_worker', event))
 
-    const listModels = () =>
-      models.getModelSpecs().map(spec => spec.modelName) || []
-
     // connect to the service mesh
-    ServiceMesh.connect({ models: listModels, broker })
+    ServiceMesh.connect({ models, broker })
   } else {
     function buildPubSubFunctions () {
       return {

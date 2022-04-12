@@ -7,7 +7,7 @@ const {
 } = require('worker_threads')
 
 from_main = 'from_main'
-from_order = 'from_ordera'
+from_order = 'from_order'
 
 const mainBc = new BroadcastChannel(from_main)
 const orderBc = new BroadcastChannel(from_order)

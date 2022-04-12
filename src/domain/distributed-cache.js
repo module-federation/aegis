@@ -177,7 +177,6 @@ export default function DistributedCache ({
 
   /**
    *
-   *
    * @param {function(string):string} parser
    * @param {function(object)} route what to do after updating
    * @returns {function(message):Promise<void>}
@@ -187,9 +186,10 @@ export default function DistributedCache ({
       try {
         const event = parse(message)
         const { eventName, model } = event
-        const modelNameUpper = model.modelName.toUpperCase()
+        const modelNameUpper = model?.modelName?.toUpperCase()
 
         console.debug('handle cache event', eventName)
+        if (!modelNameUpper) throw new Error('no model')
 
         if (!model || model.length < 1) {
           console.error('no model found', eventName)
@@ -202,13 +202,15 @@ export default function DistributedCache ({
 
         await handleUpsert({
           modelName: modelNameUpper,
-          datasource: datasources.getDataSource(modelNameUpper),
+          datasource: datasources.getDataSource(modelNameUpper, {
+            isCached: true // in case this is a remote object
+          }),
           model,
           event,
           route
         })
       } catch (error) {
-        console.error(updateCache.name, error)
+        console.error({ fn: updateCache.name, error })
       }
     }
   }
@@ -222,7 +224,7 @@ export default function DistributedCache ({
   async function createRelated (event) {
     const created = await Promise.all(
       event.args.map(async arg => {
-        console.debug('arg', arg)
+        console.debug({ arg })
         try {
           return await models.createModel(
             broker,

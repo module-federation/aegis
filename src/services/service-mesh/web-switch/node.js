@@ -341,7 +341,10 @@ const handshake = {
       ...this,
       mem: process.memoryUsage(),
       cpu: process.cpuUsage(),
-      models: models()
+      models: models
+        .getModelSpecs()
+        .filter(s => !s.isCached)
+        .map(s => s.modelName)
     })
   },
 
