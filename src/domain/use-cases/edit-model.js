@@ -48,7 +48,6 @@ export default function makeEditModel ({
    */
   async function editModel (input) {
     if (isMainThread) {
-      // let main thread find it, might not exist in worker
       const model = await repository.find(input.id)
 
       if (!model) {
