@@ -397,7 +397,7 @@ export default function DistributedCache ({
    */
   function start () {
     const modelSpecs = models.getModelSpecs()
-    const localModels = [workerData.modelName]
+    const localModels = [String(workerData.modelName).toUpperCase()]
     const remoteModels = [
       ...new Set( // deduplicate
         modelSpecs
