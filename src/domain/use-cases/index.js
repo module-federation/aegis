@@ -1,5 +1,10 @@
 'use strict'
 
+import ModelFactory from '../model-factory'
+import DataSourceFactory from '../datasource-factory'
+import ThreadPoolFactory from '../thread-pool.js'
+import EventBrokerFactory from '../event-broker'
+
 import makeAddModel from './add-model'
 import makeEditModel from './edit-model'
 import makeListModels from './list-models'
@@ -8,11 +13,9 @@ import makeRemoveModel from './remove-model'
 import makeLoadModels from './load-models'
 import makeListConfig from './list-configs'
 import makeHotReload from './hot-reload'
-import ModelFactory from '../model-factory'
-import DataSourceFactory from '../datasource-factory'
-import ThreadPoolFactory from '../thread-pool.js'
-import EventBrokerFactory from '../event-broker'
 import brokerEvents from './broker-events'
+import handleServerless from './handle-serverless'
+
 import { isMainThread } from 'worker_threads'
 
 export function registerEvents () {
@@ -56,8 +59,6 @@ function buildOptions (model) {
     }
   }
 }
-
-/** @typedef {import('../datasource-factory').Model} Model */
 
 /**
  * Generate use case functions for every model
@@ -141,6 +142,10 @@ export function UseCaseService (modelName = null) {
     removeModels: removeModels(),
     loadModelSpecs: loadModelSpecs(),
     hotReload: hotReload(),
-    listConfigs: listConfigs()
+    listConfigs: listConfigs(),
+    serverless (...args) {
+      console.log('rewire RouteMap', args)
+      return handleServerless(...args)
+    }
   }
 }

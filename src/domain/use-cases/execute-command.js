@@ -47,7 +47,7 @@ function commandAuthorized (spec, command, permission) {
 export default async function executeCommand (model, command, permission) {
   const spec = model.getSpec()
 
-  console.debug('executing commnd:', command)
+  console.debug('executing command:', command)
 
   if (commandAuthorized(spec, command, permission)) {
     const cmd = spec.commands[command].command

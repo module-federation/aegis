@@ -30,7 +30,7 @@ function adminRoute (adapter, getConfig, router) {
   router.get(`${apiRoot}/config`, adapter(getConfig()))
 }
 
-function makeRoutes (path, method, controllers, router, http) {
+function makeRoutes (path, method, controllers, http, router) {
   controllers().forEach(ctlr => {
     console.info(ctlr)
     router[method](path(ctlr.endpoint), http(ctlr.fn))
@@ -43,25 +43,25 @@ const endpointCmd = e => `${modelPath}/${e}/:id/:command`
 
 async function initServer (router) {
   const cache = initCache()
-  makeRoutes(endpoint, 'use', liveUpdate, router, http)
-  makeRoutes(endpoint, 'get', getModels, router, http)
-  makeRoutes(endpoint, 'post', postModels, router, http)
-  makeRoutes(endpointId, 'get', getModelsById, router, http)
-  makeRoutes(endpointId, 'patch', patchModels, router, http)
-  makeRoutes(endpointId, 'delete', deleteModels, router, http)
-  makeRoutes(endpointCmd, 'patch', patchModels, router, http)
+  makeRoutes(endpoint, 'use', liveUpdate, http, router)
+  makeRoutes(endpoint, 'get', getModels, http, router)
+  makeRoutes(endpoint, 'post', postModels, http, router)
+  makeRoutes(endpointId, 'get', getModelsById, http, router)
+  makeRoutes(endpointId, 'patch', patchModels, http, router)
+  makeRoutes(endpointId, 'delete', deleteModels, http, router)
+  makeRoutes(endpointCmd, 'patch', patchModels, http, router)
   adminRoute(http, getConfig, router)
   await cache.load()
 }
 
-async function initServerless (remotes) {
-  debug && console.debug('handle invoked', remotes)
+async function initServerless () {
+  debug && console.debug('handle invoked')
   const cache = initCache()
   const service = UseCaseService()
   await cache.load()
   return {
-    async handle (serviceName, modelName, ...args) {
-      return service[serviceName](modelName)(args)
+    async handle (...args) {
+      return service.serverless(...args)
     }
   }
 }

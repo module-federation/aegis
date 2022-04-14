@@ -36,12 +36,6 @@ export default function makeEditModel ({
   broker.on(domainEvents.editModel(modelName), editModel)
 
   /**
-   * Note: Unless the worker hanlding this request created this model instance,
-   * it won't be able to find it in its memory. Therefore, because another thread
-   * might have created it, the main thread, which has access to all models and
-   * model instances, looks it up in its memory and hands it to the worker. The
-   * worker then has to rehydrate the object, since anything crossing a thread
-   * boundary is cloned and de/serialized.
    *
    * @param {{id:string,changes:object,command:string}} input
    * @returns
@@ -63,7 +57,7 @@ export default function makeEditModel ({
         // model has been found by main thread
         const { id, changes, command } = input
 
-        // get hydrated model
+        // get model
         const model = await repository.find(id)
 
         // only the worker does the update
