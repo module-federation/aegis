@@ -41,7 +41,7 @@ function getResourceName (httpRequest, defaultTitle = '') {
  * @param {*} content
  * @param {*} defaultTitle
  * @returns
- */
+ */ 
 export default function getContent (httpRequest, content, defaultTitle) {
   const contents = content instanceof Array ? content : [content]
 
@@ -58,7 +58,7 @@ export default function getContent (httpRequest, content, defaultTitle) {
           <meta charset="utf-8" />
           <meta name="viewport" content="width=device-width, initial-scale=1" />
           <link rel="icon" type="image/png" href="/aegis-logo.png" />
-          <h3 style='color: fusia'>
+          <h3>
             <a href="/index.html"> <img src="/aegis-logo.png" alt="aegis" width="65" height="65" style="font: x-large" /><sup><b>ÆGIS</b> Domain Model API</sup></a>
           </h3> 
           </head>

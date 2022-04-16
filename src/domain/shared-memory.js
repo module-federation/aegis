@@ -5,7 +5,7 @@ import ModelFactory from '.'
 import { isMainThread, workerData } from 'worker_threads'
 import { EventBrokerFactory } from '.'
 
-const MAPSIZE = 2048 * 128
+const MAPSIZE = 2048 * 56
 // Size is in UTF-16 codepointse
 const KEYSIZE = 32
 const OBJSIZE = 4056

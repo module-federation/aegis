@@ -15,7 +15,8 @@ export default function getModelsFactory (listModels) {
 
       const { content, contentType } = getContent(
         httpRequest,
-        models
+        models,
+        models[0]?.modelName
       )
 
       return {

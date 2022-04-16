@@ -1,5 +1,7 @@
 'use strict'
 
+import { isMainThread } from 'worker_threads'
+
 /**
  * @param {{
  *  models:import("../model").Model,
@@ -15,63 +17,65 @@ export default function listConfigsFactory ({
   threadpools
 } = {}) {
   return async function listConfigs (query) {
+    const modelName =
+      typeof query.modelName === 'string' ? query.modelName.toUpperCase() : null
+
     const configTypes = {
       data: () =>
-        query.modelName
-          ? threadpools
-              .getThreadPool(query.modelName.toUpperCase())
-              .run('showData')
+        modelName && isMainThread
+          ? threadpools.getThreadPool(modelName).run(listConfigs.name, query)
+          : modelName
+          ? data.getDataSource(modelName)
           : data.listDataSources().map(k => ({
               dsname: k,
               records: data.getDataSource(k).totalRecords()
             })),
+
       events: () =>
-        query.modelName
-          ? threadpools
-              .getThreadPool(query.modelName.toUpperCase())
-              .run('showEvents')
+        modelName && isMainThread
+          ? threadpools.getThreadPool(modelName).run(listConfigs.name, query)
           : [...broker.getEvents()].map(([k, v]) => ({
               eventName: k,
               handlers: v.length
             })),
 
       models: () =>
-        query.modelName
-          ? threadpools
-              .getThreadPool(query.modelName.toUpperCase())
-              .run('showModels')
+        modelName && isMainThread
+          ? threadpools.getThreadPool(modelName).run(listConfigs.name, query)
+          : modelName
+          ? models.getModelSpec(modelName)
           : models.getModelSpecs(),
 
-      threads: () => threadpools.status(),
+      threads: () => (isMainThread ? threadpools.status() : null),
 
       relations: () =>
-        query.modelName
-          ? threadpools
-              .getThreadPool(query.modelName.toUpperCase())
-              .run('showRelations')
+        modelName && isMainThread
+          ? threadpools.getThreadPool(modelName).run(listConfigs.name, query)
+          : modelName
+          ? models.getModelSpec(modelName).relations
           : models.getModelSpecs().map(spec => ({
               modelName: spec.modelName,
-              relations: spec.relations ? Object.values(spec.relations) : []
+              relations: spec.relations ? Object.values(spec.relations) : {}
             })),
 
       commands: () =>
-        query.modelName
-          ? threadpools
-              .getThreadPool(query.modelName.toUpperCase())
-              .run('showCommands')
+        modelName && isMainThread
+          ? threadpools.getThreadPool(modelName).run(listConfigs.name, query)
+          : modelName
+          ? models.getModelSpec(modelName).commands
           : models.getModelSpecs().map(spec => ({
               modelName: spec.modelName,
-              commands: spec.commands ? Object.values(spec.commands) : []
+              commands: spec.commands ? Object.values(spec.commands) : {}
             })),
 
       ports: () =>
-        query.modelName
-          ? threadpools
-              .getThreadPool(query.modelName.toUpperCase())
-              .run('showPorts')
+        modelName && isMainThread
+          ? threadpools.getThreadPool(modelName).run(listConfigs.name, query)
+          : modelName
+          ? models.getModelSpec(modelName).ports
           : models.getModelSpecs().map(spec => ({
               modelName: spec.modelName,
-              ports: spec.ports ? Object.values(spec.ports) : []
+              ports: spec.ports ? Object.values(spec.ports) : {}
             }))
     }
 

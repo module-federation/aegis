@@ -12,9 +12,9 @@ import makeFindModel from './find-model'
 import makeRemoveModel from './remove-model'
 import makeLoadModels from './load-models'
 import makeListConfig from './list-configs'
+import makeEmitEvent from './emit-event'
 import makeHotReload from './hot-reload'
 import brokerEvents from './broker-events'
-import handleServerless from './handle-serverless'
 
 import { isMainThread } from 'worker_threads'
 
@@ -91,6 +91,7 @@ const listModels = () => make(makeListModels)
 const findModels = () => make(makeFindModel)
 const removeModels = () => make(makeRemoveModel)
 const loadModelSpecs = () => make(makeLoadModels)
+const emitEvents = () => make(makeEmitEvent)
 const hotReload = () => [
   {
     endpoint: 'reload',
@@ -103,7 +104,6 @@ const hotReload = () => [
 const listConfigs = () =>
   makeListConfig({
     models: ModelFactory,
-    data: DataSourceFactory,
     broker: EventBrokerFactory.getInstance(),
     threadpools: ThreadPoolFactory
   })
@@ -117,13 +117,14 @@ export const UseCases = {
   loadModelSpecs,
   listConfigs,
   hotReload,
-  registerEvents
+  registerEvents,
+  emitEvents
 }
 
 /**@typedef */
 export function UseCaseService (modelName = null) {
-  if (modelName) {
-    const modelNameUpper = String(modelName).toUpperCase()
+  if (typeof modelName === 'string') {
+    const modelNameUpper = modelName.toUpperCase()
     return {
       addModel: makeOne(modelNameUpper, makeAddModel),
       editModel: makeOne(modelNameUpper, makeEditModel),
@@ -131,6 +132,7 @@ export function UseCaseService (modelName = null) {
       findModel: makeOne(modelNameUpper, makeFindModel),
       removeModel: makeOne(modelNameUpper, makeRemoveModel),
       loadModelSpecs: makeOne(modelNameUpper, makeLoadModels),
+      emitEvents: makeOne(modelNameUpper, makeEmitEvent),
       listConfigs: listConfigs()
     }
   }
@@ -142,10 +144,7 @@ export function UseCaseService (modelName = null) {
     removeModels: removeModels(),
     loadModelSpecs: loadModelSpecs(),
     hotReload: hotReload(),
-    listConfigs: listConfigs(),
-    serverless (...args) {
-      console.log('rewire RouteMap', args)
-      return handleServerless(...args)
-    }
+    emitEvent: emitEvents(),
+    listConfigs: listConfigs()
   }
 }

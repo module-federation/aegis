@@ -39,18 +39,18 @@ export async function importWebAssembly (remoteEntry) {
        * @param {string} callbackName - name of exported function to run when event fires
        */
       addListener (eventName, callbackName) {
-        const adapter = WasmInterop(wasm)
+        const interop = WasmInterop(wasm)
         const event = wasm.exports.__getString(eventName)
         const callback = wasm.exports.__getString(callbackName)
         console.debug('addListener', callback, 'eventName', event)
 
-        const fn = adapter.findWasmFunction(callback)
+        const fn = interop.findWasmFunction(callback)
         if (typeof fn !== 'function') {
           console.warn('callback is not a function', callback)
           return
         }
 
-        broker.on(event, eventData => adapter.callWasmFunction(fn, eventData), {
+        broker.on(event, eventData => interop.callWasmFunction(fn, eventData), {
           once: true
         })
       },
@@ -65,7 +65,7 @@ export async function importWebAssembly (remoteEntry) {
         const event = wasm.exports.__getString(eventName)
         const data = interop.constructObject(eventData)
         console.debug('fireEvent', data)
-        await broker.notify(event, data, { worker: true })
+        await broker.notify(event, data)
       },
 
       /**

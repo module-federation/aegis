@@ -6,7 +6,7 @@ import { Worker } from 'worker_threads'
 import domainEvents from './domain-events'
 import ModelFactory, { DataSourceFactory } from '.'
 import os from 'os'
-import asyncPipe from './util/async-pipe'
+
 const { poolOpen, poolClose, poolDrain } = domainEvents
 const broker = EventBrokerFactory.getInstance()
 const DEFAULT_THREADPOOL_MIN = 1
@@ -22,9 +22,8 @@ const DEFAULT_DURATION_TOLERANCE = 1000
  * @property {Worker} mainChannel
  */
 
-/**
- * @typedef {import('./model').Model} Model}
- */
+/** @typedef {import('./model').Model} Model} */
+/** @typedef {import('./event-broker').EventBroker} EventBroker */
 
 /**
  *
@@ -59,14 +58,6 @@ async function kill (thread) {
   } catch (error) {
     return console.error({ fn: kill.name, error })
   }
-}
-
-/** @typedef {import('./event-broker').EventBroker} EventBroker */
-
-function parse (message) {
-  if (typeof message === 'object') return JSON.parse(JSON.stringify(message))
-  if (typeof message === 'string') return JSON.parse(message)
-  return message
 }
 
 /**
@@ -241,14 +232,6 @@ export class ThreadPool extends EventEmitter {
     this.totalThreads = 0
     this.workerRef = []
     this.startTime = Date.now()
-
-    function dequeue () {
-      if (this.freeThreads.length > 0 && this.waitingJobs.length > 0) {
-        this.waitingJobs.shift()(this.freeThreads.shift())
-      }
-    }
-
-    //setInterval(dequeue.bind(this), 1500)
 
     if (options.preload) {
       console.info('preload enabled for', this.name)

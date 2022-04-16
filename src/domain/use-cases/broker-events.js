@@ -25,6 +25,40 @@ export default function brokerEvents (
   models,
   threadpools
 ) {
+  function buildPubSubFunctions () {
+    if (isMainThread) {
+      return {
+        publish: event => broker.notify('to_worker', event),
+        subscribe: (eventName, cb) => broker.on(eventName, cb)
+      }
+    } else {
+      return {
+        publish: event => {
+          console.debug({
+            msg: 'worker: send to main',
+            eventName: event.eventName
+          })
+          broker.notify('to_main', event)
+        },
+
+        subscribe: (eventName, cb) => {
+          console.debug('worker: subscribed to main', eventName)
+
+          broker.on('from_main', event => {
+            if (event.eventName === eventName) {
+              console.debug({
+                msg: 'worker: received from main',
+                eventName: event.eventName,
+                event
+              })
+              cb(event)
+            }
+          })
+        }
+      }
+    }
+  }
+
   if (isMainThread) {
     /**
      * For each local model, find the related models in its spec
@@ -78,14 +112,19 @@ export default function brokerEvents (
 
     function inferEventTargets (event) {
       const targets = _inferEventTargets(event)
-      console.log({ fn: inferEventTargets.name, targets, event })
+      console.debug({
+        fn: inferEventTargets.name,
+        eventName: event.eventName,
+        targets
+      })
       return targets
     }
 
     const parseEventTargets = event =>
       Array.isArray(event.eventTarget) ? event.eventTarget : [event.eventTarget]
 
-    const localModels = () => models.getModelSpecs().map(spec => spec.modelName)
+    const localModels = () =>
+      models.getModelSpecs().map(spec => !spec.isCached && spec.modelName)
 
     const targetIsRemote = target => !localModels().includes(target)
 
@@ -95,11 +134,15 @@ export default function brokerEvents (
      * @param {import('../event').Event} event
      * @param {string} poolName name of model/pool
      */
-    async function sendEvent (event, poolName) {
-      const pool = threadpools.getThreadPool(poolName)
-      if (pool) {
-        return pool.run('emitEvent', event)
-      } else console.error('no such pool', poolName)
+    async function forwardToPool (event, poolName) {
+      try {
+        const pool = threadpools.getThreadPool(poolName)
+        if (pool) {
+          return await pool.run('emitEvent', event, 'eventChannel')
+        } else console.error('no such pool', poolName)
+      } catch (error) {
+        console.error({ fn: forwardToPool, error })
+      }
     }
 
     /**
@@ -131,7 +174,7 @@ export default function brokerEvents (
             if (targetIsRemote(target)) return false
 
             try {
-              await sendEvent(event, target)
+              await forwardToPool(event, target)
             } catch (error) {
               return false
             }
@@ -147,45 +190,20 @@ export default function brokerEvents (
       return false
     }
 
-    // forward everything from workers to service mesh, unless handled locally
+    // forward any event that is not handled locally to the service mesh
     broker.on(
       'from_worker',
-      async event =>
-        //DataSourceFactory.getDataSource(event.eventSource).save
-        (await route(event)) || ServiceMesh.publish(event)
+      async event => (await route(event)) || ServiceMesh.publish(event)
     )
 
-    // forward anything from the servivce mesh to the workers
-    broker.on('from_mesh', event => broker.notify('to_worker', event))
-
+    // forward every from the servivce mesh to the workers
+    //broker.on('from_mesh', event => broker.notify('to_worker', event))
+    const { publish } = buildPubSubFunctions()
     // connect to the service mesh
-    ServiceMesh.connect({ models, broker })
+    ServiceMesh.connect({ services: localModels, publish })
   } else {
-    function buildPubSubFunctions () {
-      return {
-        publish: event => {
-          console.debug({
-            msg: 'worker: send to main',
-            eventName: event.eventName
-          })
-          broker.notify('to_main', event)
-        },
-
-        subscribe: (eventName, cb) => {
-          console.debug('worker: subscribed to main', eventName)
-
-          broker.on('from_main', event => {
-            if (event.eventName === eventName) {
-              console.debug({
-                msg: 'worker: received from main',
-                eventName: event.eventName,
-                event
-              })
-              cb(event)
-            }
-          })
-        }
-      }
+    function registerEventActions () {
+      broker.on(kkk)
     }
 
     const { publish, subscribe } = buildPubSubFunctions()
