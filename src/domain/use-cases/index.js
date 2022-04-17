@@ -109,7 +109,7 @@ const listConfigs = () =>
   })
 
 export const UseCases = {
-  addModels,
+  addModels, 
   editModels,
   listModels,
   findModels,
@@ -121,7 +121,6 @@ export const UseCases = {
   emitEvents
 }
 
-/**@typedef */
 export function UseCaseService (modelName = null) {
   if (typeof modelName === 'string') {
     const modelNameUpper = modelName.toUpperCase()

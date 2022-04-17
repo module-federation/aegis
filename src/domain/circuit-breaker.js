@@ -1,5 +1,7 @@
 'use strict'
 
+import EventEmitter from 'events'
+
 /**
  * State of the breaker.
  * @enum {symbol}
@@ -367,9 +369,14 @@ const CircuitBreaker = function (id, protectedCall, thresholds) {
      * Listen for events that count as errors against a threashold.
      *
      * @param {Error} event
+     * @param {EventEmitter} listener
      */
-    errorListener (eventName) {
-      errorEvents.push(eventName)
+    errorListener (eventName, listener) {
+      if (listener instanceof EventEmitter) {
+        listener.on(eventName, () => this.error(eventName))
+        return
+      }
+      errorEvents.push(events)
     }
   }
 }

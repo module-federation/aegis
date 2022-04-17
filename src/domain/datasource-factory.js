@@ -53,7 +53,7 @@ const DataSourceFactory = (() => {
 
     if (adapterName) return adapters[adapterName] || DefaultDataSource
 
-    if (spec && spec.datasource) {
+    if (spec?.datasource) {
       const url = spec.datasource.url
       const cacheSize = spec.datasource.cacheSize
       const adapterFactory = spec.datasource.factory

@@ -11,7 +11,7 @@ const KEYSIZE = 32
 const OBJSIZE = 4056
 
 /**x
- * composional class mixin - so any class
+ * compositional class mixin - so any class
  * in the hierarchy can use shared memory
  * @param {*} superclass
  * @returns
@@ -39,7 +39,7 @@ const SharedMemMixin = superclass =>
       if (!model) return null
 
       try {
-        const rehydrated = isMainThread
+        return isMainThread
           ? model
           : ModelFactory.loadModel(
               EventBrokerFactory.getInstance(),
@@ -47,7 +47,6 @@ const SharedMemMixin = superclass =>
               model,
               String(this.name).toUpperCase()
             )
-        return rehydrated
       } catch (error) {
         console.error({ fn: 'SharedMem.find', error })
       }
@@ -55,26 +54,27 @@ const SharedMemMixin = superclass =>
     }
   }
 
+/** @typedef {import('./datasource-factory').default} DataSourceFactory */
+
 /**
  * Decorator adds support for thread-safe shared {@link Map} using
  * {@link SharedArrayBuffer}.
- *
- * @typedef {import('./datasource-factory').default} DataSourceFactory
  *
  * @param {function():import('./datasource').default} getDataSource in {@link DataSourceFactory}
  * @param {import('./datasource-factory').DataSourceFactory} factory
  * @returns {import('./datasource').default}
  */
-export function withSharedMem (getDataSource, factory, name) {
+export function withSharedMem (getDataSource, factory, name, options = {}) {
   // thread-safe map
   const sharedMap = isMainThread
     ? Object.assign(new SharedMap(MAPSIZE, KEYSIZE, OBJSIZE), {
-        modelName: name
+        modelName: name // assign modelName
       })
-    : Object.setPrototypeOf(workerData.sharedMap, SharedMap.prototype) // restore
+    : Object.setPrototypeOf(workerData.sharedMap, SharedMap.prototype) // unmarshal
 
   // call with shared map and mixin that extends ds class
   return getDataSource.call(factory, name.toUpperCase(), {
+    ...options,
     dsMap: sharedMap,
     mixin: DsClass => class SharedMemDs extends SharedMemMixin(DsClass) {}
   })

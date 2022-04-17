@@ -2,6 +2,7 @@ export * as AuthorizationService from './auth'
 export * as ClusterService from './cluster'
 export * as EventService from './event-bus'
 export * as StorageService from './persistence'
+export { default as CircuitBreaker } from '../domain/circuit-breaker'
 
 import { dns, whois } from './dns'
 export const DnsService = dns
@@ -25,7 +26,7 @@ const enabledServices = Object.entries(config.services.serviceMesh)
   .map(([k]) => k) || ['WebSwitch']
 
 /**
- * Which mesh se....../rvice do we use?
+ * Which mesh service do we use?
  */
 const service = enabledServices.includes(designatedService)
   ? designatedService

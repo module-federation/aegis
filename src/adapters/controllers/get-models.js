@@ -11,6 +11,7 @@ export default function getModelsFactory (listModels) {
     try {
       httpRequest.log(getModels.name)
 
+      /** @type {import('../../domain/model').Model[]}.*/
       const models = await listModels(httpRequest.query)
 
       const { content, contentType } = getContent(

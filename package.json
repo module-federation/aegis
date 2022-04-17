@@ -40,8 +40,7 @@
     "regenerator-runtime": "0.13.9",
     "sharedmap": "^1.2.0",
     "webpack": "^5.66.0",
-    "whois": "2.13.7",
-    "yarn": "^1.22.17"
+    "whois": "2.13.7"
   },
   "devDependencies": {
     "@babel/cli": "7.16.8",
@@ -54,12 +53,17 @@
     "chalk": "5.0.0",
     "core-js": "3.21.0",
     "cross-var": "1.1.0",
+    "eslint": "^8.13.0",
+    "eslint-plugin-jsdoc": "^39.2.1",
+    "jsdoc": "^3.6.10",
+    "jsdoc-to-markdown": "^7.1.1",
     "esm": "3.2.25",
     "express-cli": "0.0.1",
     "jest": "27.4.7",
     "mocha": "9.1.4",
     "nodemon": "2.0.15",
     "rimraf": "3.0.2",
-    "split": "1.0.1"
+    "split": "1.0.1",
+    "yarn": "^1.22.17"
   }
 }

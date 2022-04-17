@@ -12,9 +12,13 @@
 
 'use strict'
 
+/** @module services/mesh/Node */
+
 import os from 'os'
 import WebSocket from 'ws'
 import Dns from 'multicast-dns'
+import EventEmitter from 'events'
+import { CircuitBreaker } from '../../index'
 
 const HOSTNAME = 'webswitch.local'
 const SERVICENAME = 'webswitch'
@@ -35,23 +39,22 @@ const activeHost =
   process.env.DOMAIN ||
   configRoot.services.cert.domain ||
   configRoot.general.fqdn
-const protocol = config.isSwitch ? activeProto : config.protocol
+const proto = config.isSwitch ? activeProto : config.protocol
 const port = config.isSwitch ? activePort : config.port
 const host = config.isSwitch ? activeHost : config.host
+const eventEmitter = new EventEmitter()
 
 const _url = (proto, host, port) =>
   proto && host && port ? `${proto}://${host}:${port}` : null
 
-let serviceUrl = _url(protocol, host, port)
+let serviceUrl = _url(proto, host, port)
 let isBackupSwitch = config.isBackupSwitch || false
 let activateBackup = false
 let uplinkCallback
 
 let dnsPriority
-/** @type {import('../../../domain/event-broker').EventBroker} */
-let broker
-/** @type {import('../../../domain/model-factory').ModelFactory} */
-let models
+/** @type {function():string[]} */
+let availableMicroservices = () => []
 /** @type {WebSocket} */
 let ws
 
@@ -109,7 +112,7 @@ async function resolveServiceUrl () {
       )
 
       if (answer) {
-        url = _url(protocol, answer.data.target, answer.data.port)
+        url = _url(proto, answer.data.target, answer.data.port)
         console.info({ msg: 'found dns service record for', SERVICENAME, url })
         resolve(url)
       }
@@ -149,7 +152,7 @@ async function resolveServiceUrl () {
         return
       }
 
-      setTimeout(() => runQuery(retries++), retryInterval)
+      setTimeout(() => runQuery(++retries), retryInterval)
     }
 
     runQuery()
@@ -224,41 +227,10 @@ export function setUplinkUrl (uplinkUrl) {
  * @property {'node'|'browser'|'uplink'} role of the client
  * @property {number} pid - processid of the client or 1 for browsers
  * @property {string} serviceUrl - web-switch url for the client
- * @property {string[]} models - names of models running on the instance
+ * @property {string[]} services - names of services running on the instance
  * @property {string} address - address of the client
  * @property {string} url - url to connect to client instance directly
  */
-
-/**
- * @callback subscription
- * @param {{
- *  eventName:string,
- *  model:import('../../../domain/index').Model
- * }} eventData
- */
-
-/**
- * @param {string} eventName
- * @param {subscription} callback
- * @param {import('../../../domain/event-broker').EventBroker} broker
- * @param {{allowMultiple:boolean, once:boolean}} [options]
- */
-export async function subscribe (eventName, callback) {
-  try {
-    if (broker) {
-      broker.on(eventName, callback)
-      return
-    }
-    console.error(
-      subscribe.name,
-      'no broker',
-      eventName,
-      JSON.stringify(callback.toString(), null, 2)
-    )
-  } catch (error) {
-    console.error({ fn: 'subscribe', error })
-  }
-}
 
 function format (event) {
   if (event instanceof ArrayBuffer) {
@@ -278,7 +250,9 @@ function format (event) {
  */
 function send (event) {
   if (ws?.readyState) {
-    ws.send(format(event))
+    const breaker = new CircuitBreaker(__filename + send.name, ws.send)
+    breaker.errorListener(eventEmitter)
+    breaker.invoke(format(event))
     return
   }
   setTimeout(send, 1000, event)
@@ -286,7 +260,6 @@ function send (event) {
 
 /**
  *
- * @param {WebSocket} ws
  */
 function startHeartbeat () {
   let receivedPong = true
@@ -305,8 +278,7 @@ function startHeartbeat () {
       try {
         clearInterval(intervalId)
 
-        if (broker)
-          await broker.notify(TIMEOUTEVENT, { error: 'server unresponsive' })
+        eventEmitter.emit(TIMEOUTEVENT)
 
         console.error({
           fn: startHeartbeat.name,
@@ -326,7 +298,7 @@ function startHeartbeat () {
 /**
  *
  */
-const handshake = {
+const protocol = {
   eventName: 'handshake',
   metaEvent: true,
   proto: SERVICENAME,
@@ -339,12 +311,9 @@ const handshake = {
   serialize () {
     return JSON.stringify({
       ...this,
+      services: availableMicroservices(),
       mem: process.memoryUsage(),
-      cpu: process.cpuUsage(),
-      models: models
-        .getModelSpecs()
-        .filter(s => !s.isCached)
-        .map(s => s.modelName)
+      cpu: process.cpuUsage()
     })
   },
 
@@ -373,6 +342,18 @@ const handshake = {
 }
 
 /**
+ * @param {string} eventName
+ * @param {(...args)=>void} callback
+ */
+export async function subscribe (eventName, callback) {
+  try {
+    eventEmitter.on(eventName, callback)
+  } catch (error) {
+    console.error({ fn: 'subscribe', error })
+  }
+}
+
+/**
  *
  */
 async function _connect () {
@@ -384,7 +365,7 @@ async function _connect () {
     ws = new WebSocket(serviceUrl)
 
     ws.on('open', function () {
-      send(handshake.serialize())
+      send(protocol.serialize())
       startHeartbeat()
     })
 
@@ -398,17 +379,17 @@ async function _connect () {
         const event = JSON.parse(message.toString())
         debug && console.debug('received event:', event)
 
-        if (handshake.validate(event)) {
-          // check if the switch wants us to be a backup
+        if (protocol.validate(event)) {
+          // fire events
+          if (event?.eventName !== '*') {
+            // notify subscribers to this event
+            eventEmitter.emit(event.eventName)
 
-          // process event
-          if (event.eventName) {
-            // call broker if there is one
-            if (broker) await broker.notify('from_mesh', event)
-            // send to uplink if there is one
-            if (uplinkCallback) await uplinkCallback(message)
+            // notify subscribers to all events
+            eventEmitter.listeners('*').forEach(listener => listener(event))
           }
-          return
+          // send to uplink if there is one
+          if (uplinkCallback) await uplinkCallback(message)
         }
         console.warn('unknown message type', message.toString())
       } catch (error) {
@@ -420,43 +401,36 @@ async function _connect () {
 
 /**
  *
- * @param {{
- *  broker:import('../../../domain/event-broker').EventBroker,
- *  models:import('../../../domain/model-factory').ModelFactory
- * }} [serviceInfo]
+ * @param {{services:()=>*}} [serviceInfo]
  */
 export async function connect (serviceInfo = {}) {
-  broker = serviceInfo.broker
-  models = serviceInfo.models
-  console.info({ fn: connect.name, serviceInfo })
+  availableMicroservices = serviceInfo?.services
   await _connect()
 }
 
-let reconnTimerId
+let reconnecting = false
+
 /**
  *
  */
-async function reconnect () {
-  let attempts = 0
-  try {
-    ws = null
-    if (!reconnTimerId) {
-      reconnTimerId = setInterval(() => {
-        if (++attempts % 10 === 0) {
-          // try new url after a minute
-          serviceUrl = null
-        }
-        if (ws) {
-          clearInterval(reconnTimerId)
-          reconnTimerId = null
-          return
-        }
-        _connect()
-      }, 6000)
+async function reconnect (attempts = 0) {
+  if (reconnecting) return
+  reconnecting = true
+  ws = null
+  setTimeout(() => {
+    if (++attempts % 10 === 0) {
+      // try new url after a minute
+      serviceUrl = null
     }
-  } catch (error) {
-    console.error({ fn: reconnect.name, error })
-  }
+    try {
+      _connect()
+    } catch (error) {
+      console.error({ fn: reconnect.name, error })
+    }
+    reconnecting = false
+    if (!ws) reconnect(attempts)
+    else console.info('reconnected to switch')
+  }, 6000)
 }
 
 /**
