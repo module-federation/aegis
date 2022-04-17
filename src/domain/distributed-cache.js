@@ -357,7 +357,6 @@ export default function DistributedCache ({
         publish({
           ...event,
           eventName: response,
-          modelName: event.evenTarget,
           eventTarget: event.eventSource,
           eventSource: event.eventTarget
         })
