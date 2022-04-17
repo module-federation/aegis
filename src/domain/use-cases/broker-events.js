@@ -5,8 +5,9 @@
 import DistributedCache from '../distributed-cache'
 // import EventBus from '../../services/event-bus'
 import { ServiceMeshAdapter as ServiceMesh } from '../../adapters'
-import { isMainThread, workerData } from 'worker_threads'
+import { isMainThread } from 'worker_threads'
 import domainEvents from '../domain-events'
+import ModelFactory from '..'
 
 /**
  * Broker events between {@link ThreadPoolFactory} and remote mesh instances.
@@ -91,6 +92,11 @@ export default function brokerEvents (
         .filter(spec => !spec.isCached)
         .map(spec => spec.modelName)
 
+    const isCrudEvent = (eventName, modelName) =>
+      ModelFactory.getEventName(modelName, eventName).endsWith(eventName)
+
+    const isBroadcastEvent = event => event.broadcast || isCrudEvent(event)
+
     const targetIsRemote = target => !localModels().includes(target)
 
     /**
@@ -138,6 +144,8 @@ export default function brokerEvents (
             })
 
             if (targetIsRemote(target)) return false
+
+            if (isBroadcastEvent(event)) return false
 
             try {
               await forwardToPool(event, target)

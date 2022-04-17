@@ -28,17 +28,16 @@ import ThreadPoolFactory from '../thread-pool'
  * @returns {function():Promise<import('../domain').Model>}
  */
 
-  // async function compile () {
-  //   await new Promise((resolve, reject) => {
-  //     compiler.run((err, res) => {
-  //       if (err) {
-  //         return reject(err)
-  //       }
-  //       resolve(res)
-  //     })
-  //   })
-  // }
-
+// async function compile () {
+//   await new Promise((resolve, reject) => {
+//     compiler.run((err, res) => {
+//       if (err) {
+//         return reject(err)
+//       }
+//       resolve(res)
+//     })
+//   })
+// }
 
 let inProgress = false
 
@@ -76,13 +75,14 @@ export default function makeHotReload ({ models, broker } = {}) {
     return new Promise(async resolve => {
       try {
         if (modelName && modelName !== '*') {
+          // compile()
           await ThreadPoolFactory.reload(modelName)
           return resolve(ThreadPoolFactory.status(modelName))
         } else {
+          // compile()
           await ThreadPoolFactory.reloadAll()
           return resolve(ThreadPoolFactory.status())
         }
-        compile()
       } catch (error) {
         return resolve({ fn: hotReload.name, error })
       } finally {
