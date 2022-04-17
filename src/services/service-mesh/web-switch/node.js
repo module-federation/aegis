@@ -390,6 +390,7 @@ async function _connect () {
           }
           // send to uplink if there is one
           if (uplinkCallback) await uplinkCallback(message)
+          return
         }
         console.warn('unknown message type', message.toString())
       } catch (error) {

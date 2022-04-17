@@ -376,7 +376,7 @@ const CircuitBreaker = function (id, protectedCall, thresholds) {
         listener.on(eventName, () => this.error(eventName))
         return
       }
-      errorEvents.push(events)
+      errorEvents.push(eventName)
     }
   }
 }

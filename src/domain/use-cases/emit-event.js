@@ -30,13 +30,13 @@ export default function makeEmitEvent ({
 } = {}) {
   /**
    *
-   * @param {{id:string,changes:object,command:string}} input
+   * @param {{eventName:string,...}} input
    * @returns
    */
   async function emitEvent (input) {
     try {
       if (isMainThread) {
-        await threadpool.run(emitEvent.name, input)
+        await threadpool.fireEvent(input)
       } else {
         await broker.notify(input.eventName, input)
       }

@@ -104,7 +104,7 @@ export default function brokerEvents (
         /** @type {import('../thread-pool').ThreadPool} */
         const pool = threadpools.getThreadPool(poolName)
         if (pool) {
-          return await pool.run('emitEvent', event)
+          return await pool.fireEvent(event)
         } else console.error('no such pool', poolName)
       } catch (error) {
         console.error({ fn: forwardToPool, error })
@@ -170,9 +170,7 @@ export default function brokerEvents (
     // connect to the service mesh
     ServiceMesh.connect({ services: localModels })
   } else {
-    function registerEventActions () {
-      //broker.on(
-    }
+    require('../worker-events').registerWorkerEvents(broker)
 
     // start distributed object cache
     const manager = DistributedCache({

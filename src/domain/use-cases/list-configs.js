@@ -5,14 +5,14 @@ import { isMainThread } from 'worker_threads'
 /**
  * @param {{
  *  models:import("../model").Model,
- *  data:import("../datasource-factory").DataSourceFactory
+ *  dsFact:import("../datasource-factory").DataSourceFactory
  *  broker:import('../event-broker').EventBroker
  *  threadpools:import('../thread-pool').default
  * }} injectedDependencies
  */
 export default function listConfigsFactory ({
   models,
-  data,
+  dsFact,
   broker,
   threadpools
 } = {}) {
@@ -25,10 +25,10 @@ export default function listConfigsFactory ({
         modelName && isMainThread
           ? threadpools.getThreadPool(modelName).run(listConfigs.name, query)
           : modelName
-          ? data.getDataSource(modelName)
-          : data.listDataSources().map(k => ({
+          ? dsFact.getDataSource(modelName)
+          : dsFact.listDataSources().map(k => ({
               dsname: k,
-              records: data.getDataSource(k).totalRecords()
+              records: dsFact.getDataSource(k).totalRecords()
             })),
 
       events: () =>
@@ -54,7 +54,6 @@ export default function listConfigsFactory ({
           : modelName
           ? models.getModelSpec(modelName).relations
           : models.getModelSpecs().map(spec => ({
-              modelName: spec.modelName,
               relations: spec.relations ? Object.values(spec.relations) : {}
             })),
 
