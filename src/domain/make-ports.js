@@ -257,8 +257,8 @@ export default function makePorts (ports, adapters, broker) {
           const breaker = CircuitBreaker(port, portFn, thresholds)
 
           // Listen for errors
-          breaker.errorListener(portRetryFailed(this.getName(), port))
-          breaker.errorListener(portTimeout(this.getName(), port))
+          breaker.detectError(portRetryFailed(this.getName(), port))
+          breaker.detectError(portTimeout(this.getName(), port))
 
           // invoke port with circuit breaker failsafe
           return breaker.invoke.apply(this, args)

@@ -267,8 +267,8 @@ const Switch = function (id, thresholds) {
 /**
  * @typedef breaker
  * @property {function(...any)} invoke call protected function with args
- * @property {function(Error)} error record an error
- * @property {function(string)} errorListener listen for error events and
+ * @property {function(Error)} handleError record an error
+ * @property {function(string)} detectError listen for error events and
  * update circuit breaker
  */
 
@@ -296,23 +296,27 @@ const Switch = function (id, thresholds) {
  * @returns {breaker}
  */
 const CircuitBreaker = function (id, protectedCall, thresholds) {
+  // if we aren't being added by the model, which is already a
+  // subclass of EventEmitter, then use our own emitter which
+  // can be shared with the caller.
+  const errorListener = new EventEmitter()
   const errorEvents = []
 
-  const countError = function (eventName) {
-    if (typeof this.addListener !== 'function') return
-
-    this.addListener(
-      eventName,
-      eventData => logError(id, eventData.eventName, thresholds),
-      { singleton: true }
-    )
+  const monitorError = function (eventName) {
+    if (typeof this.addListener !== 'function') {
+      errorListener.on(eventName, () => this.handleError(eventName))
+      return
+    }
+    this.addListener(eventName, () => this.handleError(eventName), {
+      singleton: true
+    })
   }
 
   return {
     // wrap client call
     async invoke (...args) {
       const breaker = Switch(id, thresholds)
-      errorEvents.forEach(countError.bind(this))
+      errorEvents.forEach(monitorError.bind(this))
       breaker.appendLog()
 
       // check breaker status
@@ -361,7 +365,7 @@ const CircuitBreaker = function (id, protectedCall, thresholds) {
       console.warn('aborting call', id)
     },
 
-    error (msg) {
+    handleError (msg) {
       logError(id, msg, thresholds)
     },
 
@@ -371,12 +375,12 @@ const CircuitBreaker = function (id, protectedCall, thresholds) {
      * @param {Error} event
      * @param {EventEmitter} listener
      */
-    errorListener (eventName, listener = null) {
-      if (listener instanceof EventEmitter) {
-        listener.on(eventName, () => this.error(eventName))
-        return
-      }
+    detectError (eventName) {
       errorEvents.push(eventName)
+    },
+
+    getErrorListener () {
+      return errorListener
     }
   }
 }
