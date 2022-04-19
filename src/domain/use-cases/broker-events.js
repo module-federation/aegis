@@ -121,10 +121,6 @@ export default function brokerEvents (
       try {
         if (event.metaEvent) return false
 
-        if (isBroadcastEvent(event)) {
-          forwardToPool(event, )
-        }
-
         // if no target specififed, deduce it from config
         const targets = event.eventTarget
           ? parseEventTargets(event)
@@ -134,7 +130,7 @@ export default function brokerEvents (
 
         const handled = await Promise.all(
           targets.map(async target => {
-            if (targetIsRemote(target)) return false
+            if (target) return false
 
             try {
               await forwardToPool(event, target)
