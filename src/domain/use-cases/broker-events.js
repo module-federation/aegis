@@ -103,7 +103,7 @@ export default function brokerEvents (
       try {
         const pool = threadpools.getThreadPool(poolName)
         if (pool) {
-          return await pool.fireEvent(event)
+          return await pool.run('emitEvent', event)
         } else console.error('no such pool', poolName)
       } catch (error) {
         console.error({ fn: forwardToPool.name, error })
@@ -119,7 +119,11 @@ export default function brokerEvents (
      */
     async function route (event) {
       try {
-        if (event.metaEvent || isBroadcastEvent(event)) return false
+        if (event.metaEvent) return false
+
+        if (isBroadcastEvent(event)) {
+          forwardToPool(event, )
+        }
 
         // if no target specififed, deduce it from config
         const targets = event.eventTarget
@@ -172,11 +176,14 @@ export default function brokerEvents (
       datasources,
       // define appropriate pub/sub functions for env
       publish: event => broker.notify('to_main', event),
-      subscribe: (eventName, cb) =>
+      subscribe: (eventName, cb) => {
+        broker.on(eventName, cb)
         broker.on(
           'from_main',
-          event => event.eventName === eventName && cb(event)
+          event =>
+            event.eventName === eventName && broker.notify(eventName, event)
         )
+      }
     })
 
     manager.start()

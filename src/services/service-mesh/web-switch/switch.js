@@ -15,7 +15,7 @@ const configRoot = require('../../../config').hostConfig
 const config = configRoot.services.serviceMesh.WebSwitch
 const debug = /true/i.test(config.debug)
 
-let isSwitch = typeof config.isSwitch === 'undefined' ? true : config.isSwitch
+let isSwitch = /true/i.test(process.env.SWITCH) || typeof config.isSwitch === 'undefined' ? true : config.isSwitch
 let isBackupSwitch = !isSwitch && config.isBackupSwitch
 let activateBackup = false
 let backupSwitch = null

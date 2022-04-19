@@ -457,7 +457,7 @@ export class ThreadPool extends EventEmitter {
   }
 
   async fireEvent (event) {
-    return this.run(event.name, event.data, EVENTCHANNEL)
+    return this.run(event.eventName, event, EVENTCHANNEL)
   }
 
   /**

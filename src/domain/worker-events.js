@@ -15,8 +15,11 @@ const workerEvents = {
  */
 export function registerWorkerEvents (broker) {
   broker.on('from_main', event => {
-    console.debug({ fn: 'eventHandler', event })
+    if (typeof workerEvents[event.eventName] !== 'function') {
+      console.debug({msg: 'not a function'})
+      return
+    }
+    console.debug({ fn: workerEvents[event.eventName].name, event })
     workerEvents[event.eventName](event)
-    broker.notify('to_main', { fn: registerWorkerEvents.name, event })
   })
 }
