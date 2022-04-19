@@ -130,7 +130,7 @@ export default function brokerEvents (
 
         const handled = await Promise.all(
           targets.map(async target => {
-            if (target) return false
+            if (targetIsRemote(target)) return false
 
             try {
               await forwardToPool(event, target)
