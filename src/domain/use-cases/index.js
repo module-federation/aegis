@@ -90,7 +90,7 @@ const editModels = () => make(makeEditModel)
 const listModels = () => make(makeListModels)
 const findModels = () => make(makeFindModel)
 const removeModels = () => make(makeRemoveModel)
-const loadModelSpecs = () => make(makeLoadModels)
+const loadModels = () => make(makeLoadModels)
 const emitEvents = () => make(makeEmitEvent)
 const hotReload = () => [
   {
@@ -115,7 +115,7 @@ export const UseCases = {
   listModels,
   findModels,
   removeModels,
-  loadModelSpecs,
+  loadModels,
   listConfigs,
   hotReload,
   registerEvents,
@@ -131,8 +131,8 @@ export function UseCaseService (modelName = null) {
       listModels: makeOne(modelNameUpper, makeListModels),
       findModel: makeOne(modelNameUpper, makeFindModel),
       removeModel: makeOne(modelNameUpper, makeRemoveModel),
-      loadModelSpecs: makeOne(modelNameUpper, makeLoadModels),
-      emitEvents: makeOne(modelNameUpper, makeEmitEvent),
+      loadModels: makeOne(modelNameUpper, makeLoadModels),
+      emitEvent: makeOne(modelNameUpper, makeEmitEvent),
       listConfigs: listConfigs()
     }
   }

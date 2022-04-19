@@ -7,6 +7,7 @@ import Event from './event'
 import hash from './util/hash'
 
 const debug = process.env.DEBUG
+const handlerDebug = true
 
 /**
  * @callback eventHandler
@@ -95,18 +96,16 @@ const handleError = error => {
 async function runHandler (eventName, eventData = {}, handle) {
   const abort = eventData ? false : true
 
-  console.assert(!debug, 'handler running', {
-    eventName,
-    eventUuid: eventData?.eventUuid,
-    handle: handle.toString(),
-    model: eventData?.modelName,
-    modelId: eventData?.modleId
-  })
-
   if (abort) {
     console.warn('no data provided, abort')
     return
   }
+
+  handlerDebug &&
+    console.debug('handler running', {
+      eventName,
+      eventData
+    })
 
   /**
    * @type {eventHandler}

@@ -1,6 +1,7 @@
 'use strict'
 
 /** @typedef {import('.').Model} Model */
+
 /**
  * @typedef {object} dsOpts
  * @property {boolean} memoryOnly - if true returns memory adapter and caches it
@@ -12,14 +13,16 @@ import ModelFactory from '.'
 import * as adapters from '../adapters/datasources'
 import dsconfig from '../adapters/datasources'
 import sysconf from '../config'
+import DataSource from './datasource'
 import { withSharedMem } from './shared-memory'
 
 const defaultAdapter = sysconf.hostConfig.adapters.defaultDatasource
 const DefaultDataSource = adapters[defaultAdapter]
 
 if (!DefaultDataSource) throw new Error('no default datasource')
+
 /**
- * Creates or returns the dedicated datasource for the domain model.
+ * Manages each domain model's dedicated datasource.
  * @todo handle all state same way
  * @typedef {{
  *  getDataSource:function(string):import("./datasource").default,
@@ -32,7 +35,6 @@ const DataSourceFactory = (() => {
   let dataSources
 
   /**
-   * @method
    * @param {*} name
    * @returns
    */
@@ -44,10 +46,27 @@ const DataSourceFactory = (() => {
     return [...dataSources.keys()]
   }
 
-  function createDataSourceClass (spec, options) {
-    const { memoryOnly, cachedWrite, ephemeral, adapterName } = options
+  /**
+   * @typedef dsOpts
+   * @property {boolean} memoryOnly don't persist to storage
+   * @property {boolean} cachedWrite allow cached ds to write to storage
+   * @property {boolean} ephemeral temporary datastore - used just once
+   * @property {string} adapterName specify the adapter to use
+   * @property {Map<string,any>|import('sharedmap').SharedMap} dsMap
+   * data source location and structure for private or shared memory
+   * @property {function(typeof DataSource):typeof DataSource} mixin
+   */
 
-    if ((memoryOnly && !cachedWrite) || ephemeral) {
+  /**
+   *
+   * @param {import('.').ModelSpecification} spec
+   * @param {dsOpts} options
+   * @returns {typeof DataSource}
+   */
+  function createDataSourceClass (spec, options) {
+    const { memoryOnly, ephemeral, adapterName } = options
+
+    if (memoryOnly || ephemeral) {
       return dsconfig.getBaseClass(dsconfig.MEMORYADAPTER)
     }
 
@@ -65,42 +84,61 @@ const DataSourceFactory = (() => {
   }
 
   /**
-   * Get the datasource for each model.
-   * @param {string} name - model name
-   * @param {dsOpts} options - memory only, ephemeral, adapter ame
-   * @returns {import('./datasource').default}
+   *
+   * @param {string} name
+   * @param {dsOpts} [options]
+   * @returns {DataSource}
    */
-  function getDataSource (name, options = {}) {
-    if (!dataSources) {
-      dataSources = new Map()
-    }
-
-    if (dataSources.has(String(name).toUpperCase())) {
-      return dataSources.get(String(name).toUpperCase())
-    }
-
-    const spec = ModelFactory.getModelSpec(String(name).toUpperCase())
+  function createDataSource (name, options = {}) {
+    const spec = ModelFactory.getModelSpec(name)
     const dsMap = options.dsMap || new Map()
     const DsClass = createDataSourceClass(spec, options)
     const MixinClass = options.mixin ? options.mixin(DsClass) : DsClass
-    const newDs = new MixinClass(dsMap, this, String(name).toUpperCase())
-
-    if (!options.ephemeral) dataSources.set(String(name).toUpperCase(), newDs)
-
+    const newDs = new MixinClass(dsMap, this, name)
+    if (!options.ephemeral) dataSources.set(name, newDs)
     return newDs
   }
 
-  function getSharedDataSource (name, options) {
+  /**
+   * Get the datasource for each model.
+   * @param {string} name - model name
+   * @param {dsOpts} options
+   * @returns {import('./datasource').default}
+   */
+  function getDataSource (name, options = {}) {
+    const upperName = name.toUpperCase()
+
     if (!dataSources) {
       dataSources = new Map()
     }
 
-    if (dataSources.has(String(name).toUpperCase())) {
-      return dataSources.get(String(name).toUpperCase())
+    if (dataSources.has(upperName)) {
+      return dataSources.get(upperName)
     }
-    const ds = withSharedMem(getDataSource, this, name, options)
-    console.debug({ fn: getDataSource.name, ds })
-    return ds
+
+    return createDataSource(upperName, options)
+  }
+
+  /**
+   *
+   * @param {string} name
+   * @param {dsOpts} [options]
+   * @returns
+   */
+  function getSharedDataSource (name, options = {}) {
+    const upperName = name.toUpperCase()
+
+    if (!dataSources) {
+      dataSources = new Map()
+    }
+
+    if (dataSources.has(upperName)) {
+      return dataSources.get(upperName)
+    }
+
+    const newDs = withSharedMem(createDataSource, this, upperName, options)
+    console.debug({ fn: getSharedDataSource.name, ds: newDs })
+    return newDs
   }
 
   function close () {

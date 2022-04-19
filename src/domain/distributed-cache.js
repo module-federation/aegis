@@ -90,23 +90,6 @@ export default function DistributedCache ({
   }
 
   /**
-   * @param {*} eventName
-   * @param {*} modelName
-   * @param {Event} event
-   * @returns
-   */
-  async function handleDelete (eventName, modelName, event) {
-    if (
-      eventName === models.getEventName(models.EventTypes.DELETE, modelName)
-    ) {
-      console.debug('deleting from cache', modelName, event.modelId)
-      await datasources.getDataSource(modelName).delete(event.modelId)
-      return true
-    }
-    return false
-  }
-
-  /**
    * Unmarshal deserialized object.
    * @param {Array<Model>} model
    * @param {import("./datasource").default} datasource
@@ -168,6 +151,23 @@ export default function DistributedCache ({
     const { route, event, model } = o
     if (route) await route({ ...event, model })
     return o
+  }
+
+  /**
+   * @param {*} eventName
+   * @param {*} modelName
+   * @param {Event} event
+   * @returns
+   */
+  async function handleDelete (eventName, modelName, event) {
+    if (
+      eventName === models.getEventName(models.EventTypes.DELETE, modelName)
+    ) {
+      console.debug('deleting from cache', modelName, event.modelId)
+      await datasources.getDataSource(modelName).delete(event.modelId)
+      return true
+    }
+    return false
   }
 
   /**
@@ -396,7 +396,7 @@ export default function DistributedCache ({
    */
   function start () {
     const modelSpecs = models.getModelSpecs()
-    const localModels = [String(workerData.modelName).toUpperCase()]
+    const localModels = [workerData.modelName.toUpperCase()]
     const remoteModels = [
       ...new Set( // deduplicate
         modelSpecs

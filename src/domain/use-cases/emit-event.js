@@ -1,10 +1,6 @@
 'use strict'
 
-import executeCommand from './execute-command'
-import async from '../util/async-error'
-import domainEvents from '../domain-events'
-import { isMainThread } from 'worker_threads'
-import AppError from '../util/app-error'
+import { isMainThread, workerData } from 'worker_threads'
 
 /**
  * @typedef {Object} ModelParam
@@ -33,17 +29,16 @@ export default function makeEmitEvent ({
    * @param {{eventName:string,...}} input
    * @returns
    */
-  async function emitEvent (input) {
+  return async function emitEvent (input) {
     try {
       if (isMainThread) {
         await threadpool.fireEvent(input)
       } else {
+        console.debug({ pool: workerData.modelname, fn: emitEvent.name, input })
         await broker.notify(input.eventName, input)
       }
     } catch (error) {
       console.error({ fn: emitEvent.name, error })
     }
   }
-
-  return emitEvent
 }

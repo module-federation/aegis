@@ -141,7 +141,7 @@
  * @property {string} endpoint URI reference (e.g. plural of `modelName`)
  * @property {function(...args): any} factory factory function that creates model instance
  * @property {object} [dependencies] injected into the model for dependency and control inversion
- * @property {Array<import("./mixins").functionalMixin>} [mixins] use mixins instead of inheritance
+ * @property {Array<import("./mixins").functionalMixin>} [mixins] favor functional composition over inheritance
  * to implement reusable domain logic, like input validation.
  * @property {onUpdate} [onUpdate] - Function called to handle update requests. Called
  * before save.

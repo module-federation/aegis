@@ -177,7 +177,8 @@ export function attachServer (server) {
             ...client.info,
             initialized: true,
             isBackupSwitch: backupSwitch === client.info.id,
-            backupPriority: 'low'
+            backupPriority: 'low',
+            switchHost: os.hostname()
           }
           console.info('client initialized', client.info)
 

@@ -7,7 +7,6 @@ import DistributedCache from '../distributed-cache'
 import { ServiceMeshAdapter as ServiceMesh } from '../../adapters'
 import { isMainThread } from 'worker_threads'
 import domainEvents from '../domain-events'
-import ModelFactory from '..'
 
 /**
  * Broker events between {@link ThreadPoolFactory} and remote mesh instances.
@@ -20,8 +19,7 @@ import ModelFactory from '..'
  * @param {import('../event-broker').EventBroker} broker
  * @param module:src/domain/threadpool-factory datasources
  * @param {import("../model-factory").ModelFactory} models
- * @param {import("../thread-pool").DataSourceFactory} threadpools
- * @module:src/domain/threadpool-factory
+ * @param {import("../thread-pool").ThreadPoolFactory} threadpools
  */
 export default function brokerEvents (
   broker,
@@ -31,10 +29,10 @@ export default function brokerEvents (
 ) {
   if (isMainThread) {
     /**
-     * For each local model, find the related models in its spec
-     * and use them to generate a list of domain & crud events.
+     * For each local model, find models in the relations section
+     * of its spec and use them to generate the list of events .
      *
-     * @returns
+     * @returns {string[][]} [[eventName,modelName]]
      */
     const mapRoutes = () =>
       models
@@ -52,17 +50,13 @@ export default function brokerEvents (
             ...Object.keys(models.EventTypes)
               .map(type => models.getEventName(type, spec.related))
               .concat([
-                ...Object.values(domainEvents).map(de =>
-                  typeof de === 'function' ? de(spec.related) : de
+                ...Object.values(domainEvents).map(e =>
+                  typeof e === 'function' ? e(spec.related) : e
                 )
               ])
           ]
         ])
         .flatMap(([k, v]) => v.map(v => [v, k]))
-
-    const routes = mapRoutes()
-
-    console.debug({ routes })
 
     /**
      * Find the target models/pools with a matching event
@@ -92,28 +86,27 @@ export default function brokerEvents (
         .filter(spec => !spec.isCached)
         .map(spec => spec.modelName)
 
-    const isCrudEvent = (eventName, modelName) =>
-      ModelFactory.getEventName(modelName, eventName).endsWith(eventName)
+    const isCrudEvent = event => /crud/i.test(event.eventName)
 
     const isBroadcastEvent = event => event.broadcast || isCrudEvent(event)
 
     const targetIsRemote = target => !localModels().includes(target)
 
     /**
-     * Get/start the pool and fire an event into the thread
+     * Get/start the pool and fire the event in a thread
      *
      * @param {import('../event').Event} event
      * @param {string} poolName name of model/pool
      */
     async function forwardToPool (event, poolName) {
+      console.debug({ fn: forwardToPool.name, poolName, event })
       try {
-        /** @type {import('../thread-pool').ThreadPool} */
         const pool = threadpools.getThreadPool(poolName)
         if (pool) {
           return await pool.fireEvent(event)
         } else console.error('no such pool', poolName)
       } catch (error) {
-        console.error({ fn: forwardToPool, error })
+        console.error({ fn: forwardToPool.name, error })
       }
     }
 
@@ -126,7 +119,7 @@ export default function brokerEvents (
      */
     async function route (event) {
       try {
-        if (event.metaEvent) return true // don't forward these
+        if (event.metaEvent || isBroadcastEvent(event)) return false
 
         // if no target specififed, deduce it from config
         const targets = event.eventTarget
@@ -137,15 +130,7 @@ export default function brokerEvents (
 
         const handled = await Promise.all(
           targets.map(async target => {
-            console.debug({
-              msg: 'known event',
-              eventName: event.eventName,
-              target
-            })
-
             if (targetIsRemote(target)) return false
-
-            if (isBroadcastEvent(event)) return false
 
             try {
               await forwardToPool(event, target)
@@ -171,20 +156,21 @@ export default function brokerEvents (
       async event => (await route(event)) || ServiceMesh.publish(event)
     )
 
-    // forward every from the servivce mesh to the workers
-    //broker.on('from_mesh', event => broker.notify('to_worker', event))
+    // forward everything from the servivce mesh to workers
     ServiceMesh.subscribe('*', event => broker.notify('to_worker', event))
 
-    // connect to the service mesh
+    // connect to mesh and provide fn to check running services
     ServiceMesh.connect({ services: localModels })
   } else {
+    // create listeners that handle command events from main
     require('../worker-events').registerWorkerEvents(broker)
 
-    // start distributed object cache
+    // init distributed object cache
     const manager = DistributedCache({
       models,
       broker,
       datasources,
+      // define appropriate pub/sub functions for env
       publish: event => broker.notify('to_main', event),
       subscribe: (eventName, cb) =>
         broker.on(

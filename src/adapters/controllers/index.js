@@ -7,7 +7,7 @@ const {
   editModels,
   findModels,
   listConfigs,
-  loadModelSpecs,
+  loadModels,
   listModels,
   removeModels,
   hotReload,
@@ -39,7 +39,7 @@ export const getConfig = () => getConfigFactory(listConfigs())
 
 export const initCache = () => {
   const label = '\ntime to load cache'
-  const specs = loadModelSpecs()
+  const specs = loadModels()
   registerEvents()
 
   async function loadModelInstances () {

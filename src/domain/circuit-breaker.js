@@ -371,7 +371,7 @@ const CircuitBreaker = function (id, protectedCall, thresholds) {
      * @param {Error} event
      * @param {EventEmitter} listener
      */
-    errorListener (eventName, listener) {
+    errorListener (eventName, listener = null) {
       if (listener instanceof EventEmitter) {
         listener.on(eventName, () => this.error(eventName))
         return

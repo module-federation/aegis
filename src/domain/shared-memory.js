@@ -10,11 +10,16 @@ const MAPSIZE = 2048 * 56
 const KEYSIZE = 32
 const OBJSIZE = 4056
 
-/**x
+/**
+ *
+ */
+
+/**
  * compositional class mixin - so any class
  * in the hierarchy can use shared memory
- * @param {*} superclass
- * @returns
+ * @param {import('./datasource').default} superclass
+ * @returns {import('./datasource').default} shared memory
+ * @callback
  */
 const SharedMemMixin = superclass =>
   class extends superclass {
@@ -60,11 +65,11 @@ const SharedMemMixin = superclass =>
  * Decorator adds support for thread-safe shared {@link Map} using
  * {@link SharedArrayBuffer}.
  *
- * @param {function():import('./datasource').default} getDataSource in {@link DataSourceFactory}
+ * @param {function():import('./datasource').default} createDataSource in {@link DataSourceFactory}
  * @param {import('./datasource-factory').DataSourceFactory} factory
  * @returns {import('./datasource').default}
  */
-export function withSharedMem (getDataSource, factory, name, options = {}) {
+export function withSharedMem (createDataSource, factory, name, options = {}) {
   // thread-safe map
   const sharedMap = isMainThread
     ? Object.assign(new SharedMap(MAPSIZE, KEYSIZE, OBJSIZE), {
@@ -73,7 +78,7 @@ export function withSharedMem (getDataSource, factory, name, options = {}) {
     : Object.setPrototypeOf(workerData.sharedMap, SharedMap.prototype) // unmarshal
 
   // call with shared map and mixin that extends ds class
-  return getDataSource.call(factory, name.toUpperCase(), {
+  return createDataSource.call(factory, name, {
     ...options,
     dsMap: sharedMap,
     mixin: DsClass => class SharedMemDs extends SharedMemMixin(DsClass) {}
