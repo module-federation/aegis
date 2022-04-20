@@ -24,16 +24,11 @@ export default function listConfigsFactory ({
       data: () =>
         modelName && isMainThread
           ? threadpools.getThreadPool(modelName).run(listConfigs.name, query)
-          : modelName
-          ? dsFact.listDataSources().map(k => ({
-              dsname: k,
-              records: dsFact.getDataSource(k).totalRecords()
-            }))
           : dsFact.listDataSources().map(k => ({
               dsname: k,
               records: dsFact.getDataSource(k).totalRecords()
             })),
-
+            
       events: () =>
         modelName && isMainThread
           ? threadpools.getThreadPool(modelName).run(listConfigs.name, query)
