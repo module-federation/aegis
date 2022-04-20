@@ -296,27 +296,20 @@ const Switch = function (id, thresholds) {
  * @returns {breaker}
  */
 const CircuitBreaker = function (id, protectedCall, thresholds) {
-  // if we aren't being added by the model, which is already a
-  // subclass of EventEmitter, then use our own emitter which
-  // can be shared with the caller.
-  const errorListener = new EventEmitter()
   const errorEvents = []
 
-  const monitorError = function (eventName) {
-    if (typeof this.addListener !== 'function') {
-      errorListener.on(eventName, () => this.handleError(eventName))
-      return
-    }
-    this.addListener(eventName, () => this.handleError(eventName), {
-      singleton: true
-    })
+  const monitorErrors = function (eventName) {
+    this.addListener &&
+      this.addListener(eventName, () => this.handleError(eventName), {
+        singleton: true
+      })
   }
 
   return {
     // wrap client call
     async invoke (...args) {
       const breaker = Switch(id, thresholds)
-      errorEvents.forEach(monitorError.bind(this))
+      errorEvents.forEach(monitorErrors.bind(this))
       breaker.appendLog()
 
       // check breaker status
@@ -371,16 +364,22 @@ const CircuitBreaker = function (id, protectedCall, thresholds) {
 
     /**
      * Listen for events that count as errors against a threashold.
+     * Provide an {@link EventEmitter} in the second param if needed.
      *
-     * @param {Error} event
-     * @param {EventEmitter} listener
+     * @param {string|string[]} eventNames
+     * @param {EventEmitter} [emitter]
      */
-    detectError (eventName) {
-      errorEvents.push(eventName)
-    },
+    detectErrors (eventNames, emitter = null) {
+      const errorList = [eventNames].flat()
+      errorEvents.concat(errorList)
 
-    getErrorListener () {
-      return errorListener
+      // if we aren't being added by a domain model, which is already a
+      // subclass of EventEmitter, then allow caller to provide one.
+      if (emitter instanceof EventEmitter) {
+        errorList.forEach(error =>
+          emitter.on(error, () => logError(id, error, thresholds))
+        )
+      }
     }
   }
 }

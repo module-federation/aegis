@@ -23,6 +23,8 @@ import { CircuitBreaker } from '../../index'
 const HOSTNAME = 'webswitch.local'
 const SERVICENAME = 'webswitch'
 const TIMEOUTEVENT = 'webswitchTimeout'
+const RECONNECTEVENT = 'webswitchReconnect'
+const WEBSOCKETERROR = 'websocketError'
 
 const configRoot = require('../../../config').hostConfig
 const config = configRoot.services.serviceMesh.WebSwitch
@@ -44,6 +46,14 @@ const port = config.isSwitch ? activePort : config.port
 const host = config.isSwitch ? activeHost : config.host
 const eventEmitter = new EventEmitter()
 
+eventEmitter.on(TIMEOUTEVENT, () =>
+  console.error({ error: 'webswitch unresponsiven - trying new conn' })
+)
+
+eventEmitter.on(WEBSOCKETERROR, error =>
+  console.error({ errMsg: 'websocket error', error })
+)
+
 const _url = (proto, host, port) =>
   proto && host && port ? `${proto}://${host}:${port}` : null
 
@@ -54,7 +64,7 @@ let uplinkCallback
 
 let dnsPriority
 /** @type {function():string[]} */
-let availableMicroservices = () => []
+let installedMicroservices = () => []
 /** @type {WebSocket} */
 let ws
 
@@ -251,7 +261,7 @@ function format (event) {
 function send (event) {
   if (ws?.readyState) {
     const breaker = new CircuitBreaker(__filename + send.name, ws.send)
-    breaker.errorListener(eventEmitter)
+    breaker.detectErrors([TIMEOUTEVENT, WEBSOCKETERROR], eventEmitter)
     breaker.invoke(format(event))
     return
   }
@@ -277,17 +287,7 @@ function startHeartbeat () {
     } else {
       try {
         clearInterval(intervalId)
-
         eventEmitter.emit(TIMEOUTEVENT)
-
-        console.error({
-          fn: startHeartbeat.name,
-          receivedPong,
-          msg: 'no response, trying new conn'
-        })
-
-        // keep trying
-        reconnect()
       } catch (error) {
         console.error(startHeartbeat.name, error)
       }
@@ -311,7 +311,7 @@ const protocol = {
   serialize () {
     return JSON.stringify({
       ...this,
-      services: availableMicroservices(),
+      services: installedMicroservices(),
       mem: process.memoryUsage(),
       cpu: process.cpuUsage()
     })
@@ -365,13 +365,15 @@ async function _connect () {
     ws = new WebSocket(serviceUrl)
 
     ws.on('open', function () {
+      eventEmitter.once(TIMEOUTEVENT, reconnect)
+      eventEmitter.once(WEBSOCKETERROR, reconnect)
       send(protocol.serialize())
       startHeartbeat()
     })
 
     ws.on('error', function (error) {
       console.error({ fn: _connect.name, error })
-      reconnect()
+      eventEmitter.emit(WEBSOCKETERROR, error)
     })
 
     ws.on('message', async function (message) {
@@ -405,7 +407,7 @@ async function _connect () {
  * @param {{services:()=>*}} [serviceInfo]
  */
 export async function connect (serviceInfo = {}) {
-  availableMicroservices = serviceInfo?.services
+  installedMicroservices = serviceInfo?.services
   await _connect()
 }
 
@@ -430,7 +432,10 @@ async function reconnect (attempts = 0) {
     }
     reconnecting = false
     if (!ws) reconnect(attempts)
-    else console.info('reconnected to switch')
+    else {
+      eventEmitter.emit(RECONNECTEVENT)
+      console.info('reconnected to switch')
+    }
   }, 6000)
 }
 
