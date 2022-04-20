@@ -34,7 +34,7 @@ const SharedMemMixin = superclass =>
      * Deserialize
      * @override
      * @param {*} id
-     * @returns
+     * @returns {import('./datasource-factory').Model}
      */
     async find (id) {
       const modelString = await super.find(id)
@@ -50,7 +50,7 @@ const SharedMemMixin = superclass =>
               EventBrokerFactory.getInstance(),
               this,
               model,
-              String(this.name).toUpperCase()
+              this.name.toUpperCase()
             )
       } catch (error) {
         console.error({ fn: 'SharedMem.find', error })
@@ -67,6 +67,7 @@ const SharedMemMixin = superclass =>
  *
  * @param {function():import('./datasource').default} createDataSource in {@link DataSourceFactory}
  * @param {import('./datasource-factory').DataSourceFactory} factory
+ * @param {import('./datasource-factory').dsOpts} options
  * @returns {import('./datasource').default}
  */
 export function withSharedMem (createDataSource, factory, name, options = {}) {

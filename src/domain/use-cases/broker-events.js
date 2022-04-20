@@ -50,8 +50,8 @@ export default function brokerEvents (
             ...Object.keys(models.EventTypes)
               .map(type => models.getEventName(type, spec.related))
               .concat([
-                ...Object.values(domainEvents).map(e =>
-                  typeof e === 'function' ? e(spec.related) : e
+                ...Object.values(domainEvents).map(v =>
+                  typeof v === 'function' ? v(spec.related) : v
                 )
               ])
           ]
@@ -67,18 +67,17 @@ export default function brokerEvents (
         .map(r => r[1])
 
     function inferEventTargets (event) {
-      if (!event?.eventName) return []
+      if (!event || !event.eventName) return []
       const targets = searchEvents(event.eventName)
       if (targets.length < 1) {
-        const e = event.eventName
-        const eventTarget = e.slice(e.lastIndexOf('_') + 1)
-        return searchEvents(eventTarget)
+        const n = event.eventName
+        const eventName = n.slice(n.lastIndexOf('_') + 1)
+        return searchEvents(eventName)
       }
       return targets
     }
 
-    const parseEventTargets = event =>
-      Array.isArray(event.eventTarget) ? event.eventTarget : [event.eventTarget]
+    const parseEventTargets = event => [event.eventTarget].flat()
 
     const localModels = () =>
       models
@@ -98,15 +97,15 @@ export default function brokerEvents (
      * @param {import('../event').Event} event
      * @param {string} poolName name of model/pool
      */
-    async function forwardToPool (event, poolName) {
-      console.debug({ fn: forwardToPool.name, poolName, event })
+    async function runInPool (event, poolName) {
+      console.debug({ fn: runInPool.name, poolName, event })
       try {
         const pool = threadpools.getThreadPool(poolName)
         if (pool) {
           return await pool.run('emitEvent', event)
         } else console.error('no such pool', poolName)
       } catch (error) {
-        console.error({ fn: forwardToPool.name, error })
+        console.error({ fn: runInPool.name, error })
       }
     }
 
@@ -133,7 +132,7 @@ export default function brokerEvents (
             if (targetIsRemote(target)) return false
 
             try {
-              await forwardToPool(event, target)
+              await runInPool(event, target)
             } catch (error) {
               return false
             }
@@ -156,10 +155,10 @@ export default function brokerEvents (
       async event => (await route(event)) || ServiceMesh.publish(event)
     )
 
-    // forward everything from the servivce mesh to workers
+    // forward everything from the servivce mesh to the worker threads
     ServiceMesh.subscribe('*', event => broker.notify('to_worker', event))
 
-    // connect to mesh and provide fn to check running services
+    // connect to mesh and provide fn to list installed services
     ServiceMesh.connect({ services: localModels })
   } else {
     // create listeners that handle command events from main
