@@ -35,9 +35,9 @@ import Event from './event'
  * @enum {EventType}
  */
 const EventTypes = {
-  CREATE: 'CREATE_',
-  UPDATE: 'UPDATE_',
-  DELETE: 'DELETE_'
+  CREATE: 'CREATE',
+  UPDATE: 'UPDATE',
+  DELETE: 'DELETE'
 }
 
 /**
