@@ -16,7 +16,8 @@ import makeEmitEvent from './emit-event'
 import makeHotReload from './hot-reload'
 import brokerEvents from './broker-events'
 
-import { isMainThread } from 'worker_threads'
+import { isMainThread, workerData } from 'worker_threads'
+import { DnsService } from '../../services'
 
 export function registerEvents () {
   // main thread handles event dispatch
@@ -26,6 +27,27 @@ export function registerEvents () {
     ModelFactory,
     ThreadPoolFactory
   )
+}
+
+function findLocalRelatedModels () {
+  const modelSpecs = ModelFactory.getModelSpecs()
+  const localModels = modelSpecs.map(modelName => modelName)
+  const localRelatedModels = [
+    ...new Set( // deduplicate
+      modelSpecs
+        .filter(m => m.relations) // only models with relations
+        .map(m =>
+          Object.keys(m.relations)
+            .filter(
+              // filter out existing local models
+              k => !localModels.includes(m.relations[k].modelName.toUpperCase())
+            )
+            .map(k => m.relations[k].modelName.toUpperCase())
+        )
+        .reduce((a, b) => a.concat(b), [])
+    )
+  ]
+  return localRelatedModels
 }
 
 /**
@@ -41,6 +63,16 @@ function buildOptions (model) {
   }
 
   if (isMainThread) {
+    function findLocalRelatedDatasources (modelName) {
+      console.debug({ fn: findLocalRelatedDatasources.name, modelName })
+      return findLocalRelatedModels().map(modelName => ({
+        modelName,
+        dsMap: DataSourceFactory.getSharedDataSource(modelName).dsMap
+      }))
+    }
+
+    const dsRelated = findLocalRelatedDatasources(model.modelName)
+
     return {
       ...options,
       // main thread does not write to persistent store
@@ -48,7 +80,8 @@ function buildOptions (model) {
 
       // only main thread knows about thread pools (no nesting)
       threadpool: ThreadPoolFactory.getThreadPool(model.modelName, {
-        preload: false
+        preload: false,
+        dsRelated
       })
     }
   } else {

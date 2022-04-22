@@ -4,15 +4,12 @@ import SharedMap from 'sharedmap'
 import ModelFactory from '.'
 import { isMainThread, workerData } from 'worker_threads'
 import { EventBrokerFactory } from '.'
+const broker = EventBrokerFactory.getInstance()
 
 const MAPSIZE = 2048 * 56
 // Size is in UTF-16 codepointse
 const KEYSIZE = 32
 const OBJSIZE = 4056
-
-/**
- *
- */
 
 /**
  * compositional class mixin - so any class
@@ -46,12 +43,7 @@ const SharedMemMixin = superclass =>
       try {
         return isMainThread
           ? model
-          : ModelFactory.loadModel(
-              EventBrokerFactory.getInstance(),
-              this,
-              model,
-              this.name.toUpperCase()
-            )
+          : ModelFactory.loadModel(broker, this, model, this.name.toUpperCase())
       } catch (error) {
         console.error({ fn: 'SharedMem.find', error })
       }
@@ -60,6 +52,14 @@ const SharedMemMixin = superclass =>
   }
 
 /** @typedef {import('./datasource-factory').default} DataSourceFactory */
+
+function getSharedMap (name) {
+  const dsMap = workerData.dsRelated.find(ds => ds.modelName === name)?.dsMap
+  if (!dsMap) {
+    return workerData.sharedMap
+  }
+  return dsMap
+}
 
 /**
  * Decorator adds support for thread-safe shared {@link Map} using
@@ -76,7 +76,11 @@ export function withSharedMem (createDataSource, factory, name, options = {}) {
     ? Object.assign(new SharedMap(MAPSIZE, KEYSIZE, OBJSIZE), {
         modelName: name // assign modelName
       })
-    : Object.setPrototypeOf(workerData.sharedMap, SharedMap.prototype) // unmarshal
+    : Object.setPrototypeOf(
+        // SharedMap can be passed in for related ds
+        getSharedMap(name),
+        SharedMap.prototype
+      ) // unmarshal
 
   // call with shared map and mixin that extends ds class
   return createDataSource.call(factory, name, {

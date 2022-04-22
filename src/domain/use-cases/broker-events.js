@@ -7,6 +7,8 @@ import DistributedCache from '../distributed-cache'
 import { ServiceMeshAdapter as ServiceMesh } from '../../adapters'
 import { isMainThread } from 'worker_threads'
 import domainEvents from '../domain-events'
+import { SharedMap } from 'sharedmap'
+const { externalCacheResponse } = domainEvents
 
 /**
  * Broker events between {@link ThreadPoolFactory} and remote mesh instances.
@@ -91,21 +93,41 @@ export default function brokerEvents (
 
     const targetIsRemote = target => !localModels().includes(target)
 
-    /**
-     * Get/start the pool and fire the event in a thread
-     *
-     * @param {import('../event').Event} event
-     * @param {string} poolName name of model/pool
-     */
-    async function runInPool (event, poolName) {
-      console.debug({ fn: runInPool.name, poolName, event })
-      try {
-        const pool = threadpools.getThreadPool(poolName)
-        if (pool) {
-          return await pool.run('emitEvent', event)
-        } else console.error('no such pool', poolName)
-      } catch (error) {
-        console.error({ fn: runInPool.name, error })
+    const eventActions = {
+      /**
+       *
+       * @param {*} targetPool
+       */
+      async externalCacheRequest (event, targetPool) {
+        const pool = threadpools.getThreadPool(targetPool)
+        const ds = datasources.getDataSource(targetPool)
+        pool.threadRef.forEach(thread =>
+          thread.eventChannel.postMessage(
+            {
+              name: 'transferDatasource',
+              data: { dsMap: ds.dsMap, poolName: pool.name }
+            },
+            [SharedMap]
+          )
+        )
+        pool.broadcastEvent({ eventName: externalCacheResponse(targetPool) })
+      },
+      /**
+       * Get/start the pool and fire the event in a thread
+       *
+       * @param {import('../event').Event} event
+       * @param {string} poolName name of model/pool
+       */
+      async externalCrudEvent (event, poolName) {
+        console.debug({ fn: runInPool.name, poolName, event })
+        try {
+          const pool = threadpools.getThreadPool(poolName)
+          if (pool) {
+            return await pool.run('emitEvent', event)
+          } else console.error('no such pool', poolName)
+        } catch (error) {
+          console.error({ fn: runInPool.name, error })
+        }
       }
     }
 
@@ -116,10 +138,9 @@ export default function brokerEvents (
      * @param {import('../event').Event} event
      * @returns {Promise<boolean>} if true don't forward
      */
-    async function route (event) {
+    async function dispatch (event) {
       try {
         if (event.metaEvent) return false
-
         // if no target specififed, deduce it from config
         const targets = event.eventTarget
           ? parseEventTargets(event)
@@ -131,8 +152,9 @@ export default function brokerEvents (
           targets.map(async target => {
             if (targetIsRemote(target)) return false
 
+            // target is local so lookup the required action
             try {
-              await runInPool(event, target)
+              await eventActions[event.eventType](event, target)
             } catch (error) {
               return false
             }
@@ -144,7 +166,7 @@ export default function brokerEvents (
         // if all targets handled locally, dont forward
         return handled.reduce((c, p) => c && p, [])
       } catch (error) {
-        console.debug({ fn: route.name, error })
+        console.debug({ fn: dispatch.name, error })
       }
       return false
     }
@@ -152,7 +174,7 @@ export default function brokerEvents (
     // forward any event that is not handled locally to the service mesh
     broker.on(
       'from_worker',
-      async event => (await route(event)) || ServiceMesh.publish(event)
+      async event => (await dispatch(event)) || ServiceMesh.publish(event)
     )
 
     // forward everything from the servivce mesh to the worker threads
@@ -162,7 +184,7 @@ export default function brokerEvents (
     ServiceMesh.connect({ services: localModels })
   } else {
     // create listeners that handle command events from main
-    require('../worker-events').registerWorkerEvents(broker)
+    require('../broadcast-events').registerBroadcastEvents(broker)
 
     // init distributed object cache
     const manager = DistributedCache({
@@ -171,14 +193,16 @@ export default function brokerEvents (
       datasources,
       // define appropriate pub/sub functions for env
       publish: event => broker.notify('to_main', event),
-      subscribe: (eventName, cb) => {
-        broker.on(eventName, cb)
-        broker.on(
-          'from_main',
-          event =>
-            event.eventName === eventName && broker.notify(eventName, event)
-        )
-      }
+      subscribe: (eventName, cb) => broker.on(eventName, cb)
+
+      // subscribe: (eventName, cb) => {
+      //   broker.on(eventName, cb)
+      //   broker.on(
+      //     'from_main',
+      //     event =>
+      //       event.eventName === eventName && broker.notify(eventName, event)
+      //   )
+      // }
     })
 
     manager.start()

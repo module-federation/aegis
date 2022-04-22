@@ -9,6 +9,11 @@ import Event from './event'
 /** @typedef {import('./datasource').default} Datasource */
 /** @typedef {import('./model').Model} Model */
 /**
+ * @callback loadModel
+ * @param {import('./event-broker') broker
+ * @param {}
+ */
+/**
  * @typedef {Object} ModelFactory Low-level port functions for creating, updating, deleting domain models. To be called by
  * application use-case functions, which in turn are called by driving/primary adapters.
  * @property {function(broker,Datasource,string,...args):Promise<Readonly<Model>>} createModel Create a new model instance
@@ -19,7 +24,7 @@ import Event from './event'
  * @property {{CREATE:string,UPDATE:string,DELETE:string}} EventTypes
  * @property {function(any):string} getModelId
  * @property {function(Model):string[]} getPortFlow
- * @property {function(Model,string):Model} loadModel
+ * @property {loadModel} loadModel
  * @property {function():ModelSpecification[]} getRemoteModels
  * @property {function():ModelSpecification[]} getModelSpecs
  * @property {function(Model|string):ModelSpecification} getModelSpec

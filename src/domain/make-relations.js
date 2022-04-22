@@ -1,6 +1,11 @@
 'use strict'
+import { resolve } from 'path/posix'
 import domainEvents from './domain-events'
-const { internalCacheRequest, internalCacheResponse } = domainEvents
+const {
+  internalCacheRequest,
+  internalCacheResponse,
+  externalCacheRequest
+} = domainEvents
 
 const maxwait = process.env.REMOTE_OBJECT_MAXWAIT || 6000
 
@@ -92,11 +97,13 @@ export function requireRemoteObject (model, relation, broker, ...args) {
   const response = internalCacheResponse(relation.modelName)
 
   console.debug({ fn: requireRemoteObject.name })
+
   const requestData = {
     eventName: request,
+    modelName: model.getName().toUpperCase(),
+    eventType: externalCacheRequest.name,
     eventSource: model.getName().toUpperCase(),
     eventTarget: relation.modelName.toUpperCase(),
-    modelName: model.getName().toUpperCase(),
     modelId: model.getId(),
     relation,
     model,
@@ -137,6 +144,8 @@ export default function makeRelations (relations, datasource, broker) {
               .getFactory()
               .getSharedDataSource(rel.modelName.toUpperCase())
 
+            console.debug(ds)
+
             const model = await relationType[rel.type](this, ds, rel)
 
             if (!model || model.length < 1) {
@@ -152,7 +161,7 @@ export default function makeRelations (relations, datasource, broker) {
               // each arg contains input to create a new object
               if (event && event.args.length > 0) {
                 const updated = await updateForeignKeys(this, event, rel, ds)
-                //eesetTimeout(updateForeignKeys, 3000, this, event, rel, ds)
+                setTimeout(updateForeignKeys, 300, this, event, rel, ds)
                 //const result = await relationType[rel.type](updated, ds, rel)
                 console.debug({ model: updated })
                 return updated

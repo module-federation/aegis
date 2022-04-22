@@ -39,7 +39,6 @@ export default class DataSource {
     this.dsMap = map
     this.factory = factory
     this.name = name
-    console.debug({ fn: DataSource.name, dsMap: this.dsMap })
   }
   /**
    * Upsert model instance

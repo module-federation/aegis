@@ -136,9 +136,7 @@ const DataSourceFactory = (() => {
       return dataSources.get(upperName)
     }
 
-    const newDs = withSharedMem(createDataSource, this, upperName, options)
-    console.debug({ fn: getSharedDataSource.name, ds: newDs })
-    return newDs
+    return withSharedMem(createDataSource, this, upperName, options)
   }
 
   function close () {

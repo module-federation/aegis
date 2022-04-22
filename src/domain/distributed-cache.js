@@ -147,12 +147,6 @@ export default function DistributedCache ({
     return o
   }
 
-  async function route (o) {
-    const { route, event, model } = o
-    if (route) await route({ ...event, model })
-    return o
-  }
-
   /**
    * @param {*} eventName
    * @param {*} modelName
@@ -170,6 +164,7 @@ export default function DistributedCache ({
     return false
   }
 
+  const route = event => event.route(event)
   /**
    * Pipes functions that instantiate the remote object(s) and upsert the cache
    */
@@ -185,13 +180,15 @@ export default function DistributedCache ({
     return async function (message) {
       try {
         const event = parse(message)
-        const { eventName, model } = event
-        const modelNameUpper = model?.modelName?.toUpperCase()
+        const eventName = event.eventName
+        const models = [event.model].flat()
+        const [model] = models
+        const modelNameUpper = model.modelName.toUpperCase()
 
-        console.debug('handle cache event', eventName)
-        if (!modelNameUpper) throw new Error('no model')
+        console.debug('handle cache event', model, eventName)
+        if (!modelNameUpper) throw new Error('no model', event)
 
-        if (!model || model.length < 1) {
+        if (!model) {
           console.error('no model found', eventName)
           // no model found
           if (route) await route(event)
@@ -202,10 +199,8 @@ export default function DistributedCache ({
 
         await handleUpsert({
           modelName: modelNameUpper,
-          datasource: datasources.getDataSource(modelNameUpper, {
-            isCached: true // in case this is a remote object
-          }),
-          model,
+          datasource: datasources.getSharedDataSource(modelNameUpper),
+          model: models,
           event,
           route
         })
@@ -218,26 +213,23 @@ export default function DistributedCache ({
   /**
    *
    * @param {Event} event
-   * @returns {Promise<Model>}
+   * @returns {Promise<Event>}
    * @throws
    */
-  async function createRelated (event) {
-    const created = await Promise.all(
+  async function createModels (event) {
+    const models = await Promise.all(
       event.args.map(async arg => {
-        console.debug({ arg })
-        try {
-          return await models.createModel(
-            broker,
-            datasources.getDataSource(event.relation.modelName.toUpperCase()),
-            event.relation.modelName.toUpperCase(),
-            arg
-          )
-        } catch (error) {
-          throw new Error(createRelated.name, error)
-        }
+        return await models.createModel(
+          broker,
+          datasources.getSharedDataSource(
+            event.relation.modelName.toUpperCase()
+          ),
+          event.relation.modelName.toUpperCase(),
+          arg
+        )
       })
     )
-    return created[0]
+    return { ...event, model: models }
   }
 
   /**
@@ -249,54 +241,25 @@ export default function DistributedCache ({
    * ```
    *
    * @param {Event} event
-   * @returns {Promise<import("./model").Model>}
+   * @returns {Promise<Event>}
    * Updated source model (model that defines the relation)
    * @throws
    */
-  async function createRelatedModel (event) {
-    if (event.args.length < 1 || !event.relation || !event.modelName) {
-      console.error('missing required params', event)
-      return null
-    }
-
+  async function saveModels (event) {
     try {
-      const model = await createRelated(event)
+      const models = event.model
       const datasource = datasources.getDataSource(
         event.relation.modelName.toUpperCase()
       )
-      return datasource.save(model.getId(), model)
+      models.forEach(model => datasource.save(model.getId(), model))
+      return event
     } catch (error) {
-      console.error(createRelatedModel.name, error)
-      return null
+      console.error(saveModels.name, error)
+      return event
     }
   }
 
-  /**
-   *
-   * @param {Event} event
-   * @param {Model|Model[]} model models
-   * @returns {Event} w/ updated model, modelId, modelName
-   */
-  function formatResponse (event, model) {
-    if (!model || model.length < 1) {
-      console.debug(formatResponse.name, 'no model provided', model)
-      return {
-        ...event
-      }
-    }
-
-    return {
-      ...event,
-      model: Array.isArray(model)
-        ? model.length < 2
-          ? model[0]
-          : model
-        : model,
-      modelId: Array.isArray(model)
-        ? model[0].id || model[0].getId()
-        : model.id || model.getId()
-    }
-  }
+  const newModels = asyncPipe(createModels, saveModels)
 
   /**
    * Returns function to search the cache.
@@ -307,26 +270,34 @@ export default function DistributedCache ({
    */
   function searchCache (route) {
     return async function (message) {
-      console.debug(searchCache.name)
-
       try {
         const event = parse(message)
+        const { relation, model } = event
 
         // args mean create an object
         if (event.args?.length > 0) {
-          const newModel = await createRelatedModel(event)
-          console.debug('new model created: ', newModel)
-          return await route(formatResponse(event, newModel))
+          console.debug({
+            fn: searchCache.name,
+            models: event.model
+          })
+
+          return await route(await newModels(event))
         }
 
         // find the requested object or objects
-        const related = await relationType[event.relation.type](
-          event.model,
-          datasources.getDataSource(event.relation.modelName.toUpperCase()),
-          event.relation
+        const relatedModels = await relationType[relation.type](
+          model,
+          datasources.getSharedDataSource(relation.modelName.toUpperCase()),
+          relation
         )
-        console.debug(searchCache.name, 'related model ', related)
-        return await route(formatResponse(event, related))
+
+        console.debug({
+          fn: searchCache.name,
+          msg: 'related model(s)',
+          related: relatedModels
+        })
+
+        return await route({ ...event, model: relatedModels })
       } catch (error) {
         console.error(searchCache.name, error)
       }

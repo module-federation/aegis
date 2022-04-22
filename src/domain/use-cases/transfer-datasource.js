@@ -1,6 +1,7 @@
 'use strict'
 
 import { isMainThread, workerData } from 'worker_threads'
+import domainEvents from '../domain-events'
 
 /**
  * @typedef {Object} ModelParam
@@ -16,10 +17,10 @@ import { isMainThread, workerData } from 'worker_threads'
  * @param {ModelParam} param0
  * @returns {function():Promise<import("../domain/model").Model>}
  */
-export default function makeEmitEvent ({
+export default function makeTransferDatasource ({
   modelName,
   models,
-  repository,
+  datasources,
   threadpool,
   broker,
   handlers = []
@@ -29,16 +30,27 @@ export default function makeEmitEvent ({
    * @param {{eventName:string,...}} input
    * @returns
    */
-  return async function emitEvent (input) {
+  return async function transferDatasource (input) {
     try {
-      if (isMainThread) {
-        await threadpool.run(input.eventName, input)
-      } else {
-        console.debug({ pool: workerData.modelName, fn: emitEvent.name, input })
-        await broker.notify(input.eventName, input)
+      if (!isMainThread) {
+        console.debug({
+          pool: workerData.modelName,
+          fn: transferDatasource.name,
+          input
+        })
+
+        datasources.getSharedDataSource(input.name, {
+          dsMap: input.dsMap
+        })
+
+        const eventName = domainEvents.externalCacheResponse(
+          workerData.modelName
+        )
+        const eventType = domainEvents.externalCacheResponse.name
+        broker.notify(eventName, { eventName, eventType })
       }
     } catch (error) {
-      console.error({ fn: emitEvent.name, error })
+      console.error({ fn: transferDatasource.name, error })
     }
   }
 }
