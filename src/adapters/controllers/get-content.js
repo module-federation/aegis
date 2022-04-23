@@ -77,6 +77,13 @@ export default function getContent (httpRequest, content, defaultTitle) {
           <meta charset="utf-8" />
           <meta name="viewport" content="width=device-width, initial-scale=1" />
           <link rel="icon" type="image/png" href="/aegis-logo.png" />
+          <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+          <style>
+            body, h1, h2, h3, h4, h5, h6  {
+            font-family: Arial, Helvetica, sans-serif ;
+          }
+          </style>
+          <title>W3.CSS</title>
           <h3>
             <a href="/index.html"> <img src="/aegis-logo.png" alt="aegis" width="65" height="65" style="font: x-large" /><b>ÆGIS</b> Domain Model API</a>
           </h3> 

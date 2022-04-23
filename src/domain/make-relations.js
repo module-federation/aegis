@@ -17,8 +17,7 @@ export const relationType = {
    * @param {import("./index").relations[relation]} rel
    */
   oneToMany: async (model, ds, rel) => {
-    const pk = model.id || model.getId()
-    return ds.list({ [rel.foreignKey]: pk })
+    return ds.list({ [rel.foreignKey]: model.getId() })
   },
   /**
    *
@@ -27,15 +26,6 @@ export const relationType = {
    * @param {import("./index").relations[relation]} config
    */
   manyToOne: async (model, ds, rel) => await ds.find(model[rel.foreignKey]),
-  /**
-   *
-   * @param {*} model
-   * @param {*} ds
-   * @param {*} rel
-   */
-  oneToOne (model, ds, rel) {
-    return this.manyToOne(model, ds, rel)
-  },
   /**
    * Assumes the model contains an array of the related ohject.
    * @param {import(".").Model} model
@@ -51,31 +41,30 @@ export const relationType = {
 
 /**
  * If we create a new object, foreign keys need to reference it
- * @param {*} model
- * @param {*} event
+ * @param {*} fromModel
+ * @param {*} toModel
  * @param {*} relation
  * @param {*} ds
  */
-async function updateForeignKeys (model, event, relation, ds) {
-  console.debug(updateForeignKeys.name, event)
+async function updateForeignKeys (fromModel, toModel, relation, ds) {
+  console.debug(updateForeignKeys.name, toModel)
   if (
     [relationType.manyToOne.name, relationType.oneToOne.name].includes(
       relation.type
     )
   ) {
-    console.debug(updateForeignKeys.name, 'found', event)
-    return model.update(
-      { [relation.foreignKey]: event.model.id || event.model.getId() },
-      false
-    )
+    console.debug(updateForeignKeys.name, 'found', toModel)
+    return fromModel.update({ [relation.foreignKey]: toModel.getId() }, false)
   } else if (
-    model instanceof Array &&
+    toModel instanceof Array &&
     (relation.type === relationType.oneToMany.name ||
-      relation.type === relationType.containsMany)
+      relation.type === relationType.contains)
   ) {
     return Promise.allSettled(
-      event.model.map(async m =>
-        (await ds.find(m.id)).update({ [relation.foreignKey]: model.modelId })
+      toModel.map(async m =>
+        (await ds.find(m.id)).update({
+          [relation.foreignKey]: fromModel.getId()
+        })
       )
     )
   }
@@ -88,7 +77,7 @@ async function updateForeignKeys (model, event, relation, ds) {
  * Sends a request message to, and receives a response from,
  * the local cache manager.
  *
- * @param {import(".").relations[x]} relation
+ * @param {import(".").relations[x]} relationdd
  * @param {import("./event-broker").EventBroker} broker
  * @returns {Promise<import(".").Model>} source model
  */
@@ -144,11 +133,20 @@ export default function makeRelations (relations, datasource, broker) {
               .getFactory()
               .getSharedDataSource(rel.modelName.toUpperCase())
 
-            console.debug(ds)
+            let models
+            // args mean create new instance(s) of related model
+            if (args?.length > 0) {
+              try {
+                models = createNewModels(args, this, rel, ds)
+                if ((await models).length > 0) return models
+              } catch (error) {
+                console.warn({ error })
+              }
+            } else {
+              models = await relationType[rel.type](this, ds, rel)
+            }
 
-            const model = await relationType[rel.type](this, ds, rel)
-
-            if (!model || model.length < 1) {
+            if (!models || models.length < 1) {
               // couldn't find the object locally - try remote instances
               const event = await requireRemoteObject(
                 this,
@@ -156,22 +154,14 @@ export default function makeRelations (relations, datasource, broker) {
                 broker,
                 ...args
               )
-              console.debug({ fn: relation, event })
 
               // each arg contains input to create a new object
-              if (event && event.args.length > 0) {
-                const updated = await updateForeignKeys(this, event, rel, ds)
-                setTimeout(updateForeignKeys, 300, this, event, rel, ds)
-                //const result = await relationType[rel.type](updated, ds, rel)
-                console.debug({ model: updated })
-                return updated
-              }
+              if (event?.args?.length > 0)
+                updateForeignKeys(this, event, rel, ds)
 
-              const result = await relationType[rel.type](this, ds, rel)
-              console.debug({ fn: makeRelations.name, result })
-              return result
+              return await relationType[rel.type](this, ds, rel)
             }
-            return model
+            return models
           }
         }
       } catch (e) {
@@ -179,4 +169,14 @@ export default function makeRelations (relations, datasource, broker) {
       }
     })
     .reduce((c, p) => ({ ...p, ...c }))
+}
+
+async function createNewModels (args, fromModel, relation, ds) {
+  if (args.length > 0) {
+    const { UseCaseService } = require('.')
+    const service = UseCaseService(relation.modelName.toUpperCase())
+    const newModels = await Promise.all(args.map(arg => service.addModel(arg)))
+    updateForeignKeys(fromModel, newModels, relation, ds)
+    return newModels
+  }
 }
