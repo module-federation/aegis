@@ -35,23 +35,34 @@ function getResourceName (httpRequest, defaultTitle = '') {
   if (/relation/i.test(httpRequest.query.details)) return 'Relations'
   return defaultTitle
 }
+
+function findLocalRelatedModels (modelName) {
+  const spec = ModelFactory.getModelSpec(modelName)
+  if (spec?.relations) {
+    const localModels = ModelFactory.getModelSpecs().map(spec => spec.modelName)
+    return Object.keys(spec.relations)
+      .map(k => spec.relations[k].modelName)
+      .filter(modelName => localModels.includes(modelName))
+  }
+}
 /**
  * Return JSON or HTML
  * @param {*} httpRequest
  * @param {*} content
  * @param {*} defaultTitle
  * @returns
- */ 
+ */
+
 export default function getContent (httpRequest, content, defaultTitle) {
   const contents = content instanceof Array ? content : [content]
+  try {
+    if (!httpRequest.query.html)
+      return { contentType: 'application/json', content }
 
-  if (!httpRequest.query.html)
-    return { contentType: 'application/json', content }
+    if (httpRequest.query.html) {
+      const title = getResourceName(httpRequest, defaultTitle)
 
-  if (httpRequest.query.html) {
-    const title = getResourceName(httpRequest, defaultTitle)
-
-    let text = `
+      let text = `
           <!DOCTYPE html>
           <html>
           <head>
@@ -86,52 +97,64 @@ export default function getContent (httpRequest, content, defaultTitle) {
           </style>       
           <body>`
 
-    contents.forEach(function (content) {
-      text += `<div style="margin-bottom: 40px;">
+      contents.forEach(function (content) {
+        text += `<div style="margin-bottom: 40px;">
                     <table id="configs" border="3px solid #ddd; border-collapse: collapse">`
 
-      Object.keys(content).forEach(key => {
-        let val = content[key]
+        Object.keys(content).forEach(key => {
+          let val = content[key]
 
-        if (typeof val === 'object')
-          val = `<pre><code>${prettifyJson(
-            JSON.stringify(val, null, 2)
-          )}</code></pre>`
+          if (typeof val === 'object')
+            val = `<pre><code>${prettifyJson(
+              JSON.stringify(val, null, 2)
+            )}</code></pre>`
 
-        text += `<tr><td>${key}</td><td>${val}</td></tr>`
-      })
-      text += '</table></div>'
-    })
-
-    /**
-     * If the content applies to both the main thread
-     * and worker threads, display links to the thread
-     * equivalent of the main content.
-     *
-     * E.g. Both the main and worker threads have events and
-     * data but only the main thread knows about threadpools
-     */
-    if (
-      /config/i.test(httpRequest.path) &&
-      !Object.keys(httpRequest.query).includes('modelName') &&
-      !Object.values(httpRequest.query).includes('threads')
-    ) {
-      const queryParams = Object.keys(httpRequest.query).map(
-        k => `${k}=${httpRequest.query[k]}`
-      )
-      let queryText = ''
-      queryParams.forEach(p => (queryText += p + '&'))
-
-      text += '<div style="margin-bottom: 20px">'
-      ModelFactory.getModelSpecs()
-        .filter(s => !s.isCached)
-        .forEach(s => {
-          text += `<a href="${httpRequest.path}?${queryText}modelName=${s.modelName}">View thread info for ${s.modelName}</a><br>`
+          text += `<tr><td>${key}</td><td>${val}</td></tr>`
         })
-      text += '</div>'
-    }
-    text += '</body></html>'
+        text += '</table></div>'
+      })
 
-    return { contentType: 'text/html', content: text }
+      /**
+       * If the content applies to both the main thread
+       * and worker threads, display links to the thread
+       * equivalent of the main content.
+       *
+       * E.g. Both the main and worker threads have events and
+       * data but only the main thread knows about threadpools
+       */
+      if (
+        /config/i.test(httpRequest.path) &&
+        !Object.keys(httpRequest.query).includes('modelName') &&
+        !Object.values(httpRequest.query).includes('threads')
+      ) {
+        const queryParams = Object.keys(httpRequest.query).map(
+          k => `${k}=${httpRequest.query[k]}`
+        )
+        let queryText = ''
+        queryParams.forEach(p => (queryText += p + '&'))
+
+        text += '<div style="margin-bottom: 20px">'
+        ModelFactory.getModelSpecs().forEach(s => {
+          text += `<a href="${httpRequest.path}?${queryText}modelName=${s.modelName}">View thread info for ${s.modelName}</a><br>`
+          try {
+            const lrmArr = findLocalRelatedModels(s.modelName)
+            if (lrmArr) {
+              lrmArr.forEach(
+                lrm =>
+                  (text += `<a href="${httpRequest.path}?${queryText}modelName=${s.modelName}&poolName=${lrm}">View ${s.modelName} thread info for ${lrm}</a><br>`)
+              )
+            }
+          } catch (error) {
+            console.error(error)
+          }
+        })
+        text += '</div>'
+      }
+      text += '</body></html>'
+
+      return { contentType: 'text/html', content: text }
+    }
+  } catch (error) {
+    console.log(error)
   }
 }

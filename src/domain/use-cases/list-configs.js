@@ -19,17 +19,21 @@ export default function listConfigsFactory ({
   return async function listConfigs (query) {
     const modelName =
       typeof query.modelName === 'string' ? query.modelName.toUpperCase() : null
+    const poolName = query.poolName
 
     const configTypes = {
       data: () =>
         modelName && isMainThread
           ? threadpools.getThreadPool(modelName).run(listConfigs.name, query)
           : modelName
-          ? dsFact.getDataSource(modelName).listSync()
+          ? dsFact.getDataSource(poolName || modelName).listSync()
+          : poolName
+          ? dsFact.listDataSources()
           : dsFact.listDataSources().map(k => ({
               dsname: k,
               records: dsFact.getDataSource(k).totalRecords()
             })),
+
       events: () =>
         modelName && isMainThread
           ? threadpools.getThreadPool(modelName).run(listConfigs.name, query)

@@ -54,7 +54,7 @@ const SharedMemMixin = superclass =>
 /** @typedef {import('./datasource-factory').default} DataSourceFactory */
 
 function getSharedMap (name) {
-  const dsMap = workerData.dsRelated.find(ds => ds.modelName === name)?.dsMap
+  const dsMap = workerData.dsRelated?.find(ds => ds.modelName === name)?.dsMap
   if (!dsMap) {
     return workerData.sharedMap
   }
