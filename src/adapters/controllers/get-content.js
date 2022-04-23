@@ -37,14 +37,22 @@ function getResourceName (httpRequest, defaultTitle = '') {
 }
 
 function findLocalRelatedModels (modelName) {
+  const localModels = ModelFactory.getModelSpecs().map(s =>
+    s.modelName.toUpperCase()
+  )
+  console.debug({ localModels })
   const spec = ModelFactory.getModelSpec(modelName)
-  if (spec?.relations) {
-    const localModels = ModelFactory.getModelSpecs().map(spec => spec.modelName)
-    return Object.keys(spec.relations)
-      .map(k => spec.relations[k].modelName)
-      .filter(modelName => localModels.includes(modelName))
-  }
+  console.debug({ spec })
+  const result = !spec?.relations
+    ? []
+    : Object.keys(spec.relations)
+        .map(k => spec.relations[k].modelName.toUpperCase())
+        .filter(modelName => localModels.includes(modelName))
+
+  console.log({ result })
+  return result
 }
+
 /**
  * Return JSON or HTML
  * @param {*} httpRequest
@@ -70,7 +78,7 @@ export default function getContent (httpRequest, content, defaultTitle) {
           <meta name="viewport" content="width=device-width, initial-scale=1" />
           <link rel="icon" type="image/png" href="/aegis-logo.png" />
           <h3>
-            <a href="/index.html"> <img src="/aegis-logo.png" alt="aegis" width="65" height="65" style="font: x-large" /><sup><b>ÆGIS</b> Domain Model API</sup></a>
+            <a href="/index.html"> <img src="/aegis-logo.png" alt="aegis" width="65" height="65" style="font: x-large" /><b>ÆGIS</b> Domain Model API</a>
           </h3> 
           </head>
           <style>

@@ -29,27 +29,33 @@ export function registerEvents () {
   )
 }
 
-function findLocalRelatedModels () {
-  const modelSpecs = ModelFactory.getModelSpecs()
-  const localModels = modelSpecs.map(modelName => modelName)
-  const localRelatedModels = [
-    ...new Set( // deduplicate
-      modelSpecs
-        .filter(m => m.relations) // only models with relations
-        .map(m =>
-          Object.keys(m.relations)
-            .filter(
-              // filter out existing local models
-              k => !localModels.includes(m.relations[k].modelName.toUpperCase())
-            )
-            .map(k => m.relations[k].modelName.toUpperCase())
-        )
-        .reduce((a, b) => a.concat(b), [])
-    )
-  ]
-  return localRelatedModels
+function findLocalRelatedModels (modelName, specs) {
+  const localModels = ModelFactory.getModelSpecs().map(s =>
+    s.modelName.toUpperCase()
+  )
+  console.debug({ localModels })
+  const spec = ModelFactory.getModelSpec(modelName)
+  console.debug({ spec })
+  const result = !spec?.relations
+    ? []
+    : Object.keys(spec.relations)
+        .map(k => spec.relations[k].modelName.toUpperCase())
+        .filter(modelName => localModels.includes(modelName))
+
+  console.log({ result })
+  return result
 }
 
+setTimeout(() => {
+  console.debug({
+    fn: findLocalRelatedModels.name,
+    related: findLocalRelatedModels('ORDER')
+  })
+  console.debug({
+    fn: findLocalRelatedModels.name,
+    related: findLocalRelatedModels('CUSTOMER')
+  })
+}, 1000)
 /**
  *
  * @param {import('..').ModelSpecification} model
@@ -65,13 +71,11 @@ function buildOptions (model) {
   if (isMainThread) {
     function findLocalRelatedDatasources (modelName) {
       console.debug({ fn: findLocalRelatedDatasources.name, modelName })
-      return findLocalRelatedModels().map(modelName => ({
+      return findLocalRelatedModels(modelName).map(modelName => ({
         modelName,
         dsMap: DataSourceFactory.getSharedDataSource(modelName).dsMap
       }))
     }
-
-    const dsRelated = findLocalRelatedDatasources(model.modelName)
 
     return {
       ...options,
@@ -81,7 +85,7 @@ function buildOptions (model) {
       // only main thread knows about thread pools (no nesting)
       threadpool: ThreadPoolFactory.getThreadPool(model.modelName, {
         preload: false,
-        dsRelated
+        dsRelated: findLocalRelatedDatasources(model.modelName)
       })
     }
   } else {
