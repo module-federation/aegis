@@ -145,12 +145,15 @@ export default function getContent (httpRequest, content, defaultTitle) {
         ModelFactory.getModelSpecs().forEach(s => {
           text += `<a href="${httpRequest.path}?${queryText}modelName=${s.modelName}">View thread info for ${s.modelName}</a><br>`
           try {
-            const lrmArr = s.modelName
-            if (lrmArr) {
-              lrmArr.forEach(
-                lrm =>
-                  (text += `<a href="${httpRequest.path}?${queryText}modelName=${s.modelName}&poolName=${lrm}">View ${s.modelName} thread info for ${lrm}</a><br>`)
-              )
+            console.debug(httpRequest.query.details === 'data')
+            if (httpRequest.query.details === 'data') {
+              const lrmArr = findLocalRelatedModels(s.modelName)
+              if (lrmArr) {
+                lrmArr.forEach(
+                  lrm =>
+                    (text += `<a href="${httpRequest.path}?${queryText}modelName=${s.modelName}&poolName=${lrm}">View ${s.modelName} thread info for ${lrm}</a><br>`)
+                )
+              }
             }
           } catch (error) {
             console.error(error)
