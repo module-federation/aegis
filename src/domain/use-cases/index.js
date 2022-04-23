@@ -16,8 +16,7 @@ import makeEmitEvent from './emit-event'
 import makeHotReload from './hot-reload'
 import brokerEvents from './broker-events'
 
-import { isMainThread, workerData } from 'worker_threads'
-import { DnsService } from '../../services'
+import { isMainThread } from 'worker_threads'
 
 export function registerEvents () {
   // main thread handles event dispatch
@@ -29,7 +28,7 @@ export function registerEvents () {
   )
 }
 
-function findLocalRelatedModels (modelName, specs) {
+function findLocalRelatedModels (modelName) {
   const localModels = ModelFactory.getModelSpecs().map(s =>
     s.modelName.toUpperCase()
   )
@@ -41,21 +40,17 @@ function findLocalRelatedModels (modelName, specs) {
     : Object.keys(spec.relations)
         .map(k => spec.relations[k].modelName.toUpperCase())
         .filter(modelName => localModels.includes(modelName))
-
-  console.log({ result })
+  console.debug({ fn: findLocalRelatedDatasources.name, result })
   return result
 }
 
-setTimeout(() => {
-  console.debug({
-    fn: findLocalRelatedModels.name,
-    related: findLocalRelatedModels('ORDER')
-  })
-  console.debug({
-    fn: findLocalRelatedModels.name,
-    related: findLocalRelatedModels('CUSTOMER')
-  })
-}, 1000)
+function findLocalRelatedDatasources (modelName) {
+  return findLocalRelatedModels(modelName).map(modelName => ({
+    modelName,
+    dsMap: DataSourceFactory.getSharedDataSource(modelName).dsMap
+  }))
+}
+
 /**
  *
  * @param {import('..').ModelSpecification} model
@@ -69,14 +64,6 @@ function buildOptions (model) {
   }
 
   if (isMainThread) {
-    function findLocalRelatedDatasources (modelName) {
-      console.debug({ fn: findLocalRelatedDatasources.name, modelName })
-      return findLocalRelatedModels(modelName).map(modelName => ({
-        modelName,
-        dsMap: DataSourceFactory.getSharedDataSource(modelName).dsMap
-      }))
-    }
-
     return {
       ...options,
       // main thread does not write to persistent store

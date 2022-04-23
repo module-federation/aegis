@@ -4,6 +4,7 @@ import SharedMap from 'sharedmap'
 import ModelFactory from '.'
 import { isMainThread, workerData } from 'worker_threads'
 import { EventBrokerFactory } from '.'
+import { WorkflowEmitter } from './orchestrator'
 const broker = EventBrokerFactory.getInstance()
 
 const MAPSIZE = 2048 * 56
@@ -54,11 +55,17 @@ const SharedMemMixin = superclass =>
 /** @typedef {import('./datasource-factory').default} DataSourceFactory */
 
 function getSharedMap (name) {
-  const dsMap = workerData.dsRelated?.find(ds => ds.modelName === name)?.dsMap
-  if (!dsMap) {
-    return workerData.sharedMap
+  try {
+    if (workerData?.dsRelated) {
+      const dsRel = workerData.dsRelated?.find(ds => ds.modelName === name)
+      if (dsRel) {
+        return dsRel.dsMap
+      }
+    }
+  } catch (error) {
+    console.warn(error)
   }
-  return dsMap
+  return workerData.sharedMap
 }
 
 /**
