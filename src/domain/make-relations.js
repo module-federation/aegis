@@ -1,5 +1,5 @@
 'use strict'
-import { resolve } from 'path/posix'
+
 import domainEvents from './domain-events'
 const {
   internalCacheRequest,
@@ -67,6 +67,24 @@ async function updateForeignKeys (fromModel, toModel, relation, ds) {
         })
       )
     )
+  }
+}
+
+/**
+ * 
+ * @param {*} args 
+ * @param {*} fromModel 
+ * @param {*} relation 
+ * @param {*} ds 
+ * @returns 
+ */
+async function createNewModels (args, fromModel, relation, ds) {
+  if (args.length > 0) {
+    const { UseCaseService } = require('.')
+    const service = UseCaseService(relation.modelName.toUpperCase())
+    const newModels = await Promise.all(args.map(arg => service.addModel(arg)))
+    updateForeignKeys(fromModel, newModels, relation, ds)
+    return newModels
   }
 }
 
@@ -175,12 +193,4 @@ export default function makeRelations (relations, datasource, broker) {
     .reduce((c, p) => ({ ...p, ...c }))
 }
 
-async function createNewModels (args, fromModel, relation, ds) {
-  if (args.length > 0) {
-    const { UseCaseService } = require('.')
-    const service = UseCaseService(relation.modelName.toUpperCase())
-    const newModels = await Promise.all(args.map(arg => service.addModel(arg)))
-    updateForeignKeys(fromModel, newModels, relation, ds)
-    return newModels
-  }
-}
+

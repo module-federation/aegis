@@ -1,5 +1,6 @@
 'use strict'
 
+import { SharedMap } from 'sharedmap'
 import { isMainThread } from 'worker_threads'
 
 /**
@@ -19,22 +20,39 @@ export default function listConfigsFactory ({
   return async function listConfigs (query) {
     const modelName =
       typeof query.modelName === 'string' ? query.modelName.toUpperCase() : null
-    const poolName = query.poolName
+    const poolName =
+      typeof query.poolName === 'string' ? query.poolName.toUpperCase() : null
 
     const configTypes = {
       data: () =>
         modelName && isMainThread
           ? threadpools.getThreadPool(modelName).run(listConfigs.name, query)
+          : modelName && poolName
+          ? dsFact.getDataSource(poolName).listSync()
           : modelName
-          ? dsFact.getDataSource(poolName || modelName).listSync()
-          : poolName
-          ? dsFact.listDataSources().map(k => ({
-              name: dsFact.getDataSource(k).dsMap.name,
-              object: dsFact.getDataSource(k).dsMap
-            }))
+          ? dsFact.getDataSource(modelName).listSync()
           : dsFact.listDataSources().map(k => ({
               dsname: k,
               objects: dsFact.getDataSource(k).totalRecords()
+            })),
+
+      data_main: () =>
+        dsFact.listDataSources().map(k => ({
+          dsname: k,
+          objects: dsFact.getDataSource(k).totalRecords()
+        })),
+
+      data_thread: () =>
+        isMainThread
+          ? threadpools
+              .getThreadPool(modelName || 'newPool')
+              .run(listConfigs.name, query)
+          : dsFact.listDataSources().map(k => ({
+              dsname: k,
+              objects:
+                typeof dsFact.getDataSource(k).dsMap === 'object'
+                  ? dsFact.getDataSource(k).totalRecords()
+                  : 0
             })),
 
       events: () =>
@@ -60,6 +78,7 @@ export default function listConfigsFactory ({
           : modelName
           ? models.getModelSpec(modelName).relations
           : models.getModelSpecs().map(spec => ({
+              modelName: spec.modelName,
               relations: spec.relations ? Object.values(spec.relations) : {}
             })),
 

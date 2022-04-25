@@ -94,7 +94,7 @@ export default function getContent (httpRequest, content, defaultTitle) {
               margin: 10px; 
             }
             table {
-              width: 65%
+              width: 65%;
             }
             th {
               color: white;
@@ -121,7 +121,7 @@ export default function getContent (httpRequest, content, defaultTitle) {
               JSON.stringify(val, null, 2)
             )}</code></pre>`
 
-          text += `<tr><td>${key}</td><td>${val}</td></tr>`
+          text += `<tr><td style="width:60px">${key}</td><td>${val}</td></tr>`
         })
         text += '</table></div>'
       })

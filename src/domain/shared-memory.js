@@ -4,7 +4,6 @@ import SharedMap from 'sharedmap'
 import ModelFactory from '.'
 import { isMainThread, workerData } from 'worker_threads'
 import { EventBrokerFactory } from '.'
-import { WorkflowEmitter } from './orchestrator'
 const broker = EventBrokerFactory.getInstance()
 
 const MAPSIZE = 2048 * 56
@@ -59,9 +58,9 @@ const SharedMemMixin = superclass =>
  * @param {string} name i.e. modelName
  * @returns {SharedMap}
  */
-function findSharedMem (name) {
+function findSharedMap (name) {
   try {
-    if (workerData?.dsRelated) {
+    if (workerData.dsRelated) {
       const dsRel = workerData.dsRelated.find(ds => ds.modelName === name)
       if (dsRel) {
         return dsRel.dsMap
@@ -84,14 +83,18 @@ function findSharedMem (name) {
  * @returns {import('./datasource').default}
  */
 export function withSharedMem (createDataSource, factory, name, options = {}) {
+  const mapsize = options.mapsize || MAPSIZE
+  const keysize = options.keysize || KEYSIZE
+  const objsize = options.objsize || OBJSIZE
+
   // use thread-safe shared map
   const sharedMap = isMainThread
-    ? Object.assign(new SharedMap(MAPSIZE, KEYSIZE, OBJSIZE), {
+    ? Object.assign(new SharedMap(mapsize, keysize, objsize), {
         modelName: name // assign modelName
       })
     : Object.setPrototypeOf(
         // find mem addr and rehydrate
-        findSharedMem(name),
+        findSharedMap(name),
         SharedMap.prototype
       )
 
