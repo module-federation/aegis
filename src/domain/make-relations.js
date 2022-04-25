@@ -47,7 +47,7 @@ export const relationType = {
  * @param {*} ds
  */
 async function updateForeignKeys (fromModel, toModel, relation, ds) {
-  console.debug(updateForeignKeys.name, toModel)
+  console.debug({ fn: updateForeignKeys.name, toModel })
   if (
     [relationType.manyToOne.name, relationType.oneToOne.name].includes(
       relation.type
@@ -136,6 +136,10 @@ export default function makeRelations (relations, datasource, broker) {
             let models
             // args mean create new instance(s) of related model
             if (args?.length > 0) {
+              console.debug({
+                fn: makeRelations.name,
+                message: 'save data to new model'
+              })
               try {
                 models = createNewModels(args, this, rel, ds)
                 if ((await models).length > 0) return models

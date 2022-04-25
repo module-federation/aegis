@@ -28,10 +28,13 @@ export default function listConfigsFactory ({
           : modelName
           ? dsFact.getDataSource(poolName || modelName).listSync()
           : poolName
-          ? dsFact.listDataSources()
+          ? dsFact.listDataSources().map(k => ({
+              name: dsFact.getDataSource(k).dsMap.name,
+              object: dsFact.getDataSource(k).dsMap
+            }))
           : dsFact.listDataSources().map(k => ({
               dsname: k,
-              records: dsFact.getDataSource(k).totalRecords()
+              objects: dsFact.getDataSource(k).totalRecords()
             })),
 
       events: () =>

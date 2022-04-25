@@ -12,6 +12,8 @@ const MAPSIZE = 2048 * 56
 const KEYSIZE = 32
 const OBJSIZE = 4056
 
+/** @typedef {import('./datasource-factory').default} DataSourceFactory */
+
 /**
  * compositional class mixin - so any class
  * in the hierarchy can use shared memory
@@ -52,12 +54,15 @@ const SharedMemMixin = superclass =>
     }
   }
 
-/** @typedef {import('./datasource-factory').default} DataSourceFactory */
-
-function getSharedMap (name) {
+/**
+ *
+ * @param {string} name i.e. modelName
+ * @returns {SharedMap}
+ */
+function findSharedMem (name) {
   try {
     if (workerData?.dsRelated) {
-      const dsRel = workerData.dsRelated?.find(ds => ds.modelName === name)
+      const dsRel = workerData.dsRelated.find(ds => ds.modelName === name)
       if (dsRel) {
         return dsRel.dsMap
       }
@@ -65,6 +70,7 @@ function getSharedMap (name) {
   } catch (error) {
     console.warn(error)
   }
+
   return workerData.sharedMap
 }
 
@@ -78,16 +84,16 @@ function getSharedMap (name) {
  * @returns {import('./datasource').default}
  */
 export function withSharedMem (createDataSource, factory, name, options = {}) {
-  // thread-safe map
+  // use thread-safe shared map
   const sharedMap = isMainThread
     ? Object.assign(new SharedMap(MAPSIZE, KEYSIZE, OBJSIZE), {
         modelName: name // assign modelName
       })
     : Object.setPrototypeOf(
-        // SharedMap can be passed in for related ds
-        getSharedMap(name),
+        // find mem addr and rehydrate
+        findSharedMem(name),
         SharedMap.prototype
-      ) // unmarshal
+      )
 
   // call with shared map and mixin that extends ds class
   return createDataSource.call(factory, name, {

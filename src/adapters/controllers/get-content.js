@@ -78,44 +78,41 @@ export default function getContent (httpRequest, content, defaultTitle) {
           <meta name="viewport" content="width=device-width, initial-scale=1" />
           <link rel="icon" type="image/png" href="/aegis-logo.png" />
           <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
-          <style>
-            body, h1, h2, h3, h4, h5, h6  {
-            font-family: Arial, Helvetica, sans-serif ;
-          }
-          </style>
-          <title>W3.CSS</title>
-          <h3>
+          <title>${title}</title>
+          <div class="w3-container w3-amber">
             <a href="/index.html"> <img src="/aegis-logo.png" alt="aegis" width="65" height="65" style="font: x-large" /><b>ÆGIS</b> Domain Model API</a>
-          </h3> 
-          </head>
+          </div> 
           <style>
-          #configs {
-            font-family: Arial, Helvetica, sans-serif;
-            border-collapse: collapse;
-            width: 50%;
-          } 
-          #configs td, #configs th {
-            border: 1px solid #ddd;
-            padding: 8px;
-            width:30%
-          }
-          #configs tr:nth-child(even){background-color: #f2f2f2;}
-          #configs tr:hover {background-color: #ddd;}
-          #configs th {
-            padding-top: 12px;
-            padding-bottom: 12px;
-            text-align: left;
-            width: 100%;
-            background-color: #04AA6D;
-            color: white;
-          }
-          </style>       
-          <body>`
+            a:link {
+              text-decoration: none;
+              
+            }
+            body {
+              background-color: w3-light-gray;
+            }
+            div.spacer {
+              margin: 10px; 
+            }
+            table {
+              width: 65%
+            }
+            th {
+              color: white;
+              background: black;
+              font-size: 12px;
+            }
+            td {
+              text-align: left;
+              font-size: 12px;
+            }
+          </style>
+          </head>                     
+          <body>
+          <div class="w3-container w3-light-gray">`
 
       contents.forEach(function (content) {
-        text += `<div style="margin-bottom: 40px;">
-                    <table id="configs" border="3px solid #ddd; border-collapse: collapse">`
-
+        text += `<div class="spacer"><table class="w3-table-all w3-hoverable w3-left-align">`
+        text += `<tr><th>key</th><th>value</th></tr>`
         Object.keys(content).forEach(key => {
           let val = content[key]
 
@@ -148,19 +145,17 @@ export default function getContent (httpRequest, content, defaultTitle) {
         let queryText = ''
         queryParams.forEach(p => (queryText += p + '&'))
 
-        text += '<div style="margin-bottom: 20px">'
+        text += '<div class="spacer">'
         ModelFactory.getModelSpecs().forEach(s => {
           text += `<a href="${httpRequest.path}?${queryText}modelName=${s.modelName}">View thread info for ${s.modelName}</a><br>`
           try {
             console.debug(httpRequest.query.details === 'data')
             if (httpRequest.query.details === 'data') {
-              const lrmArr = findLocalRelatedModels(s.modelName)
-              if (lrmArr) {
-                lrmArr.forEach(
-                  lrm =>
-                    (text += `<a href="${httpRequest.path}?${queryText}modelName=${s.modelName}&poolName=${lrm}">View ${s.modelName} thread info for ${lrm}</a><br>`)
-                )
-              }
+              const related = findLocalRelatedModels(s.modelName)
+              related.forEach(
+                rel =>
+                  (text += `<a href="${httpRequest.path}?${queryText}modelName=${s.modelName}&poolName=${rel}">View ${s.modelName} thread info for ${rel}</a><br>`)
+              )
             }
           } catch (error) {
             console.error(error)
@@ -168,7 +163,7 @@ export default function getContent (httpRequest, content, defaultTitle) {
         })
         text += '</div>'
       }
-      text += '</body></html>'
+      text += '</div></body></html>'
 
       return { contentType: 'text/html', content: text }
     }
