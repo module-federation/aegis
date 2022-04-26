@@ -5,11 +5,14 @@ import { EventEmitter } from 'stream'
 import { Worker, BroadcastChannel } from 'worker_threads'
 import domainEvents from './domain-events'
 import ModelFactory, { DataSourceFactory } from '.'
+import { performance as perf } from 'perf_hooks'
+import { AsyncResource } from 'async_hooks'
 import os from 'os'
 
 const { poolOpen, poolClose, poolDrain } = domainEvents
 const broker = EventBrokerFactory.getInstance()
-const MAINCHANNEL = 'mainChannel'
+const kTaskInfo = Symbol('kTaskInfo')
+const kThreadFreed = Symbol('kThreadFreed')
 const EVENTCHANNEL = 'eventChannel'
 const NOJOBSRUNNING = 'noJobsRunning'
 const DEFAULT_THREADPOOL_MIN = 1
@@ -81,8 +84,46 @@ function connectEventChannel (worker, channel) {
   // fire this event to forward to workers
   broker.on('to_worker', async event => port1.postMessage(event))
   // subscribe to get events from workers
-  port1.onmessage = async event =>
+  port1.onmessage = async event => {
     await broker.notify('from_worker', event.data)
+  }
+}
+
+async function abortable ({ signal, ctx, fn, cb }, ...args) {
+  if (signal.aborted === true) throw new Error('Operation canceled')
+
+  const taskDone = new AbortController()
+  signal.addEventListener(
+    'abort',
+    () => {
+      cb(...args)
+    },
+    {
+      once: true,
+      signal: taskDone.signal
+    }
+  )
+  try {
+    if (signal.aborted) throw new Error('Operation canceled')
+    return await fn.apply(ctx, args)
+  } finally {
+    // Remove the abort event listener to avoid
+    // leaking memory.
+    taskDone.abort()
+  }
+}
+
+class ThreadPoolTaskInfo extends AsyncResource {
+  constructor (callback) {
+    super('WorkerPoolTaskInfo')
+    this.callback = callback
+  }
+
+  done (err, result) {
+    this.runInAsyncScope(this.callback, null, err, result)
+    this.emitDestroy() // `TaskInfo`s are used only once.
+    return result
+  }
 }
 
 /**
@@ -96,27 +137,28 @@ function connectEventChannel (worker, channel) {
  */
 function newThread ({ pool, file, workerData }) {
   return new Promise((resolve, reject) => {
-    try {
-      const eventChannel = new MessageChannel()
-      const worker = new Worker(file, { workerData })
-      pool.totalThreads++
+    const eventChannel = new MessageChannel()
+    const worker = new Worker(file, { workerData })
+    pool.totalThreads++
 
+    try {
       const thread = {
         file,
         pool,
         id: worker.threadId,
-        createdAt: Date.now(),
+        createdAt: perf.now(),
         mainChannel: worker,
         eventChannel: eventChannel.port1,
         async stop () {
           await kill(this)
         }
       }
-      pool.threadRef.push(thread)
+      pool.threads.push(thread)
 
       const timerId = setTimeout(async () => {
         await thread.stop()
-        pool.threadRef.pop()
+        pool.threads.pop()
+        pool.startThread()
         reject('timeout')
       }, 10000)
 
@@ -158,10 +200,10 @@ function postJob ({
   callback = r => r
 }) {
   return new Promise((resolve, reject) => {
-    const startTime = Date.now()
+    const startTime = perf.now()
 
     thread[channel].once('message', result => {
-      pool.jobTime(Date.now() - startTime)
+      pool.jobTime(perf.now() - startTime)
 
       if (pool.waitingJobs.length > 0) {
         pool.waitingJobs.shift()(thread)
@@ -173,9 +215,17 @@ function postJob ({
         pool.emit(NOJOBSRUNNING)
       }
 
-      return resolve(callback(result))
+      return resolve(thread[kTaskInfo].done(null, result))
     })
-    thread[channel].once('error', reject)
+
+    thread[kTaskInfo] = new ThreadPoolTaskInfo(callback)
+
+    thread[channel].once('error', async error => {
+      thread.stop()
+      await pool.startThread()
+      reject(error)
+    })
+
     thread[channel].postMessage({ name: jobName, data: jobData }, transfer)
   }).catch(console.error)
 }
@@ -220,8 +270,8 @@ export class ThreadPool extends EventEmitter {
     this.totJobTime = 0
     this.totalThreads = 0
     /** @type {Thread[]} */
-    this.threadRef = []
-    this.startTime = Date.now()
+    this.threads = []
+    this.startTime = perf.now()
     this.broadcastChannel = options.bc
 
     if (options.preload) {
@@ -422,10 +472,9 @@ export class ThreadPool extends EventEmitter {
               jobData,
               thread,
               channel,
-              transfer
+              transfer,
+              callback: result => resolve(result)
             })
-
-            return resolve(result)
           }
         }
         console.debug('no threads: queue job', jobName)
@@ -451,7 +500,7 @@ export class ThreadPool extends EventEmitter {
 
   async abort () {
     try {
-      while (this.threadRef.length > 0) await this.threadRef.pop().stop()
+      while (this.threads.length > 0) await this.threads.pop().stop()
     } catch (error) {
       console.error({ fn: this.abort.name, error })
     }
@@ -518,7 +567,7 @@ export class ThreadPool extends EventEmitter {
           threadRef.splice(0, threadRef.length)
         },
         1000,
-        this.threadRef
+        this.threads
       )
 
       return this

@@ -91,7 +91,7 @@ export const RepoClient = {
   },
 
   /**
-   * Fetch wasm bytecode (.wasm file) from general URL or Github repo
+   * Fetch wasm bytecode (.wasm file) from a Github repo or a web server
    * @param {import('../../../webpack/remote-entries-type').remoteEntry} entry
    * @returns
    */

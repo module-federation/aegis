@@ -70,7 +70,9 @@ function findSharedMap (name) {
     console.warn(error)
   }
 
-  return workerData.sharedMap
+  if (name === workerData.modelName) return workerData.sharedMap
+
+  return new Map()
 }
 
 /**

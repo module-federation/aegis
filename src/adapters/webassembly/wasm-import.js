@@ -1,15 +1,11 @@
 'use strict'
 
-import {
-  wrapWasmAdapter,
-  wrapWasmModelSpec,
-  wrapWasmService
-} from './wasm-decorators'
-
+import { performance as perf } from 'perf_hooks'
 import loader from '@assemblyscript/loader'
-import EventBrokerFactory from '../../domain/event-broker'
+import { EventBrokerFactory } from '../../domain'
 import { WasmInterop } from './wasm-interop'
 import { RepoClient } from './repo-client'
+import { wasmAdapters } from '.'
 
 const broker = EventBrokerFactory.getInstance()
 
@@ -20,9 +16,9 @@ const broker = EventBrokerFactory.getInstance()
  * @returns
  */
 export async function importWebAssembly (remoteEntry) {
-  const startTime = Date.now()
+  const startTime = perf.now()
 
-  // Check if we support streaming instantiation
+  // Check if we support streaming instantiation y
   if (WebAssembly.instantiateStreaming) console.log('we can stream-compile now')
 
   const response = await RepoClient.fetch(remoteEntry)
@@ -76,13 +72,12 @@ export async function importWebAssembly (remoteEntry) {
         console.log('deploy', wasm.exports.__getString(remoteEntry))
     }
   })
-  console.info('wasm modules took %dms', Date.now() - startTime)
+
+  console.info('wasm modules took %dms', perf.now() - startTime)
 
   // delay immediate start to allow imports access to memory
   // compile with --explicitStart
   wasm.instance.exports._start()
 
-  if (remoteEntry.type === 'model') return wrapWasmModelSpec(wasm)
-  if (remoteEntry.type === 'adapter') return wrapWasmAdapter(wasm)
-  if (remoteEntry.type === 'service') return wrapWasmService(wasm)
+  return wasmAdapters[remoteEntry.type](wasm)
 }

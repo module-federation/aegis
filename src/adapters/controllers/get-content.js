@@ -85,7 +85,6 @@ export default function getContent (httpRequest, content, defaultTitle) {
           <style>
             a:link {
               text-decoration: none;
-              
             }
             body {
               background-color: w3-light-gray;
@@ -121,7 +120,7 @@ export default function getContent (httpRequest, content, defaultTitle) {
               JSON.stringify(val, null, 2)
             )}</code></pre>`
 
-          text += `<tr><td style="width:60px">${key}</td><td>${val}</td></tr>`
+          text += `<tr><td style="width:100px">${key}</td><td>${val}</td></tr>`
         })
         text += '</table></div>'
       })
