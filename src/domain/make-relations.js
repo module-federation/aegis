@@ -39,6 +39,27 @@ export const relationType = {
     )
 }
 
+const referentialIntegrity = {
+  [relationType.manyToOne.name]: (fromModel, toModel, relation, ds) =>
+    fromModel.update(
+      { [relation.foreignKey]: toModel.id || toModel.getId() },
+      false
+    ),
+
+  [relationType.oneToMany.name] (fromModel, toModel, relation, ds) {
+    Promise.allSettled(
+      toModel.map(async m =>
+        (await ds.find(m.id)).update({
+          [relation.foreignKey]: fromModel.getId()
+        })
+      )
+    )
+  },
+  [relationType.containsMany.name] (fromModel, toModel, relation, ds) {
+    return this[relationType.oneToMany.name](fromModel, toModel, relation, ds)
+  }
+}
+
 /**
  * If we create a new object, foreign keys need to reference it
  * @param {*} fromModel
@@ -48,11 +69,9 @@ export const relationType = {
  */
 async function updateForeignKeys (fromModel, toModel, relation, ds) {
   console.debug({ fn: updateForeignKeys.name, toModel })
-  if (
-    [relationType.manyToOne.name, relationType.oneToOne.name].includes(
-      relation.type
-    )
-  ) {
+
+  //referentialIntegrity[relation.type](fromModel, toModel, relation, ds)
+  if (relationType.manyToOne.name === relation.type) {
     console.debug(updateForeignKeys.name, 'found', toModel)
     return fromModel.update({ [relation.foreignKey]: toModel.getId() }, false)
   } else if (
@@ -71,12 +90,12 @@ async function updateForeignKeys (fromModel, toModel, relation, ds) {
 }
 
 /**
- * 
- * @param {*} args 
- * @param {*} fromModel 
- * @param {*} relation 
- * @param {*} ds 
- * @returns 
+ *
+ * @param {*} args
+ * @param {*} fromModel
+ * @param {*} relation
+ * @param {*} ds
+ * @returns
  */
 async function createNewModels (args, fromModel, relation, ds) {
   if (args.length > 0) {
@@ -192,5 +211,3 @@ export default function makeRelations (relations, datasource, broker) {
     })
     .reduce((c, p) => ({ ...p, ...c }))
 }
-
-

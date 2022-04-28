@@ -13,7 +13,7 @@ export default function makeLiveRollout (hotDeploy) {
 
       const result = await hotDeploy(httpRequest.query.remoteEntry)
 
-      console.debug({ fn: liveUpdate.name, result })
+      console.debug({ fn: liveRollout.name, result })
       return {
         headers: {
           'Content-Type': 'application/json',
