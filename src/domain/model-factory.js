@@ -37,7 +37,8 @@ import Event from './event'
 const EventTypes = {
   CREATE: 'CREATE',
   UPDATE: 'UPDATE',
-  DELETE: 'DELETE'
+  DELETE: 'DELETE',
+  LOADED: 'LOADED'
 }
 
 /**
@@ -79,7 +80,8 @@ const modelFactories = new Map()
 const eventFactories = {
   [EventTypes.CREATE]: new Map(),
   [EventTypes.UPDATE]: new Map(),
-  [EventTypes.DELETE]: new Map()
+  [EventTypes.DELETE]: new Map(),
+  [EventTypes.LOADED]: new Map()
 }
 
 /**

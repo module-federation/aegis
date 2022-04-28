@@ -32,15 +32,12 @@ function findLocalRelatedModels (modelName) {
   const localModels = ModelFactory.getModelSpecs().map(s =>
     s.modelName.toUpperCase()
   )
-  console.debug({ localModels })
   const spec = ModelFactory.getModelSpec(modelName)
-  console.debug({ spec })
   const result = !spec?.relations
     ? []
     : Object.keys(spec.relations)
         .map(k => spec.relations[k].modelName.toUpperCase())
         .filter(modelName => localModels.includes(modelName))
-  console.debug({ fn: findLocalRelatedDatasources.name, result })
   return result
 }
 
@@ -72,6 +69,7 @@ function buildOptions (model) {
       // only main thread knows about thread pools (no nesting)
       threadpool: ThreadPoolFactory.getThreadPool(model.modelName, {
         preload: false,
+        sharedMap: DataSourceFactory.getSharedDataSource(model.modelName).dsMap,
         dsRelated: findLocalRelatedDatasources(model.modelName)
       })
     }
@@ -129,7 +127,7 @@ const listConfigs = () =>
   makeListConfig({
     models: ModelFactory,
     broker: EventBrokerFactory.getInstance(),
-    dsFact: DataSourceFactory,
+    datasources: DataSourceFactory,
     threadpools: ThreadPoolFactory
   })
 

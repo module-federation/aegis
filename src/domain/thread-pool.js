@@ -43,21 +43,21 @@ const DEFAULT_DURATION_TOLERANCE = 1000
  * @param {Thread} thread
  * @returns {Promise<number>}
  */
-async function kill (thread) {
+async function kill (thread, reason) {
   try {
     return await new Promise(resolve => {
-      console.info('killing thread', thread.id)
+      console.info({ msg: 'killing thread', id: thread.id, reason })
 
       const timerId = setTimeout(async () => {
         const threadId = await thread.mainChannel.terminate()
-        console.warn('forcefully terminated thread', threadId)
+        console.warn({ msg: 'forcefully terminated thread', threadId, reason })
         resolve(threadId)
       }, 8000)
 
       thread.mainChannel.once('exit', () => {
         clearTimeout(timerId)
         thread.eventChannel.close()
-        console.info('clean exit of thread', thread.id)
+        console.info('clean exit of thread', thread.id, reason)
         resolve(thread.id)
       })
 
@@ -133,27 +133,25 @@ function newThread ({ pool, file, workerData }) {
         createdAt: perf.now(),
         mainChannel: worker,
         eventChannel: eventChannel.port1,
-        async stop () {
-          await kill(this)
+        async stop (reason) {
+          await kill(this, reason)
         }
       }
       pool.threads.push(thread)
 
       const timerId = setTimeout(async () => {
+        const message = 'timedout creating thread'
         console.error({
           fn: newThread.name,
-          message: 'timedout creating thread'
-        })        
-        await thread.stop()
-        //pool.threads.pop()
-        pool.startThread()
+          message
+        })
         reject('timeout')
       }, 10000)
 
-      worker.once('message', msg => {
+      worker.once('message', async msg => {
         clearTimeout(timerId)
         connectEventChannel(worker, eventChannel)
-        pool.emit('aegis-up', msg)
+        await pool.emit('aegis-up', msg)
         resolve(thread)
       })
     } catch (error) {
@@ -202,16 +200,18 @@ function postJob ({
       if (pool.noJobsRunning()) {
         pool.emit(NOJOBSRUNNING)
       }
-
       return resolve(callback(result))
     })
 
     thread[channel].once('error', async error => {
       console.error({ fn: postJob.name, error })
-      thread.stop()
-      const index = pool.threads.findIndex(t => t.id === thread.id)
-      pool.threads.splice(index, 1)
-      await pool.startThread()
+      pool.stopThread(thread, error)
+      pool.emit({
+        eventName: 'ThreadException',
+        message: 'unhandled error in thread',
+        pool: pool.name,
+        error
+      })
       reject(error)
     })
 
@@ -301,6 +301,18 @@ export class ThreadPool extends EventEmitter {
       this.freeThreads.push(await this.startThread())
     }
     return this
+  }
+
+  stopThread (thread, reason) {
+    thread.stop(reason)
+    this.threads.splice(
+      this.threads.findIndex(t => t.id === thread.id),
+      1
+    )
+    this.threads.splice(
+      this.freeThreads.findIndex(t => t.id === thread.id),
+      1
+    )
   }
 
   /**
@@ -488,10 +500,10 @@ export class ThreadPool extends EventEmitter {
     })
   }
 
-  async abort () {
+  async abort (reason) {
     this.broadcastEvent({ signal: 'abort' })
     try {
-      while (this.threads.length > 0) await this.threads.pop().stop()
+      while (this.threads.length > 0) await this.threads.pop().stop(reason)
     } catch (error) {
       console.error({ fn: this.abort.name, error })
     }
@@ -546,13 +558,13 @@ export class ThreadPool extends EventEmitter {
    *
    * @returns {ThreadPool}
    */
-  async stopThreads () {
+  async stopThreads (reason) {
     try {
       const kill = this.freeThreads.splice(0, this.freeThreads.length)
       this.threads.splice(0, this.threads.length)
 
       setTimeout(
-        async () => await Promise.all(kill.map(thread => thread.stop())),
+        async () => await Promise.all(kill.map(thread => thread.stop(reason))),
         1000
       )
 
@@ -619,7 +631,7 @@ const ThreadPoolFactory = (() => {
     console.debug({ fn: createThreadPool.name, modelName, options })
 
     // include the address of the shared array for the worker to access
-    const sharedMap = DataSourceFactory.getDataSource(modelName).dsMap
+    const sharedMap = options.sharedMap
     const maxThreads = calculateMaxThreads()
     const bc = getBroadcastChannel(modelName)
     const dsRelated = options.dsRelated || {}
@@ -717,7 +729,7 @@ const ThreadPoolFactory = (() => {
         .close()
         .notify(poolClose)
         .drain()
-        .then(() => pool.stopThreads())
+        .then(() => pool.stopThreads(reload.name))
         .then(() => pool.startThreads())
         .then(() =>
           pool
@@ -763,7 +775,7 @@ const ThreadPoolFactory = (() => {
         .close()
         .notify(poolClose)
         .drain()
-        .then(() => pool.stopThreads())
+        .then(() => pool.stopThreads(destroy.name))
         .then(() => resolve(threadPools.delete(pool)))
         .catch(reject)
     }).catch(console.error)
@@ -786,28 +798,40 @@ const ThreadPoolFactory = (() => {
         ?.on(eventName, cb)
   }
 
-  // look for stuck threads
-  setInterval(() => {
-    threadPools.forEach(pool => {
-      const workRequested = pool.totalTransactions()
-      const workWaiting = pool.jobQueueDepth()
-      const workersAvail = pool.availThreadCount()
-      const workCompleted = workRequested - workWaiting
+  /**
+   * Monitor pools for stuck threads and restart them
+   */
+  function monitorPools () {
+    const intervalId = setInterval(() => {
+      threadPools.forEach(pool => {
+        const workRequested = pool.totalTransactions()
+        const workWaiting = pool.jobQueueDepth()
+        const workersAvail = pool.availThreadCount()
+        const workCompleted = workRequested - workWaiting
 
-      // work is waiting but no workers available
-      if (workWaiting > 0 && workersAvail < 1) {
-        setTimeout(() => {
-          // has any work been done in the last minute?
-          if (
-            pool.totalTransactions() - pool.jobQueueDepth() === workCompleted &&
-            pool.availThreadCount() < 1
-          ) {
-            pool.abort()
-          }
-        }, 60000)
-      }
-    })
-  }, 90000)
+        // work is waiting but no workers available
+        if (workWaiting > 0 && workersAvail < 1) {
+          setTimeout(() => {
+            // has any work been done in the last 3 minutes?
+            if (
+              pool.availThreadCount() < 1 &&
+              pool.totalTransactions() - pool.jobQueueDepth() === workCompleted
+            ) {
+              // no threads are avail and no work done for 3 minute
+              console.warn('killing stuck threads', pool.status())
+              pool.abort('stuck threads')
+              // stop monitoring to allow for correction
+              clearInterval(intervalId)
+              // resume monitoring
+              setTimeout(monitorPools, 300000)
+            }
+          }, 180000)
+        }
+      })
+    }, 200000)
+  }
+
+  monitorPools()
 
   return Object.freeze({
     getThreadPool,

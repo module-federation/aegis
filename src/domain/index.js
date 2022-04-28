@@ -207,6 +207,11 @@ const deleteEvent = model => ({
   model: model
 })
 
+const loadedEvent = model => ({
+  modelId: ModelFactory.getModelId(model),
+  model: model
+})
+
 /**
  * Register the {@link ModelSpecification}: inject dependencies,
  * bind adapters, register events
@@ -251,6 +256,12 @@ function register (model, services, adapters, workers, isCached = false) {
     modelName,
     deleteEvent
   )
+
+  ModelFactory.registerEvent(
+    ModelFactory.EventTypes.LOADED,
+    modelName,
+    loadedEvent
+  )
 }
 
 /**
@@ -278,7 +289,7 @@ export async function importRemotes (remoteEntries, overrides = {}) {
   const adapters = await importRemoteAdapters(remoteEntries)
   const workers = await importRemoteWorkers(remoteEntries)
 
-  console.info({ services, adapters, overrides, workers })
+  //console.info({ services, adapters, overrides, workers })
 
   await importModels(
     remoteEntries,

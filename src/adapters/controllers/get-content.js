@@ -40,9 +40,9 @@ function findLocalRelatedModels (modelName) {
   const localModels = ModelFactory.getModelSpecs().map(s =>
     s.modelName.toUpperCase()
   )
-  console.debug({ localModels })
+  //console.debug({ localModels })
   const spec = ModelFactory.getModelSpec(modelName)
-  console.debug({ spec })
+  //console.debug({ spec })
   const result = !spec?.relations
     ? []
     : Object.keys(spec.relations)

@@ -9,7 +9,7 @@ import { resumeWorkflow } from '../orchestrator'
  * @param {import("../datasource").default} repository
  * @returns {function(Map<string,Model>|Model)}
  */
-function hydrateModels(loadModel, broker, repository) {
+function hydrateModels (loadModel, broker, repository) {
   return function (saved) {
     if (!saved) return
 
@@ -27,24 +27,34 @@ function hydrateModels(loadModel, broker, repository) {
         return loadModel(broker, repository, saved, saved.modelName)
       }
     } catch (error) {
-      console.warn(loadModel.name, error.message)
+      console.warn(hydrateModels.name, error.message)
     }
   }
 }
 
-function handleError(e) {
+function handleError (e) {
   console.error(e)
 }
 /**
  *
- * @param {import("../datasource").default} repository
+ * @param {{
+ *  repository:{import("../datasource").default}
+ *  models:import('../model-factory').ModelFactory
+ * }}
  */
-function handleRestart(repository) {
+function handleRestart (repository, eventName) {
   // console.log("resuming workflow", repository.name);
+
   if (process.env.RESUME_WORKFLOW_DISABLED) return
+
   repository
     .list()
     .then(resumeWorkflow)
+    .catch(handleError)
+
+  repository
+    .list()
+    .forEach(model => model.emit(eventName, model))
     .catch(handleError)
 }
 
@@ -59,11 +69,21 @@ function handleRestart(repository) {
  * }} options
  * @returns {function():Promise<void>}
  */
-export default function ({ models, broker, repository, modelName }) {
-  return async function loadModels() {
+export default function ({
+  modelName,
+  repository,
+  broker,
+  models,
+  handlers = []
+}) {
+  const eventType = models.EventTypes.LOADED
+  const eventName = models.getEventName(eventType, modelName)
+  handlers.forEach(handler => broker.on(eventName, handler))
+
+  return async function loadModels () {
     const spec = models.getModelSpec(modelName)
 
-    setTimeout(handleRestart, 30000, repository)
+    setTimeout(handleRestart, 30000, repository, eventName)
 
     return repository.load({
       hydrate: hydrateModels(models.loadModel, broker, repository),

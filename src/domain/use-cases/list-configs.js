@@ -1,6 +1,5 @@
 'use strict'
 
-import { SharedMap } from 'sharedmap'
 import { isMainThread } from 'worker_threads'
 
 /**
@@ -13,8 +12,8 @@ import { isMainThread } from 'worker_threads'
  */
 export default function listConfigsFactory ({
   models,
-  dsFact,
   broker,
+  datasources,
   threadpools
 } = {}) {
   return async function listConfigs (query) {
@@ -28,31 +27,12 @@ export default function listConfigsFactory ({
         modelName && isMainThread
           ? threadpools.getThreadPool(modelName).run(listConfigs.name, query)
           : modelName && poolName
-          ? dsFact.getDataSource(poolName).listSync()
+          ? datasources.getDataSource(poolName).listSync()
           : modelName
-          ? dsFact.getDataSource(modelName).listSync()
-          : dsFact.listDataSources().map(k => ({
+          ? datasources.getDataSource(modelName).listSync()
+          : datasources.listDataSources().map(k => ({
               dsname: k,
-              objects: dsFact.getDataSource(k).totalRecords()
-            })),
-
-      data_main: () =>
-        dsFact.listDataSources().map(k => ({
-          dsname: k,
-          objects: dsFact.getDataSource(k).totalRecords()
-        })),
-
-      data_thread: () =>
-        isMainThread
-          ? threadpools
-              .getThreadPool(modelName || 'newPool')
-              .run(listConfigs.name, query)
-          : dsFact.listDataSources().map(k => ({
-              dsname: k,
-              objects:
-                typeof dsFact.getDataSource(k).dsMap === 'object'
-                  ? dsFact.getDataSource(k).totalRecords()
-                  : 0
+              objects: datasources.getDataSource(k).totalRecords()
             })),
 
       events: () =>

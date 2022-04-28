@@ -11,7 +11,7 @@ let broadcastChannel
  * @param {*} broker
  * @returns
  */
-function createBroadcastChannel (modelName) {
+function createBroadcastChannel (modelName, broker) {
   if (broadcastChannel) return
   broadcastChannel = new BroadcastChannel(modelName)
   // notify listeners
@@ -24,7 +24,7 @@ function createBroadcastChannel (modelName) {
  * @param {import('./event-broker').EventBroker} broker
  */
 export function registerBroadcastEvents (broker) {
-  createBroadcastChannel(workerData.modelName)
+  createBroadcastChannel(workerData.modelName, broker)
   //
   broker.on('shutdown', signal => process.exit(signal || 0))
 }
