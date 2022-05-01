@@ -19,6 +19,7 @@ import WebSocket from 'ws'
 import Dns from 'multicast-dns'
 import EventEmitter from 'events'
 import { CircuitBreaker } from '../../index'
+import { dns } from '../../dns'
 
 const HOSTNAME = 'webswitch.local'
 const SERVICENAME = 'webswitch'
@@ -29,25 +30,25 @@ const WEBSOCKETERROR = 'websocketError'
 const configRoot = require('../../../config').hostConfig
 const config = configRoot.services.serviceMesh.WebSwitch
 const retryInterval = config.retryInterval || 2000
-const maxRetries = config.maxRetries || 5
+const retryDenominator = config.retryDenominator || 30
 const debug = config.debug || /true/i.test(process.env.DEBUG)
 const heartbeat = config.heartbeat || 10000
 const sslEnabled = /true/i.test(process.env.SSL_ENABLED)
-const normalPort = process.env.PORT || 80
-const sslPort = process.env.SSL_PORT || 443
-const activePort = sslEnabled ? sslPort : normalPort
+const clearPort = process.env.PORT || 80
+const cipherPort = process.env.SSL_PORT || 443
+const activePort = sslEnabled ? cipherPort : clearPort
 const activeProto = sslEnabled ? 'wss' : 'ws'
 const activeHost =
-  process.env.DOMAIN ||
   configRoot.services.cert.domain ||
-  configRoot.general.fqdn
+  configRoot.general.fqdn ||
+  process.env.DOMAIN
 const proto = config.isSwitch ? activeProto : config.protocol
 const port = config.isSwitch ? activePort : config.port
 const host = config.isSwitch ? activeHost : config.host
 const eventEmitter = new EventEmitter()
 
 eventEmitter.on(TIMEOUTEVENT, () =>
-  console.error({ error: 'webswitch unresponsiven - trying new conn' })
+  console.error({ error: 'webswitch unresponsive - trying new conn' })
 )
 
 eventEmitter.on(WEBSOCKETERROR, error =>
@@ -62,41 +63,51 @@ let isBackupSwitch = config.isBackupSwitch || false
 let activateBackup = false
 let uplinkCallback
 
-let dnsPriority
 /** @type {function():string[]} */
 let installedMicroservices = () => []
 /** @type {WebSocket} */
 let ws
 
-const DnsPriority = {
-  setHigh () {
-    dnsPriority = { priorities: 10, weight: 20 }
-  },
-  setMedium () {
-    dnsPriority = { priorities: 20, weight: 40 }
-  },
-  setLow () {
-    dnsPriority = { priorities: 40, weight: 80 }
-  },
-  getCurrent () {
-    return dnsPriority
-  },
-  match (prio) {
-    const { priority, weight } = this.getCurrent()
-    return prio.priority === priority && prio.weight === weight
-  },
-  setBackupPriority () {
-    // set to low
-    config.priority = 40
-    config.weight = 80
+const wsState = {
+  0: 'CONNECTING',
+  1: 'OPEN',
+  2: 'CLOSING',
+  3: 'CLOSED'
+}
+
+const DnsPriority = function (priority = 10, weight = 20) {
+  let dnsPrio = { priority, weight }
+  return {
+    setHigh () {
+      dnsPrio = { priority: 10, weight: 20 }
+    },
+    setMedium () {
+      dnsPrio = { priority: 20, weight: 40 }
+    },
+    setLow () {
+      dnsPrio = { priority: 40, weight: 80 }
+    },
+    getCurrent () {
+      return dnsPrio
+    },
+    match (value) {
+      const { priority, weight } = this.getCurrent()
+      return value.priority === priority && value.weight === weight
+    },
+    equals (value) {
+      return this.match(value.getCurrent())
+    }
   }
 }
 
-DnsPriority.setHigh()
+const dnsTargetPriority = DnsPriority()
+const dnsAssignedPriority = DnsPriority(
+  config.priority || 40,
+  config.weight || 80
+)
 
-function checkTakeover () {
-  if (DnsPriority.getCurrent().priority === config.priority)
-    activateBackup = true
+function shouldTakeover () {
+  if (dnsAssignedPriority.equals(dnsTargetPriority)) activateBackup = true
 }
 
 /**
@@ -111,39 +122,25 @@ async function resolveServiceUrl () {
   let url
 
   return new Promise(function (resolve) {
-    dns.on('response', function (response) {
-      debug && console.debug({ fn: resolveServiceUrl.name, response })
-
-      const answer = response.answers.find(
-        a =>
-          a.name === SERVICENAME &&
-          a.type === 'SRV' &&
-          DnsPriority.match(a.data)
-      )
-
-      if (answer) {
-        url = _url(proto, answer.data.target, answer.data.port)
-        console.info({ msg: 'found dns service record for', SERVICENAME, url })
-        resolve(url)
-      }
-    })
-
     /**
      * Query DNS for the webswitch service.
-     * Recursively retry by incrementing a
-     * counter we pass to ourselves on the
-     * stack.
+     * "Recursively" retry by incrementing a
+     * counter passed on the stack. Increment
+     * the DNS priority based on the number of
+     * retries. Change the switch service URL
+     * accordingly. This provides HA in the event
+     * the switch becomes inaccessible.
      *
      * @param {number} retries number of query attempts
      * @returns
      */
     function runQuery (retries = 0) {
-      if (retries > maxRetries / 2) {
-        DnsPriority.setMedium()
-        checkTakeover()
-      } else if (retries > maxRetries) {
-        DnsPriority.setLow()
-        checkTakeover()
+      if (retries > retryDenominator / 3) {
+        dnsTargetPriority.setMedium()
+        shouldTakeover()
+      } else if (retries > retryDenominator / 1.5) {
+        dnsTargetPriority.setLow()
+        shouldTakeover()
       }
 
       // query the service name
@@ -152,7 +149,7 @@ async function resolveServiceUrl () {
           {
             name: SERVICENAME,
             type: 'SRV',
-            data: DnsPriority.getCurrent()
+            data: dnsTargetPriority.getCurrent()
           }
         ]
       })
@@ -165,16 +162,33 @@ async function resolveServiceUrl () {
       setTimeout(() => runQuery(++retries), retryInterval)
     }
 
+    dns.on('response', function (response) {
+      debug && console.debug({ fn: resolveServiceUrl.name, response })
+
+      const answer = response.answers.find(
+        a =>
+          a.name === SERVICENAME &&
+          a.type === 'SRV' &&
+          dnsTargetPriority.match(a.data)
+      )
+
+      if (answer) {
+        url = _url(proto, answer.data.target, answer.data.port)
+        console.info({ msg: 'found dns service record for', SERVICENAME, url })
+        resolve(url)
+      }
+    })
+
     runQuery()
 
     dns.on('query', function (query) {
       debug && console.debug('got a query packet:', query)
 
-      const questions = query.questions.filter(
+      const question = query.questions.find(
         q => q.name === SERVICENAME || q.name === HOSTNAME
       )
 
-      if (!questions[0]) {
+      if (!question) {
         console.assert(!debug, {
           fn: 'dns query',
           msg: 'no questions',
@@ -191,9 +205,9 @@ async function resolveServiceUrl () {
               type: 'SRV',
               data: {
                 port: activePort,
-                weight: config.priority,
-                priority: config.weight,
-                target: activeHost
+                target: activeHost,
+                weight: dnsAssignedPriority.getCurrent().weight,
+                priority: dnsAssignedPriority.getCurrent().priority
               }
             }
           ]
@@ -204,7 +218,7 @@ async function resolveServiceUrl () {
           isSwitch: config.isSwitch,
           isBackupSwitch,
           activateBackup,
-          msg: 'answering query packet',
+          msg: 'answering query',
           questions,
           answer
         })
@@ -259,7 +273,7 @@ function format (event) {
  * @returns
  */
 function send (event) {
-  if (ws?.readyState) {
+  if (ws && wsState[ws.readyState] == 'OPEN') {
     const breaker = new CircuitBreaker(__filename + send.name, ws.send)
     breaker.detectErrors([TIMEOUTEVENT, WEBSOCKETERROR], eventEmitter)
     breaker.invoke(format(event))
@@ -288,6 +302,7 @@ function startHeartbeat () {
       try {
         clearInterval(intervalId)
         eventEmitter.emit(TIMEOUTEVENT)
+        reconnect()
       } catch (error) {
         console.error(startHeartbeat.name, error)
       }
@@ -356,24 +371,40 @@ export async function subscribe (eventName, callback) {
 /**
  *
  */
-async function _connect () {
+async function connectToServiceMesh () {
   if (!ws) {
     // null unless this is a switch or set manually by config file
     if (!serviceUrl) serviceUrl = await resolveServiceUrl()
-    console.info({ fn: _connect.name, serviceUrl })
+
+    console.info({
+      fn: connectToServiceMesh.name,
+      msg: 'connecting to service mesh',
+      serviceUrl
+    })
 
     ws = new WebSocket(serviceUrl)
 
+    console.info({
+      fn: connectToServiceMesh.name,
+      connectionState: wsState[ws.readyState]
+    })
+
     ws.on('open', function () {
-      eventEmitter.once(TIMEOUTEVENT, reconnect)
-      eventEmitter.once(WEBSOCKETERROR, reconnect)
+      console.info({
+        fn: connectToServiceMesh.name,
+        connectionState: wsState[ws.readyState]
+      })
       send(protocol.serialize())
       startHeartbeat()
     })
 
     ws.on('error', function (error) {
-      console.error({ fn: _connect.name, error })
+      console.error({ fn: connectToServiceMesh.name, error })
       eventEmitter.emit(WEBSOCKETERROR, error)
+
+      if ([ws.CLOSING, ws.CLOSED].includes(ws.readyState)) {
+        reconnect()
+      }
     })
 
     ws.on('message', async function (message) {
@@ -408,7 +439,7 @@ async function _connect () {
  */
 export async function connect (serviceInfo = {}) {
   installedMicroservices = serviceInfo?.services
-  await _connect()
+  await connectToServiceMesh()
 }
 
 let reconnecting = false
@@ -426,7 +457,7 @@ async function reconnect (attempts = 0) {
       serviceUrl = null
     }
     try {
-      _connect()
+      connectToServiceMesh()
     } catch (error) {
       console.error({ fn: reconnect.name, error })
     }
@@ -450,7 +481,7 @@ export async function publish (event) {
       console.error(publish.name, 'no event provided')
       return
     }
-    await _connect()
+    await connectToServiceMesh()
     send(event)
   } catch (e) {
     console.error('publish', e)

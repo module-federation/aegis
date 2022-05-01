@@ -93,7 +93,7 @@ function getThreshold (error, thresholds) {
  * @returns {boolean} has it been breached?
  */
 function thresholdBreached (log, error, thresholds) {
-  console.log(thresholdBreached.name, thresholds)
+  console.log({ fn: thresholdBreached.name, error, thresholds })
 
   if (log.length < 1) {
     console.log('no log')

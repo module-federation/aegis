@@ -289,7 +289,7 @@ export async function importRemotes (remoteEntries, overrides = {}) {
   const adapters = await importRemoteAdapters(remoteEntries)
   const workers = await importRemoteWorkers(remoteEntries)
 
-  //console.info({ services, adapters, overrides, workers })
+  console.info({ services, adapters, overrides, workers })
 
   await importModels(
     remoteEntries,

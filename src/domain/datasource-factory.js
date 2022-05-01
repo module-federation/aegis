@@ -14,7 +14,7 @@ import * as adapters from '../adapters/datasources'
 import dsconfig from '../adapters/datasources'
 import sysconf from '../config'
 import DataSource from './datasource'
-import { withSharedMem } from './shared-memory'
+import { withSharedMemory } from './shared-memory'
 
 const defaultAdapter = sysconf.hostConfig.adapters.defaultDatasource
 const DefaultDataSource = adapters[defaultAdapter]
@@ -136,7 +136,7 @@ const DataSourceFactory = (() => {
       return dataSources.get(upperName)
     }
 
-    return withSharedMem(createDataSource, this, upperName, options)
+    return withSharedMemory(createDataSource, this, upperName, options)
   }
 
   function close () {

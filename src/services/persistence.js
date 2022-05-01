@@ -7,14 +7,15 @@ import DataSource from '../domain/datasource-factory'
  */
 export const Persistence = {
   async save (model) {
-    return DataSource.getDataSource(model.getName()).save(model.getId(), model)
+    return DataSource.getSharedDataSource(model.getName()).save(
+      model.getId(),
+      model
+    )
   },
 
   async find (model) {
-    return DataSource.getDataSource(model.getName()).find(model.getId())
+    return DataSource.getSharedDataSource(model.getName()).find(model.getId())
   },
 
-  close () {
-    DataSource.getFactory().close()
-  }
+  close () {}
 }

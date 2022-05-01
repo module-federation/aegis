@@ -20,7 +20,7 @@ const OBJSIZE = 4056
  * @returns {import('./datasource').default} shared memory
  * @callback
  */
-const SharedMemMixin = superclass =>
+const SharedMemoryMixin = superclass =>
   class extends superclass {
     /**
      * @override
@@ -36,20 +36,24 @@ const SharedMemMixin = superclass =>
      * @returns {import('./datasource-factory').Model}
      */
     async find (id) {
-      const modelString = await super.find(id)
-      const model =
-        typeof modelString === 'string' ? JSON.parse(modelString) : modelString
-
-      if (!model) return null
-
       try {
-        return isMainThread
-          ? model
-          : ModelFactory.loadModel(broker, this, model, this.name.toUpperCase())
+        const modelString = await super.find(id)
+
+        if (!modelString) return
+
+        const model = JSON.parse(modelString)
+
+        if (isMainThread) return model
+
+        return ModelFactory.loadModel(
+          broker,
+          this,
+          model,
+          this.name.toUpperCase()
+        )
       } catch (error) {
-        console.error({ fn: 'SharedMem.find', error })
+        console.error({ fn: 'DataSourceSharedMemory.find', error })
       }
-      return model
     }
   }
 
@@ -60,7 +64,7 @@ const SharedMemMixin = superclass =>
  */
 function findSharedMap (name) {
   try {
-    if (workerData.dsRelated) {
+    if (workerData.dsRelated?.length > 0) {
       const dsRel = workerData.dsRelated.find(ds => ds.modelName === name)
       if (dsRel) {
         return dsRel.dsMap
@@ -69,10 +73,21 @@ function findSharedMap (name) {
   } catch (error) {
     console.warn(error)
   }
-
   if (name === workerData.modelName) return workerData.sharedMap
-
   return new Map()
+}
+
+function createSharedMap (mapsize, keysize, objsize, name) {
+  try {
+    return isMainThread
+      ? Object.assign(new SharedMap(mapsize, keysize, objsize), {
+          modelName: name // assign modelName
+        })
+      : Object.setPrototypeOf(findSharedMap(name), SharedMap.prototype)
+  } catch (error) {
+    console.warn(error)
+    return new Map()
+  }
 }
 
 /**
@@ -84,26 +99,24 @@ function findSharedMap (name) {
  * @param {import('./datasource-factory').dsOpts} options
  * @returns {import('./datasource').default}
  */
-export function withSharedMem (createDataSource, factory, name, options = {}) {
+export function withSharedMemory (
+  createDataSource,
+  factory,
+  name,
+  options = {}
+) {
   const mapsize = options.mapsize || MAPSIZE
   const keysize = options.keysize || KEYSIZE
   const objsize = options.objsize || OBJSIZE
 
   // use thread-safe shared map
-  const sharedMap = isMainThread
-    ? Object.assign(new SharedMap(mapsize, keysize, objsize), {
-        modelName: name // assign modelName
-      })
-    : Object.setPrototypeOf(
-        // find mem addr and rehydrate
-        findSharedMap(name),
-        SharedMap.prototype
-      )
+  const sharedMap = createSharedMap(mapsize, keysize, objsize, name)
 
   // call with shared map and mixin that extends ds class
   return createDataSource.call(factory, name, {
     ...options,
     dsMap: sharedMap,
-    mixin: DsClass => class SharedMemDs extends SharedMemMixin(DsClass) {}
+    mixin: DsClass =>
+      class DataSourceSharedMemory extends SharedMemoryMixin(DsClass) {}
   })
 }

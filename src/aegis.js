@@ -7,7 +7,7 @@ const domain = require('./domain')
 const { StorageService } = services
 const { StorageAdapter } = adapters
 const { find, save } = StorageAdapter
-const overrides = { find, save, StorageService }
+const overrides = { find, save, ...StorageService}
 const { importRemotes } = domain
 
 const {

@@ -8,11 +8,13 @@ import Event from './event'
 /** @typedef {import('./event-broker').EventBroker} broker */
 /** @typedef {import('./datasource').default} Datasource */
 /** @typedef {import('./model').Model} Model */
+
 /**
  * @callback loadModel
  * @param {import('./event-broker') broker
  * @param {}
  */
+
 /**
  * @typedef {Object} ModelFactory Low-level port functions for creating, updating, deleting domain models. To be called by
  * application use-case functions, which in turn are called by driving/primary adapters.

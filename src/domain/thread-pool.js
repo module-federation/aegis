@@ -49,9 +49,13 @@ async function kill (thread, reason) {
       console.info({ msg: 'killing thread', id: thread.id, reason })
 
       const timerId = setTimeout(async () => {
-        const threadId = await thread.mainChannel.terminate()
-        console.warn({ msg: 'forcefully terminated thread', threadId, reason })
-        resolve(threadId)
+        await thread.mainChannel.terminate()
+        console.warn({
+          msg: 'forcefully terminated thread',
+          id: thread.id,
+          reason
+        })
+        resolve(thread.id)
       }, 8000)
 
       thread.mainChannel.once('exit', () => {
@@ -146,12 +150,12 @@ function newThread ({ pool, file, workerData }) {
           message
         })
         reject('timeout')
-      }, 10000)
+      }, 50000)
 
       worker.once('message', async msg => {
         clearTimeout(timerId)
         connectEventChannel(worker, eventChannel)
-        await pool.emit('aegis-up', msg)
+        pool.emit('aegis-up', msg)
         resolve(thread)
       })
     } catch (error) {
@@ -785,9 +789,7 @@ const ThreadPoolFactory = (() => {
     if (poolName) {
       return threadPools.get(poolName.toUpperCase()).status()
     }
-    const reports = []
-    threadPools.forEach(pool => reports.push(pool.status()))
-    return reports
+    return [...threadPools].map(([, v]) => v.status())
   }
 
   function listen (cb, poolName, eventName) {

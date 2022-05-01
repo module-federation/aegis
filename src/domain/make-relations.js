@@ -71,22 +71,26 @@ async function updateForeignKeys (fromModel, toModel, relation, ds) {
   console.debug({ fn: updateForeignKeys.name, toModel })
 
   //referentialIntegrity[relation.type](fromModel, toModel, relation, ds)
-  if (relationType.manyToOne.name === relation.type) {
-    console.debug(updateForeignKeys.name, 'found', toModel)
-    return fromModel.update({ [relation.foreignKey]: toModel.getId() }, false)
-  } else if (
-    toModel instanceof Array &&
-    (relation.type === relationType.oneToMany.name ||
-      relation.type === relationType.contains)
-  ) {
-    return Promise.allSettled(
-      toModel.map(async m =>
-        (await ds.find(m.id)).update({
-          [relation.foreignKey]: fromModel.getId()
-        })
-      )
-    )
-  }
+
+  // if (relationType.manyToOne.name === relation.type) {
+  //   console.debug(updateForeignKeys.name, 'found', toModel)
+  //   return fromModel.update(
+  //     { [relation.foreignKey]: toModel.id || toModel.getId() },
+  //     false
+  //   )
+  // } else if (
+  //   toModel instanceof Array &&
+  //   (relation.type === relationType.oneToMany.name ||
+  //     relation.type === relationType.contains)
+  // ) {
+  //   return Promise.allSettled(
+  //     toModel.map(async m =>
+  //       (await ds.find(m.id)).update({
+  //         [relation.foreignKey]: fromModel.getId()
+  //       })
+  //     )
+  //   )
+  // }
 }
 
 /**
@@ -116,7 +120,7 @@ async function createNewModels (args, fromModel, relation, ds) {
  *
  * @param {import(".").relations[x]} relationdd
  * @param {import("./event-broker").EventBroker} broker
- * @returns {Promise<import(".").Model>} source model
+ * @returns {Promise<import(".").Event>} source model
  */
 export function requireRemoteObject (model, relation, broker, ...args) {
   const request = internalCacheRequest(relation.modelName)
@@ -198,7 +202,7 @@ export default function makeRelations (relations, datasource, broker) {
 
               // each arg contains input to create a new object
               if (event?.args?.length > 0)
-                updateForeignKeys(this, event, rel, ds)
+                updateForeignKeys(this, event.model, rel, ds)
 
               return await relationType[rel.type](this, ds, rel)
             }

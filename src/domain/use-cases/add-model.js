@@ -32,7 +32,7 @@ export default function makeAddModel ({
 } = {}) {
   const eventType = models.EventTypes.CREATE
   const eventName = models.getEventName(eventType, modelName)
-  handlers.forEach(handler => broker.on(eventName, handler))
+       handlers.forEach(handler => broker.on(eventName, handler))
 
   // Add an event whose callback invokes this factory.
   broker.on(domainEvents.addModel(modelName), addModel)
@@ -53,6 +53,7 @@ export default function makeAddModel ({
         )
         await repository.save(model.getId(), model)
 
+        console.debug(typeof model)
         try {
           const event = models.createEvent(eventType, modelName, model)
           await broker.notify(eventName, event)
