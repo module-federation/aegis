@@ -51,6 +51,10 @@ export default class DataSource {
     throw new Error('abstract method not implemented')
   }
 
+  saveSync (id, data, sync = true) {
+    throw new Error('abastract method not implemented')
+  }
+
   /**
    * Find model instance by ID
    * @param {*} id record id
@@ -69,6 +73,7 @@ export default class DataSource {
     throw new Error('abstract method not implemented')
   }
 
+  findSync (id) {}
   listSync (query) {}
 
   /**

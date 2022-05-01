@@ -27,12 +27,12 @@ export default function listConfigsFactory ({
         modelName && isMainThread
           ? threadpools.getThreadPool(modelName).run(listConfigs.name, query)
           : modelName && poolName
-          ? datasources.getDataSource(poolName).listSync()
+          ? datasources.getSharedDataSource(poolName).listSync()
           : modelName
-          ? datasources.getDataSource(modelName).listSync()
+          ? datasources.getSharedDataSource(modelName).listSync()
           : datasources.listDataSources().map(k => ({
               dsname: k,
-              objects: datasources.getDataSource(k).totalRecords()
+              objects: datasources.getSharedDataSource(k).totalRecords()
             })),
 
       events: () =>
@@ -85,7 +85,7 @@ export default function listConfigsFactory ({
         isMainThread
           ? threadpools.getThreadPool(modelName).run(listConfigs.name, query)
           : require('../circuit-breaker').getErrorLogs()
-    } 
+    }
 
     if (query?.details && typeof configTypes[query.details] === 'function')
       return configTypes[query.details]()
