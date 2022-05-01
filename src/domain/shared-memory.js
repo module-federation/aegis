@@ -25,8 +25,8 @@ const SharedMemoryMixin = superclass =>
     /**
      * @override
      */
-    async save (id, data) {
-      return super.save(id, JSON.stringify(data))
+    saveSync (id, data) {
+      return super.saveSync(id, JSON.stringify(data))
     }
 
     /**
@@ -35,22 +35,13 @@ const SharedMemoryMixin = superclass =>
      * @param {*} id
      * @returns {import('./datasource-factory').Model}
      */
-    async find (id) {
+    findSync (id) {
       try {
-        const modelString = await super.find(id)
-
-        if (!modelString) return
-
+        const modelString = super.findSync(id)
+        if (!modelString) return null
         const model = JSON.parse(modelString)
-
         if (isMainThread) return model
-
-        return ModelFactory.loadModel(
-          broker,
-          this,
-          model,
-          this.name.toUpperCase()
-        )
+        return ModelFactory.loadModel(broker, this, model, this.name)
       } catch (error) {
         console.error({ fn: 'DataSourceSharedMemory.find', error })
       }

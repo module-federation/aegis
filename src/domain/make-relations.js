@@ -21,6 +21,17 @@ export const relationType = {
   },
   /**
    *
+   * @param {*} model
+   * @param {*} ds
+   * @param {*} rel
+   * @returns
+   */
+
+  oneToOne (model, ds, rel) {
+    return this.manyToOne(model, ds, rel)
+  },
+  /**
+   *
    * @param {import(".").Model} model
    * @param {import("./datasource").default} ds
    * @param {import("./index").relations[relation]} config
@@ -40,74 +51,69 @@ export const relationType = {
 }
 
 const referentialIntegrity = {
-  [relationType.manyToOne.name]: (fromModel, toModel, relation, ds) =>
-    fromModel.update(
-      { [relation.foreignKey]: toModel.id || toModel.getId() },
-      false
-    ),
+  [relationType.manyToOne.name] (fromModel, toModels, relation, ds) {
+    const dsFrom = ds.getFactory().getSharedDataSource(fromModel.getName())
+    const latest = dsFrom.findSync(fromModel.getId())
+    console.log({ latest })
+    const update = { ...latest, [relation.foreignKey]: toModels[0].getId() }
+    dsFrom.saveSync(fromModel.getId(), update)
+    setTimeout(
+      () =>
+        dsFrom.saveSync(fromModel.getId(), {
+          ...dsFrom.findSync(fromModel.getId()),
+          [relation.foreignKey]: toModels[0].getId()
+        }),
+      1000
+    )
+    return update
+  },
 
-  [relationType.oneToMany.name] (fromModel, toModel, relation, ds) {
-    Promise.allSettled(
-      toModel.map(async m =>
-        (await ds.find(m.id)).update({
+  [relationType.oneToOne.name] (fromModel, toModels, relation, ds) {
+    return this[relationType.manyToOne.name](fromModel, toModels, relation, ds)
+  },
+
+  [relationType.oneToMany.name] (fromModel, toModels, relation, ds) {
+    return Promise.allSettled(
+      toModels.map(m => {
+        const model = ds.findSync(m.id)
+        ds.saveSync({
+          ...model,
           [relation.foreignKey]: fromModel.getId()
         })
-      )
+      })
     )
   },
-  [relationType.containsMany.name] (fromModel, toModel, relation, ds) {
-    return this[relationType.oneToMany.name](fromModel, toModel, relation, ds)
-  }
+
+  [relationType.containsMany.name] (fromModel, toModel, relation, ds) {}
 }
 
 /**
  * If we create a new object, foreign keys need to reference it
- * @param {*} fromModel
- * @param {*} toModel
- * @param {*} relation
- * @param {*} ds
+ * @param {import('./model').Model} fromModel
+ * @param {import('./model').Model[]} toModels one or more models depending on the relation
+ * @param {import('./index').relations[x]} relation
+ * @param {import('./model-factory').Datasource} ds
  */
-async function updateForeignKeys (fromModel, toModel, relation, ds) {
-  console.debug({ fn: updateForeignKeys.name, toModel })
-
-  //referentialIntegrity[relation.type](fromModel, toModel, relation, ds)
-
-  // if (relationType.manyToOne.name === relation.type) {
-  //   console.debug(updateForeignKeys.name, 'found', toModel)
-  //   return fromModel.update(
-  //     { [relation.foreignKey]: toModel.id || toModel.getId() },
-  //     false
-  //   )
-  // } else if (
-  //   toModel instanceof Array &&
-  //   (relation.type === relationType.oneToMany.name ||
-  //     relation.type === relationType.contains)
-  // ) {
-  //   return Promise.allSettled(
-  //     toModel.map(async m =>
-  //       (await ds.find(m.id)).update({
-  //         [relation.foreignKey]: fromModel.getId()
-  //       })
-  //     )
-  //   )
-  // }
+function updateForeignKeys (fromModel, toModels, relation, ds) {
+  console.debug({ fn: updateForeignKeys.name, toModels })
+  return referentialIntegrity[relation.type](fromModel, toModels, relation, ds)
 }
 
 /**
  *
- * @param {*} args
- * @param {*} fromModel
- * @param {*} relation
- * @param {*} ds
+ * @param {any[]} args - each arg is the input to a new model
+ * @param {import('./model').Model} fromModel
+ * @param {import('./index').relations[x]} relation
+ * @param {import('./datasource').default} ds
  * @returns
  */
 async function createNewModels (args, fromModel, relation, ds) {
   if (args.length > 0) {
     const { UseCaseService } = require('.')
+
     const service = UseCaseService(relation.modelName.toUpperCase())
     const newModels = await Promise.all(args.map(arg => service.addModel(arg)))
-    updateForeignKeys(fromModel, newModels, relation, ds)
-    return newModels
+    return updateForeignKeys(fromModel, newModels, relation, ds)
   }
 }
 
@@ -118,7 +124,7 @@ async function createNewModels (args, fromModel, relation, ds) {
  * Sends a request message to, and receives a response from,
  * the local cache manager.
  *
- * @param {import(".").relations[x]} relationdd
+ * @param {import(".").relations[x]} relation
  * @param {import("./event-broker").EventBroker} broker
  * @returns {Promise<import(".").Event>} source model
  */
@@ -182,10 +188,10 @@ export default function makeRelations (relations, datasource, broker) {
                 message: 'save data to new model'
               })
               try {
-                models = createNewModels(args, this, rel, ds)
-                if ((await models).length > 0) return models
+                models = await createNewModels(args, this, rel, ds)
+                if (models.length > 0) return models
               } catch (error) {
-                console.warn({ error })
+                console.warn({ fn: makeRelations.name, error })
               }
             } else {
               models = await relationType[rel.type](this, ds, rel)
@@ -202,7 +208,7 @@ export default function makeRelations (relations, datasource, broker) {
 
               // each arg contains input to create a new object
               if (event?.args?.length > 0)
-                updateForeignKeys(this, event.model, rel, ds)
+                return updateForeignKeys(this, event.model, rel, ds)
 
               return await relationType[rel.type](this, ds, rel)
             }

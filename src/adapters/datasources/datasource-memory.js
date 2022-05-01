@@ -32,6 +32,10 @@ export class DataSourceMemory extends DataSource {
         id
       })
     }
+    return this.saveSync(id, data)
+  }
+
+  saveSync (id, data) {
     this.dsMap.set(id, data)
     return data
   }
@@ -40,6 +44,13 @@ export class DataSourceMemory extends DataSource {
    * @override
    */
   async find (id) {
+    return this.findSync(id)
+  }
+
+  /**
+   * @override
+   */
+  findSync (id) {
     return this.dsMap.get(id)
   }
 
