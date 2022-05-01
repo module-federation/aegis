@@ -209,13 +209,14 @@ function postJob ({
 
     thread[channel].once('error', async error => {
       console.error({ fn: postJob.name, error })
-      pool.stopThread(thread, error)
+      await pool.stopThread(thread, error)
       pool.emit({
         eventName: 'ThreadException',
         message: 'unhandled error in thread',
         pool: pool.name,
         error
       })
+
       reject(error)
     })
 
@@ -307,13 +308,13 @@ export class ThreadPool extends EventEmitter {
     return this
   }
 
-  stopThread (thread, reason) {
-    thread.stop(reason)
+  async stopThread (thread, reason) {
+    await thread.stop(reason)
     this.threads.splice(
       this.threads.findIndex(t => t.id === thread.id),
       1
     )
-    this.threads.splice(
+    this.freeThreads.splice(
       this.freeThreads.findIndex(t => t.id === thread.id),
       1
     )
