@@ -54,7 +54,12 @@ function handleRestart (repository, eventName) {
 
   repository
     .list()
-    .forEach(model => model.emit(eventName, model))
+    .then(
+      async list =>
+        await Promise.allSettled(
+          list.map(model => model.emit(eventName, model))
+        )
+    )
     .catch(handleError)
 }
 
