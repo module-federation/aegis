@@ -7,7 +7,7 @@
   "author": "Tyson Midboe <tyson.midboe@gmail.com>",
   "license": "Apache-2.0",
   "scripts": {
-    "format": "yarsn pretty -- --write",
+    "format": "yarn pretty -- --write",
     "build": "npm run build:esm && npm run build:cjs",
     "build:esm": "babel --delete-dir-on-start -d esm/ src/ && cp src/index.js esm",
     "build:cjs": "babel --delete-dir-on-start --env-name cjs -d lib/ src/ && cp src/index.js lib",
