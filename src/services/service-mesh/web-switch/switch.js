@@ -176,7 +176,7 @@ export function attachServer (server) {
           }
 
           client.info = {
-            ...msg,
+            msg,
             ...client.info,
             initialized: true,
             isBackupSwitch: backupSwitch === client.info.id,
