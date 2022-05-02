@@ -1,7 +1,6 @@
 const {
   Worker,
   isMainThread,
-  parentPort,
   workerData,
   BroadcastChannel
 } = require('worker_threads')

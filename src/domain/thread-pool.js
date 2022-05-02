@@ -25,14 +25,19 @@ const DEFAULT_DURATION_TOLERANCE = 1000
  * @property {MessagePort} eventChannel
  * @property {Worker} mainChannel
  */
-
+/**@typedef {string} poolName*/
+/**@typedef {string} jobName*/
+/**@typedef {string} jobData*/
+/**@typedef {{channel:'mainChannel'|'eventChannel'}} options*/
 /**
  * @typedef {object} ThreadPoolFactory
  * @property {function():ThreadPool} getThreadPool
- * @property {function()} run
- * @property {function()} fireEvent
+ * @property {function(jobName, jobData, ?options)} run - run job over main channel
+ * @property {function(poolName,import('.').Event)} fireEvent -
+ * send `event` to `poolName` over event channel
+ * @property {function(import('.').Event)} fireAll -
+ * send `event` to all pools
  * @property {function()} reload
- *
  */
 
 /** @typedef {import('./model').Model} Model} */

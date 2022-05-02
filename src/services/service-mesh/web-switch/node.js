@@ -393,7 +393,7 @@ async function connectToServiceMesh () {
         fn: connectToServiceMesh.name,
         connectionState: wsState[ws.readyState]
       })
-      send(protocol.serialize())
+      send(protocol.serialize(), 1000)
       startHeartbeat()
     })
 
@@ -412,13 +412,16 @@ async function connectToServiceMesh () {
         debug && console.debug('received event:', event)
 
         if (protocol.validate(event)) {
-          // fire events
-          if (event?.eventName !== '*') {
-            // notify subscribers to this event
-            eventEmitter.emit(event.eventName, event)
-
-            // notify subscribers to all events
-            eventEmitter.listeners('*').forEach(listener => listener(event))
+          // fire event
+          eventEmitter.emit(event.eventName, event)
+          // notify subcribers to all events
+          if (event.eventName !== '*') {
+            eventEmitter
+              .eventNames()
+              .filter(name => name === event.eventName)
+              .forEach(name =>
+                eventEmitter.listeners('*').forEach(listener => listener(name))
+              )
           }
           // send to uplink if there is one
           if (uplinkCallback) await uplinkCallback(message)

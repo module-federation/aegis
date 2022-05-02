@@ -6,9 +6,6 @@ import DistributedCache from '../distributed-cache'
 // import EventBus from '../../services/event-bus'
 import { ServiceMeshAdapter as ServiceMesh } from '../../adapters'
 import { isMainThread } from 'worker_threads'
-import domainEvents from '../domain-events'
-import { SharedMap } from 'sharedmap'
-const { externalCacheResponse } = domainEvents
 
 /**
  * Broker events between {@link ThreadPoolFactory} and remote mesh instances.
@@ -40,7 +37,7 @@ export default function brokerEvents (
     broker.on('from_worker', async event => ServiceMesh.publish(event))
 
     // forward everything from the servivce mesh to the worker threads
-    ServiceMesh.subscribe('*', event => broker.notify('to_worker', event))
+    ServiceMesh.subscribe('*', event => threadpools.fireAll(event))
 
     // connect to mesh and provide fn to list installed services
     ServiceMesh.connect({ services: localModels })
