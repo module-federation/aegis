@@ -179,8 +179,6 @@ async function resolveServiceUrl () {
       }
     })
 
-    runQuery()
-
     dns.on('query', function (query) {
       debug && console.debug('got a query packet:', query)
 
@@ -192,7 +190,7 @@ async function resolveServiceUrl () {
         console.assert(!debug, {
           fn: 'dns query',
           msg: 'no questions',
-          questions
+          question
         })
         return
       }
@@ -226,6 +224,8 @@ async function resolveServiceUrl () {
         dns.respond(answer)
       }
     })
+
+    runQuery()
   })
 }
 
@@ -255,7 +255,6 @@ export function setUplinkUrl (uplinkUrl) {
  * @property {string} address - address of the client
  * @property {string} url - url to connect to client instance directly
  */
-
 function format (event) {
   if (event instanceof ArrayBuffer) {
     // binary frame
@@ -273,7 +272,7 @@ function format (event) {
  * @returns
  */
 function send (event) {
-  if (ws && wsState[ws.readyState] == 'OPEN') {
+  if (ws && wsState[ws.readyState] === 'OPEN') {
     const breaker = new CircuitBreaker(__filename + send.name, ws.send)
     breaker.detectErrors([TIMEOUTEVENT, WEBSOCKETERROR], eventEmitter)
     breaker.invoke(format(event))
@@ -416,7 +415,7 @@ async function connectToServiceMesh () {
           // fire events
           if (event?.eventName !== '*') {
             // notify subscribers to this event
-            eventEmitter.emit(event.eventName)
+            eventEmitter.emit(event.eventName, event)
 
             // notify subscribers to all events
             eventEmitter.listeners('*').forEach(listener => listener(event))
@@ -451,18 +450,18 @@ async function reconnect (attempts = 0) {
   if (reconnecting) return
   reconnecting = true
   ws = null
-  setTimeout(() => {
+  setTimeout(async () => {
     if (++attempts % 10 === 0) {
       // try new url after a minute
       serviceUrl = null
     }
     try {
-      connectToServiceMesh()
+      await connectToServiceMesh()
     } catch (error) {
       console.error({ fn: reconnect.name, error })
     }
     reconnecting = false
-    if (!ws) reconnect(attempts)
+    if (!ws) await reconnect(attempts)
     else {
       eventEmitter.emit(RECONNECTEVENT)
       console.info('reconnected to switch')

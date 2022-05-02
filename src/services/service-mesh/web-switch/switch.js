@@ -15,7 +15,10 @@ const configRoot = require('../../../config').hostConfig
 const config = configRoot.services.serviceMesh.WebSwitch
 const debug = /true/i.test(config.debug)
 
-let isSwitch = /true/i.test(process.env.SWITCH) || typeof config.isSwitch === 'undefined' ? true : config.isSwitch
+let isSwitch =
+  /true/i.test(process.env.SWITCH) || typeof config.isSwitch === 'undefined'
+    ? true
+    : config.isSwitch
 let isBackupSwitch = !isSwitch && config.isBackupSwitch
 let activateBackup = false
 let backupSwitch = null
@@ -177,15 +180,12 @@ export function attachServer (server) {
             ...client.info,
             initialized: true,
             isBackupSwitch: backupSwitch === client.info.id,
-            backupPriority: 'low',
-            switchHost: os.hostname()
+            backupPriority: 'low'
           }
           console.info('client initialized', client.info)
 
           // respond and let it know if its a new backup switch
-          client.send(
-            JSON.stringify({ ...msg, ...client.info, metaEvent: true })
-          )
+          client.send(JSON.stringify({ ...client.info, metaEvent: true }))
           return
         }
       } catch (e) {
