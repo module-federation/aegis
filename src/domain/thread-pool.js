@@ -92,6 +92,7 @@ function connectEventChannel (worker, channel) {
   broker.on('to_worker', async event => port1.postMessage(event))
   // subscribe to get events from workers
   port1.onmessage = async event => {
+    console.log({ fn: 'port1.onmessage', data: event.data })
     await broker.notify('from_worker', event.data)
   }
 }
@@ -721,6 +722,7 @@ const ThreadPoolFactory = (() => {
    * @param {import('./event').Event} event
    */
   function fireAll (event) {
+    console.debug({ fn: 'fireAll', event })
     threadPools.forEach(pool => pool.fireEvent(event))
   }
 

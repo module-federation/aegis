@@ -9,6 +9,9 @@ const {
 
 const maxwait = process.env.REMOTE_OBJECT_MAXWAIT || 6000
 
+// export const localDatasources = modelName =>
+//   findLocalRelatedDatasources(modelName)
+
 export const relationType = {
   /**
    *
@@ -153,6 +156,13 @@ export function requireRemoteObject (model, relation, broker, ...args) {
   })
 }
 
+function isRelatedModelLocal (relation) {
+  require('.')
+    .default.getModelSpecs()
+    .map(spec => spec.modelName.toUpperCase() && !spec.isCached)
+    .includes(relation.modelName.toUpperCase())
+}
+
 /**
  * Generate functions to retrieve related domain objects.
  * @param {import("./index").relations} relations
@@ -181,21 +191,26 @@ export default function makeRelations (relations, datasource, broker) {
               .getSharedDataSource(rel.modelName.toUpperCase())
 
             let models
-            // args mean create new instance(s) of related model
-            if (args?.length > 0) {
-              console.debug({
-                fn: makeRelations.name,
-                message: 'save data to new model'
-              })
-              try {
-                models = await createNewModels(args, this, rel, ds)
-                if (models.length > 0) return models
-              } catch (error) {
-                console.warn({ fn: makeRelations.name, error })
+
+            if (isRelatedModelLocal(rel)) {
+              // args mean create new instance(s) of related model
+              if (args?.length > 0) {
+                console.debug({
+                  fn: makeRelations.name,
+                  message: 'save data to new model'
+                })
+                try {
+                  models = await createNewModels(args, this, rel, ds)
+                  if (models.length > 0) return models
+                } catch (error) {
+                  console.warn({ fn: makeRelations.name, error })
+                }
+              } else {
+                models = await relationType[rel.type](this, ds, rel)
               }
-            } else {
-              models = await relationType[rel.type](this, ds, rel)
             }
+
+            console.debug({ models })
 
             if (!models || models.length < 1) {
               // couldn't find the object locally - try remote instances

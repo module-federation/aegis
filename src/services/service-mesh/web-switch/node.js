@@ -478,6 +478,7 @@ async function reconnect (attempts = 0) {
  * @returns
  */
 export async function publish (event) {
+  console.debug({ fn: publish.name, event })
   try {
     if (!event) {
       console.error(publish.name, 'no event provided')
