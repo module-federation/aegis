@@ -148,7 +148,7 @@ export function attachServer (server) {
     client.on('message', function (message) {
       try {
         const msg = JSON.parse(message.toString())
-
+        console.debug({ msg })
         if (client.info.initialized) {
           if (msg == 'status') {
             server.sendStatus(client)
