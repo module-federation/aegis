@@ -6,6 +6,7 @@ import { nanoid } from 'nanoid'
 import os from 'os'
 import Dns from 'multicast-dns'
 import CircuitBreaker from '../../../domain/circuit-breaker'
+import { IncomingMessage } from 'http'
 
 const SERVICENAME = 'webswitch'
 const HOSTNAME = 'webswitch.local'
@@ -126,10 +127,11 @@ export function attachServer (server) {
 
   /**
    * @param {WebSocket} client
+   * @param {IncomingMessage} req
    */
-  server.on('connection', function (client) {
-    client.info = { id: nanoid() }
-
+  server.on('connection', function (client, req) {
+    client.info = { id: nanoid(), address: req.socket.remoteAddress }
+ 
     client.addListener('ping', function () {
       console.assert(!debug, 'responding to client ping', client.info)
       client.pong(0xa)
