@@ -27,7 +27,7 @@ export default function brokerEvents (
   threadpools
 ) {
   if (isMainThread) {
-    const localModels = () =>
+    const listLocalModels = () =>
       models
         .getModelSpecs()
         .filter(spec => !spec.isCached)
@@ -36,11 +36,11 @@ export default function brokerEvents (
     // forward any event that is not handled locally to the service mesh
     broker.on('from_worker', async event => ServiceMesh.publish(event))
 
-    // forward everything from the servivce mesh to the worker threads
+    // forward everything from the service mesh to the worker threads
     ServiceMesh.subscribe('*', event => threadpools.fireAll(event))
 
     // connect to mesh and provide fn to list installed services
-    ServiceMesh.connect({ services: localModels })
+    ServiceMesh.connect({ services: listLocalModels })
   } else {
     // create listeners that handle command events from main
     require('../broadcast-events').registerBroadcastEvents(broker)
@@ -53,15 +53,6 @@ export default function brokerEvents (
       // define appropriate pub/sub functions for env
       publish: event => broker.notify('to_main', event),
       subscribe: (eventName, cb) => broker.on(eventName, cb)
-
-      // subscribe: (eventName, cb) => {
-      //   broker.on(eventName, cb)
-      //   broker.on(
-      //     'from_main',
-      //     event =>
-      //       event.eventName === eventName && broker.notify(eventName, event)
-      //   )
-      // }
     })
 
     manager.start()

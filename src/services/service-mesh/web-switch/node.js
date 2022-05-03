@@ -15,6 +15,7 @@
 import os from 'os'
 import WebSocket from 'ws'
 import Dns from 'multicast-dns'
+import EventEmitter from 'events'
 
 const HOSTNAME = 'webswitch.local'
 const SERVICENAME = 'webswitch'
@@ -27,9 +28,9 @@ const maxRetries = config.maxRetries || 5
 const debug = config.debug || /true/i.test(process.env.DEBUG)
 const heartbeat = config.heartbeat || 10000
 const sslEnabled = /true/i.test(process.env.SSL_ENABLED)
-const normalPort = process.env.PORT || 80
+const clearPort = process.env.PORT || 80
 const sslPort = process.env.SSL_PORT || 443
-const activePort = sslEnabled ? sslPort : normalPort
+const activePort = sslEnabled ? sslPort : clearPort
 const activeProto = sslEnabled ? 'wss' : 'ws'
 const activeHost =
   process.env.DOMAIN ||
@@ -49,9 +50,10 @@ let uplinkCallback
 
 let dnsPriority
 /** @type {import('../../../domain/event-broker').EventBroker} */
-let broker
+const broker = new EventEmitter()
 /** @type {import('../../../domain/model-factory').ModelFactory} */
 let models
+let services = () => []
 /** @type {WebSocket} */
 let ws
 
@@ -245,16 +247,7 @@ export function setUplinkUrl (uplinkUrl) {
  */
 export async function subscribe (eventName, callback) {
   try {
-    if (broker) {
-      broker.on(eventName, callback)
-      return
-    }
-    console.error(
-      subscribe.name,
-      'no broker',
-      eventName,
-      JSON.stringify(callback.toString(), null, 2)
-    )
+    broker.on(eventName, callback)
   } catch (error) {
     console.error({ fn: 'subscribe', error })
   }
@@ -339,8 +332,8 @@ const handshake = {
     return JSON.stringify({
       ...this,
       mem: process.memoryUsage(),
-      cpu: process.cpuUsage()
-      //models: models()
+      cpu: process.cpuUsage(),
+      models: services()
     })
   },
 
@@ -395,12 +388,15 @@ async function _connect () {
         debug && console.debug('received event:', event)
 
         if (handshake.validate(event)) {
-          // check if the switch wants us to be a backup
-
           // process event
           if (event.eventName) {
-            // call broker if there is one
-            if (broker) await broker.notify('from_mesh', event)
+            // notify subscribers of this event
+            broker.emit(event.eventName, event)
+
+            // notify subscribers of all events
+            if (event.eventName !== '*') {
+              broker.listeners('*').forEach(l => l(event.eventName))
+            }
             // send to uplink if there is one
             if (uplinkCallback) await uplinkCallback(message)
           }
@@ -422,8 +418,7 @@ async function _connect () {
  * }} [serviceInfo]
  */
 export async function connect (serviceInfo = {}) {
-  broker = serviceInfo.broker
-  models = serviceInfo.models
+  services = serviceInfo.services
   console.info({ fn: connect.name, serviceInfo })
   await _connect()
 }
