@@ -23,8 +23,10 @@ function createBroadcastChannel (modelName, broker) {
  *
  * @param {import('./event-broker').EventBroker} broker
  */
-export function registerBroadcastEvents (broker) {
+export function registerWorkerEvents (broker) {
   createBroadcastChannel(workerData.modelName, broker)
-  //
+  // 
   broker.on('shutdown', signal => process.exit(signal || 0))
 }
+
+

@@ -93,7 +93,7 @@ function connectEventChannel (worker, channel) {
   // subscribe to get events from workers
   port1.onmessage = async event => {
     console.log({ fn: 'port1.onmessage', data: event.data })
-    await broker.notify('from_worker', event.data)
+    if (event.data.eventName) await broker.notify('from_worker', event.data)
   }
 }
 
@@ -271,7 +271,7 @@ export class ThreadPool extends EventEmitter {
     this.totJobTime = 0
     /** @type {Thread[]} */
     this.threads = []
-    this.startTime = perf.now()
+    this.startTime = Date.now()
     this.broadcastChannel = options.bc
 
     if (options.preload) {
