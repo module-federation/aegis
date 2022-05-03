@@ -52,7 +52,7 @@ export function attachServer (server) {
           client.info,
           message.toString()
         )
-        server.sendMessage(message, client)
+        client.sendSafe(message)
         messagesSent++
       }
     })
@@ -63,10 +63,10 @@ export function attachServer (server) {
     }
   }
 
-  server.sendMessage = function (message, client) {
-    const breaker = new CircuitBreaker(client.info.id, client.send)
-    breaker.invoke(message)
-  }
+  // server.sendMessage = function (message, client) {
+  //   const breaker = new CircuitBreaker(client.info.id, client.send)
+  //   breaker.invoke.apply(message)
+  // }
 
   server.sendUplinkMessage = function (message) {
     const breaker = new CircuitBreaker('uplink', server.uplink.publish)
@@ -118,7 +118,7 @@ export function attachServer (server) {
         ) {
           backupSwitch = c.info.id
           c.info.isBackupSwitch = true
-          c.send(c.info) // notify
+          c.sendSafe(c.info) // notify
           return
         }
       }
@@ -130,8 +130,14 @@ export function attachServer (server) {
    * @param {IncomingMessage} req
    */
   server.on('connection', function (client, req) {
-    client.info = { id: nanoid(), address: req.socket.remoteAddress }
- 
+    const id = nanoid()
+    client.info = { id, address: req.socket.remoteAddress }
+    const breaker = new CircuitBreaker(client.info.id, client.send)
+    client.prototype = function sendSafe (data = null) {
+      if (data) return breaker.invoke(this.info)
+      breaker.invoke(data)
+    }
+    
     client.addListener('ping', function () {
       console.assert(!debug, 'responding to client ping', client.info)
       client.pong(0xa)
@@ -187,7 +193,7 @@ export function attachServer (server) {
           console.info('client initialized', client.info)
 
           // respond and let it know if its a new backup switch
-          server.sendMessage(JSON.stringify(client.info), client)
+          client.sendSafe()
           return
         }
       } catch (e) {
