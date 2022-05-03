@@ -1,37 +1,16 @@
 'use strict'
 
-/** @module */
-
 import { nanoid } from 'nanoid'
-import os from 'os'
-import Dns from 'multicast-dns'
-import CircuitBreaker from '../../../domain/circuit-breaker'
-import { IncomingMessage } from 'http'
 
 const SERVICENAME = 'webswitch'
-const HOSTNAME = 'webswitch.local'
 const startTime = Date.now()
 const uptime = () => Math.round(Math.abs((Date.now() - startTime) / 1000 / 60))
 const configRoot = require('../../../config').hostConfig
 const config = configRoot.services.serviceMesh.WebSwitch
-const debug = /true/i.test(config.debug)
-
-let isSwitch =
-  /true/i.test(process.env.SWITCH) || typeof config.isSwitch === 'undefined'
-    ? true
-    : config.isSwitch
-let isBackupSwitch = !isSwitch && config.isBackupSwitch
-let activateBackup = false
-let backupSwitch = null
+const DEBUG = /true/i.test(config.debug)
+const isSwitch = /true/i.test(process.env.IS_SWITCH) || config.isSwitch
 let messagesSent = 0
-
-function calculatePriority () {
-  return isSwitch || (isBackupSwitch && activateBackup) ? 10 : 20
-}
-
-function calculateWeight () {
-  return isSwitch || (isBackupSwitch && activateBackup) ? 20 : 60
-}
+let backupSwitch
 
 /**
  *
@@ -40,37 +19,22 @@ function calculateWeight () {
  */
 export function attachServer (server) {
   /**
-   * @param {object} message
+   * @param {object} data
    * @param {WebSocket} sender
    */
-  server.broadcast = function (message, sender) {
+  server.broadcast = function (data, sender) {
     server.clients.forEach(function (client) {
       if (client.OPEN && client !== sender) {
-        console.assert(
-          !debug,
-          'sending client',
-          client.info,
-          message.toString()
-        )
-        client.sendSafe(message)
+        console.assert(!DEBUG, 'sending client', client.info, data.toString())
+        client.send(data)
         messagesSent++
       }
     })
 
     if (server.uplink && server.uplink !== sender) {
-      server.sendUplinkMessage(message)
+      server.uplink.publish(data)
       messagesSent++
     }
-  }
-
-  // server.sendMessage = function (message, client) {
-  //   const breaker = new CircuitBreaker(client.info.id, client.send)
-  //   breaker.invoke.apply(message)
-  // }
-
-  server.sendUplinkMessage = function (message) {
-    const breaker = new CircuitBreaker('uplink', server.uplink.publish)
-    breaker.invoke(message)
   }
 
   /**
@@ -79,10 +43,7 @@ export function attachServer (server) {
    */
   server.setRateLimit = function (client) {}
 
-  /**
-   * @returns {object} status
-   */
-  function reportStatus () {
+  function statusReport () {
     return JSON.stringify({
       eventName: 'meshStatusReport',
       servicePlugin: SERVICENAME,
@@ -91,12 +52,7 @@ export function attachServer (server) {
       clientsConnected: server.clients.size,
       uplink: server.uplink ? server.uplink.info : 'no uplink',
       isPrimarySwitch: isSwitch,
-      isBackupSwitch,
-      hostname: os.hostname(),
-      address: server.address().address,
-      port: server.address().port,
-      clients: [...server.clients].map(client => client.info),
-      metaEvent: true
+      clients: [...server.clients].map(c => ({ ...c.info, open: c.OPEN }))
     })
   }
 
@@ -105,20 +61,15 @@ export function attachServer (server) {
    * @param {WebSocket} client
    */
   server.sendStatus = function (client) {
-    client.send(reportStatus())
+    client.send(statusReport())
   }
 
   server.reassignBackupSwitch = function (client) {
     if (client.info.id === backupSwitch) {
       for (let c of server.clients) {
-        if (
-          c.info.id !== backupSwitch &&
-          os.hostname() !== c.info.hostname &&
-          c.info.role === 'node'
-        ) {
+        if (c.info.id !== backupSwitch) {
           backupSwitch = c.info.id
-          c.info.isBackupSwitch = true
-          c.sendSafe(c.info) // notify
+          c.isBackupSwitch = true
           return
         }
       }
@@ -127,25 +78,19 @@ export function attachServer (server) {
 
   /**
    * @param {WebSocket} client
-   * @param {IncomingMessage} req
    */
-  server.on('connection', function (client, req) {
-    client.info = { id: nanoid(), address: req.socket.remoteAddress }
-    const breaker = new CircuitBreaker(client.info.id, client.send)
-    client.sendSafe = function (data = null) {
-      if (data) return breaker.invoke(client.info)
-      breaker.invoke(data)
-    }
+  server.on('connection', function (client) {
+    client.info = { address: client._socket.address(), id: nanoid() }
 
     client.addListener('ping', function () {
-      console.assert(!debug, 'responding to client ping', client.info)
+      console.assert(!DEBUG, 'responding to client ping', client.info)
       client.pong(0xa)
     })
 
     client.on('close', function () {
       console.warn('client disconnecting', client.info)
       server.reassignBackupSwitch(client)
-      server.broadcast(reportStatus(), client)
+      server.broadcast(statusReport(), client)
     })
 
     client.on('error', function (error) {
@@ -155,14 +100,10 @@ export function attachServer (server) {
     client.on('message', function (message) {
       try {
         const msg = JSON.parse(message.toString())
-        console.debug({ msg })
+
         if (client.info.initialized) {
-          if (msg === 'status') {
+          if (msg == 'status') {
             server.sendStatus(client)
-            return
-          }
-          if (msg == 'retask') {
-            isSwitch = true
             return
           }
           server.broadcast(message, client)
@@ -170,29 +111,17 @@ export function attachServer (server) {
         }
 
         if (msg.proto === SERVICENAME) {
-          // if there's currently no backup and this client qualifies...
-          if (
-            isSwitch &&
-            !backupSwitch &&
-            msg.role === 'node' &&
-            msg.hostname !== os.hostname() &&
-            [...server.clients].filter(c => c.info.isBackupSwitch).length < 1
-          ) {
-            // ...make it the new backup switch
+          if (!backupSwitch && !isSwitch && msg.role === 'node')
             backupSwitch = client.info.id
-          }
 
           client.info = {
-            msg,
-            ...client.info,
+            ...msg,
             initialized: true,
-            isBackupSwitch: backupSwitch === client.info.id,
-            backupPriority: 'low'
+            isBackupSwitch: backupSwitch === client.info.id
           }
           console.info('client initialized', client.info)
 
-          // respond and let it know if its a new backup switch
-          client.sendSafe()
+          client.send(JSON.stringify({ ...msg, ...client.info }))
           return
         }
       } catch (e) {
@@ -205,9 +134,7 @@ export function attachServer (server) {
   })
 
   try {
-    // connect to the uplink switch
     if (config.uplink) {
-      // we are now both a switch and a node
       const node = require('./node')
       server.uplink = node
       node.setUplinkUrl(config.uplink)
