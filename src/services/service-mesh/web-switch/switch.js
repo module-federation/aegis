@@ -152,7 +152,7 @@ export function attachServer (server) {
         const msg = JSON.parse(message.toString())
         console.debug({ msg })
         if (client.info.initialized) {
-          if (msg == 'status') {
+          if (msg === 'status') {
             server.sendStatus(client)
             return
           }
@@ -187,7 +187,7 @@ export function attachServer (server) {
           console.info('client initialized', client.info)
 
           // respond and let it know if its a new backup switch
-          client.send(JSON.stringify({ ...client.info, metaEvent: true }))
+          server.sendMessage(JSON.stringify(client.info), client)
           return
         }
       } catch (e) {

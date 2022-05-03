@@ -272,7 +272,9 @@ function format (event) {
  * @returns
  */
 function send (event) {
+  console.log({ fn: send.name, event })
   if (ws && wsState[ws.readyState] === 'OPEN') {
+    console.log({ fn: send.name, event })
     const breaker = new CircuitBreaker(__filename + send.name, ws.send)
     breaker.detectErrors([TIMEOUTEVENT, WEBSOCKETERROR], eventEmitter)
     breaker.invoke(format(event))
