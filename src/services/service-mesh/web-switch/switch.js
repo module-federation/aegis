@@ -130,14 +130,13 @@ export function attachServer (server) {
    * @param {IncomingMessage} req
    */
   server.on('connection', function (client, req) {
-    const id = nanoid()
-    client.info = { id, address: req.socket.remoteAddress }
+    client.info = { id: nanoid(), address: req.socket.remoteAddress }
     const breaker = new CircuitBreaker(client.info.id, client.send)
-    client.prototype = function sendSafe (data = null) {
-      if (data) return breaker.invoke(this.info)
+    client.sendSafe = function (data = null) {
+      if (data) return breaker.invoke(client.info)
       breaker.invoke(data)
     }
-    
+
     client.addListener('ping', function () {
       console.assert(!debug, 'responding to client ping', client.info)
       client.pong(0xa)
