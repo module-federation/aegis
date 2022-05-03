@@ -37,7 +37,7 @@ export default function brokerEvents (
     broker.on('from_worker', async event => ServiceMesh.publish(event))
 
     // forward everything from the service mesh to the worker threads
-    ServiceMesh.subscribe('*', event => threadpools.fireAll(event))
+    ServiceMesh.subscribe('*', event => broker.notify('to_worker', event))
 
     // connect to mesh and provide fn to list installed services
     ServiceMesh.connect({ services: listLocalModels })
