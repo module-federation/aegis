@@ -70,7 +70,7 @@ export class DataSourceMemory extends DataSource {
   listSync (filter) {
     const values = this._listSync()
     if (!values) return []
-    return this._filter(values, filter)
+    return this.filter(values, filter)
   }
 
   _listSync () {
