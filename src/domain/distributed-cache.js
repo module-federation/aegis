@@ -164,7 +164,7 @@ export default function DistributedCache ({
     return false
   }
 
-  const route = event => event.route(event)
+  const route = o => o.route(o.event)
   /**
    * Pipes functions that instantiate the remote object(s) and upsert the cache
    */
