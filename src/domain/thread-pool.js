@@ -774,11 +774,11 @@ const ThreadPoolFactory = (() => {
   }
 
   function listen (cb, poolName, eventName) {
-    if (poolName === '*') threadPools.forEach(pool => pool.on(eventName, cb))
-    else
-      [...threadPools]
-        .find(pool => pool.name.toUpperCase() === poolName.toUpperCase())
-        .on(eventName, cb)
+    // if (poolName === '*') threadPools.forEach(pool => pool.on(eventName, cb))
+    // else
+    //   [...threadPools]
+    //     .find(pool => pool.name.toUpperCase() === poolName.toUpperCase())
+    //     .on(eventName, cb)
   }
 
   /**
