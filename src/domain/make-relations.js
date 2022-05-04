@@ -188,7 +188,7 @@ export default function makeRelations (relations, datasource, broker) {
             // Get the datasource of the related object
             const ds = datasource
               .getFactory()
-              .getSharedDataSource(rel.modelName.toUpperCase())
+              .getDataSource(rel.modelName.toUpperCase())
 
             let models
 

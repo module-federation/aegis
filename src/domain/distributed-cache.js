@@ -199,7 +199,7 @@ export default function DistributedCache ({
 
         const enrichedEvent = await handleUpsert({
           modelName: modelNameUpper,
-          datasource: datasources.getSharedDataSource(modelNameUpper),
+          datasource: datasources.getDataSource(modelNameUpper),
           model: models,
           event
         })
@@ -222,7 +222,7 @@ export default function DistributedCache ({
       event.args.map(async arg => {
         return await models.createModel(
           broker,
-          datasources.getSharedDataSource(
+          datasources.getDataSource(
             event.relation.modelName.toUpperCase()
           ),
           event.relation.modelName.toUpperCase(),
@@ -288,7 +288,7 @@ export default function DistributedCache ({
         // find the requested object or objects
         const relatedModels = await relationType[relation.type](
           model,
-          datasources.getSharedDataSource(relation.modelName.toUpperCase()),
+          datasources.getDataSource(relation.modelName.toUpperCase()),
           relation
         )
 
