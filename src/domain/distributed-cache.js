@@ -100,9 +100,7 @@ export default function DistributedCache ({
     const { model, datasource, modelName } = o
     return {
       ...o,
-      model: model.forEach(m =>
-        models.loadModel(broker, datasource, m, modelName)
-      )
+      model: model.map(m => models.loadModel(broker, datasource, m, modelName))
     }
   }
 
