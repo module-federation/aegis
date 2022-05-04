@@ -168,7 +168,7 @@ export default function DistributedCache ({
   /**
    * Pipes functions that instantiate the remote object(s) and upsert the cache
    */
-  const handleUpsert = asyncPipe(streamCode, hydrate, save, route)
+  const handleUpsert = asyncPipe(streamCode, hydrate, save)
 
   /**
    *
@@ -197,13 +197,14 @@ export default function DistributedCache ({
 
         if (await handleDelete(eventName, modelNameUpper, event)) return
 
-        await handleUpsert({
+        const enrichedEvent = await handleUpsert({
           modelName: modelNameUpper,
           datasource: datasources.getSharedDataSource(modelNameUpper),
           model: models,
-          event,
-          route
+          event
         })
+
+        if (route) route(enrichedEvent)
       } catch (error) {
         console.error({ fn: updateCache.name, error })
       }
