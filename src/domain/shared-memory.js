@@ -4,7 +4,7 @@ import SharedMap from 'sharedmap'
 import ModelFactory from '.'
 import { isMainThread, workerData } from 'worker_threads'
 import { EventBrokerFactory } from '.'
-import { ADDRGETNETWORKPARAMS } from 'dns'
+
 const broker = EventBrokerFactory.getInstance()
 
 const MAPSIZE = 2048 * 56
@@ -25,6 +25,7 @@ const SharedMemoryMixin = superclass =>
   class extends superclass {
     /**
      * @override
+     * @returns {import('.').Model}
      */
     saveSync (id, data) {
       return super.saveSync(id, JSON.stringify(data))
@@ -34,7 +35,7 @@ const SharedMemoryMixin = superclass =>
      * Deserialize
      * @override
      * @param {*} id
-     * @returns {import('./datasource-factory').Model}
+     * @returns {import('.').Model}
      */
     findSync (id) {
       try {
@@ -44,10 +45,14 @@ const SharedMemoryMixin = superclass =>
         if (isMainThread) return model
         return ModelFactory.loadModel(broker, this, model, this.name)
       } catch (error) {
-        console.error({ fn: 'DataSourceSharedMemory.find', error })
+        console.error({ fn: 'DataSourceSharedMemory.findSync', error })
       }
     }
 
+    /**
+     * @override
+     * @returns {import('.').Model[]}
+     */
     _listSync () {
       return this.dsMap.map(v => v)
     }

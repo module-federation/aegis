@@ -96,30 +96,6 @@ function connectEventChannel (worker, channel) {
   }
 }
 
-async function abortable ({ signal, ctx, fn, cb }, ...args) {
-  if (signal.aborted === true) throw new Error('Operation canceled')
-
-  const taskDone = new AbortController()
-  signal.addEventListener(
-    'abort',
-    () => {
-      cb(...args)
-    },
-    {
-      once: true,
-      signal: taskDone.signal
-    }
-  )
-  try {
-    if (signal.aborted) throw new Error('Operation canceled')
-    return await fn.apply(ctx, args)
-  } finally {
-    // Remove the abort event listener to avoid
-    // leaking memory.
-    taskDone.abort()
-  }
-}
-
 /**
  * creates a new thread
  * @param {{
@@ -150,10 +126,7 @@ function newThread ({ pool, file, workerData }) {
 
       const timerId = setTimeout(async () => {
         const message = 'timedout creating thread'
-        console.error({
-          fn: newThread.name,
-          message
-        })
+        console.error({ fn: newThread.name, message })
         reject('timeout')
       }, 50000)
 
@@ -664,7 +637,7 @@ const ThreadPoolFactory = (() => {
   }
 
   function listPools () {
-    return [...threadPools].map(([k]) => k)
+    return [...threadPools.keys()]
   }
 
   /**
@@ -764,6 +737,7 @@ const ThreadPoolFactory = (() => {
 
   async function removeUndeployedPools () {
     const pools = ThreadPoolFactory.listPools().map(pool => pool.toUpperCase())
+
     const allModels = ModelFactory.getModelSpecs().map(spec =>
       spec.modelName.toUpperCase()
     )
@@ -804,13 +778,15 @@ const ThreadPoolFactory = (() => {
     else
       [...threadPools]
         .find(pool => pool.name.toUpperCase() === poolName.toUpperCase())
-        ?.on(eventName, cb)
+        .on(eventName, cb)
   }
 
   /**
    * Monitor pools for stuck threads and restart them
    */
   function monitorPools () {
+    let abort = false
+
     const intervalId = setInterval(() => {
       threadPools.forEach(pool => {
         const workRequested = pool.totalTransactions()
@@ -823,6 +799,7 @@ const ThreadPoolFactory = (() => {
           setTimeout(() => {
             // has any work been done in the last 3 minutes?
             if (
+              pool.jobQueueDepth > 0 &&
               pool.availThreadCount() < 1 &&
               pool.totalTransactions() - pool.jobQueueDepth() === workCompleted
             ) {
@@ -830,14 +807,18 @@ const ThreadPoolFactory = (() => {
               console.warn('killing stuck threads', pool.status())
               pool.abort('stuck threads')
               // stop monitoring to allow for correction
-              clearInterval(intervalId)
-              // resume monitoring
-              setTimeout(monitorPools, 300000)
+              abort = true
             }
           }, 180000)
         }
       })
     }, 200000)
+
+    if (abort) {
+      clearInterval(intervalId)
+      // resume monitoring
+      setTimeout(monitorPools, 300000)
+    }
   }
 
   monitorPools()

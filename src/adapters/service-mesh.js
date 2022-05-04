@@ -1,7 +1,7 @@
 'use strict'
 
 export function connect (service) {
-  return async function (serviceInfo = null) {
+  return async function (serviceInfo = {}) {
     service.connect(serviceInfo)
   }
 }
