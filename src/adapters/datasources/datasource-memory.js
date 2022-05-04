@@ -1,5 +1,6 @@
 'use strict'
 
+import { filter } from 'core-js/core/array'
 import DataSource from '../../domain/datasource'
 
 /**
@@ -67,11 +68,17 @@ export class DataSourceMemory extends DataSource {
    * @param {{key1,keyN}} query
    * @returns
    */
-  listSync (query) {
-    const values = this.dsMap.map(v => JSON.parse(v))
-
+  listSync (filter) {
+    const values = _listSync()
     if (!values) return []
+    return _filter(values, filter)
+  }
 
+  _listSync () {
+    return [...this.dsMap.values()]
+  }
+
+  filter (values, query) {
     if (query) {
       const count = query['count']
       if (count && !Number.isNaN(parseInt(count))) {
@@ -86,7 +93,6 @@ export class DataSourceMemory extends DataSource {
         )
       }
     }
-    return values
   }
 
   /**

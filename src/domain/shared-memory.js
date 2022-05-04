@@ -4,6 +4,7 @@ import SharedMap from 'sharedmap'
 import ModelFactory from '.'
 import { isMainThread, workerData } from 'worker_threads'
 import { EventBrokerFactory } from '.'
+import { ADDRGETNETWORKPARAMS } from 'dns'
 const broker = EventBrokerFactory.getInstance()
 
 const MAPSIZE = 2048 * 56
@@ -45,6 +46,10 @@ const SharedMemoryMixin = superclass =>
       } catch (error) {
         console.error({ fn: 'DataSourceSharedMemory.find', error })
       }
+    }
+
+    _listSync () {
+      return this.dsMap.map(v => v)
     }
   }
 
