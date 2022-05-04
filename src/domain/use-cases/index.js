@@ -144,6 +144,14 @@ export const UseCases = {
   emitEvents
 }
 
+/**
+ * This service contains the set of inbound ports
+ * handling all CRUD operations for domain models.
+ * An alias for the service could be "InboundPorts"
+ *
+ * @param {string} [modelName]
+ * @returns
+ */
 export function UseCaseService (modelName = null) {
   if (typeof modelName === 'string') {
     const modelNameUpper = modelName.toUpperCase()

@@ -92,7 +92,7 @@ function connectEventChannel (worker, channel) {
   broker.on('to_worker', async event => port1.postMessage(event))
   // subscribe to get events from workers
   port1.onmessage = async event => {
-    console.log({ fn: 'port1.onmessage', data: event.data })
+    console.log({ fn: 'main: port1.onmessage', data: event.data })
     if (event.data.eventName) await broker.notify('from_worker', event.data)
   }
 }
