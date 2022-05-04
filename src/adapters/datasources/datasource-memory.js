@@ -1,6 +1,5 @@
 'use strict'
 
-import { filter } from 'core-js/core/array'
 import DataSource from '../../domain/datasource'
 
 /**
