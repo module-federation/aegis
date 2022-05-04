@@ -49,7 +49,6 @@ let activateBackup = false
 let uplinkCallback
 
 let dnsPriority
-/** @type {import('../../../domain/event-broker').EventBroker} */
 const broker = new EventEmitter()
 /** @type {import('../../../domain/model-factory').ModelFactory} */
 let models
@@ -385,7 +384,8 @@ async function _connect () {
     ws.on('message', async function (message) {
       try {
         const event = JSON.parse(message.toString())
-        debug && console.debug('received event:', event)
+        //debug &&
+        console.debug('received event:', event)
 
         if (handshake.validate(event)) {
           // process event
@@ -395,7 +395,7 @@ async function _connect () {
 
             // notify subscribers of all events
             if (event.eventName !== '*') {
-              broker.listeners('*').forEach(l => l(event.eventName))
+              broker.listeners('*').forEach(l => l(event))
             }
             // send to uplink if there is one
             if (uplinkCallback) await uplinkCallback(message)

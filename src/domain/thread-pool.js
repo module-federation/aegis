@@ -90,7 +90,6 @@ function connectEventChannel (worker, channel) {
   worker.postMessage({ eventPort: port2 }, [port2])
   // fire this event to forward to workers
   broker.on('to_worker', async event => port1.postMessage(event))
-  // subscribe to get events from workers
   port1.onmessage = async event => {
     console.log({ fn: 'main: port1.onmessage', data: event.data })
     if (event.data.eventName) await broker.notify('from_worker', event.data)

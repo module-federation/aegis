@@ -111,20 +111,20 @@ export default function DistributedCache ({
    * @param {function(m)=>m.id} return id to save
    */
   async function save (o) {
-    const { model, datasource } = o
+    const { model, modelName, datasource } = o
 
     console.debug({
       fn: save.name,
-      modelName: model.modelName,
+      modelName,
       ds: datasource.name
     })
 
-    if (model.modelName.toUpperCase() !== datasource.name.toUpperCase()) {
+    if (modelName !== datasource.name.toUpperCase()) {
       console.error('wrong dataset, aborting')
       return o
     }
 
-    await datasource.save(models.getModelId(model), model)
+    model.forEach(async m => await datasource.save(models.getModelId(m), m))
     return o
   }
 
