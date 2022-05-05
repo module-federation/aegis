@@ -799,7 +799,7 @@ const ThreadPoolFactory = (() => {
           setTimeout(() => {
             // has any work been done in the last 3 minutes?
             if (
-              pool.jobQueueDepth > 0 &&
+              pool.jobQueueDepth() > 0 &&
               pool.availThreadCount() < 1 &&
               pool.totalTransactions() - pool.jobQueueDepth() === workCompleted
             ) {
