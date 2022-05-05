@@ -69,15 +69,15 @@ export class DataSourceMemory extends DataSource {
    */
   listSync (filter) {
     const values = this._listSync()
-    if (!values) return []
-    return this.filter(values, filter)
+    if (values.length < 1) return []
+    return this._filter(values, filter)
   }
 
   _listSync () {
     return [...this.dsMap.values()]
   }
 
-  filter (values, query) {
+  _filter (values, query) {
     if (query) {
       const count = query['count']
       if (count && !Number.isNaN(parseInt(count))) {
@@ -92,6 +92,7 @@ export class DataSourceMemory extends DataSource {
         )
       }
     }
+    return values
   }
 
   /**

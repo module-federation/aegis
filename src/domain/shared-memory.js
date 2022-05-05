@@ -39,13 +39,14 @@ const SharedMemoryMixin = superclass =>
      */
     findSync (id) {
       try {
+        if (!id) return console.log('no id provided', id)
         const modelString = super.findSync(id)
-        if (!modelString) return null
+        if (!modelString) return
         const model = JSON.parse(modelString)
         if (isMainThread) return model
         return ModelFactory.loadModel(broker, this, model, this.name)
       } catch (error) {
-        console.error({ fn: 'DataSourceSharedMemory.findSync', error })
+        console.error({ fn: this.findSync.name, error })
       }
     }
 
@@ -54,7 +55,15 @@ const SharedMemoryMixin = superclass =>
      * @returns {import('.').Model[]}
      */
     _listSync () {
-      return this.dsMap.map(v => v)
+      return this.dsMap.map(v => JSON.parse(v))
+    }
+
+    /**
+     * @override
+     * @returns {number}
+     */
+    count () {
+      return this.dsMap.length
     }
   }
 
@@ -65,17 +74,18 @@ const SharedMemoryMixin = superclass =>
  */
 function findSharedMap (name) {
   try {
+    if (name === workerData.modelName) return workerData.sharedMap
+
     if (workerData.dsRelated?.length > 0) {
       const dsRel = workerData.dsRelated.find(ds => ds.modelName === name)
       if (dsRel) {
         return dsRel.dsMap
       }
     }
+    return new Map()
   } catch (error) {
     console.warn(error)
   }
-  if (name === workerData.modelName) return workerData.sharedMap
-  return new Map()
 }
 
 function createSharedMap (mapsize, keysize, objsize, name) {
@@ -86,8 +96,7 @@ function createSharedMap (mapsize, keysize, objsize, name) {
         })
       : Object.setPrototypeOf(findSharedMap(name), SharedMap.prototype)
   } catch (error) {
-    console.warn(error)
-    return new Map()
+    console.error(error)
   }
 }
 
@@ -113,11 +122,13 @@ export function withSharedMemory (
   // use thread-safe shared map
   const sharedMap = createSharedMap(mapsize, keysize, objsize, name)
 
-  // call with shared map and mixin that extends ds class
-  return createDataSource.call(factory, name, {
-    ...options,
-    dsMap: sharedMap,
-    mixin: DsClass =>
-      class DataSourceSharedMemory extends SharedMemoryMixin(DsClass) {}
-  })
+  if (sharedMap instanceof SharedMap)
+    return createDataSource.call(factory, name, {
+      ...options,
+      dsMap: sharedMap,
+      mixin: DsClass =>
+        class DataSourceSharedMemory extends SharedMemoryMixin(DsClass) {}
+    })
+
+  return createDataSource.call(factory, name, options)
 }

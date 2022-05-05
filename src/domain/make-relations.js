@@ -156,7 +156,7 @@ export function requireRemoteObject (model, relation, broker, ...args) {
 }
 
 function isRelatedModelLocal (relation) {
-  require('.')
+  return require('.')
     .default.getModelSpecs()
     .filter(spec => !spec.isCached)
     .map(spec => spec.modelName.toUpperCase())
@@ -174,6 +174,7 @@ export default function makeRelations (relations, datasource, broker) {
   return Object.keys(relations)
     .map(function (relation) {
       const rel = relations[relation]
+      const modelName = rel.modelName.toUpperCase()
 
       try {
         // relation type unknown
@@ -185,12 +186,13 @@ export default function makeRelations (relations, datasource, broker) {
         return {
           // the relation function
           async [relation] (...args) {
-            // Get or create datasource of related object w/ thread-local mem
-            const ds = datasource.getFactory().getDataSource(rel.modelName)
+            // Get or create datasource of related object
+            const ds = datasource.getFactory().getSharedDataSource(modelName)
 
             // args meancreate new local model instances
             if (args?.length > 0 && isRelatedModelLocal(rel)) {
               // args mean create new instance(s) of related model
+              console.debug({ fn: relation, msg: 'creating new models' })
               return await createNewModels(args, this, rel, ds)
             }
 

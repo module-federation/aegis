@@ -32,7 +32,7 @@ export async function generateWorkflow (options) {
 export async function runWorkflow ({ wfName }) {
   const model = await ModelFactory.createModel(
     EventBrokerFactory.getInstance(),
-    DataSourceFactory.getDataSource(wfName),
+    DataSourceFactory.getSharedDataSource(wfName),
     wfName
   )
   await model.emit(wfName)

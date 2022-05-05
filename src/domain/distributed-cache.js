@@ -5,6 +5,7 @@ import { importRemoteCache } from '.'
 import domainEvents from '../domain/domain-events'
 import asyncPipe from './util/async-pipe'
 import { workerData } from 'worker_threads'
+import { UseCaseService } from './use-cases'
 const {
   internalCacheRequest,
   internalCacheResponse,
@@ -158,7 +159,7 @@ export default function DistributedCache ({
       eventName === models.getEventName(models.EventTypes.DELETE, modelName)
     ) {
       console.debug('deleting from cache', modelName, event.modelId)
-      await datasources.getDataSource(modelName).delete(event.modelId)
+      await datasources.getSharedDataSource(modelName).delete(event.modelId)
       return true
     }
     return false
@@ -199,7 +200,7 @@ export default function DistributedCache ({
 
         const enrichedEvent = await handleUpsert({
           modelName: modelNameUpper,
-          datasource: datasources.getDataSource(modelNameUpper),
+          datasource: datasources.getSharedDataSource(modelNameUpper),
           model: models,
           event
         })
@@ -218,16 +219,11 @@ export default function DistributedCache ({
    * @throws
    */
   async function createModels (event) {
+    const modelName = event.relation.modelName.toUpperCase()
+    const service = UseCaseService(modelName)
     const models = await Promise.all(
       event.args.map(async arg => {
-        return await models.createModel(
-          broker,
-          datasources.getDataSource(
-            event.relation.modelName.toUpperCase()
-          ),
-          event.relation.modelName.toUpperCase(),
-          arg
-        )
+        return service.addModel(arg)
       })
     )
     return { ...event, model: models }
@@ -288,7 +284,7 @@ export default function DistributedCache ({
         // find the requested object or objects
         const relatedModels = await relationType[relation.type](
           model,
-          datasources.getDataSource(relation.modelName.toUpperCase()),
+          datasources.getSharedDataSource(relation.modelName.toUpperCase()),
           relation
         )
 

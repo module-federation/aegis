@@ -27,6 +27,7 @@ export function registerWorkerEvents (broker) {
   createBroadcastChannel(workerData.modelName, broker)
   // 
   broker.on('shutdown', signal => process.exit(signal || 0))
+  broker.on('emitEvent', event => broker.notify(event.eventName, event))
 }
 
 

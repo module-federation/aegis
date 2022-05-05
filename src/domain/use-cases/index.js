@@ -29,8 +29,8 @@ export function registerEvents () {
 }
 
 function findLocalRelatedModels (modelName) {
-  const localModels = ModelFactory.getModelSpecs().map(s =>
-    s.modelName.toUpperCase()
+  const localModels = ModelFactory.getModelSpecs().map(spec =>
+    spec.modelName.toUpperCase()
   )
   const spec = ModelFactory.getModelSpec(modelName)
   const result = !spec?.relations
