@@ -185,17 +185,18 @@ export default function makeRelations (relations, datasource, broker) {
         return {
           // the relation function
           async [relation] (...args) {
-            // Get the datasource of the related object
+            // Get or create datasource of related object w/ thread-local mem
             const ds = datasource.getFactory().getDataSource(rel.modelName)
+
+            // args meancreate new local model instances
+            if (args?.length > 0 && isRelatedModelLocal(rel)) {
+              // args mean create new instance(s) of related model
+              return await createNewModels(args, this, rel, ds)
+            }
 
             const models = await relationType[rel.type](this, ds, rel)
 
             if (!models || models.length < 1) {
-              if (args?.length > 0 && isRelatedModelLocal(rel)) {
-                // args mean create new instance(s) of related model
-                return await createNewModels(args, this, rel, ds)
-              }
-
               // couldn't find the object locally - try remote instances
               const event = await requireRemoteObject(
                 this,
