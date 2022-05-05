@@ -29,7 +29,6 @@ export const relationType = {
    * @param {*} rel
    * @returns
    */
-
   oneToOne (model, ds, rel) {
     return this.manyToOne(model, ds, rel)
   },
@@ -159,7 +158,8 @@ export function requireRemoteObject (model, relation, broker, ...args) {
 function isRelatedModelLocal (relation) {
   require('.')
     .default.getModelSpecs()
-    .map(spec => spec.modelName.toUpperCase() && !spec.isCached)
+    .filter(spec => !spec.isCached)
+    .map(spec => spec.modelName.toUpperCase())
     .includes(relation.modelName.toUpperCase())
 }
 
@@ -186,33 +186,16 @@ export default function makeRelations (relations, datasource, broker) {
           // the relation function
           async [relation] (...args) {
             // Get the datasource of the related object
-            const ds = datasource
-              .getFactory()
-              .getDataSource(rel.modelName.toUpperCase())
+            const ds = datasource.getFactory().getDataSource(rel.modelName)
 
-            let models
-
-            if (isRelatedModelLocal(rel)) {
-              // args mean create new instance(s) of related model
-              if (args?.length > 0) {
-                console.debug({
-                  fn: makeRelations.name,
-                  message: 'save data to new model'
-                })
-                try {
-                  models = await createNewModels(args, this, rel, ds)
-                  if (models.length > 0) return models
-                } catch (error) {
-                  console.warn({ fn: makeRelations.name, error })
-                }
-              } else {
-                models = await relationType[rel.type](this, ds, rel)
-              }
-            }
-
-            console.debug({ models })
+            const models = await relationType[rel.type](this, ds, rel)
 
             if (!models || models.length < 1) {
+              if (args?.length > 0 && isRelatedModelLocal(rel)) {
+                // args mean create new instance(s) of related model
+                return await createNewModels(args, this, rel, ds)
+              }
+
               // couldn't find the object locally - try remote instances
               const event = await requireRemoteObject(
                 this,
@@ -223,10 +206,11 @@ export default function makeRelations (relations, datasource, broker) {
 
               // each arg contains input to create a new object
               if (event?.args?.length > 0)
-                return updateForeignKeys(this, event.model, rel, ds)
+                updateForeignKeys(this, event.model, rel, ds)
 
               return await relationType[rel.type](this, ds, rel)
             }
+
             return models
           }
         }
