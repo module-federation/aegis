@@ -55,7 +55,7 @@ async function parseQuery (query, repository) {
 
     return {
       total: (await repository.list(null, false)).length,
-      cached: repository.totalRecords(),
+      cached: repository.count(),
       bytes: repository.getCacheSizeBytes()
     }
   }
