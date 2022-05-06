@@ -207,7 +207,7 @@ const deleteEvent = model => ({
   model: model
 })
 
-const loadedEvent = model => ({
+const onloadEvent = model => ({
   modelId: ModelFactory.getModelId(model),
   model: model
 })
@@ -258,9 +258,9 @@ function register (model, services, adapters, workers, isCached = false) {
   )
 
   ModelFactory.registerEvent(
-    ModelFactory.EventTypes.LOADED,
+    ModelFactory.EventTypes.onload,
     modelName,
-    loadedEvent
+    onloadEvent
   )
 }
 

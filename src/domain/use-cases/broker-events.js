@@ -46,7 +46,7 @@ export default function brokerEvents (
     ServiceMesh.connect({ services: listLocalModels })
   } else {
     // create listeners that handle command events from main
-    require('../worker-events').registerWorkerEvents(broker)
+    require('../domain-events').registerEvents(broker)
 
     // init distributed object cache
     const manager = DistributedCache({

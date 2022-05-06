@@ -40,7 +40,7 @@ const EventTypes = {
   CREATE: 'CREATE',
   UPDATE: 'UPDATE',
   DELETE: 'DELETE',
-  LOADED: 'LOADED'
+  ONLOAD: 'ONLOAD'
 }
 
 /**
@@ -83,7 +83,7 @@ const eventFactories = {
   [EventTypes.CREATE]: new Map(),
   [EventTypes.UPDATE]: new Map(),
   [EventTypes.DELETE]: new Map(),
-  [EventTypes.LOADED]: new Map()
+  [EventTypes.ONLOAD]: new Map()
 }
 
 /**

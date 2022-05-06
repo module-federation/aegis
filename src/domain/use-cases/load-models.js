@@ -81,7 +81,7 @@ export default function ({
   models,
   handlers = []
 }) {
-  const eventType = models.EventTypes.LOADED
+  const eventType = models.EventTypes.ONLOAD
   const eventName = models.getEventName(eventType, modelName)
   handlers.forEach(handler => broker.on(eventName, handler))
 
