@@ -80,7 +80,7 @@ export default function getContent (httpRequest, content, defaultTitle) {
           <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
           <title>${title}</title>
           <div class="w3-container w3-amber">
-            <a href="/index.html"> <img src="/aegis-logo.png" alt="aegis" width="65" height="65" style="font: x-large" /><b>ÆGIS</b> Domain Model API</a>
+            <a href="/index.html"> <img src="/aegis-logo.png" alt="aegis" width="65" height="65" style="font: x-large" /><b>ÆGIS</b> Federated Microservices</a>
           </div> 
           <style>
             a:link {
