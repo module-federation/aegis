@@ -5,7 +5,24 @@
 import DistributedCache from '../distributed-cache'
 // import EventBus from '../../services/event-bus'
 import { ServiceMeshAdapter as ServiceMesh } from '../../adapters'
-import { isMainThread } from 'worker_threads'
+import { BroadcastChannel, isMainThread, workerData } from 'worker_threads'
+
+/** @type {BroadcastChannel}*/
+let broadcastChannel
+
+/**
+ *
+ * @param {*} modelName
+ * @param {*} broker
+ * @returns
+ */
+function createBroadcastChannel (modelName, broker) {
+  if (broadcastChannel) return
+  broadcastChannel = new BroadcastChannel(modelName)
+  // notify listeners
+  broadcastChannel.onmessage = msgEvent =>
+    broker.notify(msgEvent.data.eventName, msgEvent.data)
+}
 
 /**
  * Broker events between {@link ThreadPoolFactory} and remote mesh instances.
@@ -45,6 +62,7 @@ export default function brokerEvents (
     // connect to mesh and provide fn to list installed services
     ServiceMesh.connect({ services: listLocalModels })
   } else {
+    createBroadcastChannel(workerData.modelName, broker)
     // create listeners that handle command events from main
     require('../domain-events').registerEvents(broker)
 
