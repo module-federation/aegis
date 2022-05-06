@@ -39,16 +39,10 @@ export const relationType = {
    * @param {import("./index").relations[relation]} config
    */
   manyToOne: async (model, ds, rel) => await ds.find(model[rel.foreignKey]),
-  /**
-   * Assumes the model contains an array of the related ohject.
-   * @param {import(".").Model} model
-   * @param {import("./datasource").default} ds
-   * @param {import("./index").relations[relation]} config
-   * @returns
-   */
+                                                                                                                                                    
   containsMany: async (model, ds, rel) =>
-    await Promise.allSettled(
-      model[rel.key].map(key => ds.find(key[rel.foreignKey]))
+    await model[rel.arrayKey].map(arrayItem =>
+      ds.find(arrayItem[rel.foreignKey])
     )
 }
 
@@ -85,7 +79,12 @@ const referentialIntegrity = {
     )
   },
 
-  [relationType.containsMany.name] (fromModel, toModel, relation, ds) {}
+  [relationType.manyToMany.name] (fromModel, toModels, relation, ds) {}
+
+  // [relationType.manyToMany.name] (fromModel, toModel, relation, ds) {
+  //   fromModel[relation.arrayKey].map(k => ds.findSync(fromModel.getId()),
+  //   [relation.foreignKey]: toModels[0].getId())
+  // }
 }
 
 /**

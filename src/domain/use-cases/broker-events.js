@@ -71,7 +71,6 @@ export default function brokerEvents (
       models,
       broker,
       datasources,
-      // define appropriate pub/sub functions for env
       publish: event => broker.notify('to_main', event),
       subscribe: (eventName, cb) => broker.on(eventName, cb)
     })
