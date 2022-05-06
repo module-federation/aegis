@@ -258,7 +258,7 @@ function register (model, services, adapters, workers, isCached = false) {
   )
 
   ModelFactory.registerEvent(
-    ModelFactory.EventTypes.onload,
+    ModelFactory.EventTypes.ONLOAD,
     modelName,
     onloadEvent
   )

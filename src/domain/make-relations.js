@@ -39,10 +39,10 @@ export const relationType = {
    * @param {import("./index").relations[relation]} config
    */
   manyToOne: async (model, ds, rel) => await ds.find(model[rel.foreignKey]),
-                                                                                                                                                    
+
   containsMany: async (model, ds, rel) =>
-    await model[rel.arrayKey].map(arrayItem =>
-      ds.find(arrayItem[rel.foreignKey])
+    await Promise.all(
+      model[rel.arrayKey].map(arrayItem => ds.find(arrayItem[rel.foreignKey]))
     )
 }
 
@@ -79,7 +79,7 @@ const referentialIntegrity = {
     )
   },
 
-  [relationType.manyToMany.name] (fromModel, toModels, relation, ds) {}
+  [relationType.containsMany.name] (fromModel, toModels, relation, ds) {}
 
   // [relationType.manyToMany.name] (fromModel, toModel, relation, ds) {
   //   fromModel[relation.arrayKey].map(k => ds.findSync(fromModel.getId()),
@@ -185,7 +185,7 @@ export default function makeRelations (relations, datasource, broker) {
           // the relation function
           async [relation] (...args) {
             // Get or create datasource of related object
-            const ds = datasource.getFactory().getDataSource(modelName)
+            const ds = datasource.getFactory().getSharedDataSource(modelName)
 
             // args meancreate new local model instances
             if (args?.length > 0 && isRelatedModelLocal(rel)) {

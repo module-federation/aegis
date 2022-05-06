@@ -86,7 +86,7 @@ export default function brokerEvents (
   process.on('message', ({ cmd, id, pid, data, name }) => {
     if (cmd && id && data && process.pid !== pid) {
       if (cmd === 'saveCommand') {
-        const ds = datasources.getDataSource(name)
+        const ds = datasources.getSharedDataSource(name)
         ds.save(id, data, false)
         return
       }

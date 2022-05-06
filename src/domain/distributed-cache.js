@@ -159,7 +159,7 @@ export default function DistributedCache ({
       eventName === models.getEventName(models.EventTypes.DELETE, modelName)
     ) {
       console.debug('deleting from cache', modelName, event.modelId)
-      await datasources.getDataSource(modelName).delete(event.modelId)
+      await datasources.getSharedDataSource(modelName).delete(event.modelId)
       return true
     }
     return false
@@ -244,7 +244,7 @@ export default function DistributedCache ({
   async function saveModels (event) {
     try {
       const models = event.model
-      const datasource = datasources.getDataSource(
+      const datasource = datasources.getSharedDataSource(
         event.relation.modelName.toUpperCase()
       )
       models.forEach(model => datasource.save(model.getId(), model))
