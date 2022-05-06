@@ -75,7 +75,7 @@ export default function brokerEvents (
       }
 
       if (cmd === 'deleteCommand') {
-        const ds = datasources.getSharedDataSource(name)
+        const ds = datasources.getDataSource(name)
         ds.delete(id, false)
         return
       }

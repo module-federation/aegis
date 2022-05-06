@@ -159,13 +159,12 @@ export default function DistributedCache ({
       eventName === models.getEventName(models.EventTypes.DELETE, modelName)
     ) {
       console.debug('deleting from cache', modelName, event.modelId)
-      await datasources.getSharedDataSource(modelName).delete(event.modelId)
+      await datasources.getDataSource(modelName).delete(event.modelId)
       return true
     }
     return false
   }
 
-  const route = o => o.route(o.event)
   /**
    * Pipes functions that instantiate the remote object(s) and upsert the cache
    */
@@ -284,7 +283,7 @@ export default function DistributedCache ({
         // find the requested object or objects
         const relatedModels = await relationType[relation.type](
           model,
-          datasources.getSharedDataSource(relation.modelName.toUpperCase()),
+          datasources.getDataSource(relation.modelName.toUpperCase()),
           relation
         )
 
