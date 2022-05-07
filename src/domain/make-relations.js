@@ -185,7 +185,7 @@ export default function makeRelations (relations, datasource, broker) {
           // the relation function
           async [relation] (...args) {
             // Get or create datasource of related object
-            const ds = datasource.getFactory().getSharedDataSource(modelName)
+            const ds = datasource.getFactory().getDataSource(modelName)
 
             // args meancreate new local model instances
             if (args?.length > 0 && isRelatedModelLocal(rel)) {
