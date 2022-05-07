@@ -130,8 +130,9 @@ export default function getContent (httpRequest, content, defaultTitle) {
        * and worker threads, display links to the thread
        * equivalent of the main content.
        *
-       * E.g. Both the main and worker threads have events and
-       * data but only the main thread knows about threadpools
+       * E.g. Both the main and worker threads have events 
+       * but subcribe to different ones depending on the
+       * application code running in the thread.
        */
       if (
         /config/i.test(httpRequest.path) &&

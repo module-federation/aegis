@@ -43,7 +43,8 @@ const domainEvents = {
   publishEvent: modelName => `publishEvent_${String(modelName).toUpperCase()}`,
   poolOpen: modelName => `poolOpen_${String(modelName).toUpperCase()}`,
   poolClose: modelName => `poolClose_${String(modelName).toUpperCase()}`,
-  poolDrain: modelName => `poolDrain_${String(modelName).toUpperCase()}`
+  poolDrain: modelName => `poolDrain_${String(modelName).toUpperCase()}`,
+  poolAbort: modelName => `poolAbort_${String(modelName).toUpperCase()}`
 }
 
 export default domainEvents

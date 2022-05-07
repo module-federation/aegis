@@ -244,7 +244,7 @@ export default function DistributedCache ({
   async function saveModels (event) {
     try {
       const models = event.model
-      const datasource = datasources.getSharedDataSource(
+      const datasource = datasources.getDataSource(
         event.relation.modelName.toUpperCase()
       )
       models.forEach(model => datasource.save(model.getId(), model))

@@ -8,7 +8,7 @@ import ModelFactory, { DataSourceFactory } from '.'
 import { performance as perf } from 'perf_hooks'
 import os from 'os'
 
-const { poolOpen, poolClose, poolDrain } = domainEvents
+const { poolOpen, poolClose, poolDrain, poolAbort } = domainEvents
 const broker = EventBrokerFactory.getInstance()
 const MAINCHANNEL = 'mainChannel'
 const EVENTCHANNEL = 'eventChannel'
@@ -17,6 +17,7 @@ const DEFAULT_THREADPOOL_MIN = 1
 const DEFAULT_THREADPOOL_MAX = 2
 const DEFAULT_JOBQUEUE_TOLERANCE = 25
 const DEFAULT_DURATION_TOLERANCE = 1000
+const DEFAULT_JOB_ABORT_DURATION = 180000
 
 /**
  * @typedef {object} Thread
@@ -233,8 +234,10 @@ export class ThreadPool extends EventEmitter {
     this.workerData = workerData
     this.maxThreads = options.maxThreads // set by ThreadPoolFactory
     this.minThreads = options.minThreads || DEFAULT_THREADPOOL_MIN
+    this.abortTolerance = options.abortTolerance || DEFAULT_JOB_ABORT_DURATION
     this.queueTolerance = options.queueTolerance || DEFAULT_JOBQUEUE_TOLERANCE
-    this.timeTolerance = options.timeTolerance || DEFAULT_DURATION_TOLERANCE
+    this.durationTolerance =
+      options.durationTolerance || DEFAULT_DURATION_TOLERANCE
     this.closed = false
     this.options = options
     this.reloads = 0
@@ -245,6 +248,7 @@ export class ThreadPool extends EventEmitter {
     this.threads = []
     this.startTime = Date.now()
     this.broadcastChannel = options.bc
+    this.aborting = false
 
     if (options.preload) {
       console.info('preload enabled for', this.name)
@@ -367,7 +371,7 @@ export class ThreadPool extends EventEmitter {
   }
 
   jobDurationThreshold () {
-    return this.timeTolerance
+    return this.durationTolerance
   }
 
   avgJobDuration () {
@@ -484,11 +488,18 @@ export class ThreadPool extends EventEmitter {
   }
 
   async abort (reason) {
-    this.broadcastEvent({ signal: 'abort' })
     try {
+      this.aborting = true
+      this.broadcastEvent({ eventName: 'abort' })
+      console.warn('pool is aborting', this.name)
+      this.notify(poolAbort)
+      this.freeThreads.splice(0, this.freeThreads.length)
       while (this.threads.length > 0) await this.threads.pop().stop(reason)
     } catch (error) {
       console.error({ fn: this.abort.name, error })
+    } finally {
+      this.aborting = false
+      this.closed = false
     }
   }
 
@@ -581,6 +592,11 @@ const ThreadPoolFactory = (() => {
     return bc
   }
 
+  /**
+   * Send message to all threads of a pool.
+   * @param {import('.').Event} event
+   * @param {string} poolName same as `modelName`
+   */
   function broadcastEvent (event, poolName) {
     getBroadcastChannel(poolName).postMessage(event)
   }
@@ -670,7 +686,7 @@ const ThreadPoolFactory = (() => {
       status () {
         return getPool(poolName, options).status()
       },
-      fireEvent (event) {
+      async fireEvent (event) {
         return getPool(poolName, options).run(event.name, event.data, {
           channel: EVENTCHANNEL
         })
@@ -683,19 +699,16 @@ const ThreadPoolFactory = (() => {
     return options.preload ? getPool(poolName, options) : facade
   }
 
+  /**
+   * Unlike all other events, when the caller fires
+   * an event with this function it returns a response.
+   *
+   * @param {import('.').Event} event
+   * @returns {Promise<any>} returns a response
+   */
   async function fireEvent (event) {
     const pool = threadPools.get(event.data)
     if (pool) return pool.fireEvent(event)
-  }
-
-  /**
-   * post a message to all pools (at least one thread)
-   * eee
-   * @param {import('./event').Event} event
-   */
-  function fireAll (event) {
-    console.debug({ fn: 'fireAll', event })
-    threadPools.forEach(pool => pool.fireEvent(event))
   }
 
   /**
@@ -781,13 +794,16 @@ const ThreadPoolFactory = (() => {
     //     .on(eventName, cb)
   }
 
+  let monitorIntervalId
+
+  const poolMaxAbortTime = () =>
+    Math.max(...[...threadPools].map(pool => pool[1].abortTolerance))
+
   /**
    * Monitor pools for stuck threads and restart them
    */
   function monitorPools () {
-    let abort = false
-
-    const intervalId = setInterval(() => {
+    monitorIntervalId = setInterval(() => {
       threadPools.forEach(pool => {
         const workRequested = pool.totalTransactions()
         const workWaiting = pool.jobQueueDepth()
@@ -796,29 +812,34 @@ const ThreadPoolFactory = (() => {
 
         // work is waiting but no workers available
         if (workWaiting > 0 && workersAvail < 1) {
-          setTimeout(() => {
+          // give some time to correct
+          if (pool.aborting) return
+
+          setTimeout(async () => {
             // has any work been done in the last 3 minutes?
             if (
               pool.jobQueueDepth() > 0 &&
               pool.availThreadCount() < 1 &&
               pool.totalTransactions() - pool.jobQueueDepth() === workCompleted
             ) {
-              // no threads are avail and no work done for 3 minute
+              // no threads are avail and no work done for 3 minutes
               console.warn('killing stuck threads', pool.status())
-              pool.abort('stuck threads')
-              // stop monitoring to allow for correction
-              abort = true
+              await pool.abort('stuck threads')
+              // get waitng jobs going
+              pool.waitingJobs.shift()(await pool.threadAlloc())
             }
-          }, 180000)
+          }, pool.abortTolerance)
         }
       })
-    }, 200000)
+    }, poolMaxAbortTime() * 1.5)
+  }
 
-    if (abort) {
-      clearInterval(intervalId)
-      // resume monitoring
-      setTimeout(monitorPools, 300000)
-    }
+  function pauseMonitoring () {
+    clearInterval(monitorIntervalId)
+  }
+
+  function resumeMonitoring () {
+    monitorPools()
   }
 
   monitorPools()
@@ -827,13 +848,14 @@ const ThreadPoolFactory = (() => {
     getThreadPool,
     broadcastEvent,
     listPools,
-    reloadAll,
     fireEvent,
-    fireAll,
+    reloadAll,
     reload,
     status,
     listen,
-    destroy
+    destroy,
+    pauseMonitoring,
+    resumeMonitoring
   })
 })()
 
