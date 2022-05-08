@@ -138,7 +138,7 @@ export function requireRemoteObject (model, relation, broker, ...args) {
   if (!model && relation.type !== 'findById') {
     console.error({
       fn: requireRemoteObject.name,
-      error: 'model param missing'
+      error: 'model param is dmissing'
     })
     return
   }
