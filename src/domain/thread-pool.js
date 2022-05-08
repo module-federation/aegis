@@ -148,6 +148,22 @@ function newThread ({ pool, file, workerData }) {
     }
   }).catch(console.error)
 }
+/**
+ * Reallocate a newly freed thread (i.e. one that has
+ * completed or failed to complete its job). If a job
+ * is waiting, run it. Otherwise, return the thread to
+ * {@link ThreadPool.freeThreads}.
+ *
+ * @param {ThreadPool} pool
+ * @param {Thread} freeThread
+ */
+function reallocate (pool, freeThread) {
+  if (pool.waitingJobs.length > 0) {
+    pool.waitingJobs.shift()(freeThread)
+  } else {
+    pool.freeThreads.push(freeThread)
+  }
+}
 
 /**
  * Post a job to a worker thread if available, otherwise
@@ -178,12 +194,8 @@ function postJob ({
 
     thread[channel].once('message', result => {
       pool.jobTime(perf.now() - startTime)
-
-      if (pool.waitingJobs.length > 0) {
-        pool.waitingJobs.shift()(thread)
-      } else {
-        pool.freeThreads.push(thread)
-      }
+      // reallocate freed thread
+      reallocate(pool, thread)
 
       if (pool.noJobsRunning()) {
         pool.emit(NOJOBSRUNNING)
@@ -193,7 +205,9 @@ function postJob ({
 
     thread[channel].once('error', async error => {
       console.error({ fn: postJob.name, error })
-      await pool.stopThread(thread, error)
+      // await pool.stopThread(thread, error)
+      // reallocate
+      reallocate(pool, thread)
       pool.emit({
         eventName: 'ThreadException',
         message: 'unhandled error in thread',
@@ -425,7 +439,10 @@ export class ThreadPool extends EventEmitter {
     )
   }
 
-  async threadAlloc () {
+  /**
+   * Spin up a new thread if needed and available.
+   */
+  async allocate () {
     if (this.poolCanGrow()) return this.startThread()
   }
 
@@ -453,7 +470,7 @@ export class ThreadPool extends EventEmitter {
 
           if (!thread) {
             try {
-              thread = await this.threadAlloc()
+              thread = await this.allocate()
             } catch (error) {
               console.error({ fn: this.run.name, error })
             }
@@ -832,7 +849,7 @@ const ThreadPoolFactory = (() => {
               console.warn('killing stuck threads', pool.status())
               await pool.abort('stuck threads')
               // get waitng jobs going
-              pool.waitingJobs.shift()(await pool.threadAlloc())
+              pool.waitingJobs.shift()(await pool.allocate())
             }
           }, pool.abortTolerance)
         }
