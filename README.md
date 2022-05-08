@@ -1,3 +1,7 @@
+![NPM version][npm-image]][npm-url]
+[![NPM Downloads][downloads-image]][downloads-url]
+
+
 # ÆGIS
 
 See the [aegis-host](https://github.com/module-federation/aegis-host) repo for documentation and a working example of a federation server.
@@ -90,3 +94,10 @@ yarn demo
 - Addt'l datasource adapters: Etherium, Solid Pod
 - Support for MLOps
 - Adaptive, autonomous (Re)deployment based on AIOps
+
+
+[npm-image]: http://img.shields.io/npm/v/@module-federation/aegis.svg
+[npm-url]: https://npmjs.org/package/@module-federation/aegis
+[downloads-image]: https://img.shields.io/npm/dm/@module-federation/aegis
+[downloads-url]: https://npmjs.org/package/@module-federation/aegis
+
