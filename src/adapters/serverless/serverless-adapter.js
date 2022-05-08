@@ -4,15 +4,11 @@ let parsers
 
 /**
  * Decorates `require('@module-federation'.aegis`. Transforms tne input and output for
- * the the `aegis.handle` function. The AWS parser works with API GW running on a Nodejs
+ * the `aegis.handle` function. The AWS parser works with API GW running on a Nodejs
  * lambda. Create additional parsers to extend support to other clouds. For better
- * performance, use the WasmEdge runtime instead (under deveopment).
+ * performance, use the WasmEdge runtime instead (under development).
  *
- * @param {function():Promise<{function(...args):Promise<string>}>} service - callback starts service (aegis)
- * @param {"aws"|"google"|"azure"|"ibm"} provider - the name of the serverless provider
- * @param {{req:{send:function(),status:function()},res:{}}} parsers - messsage parsers
- * @returns {Promise<{ServerlessAdapter:function(...args):Promise<function()>}>}
- * call `invokeController` to parse the input and call the controller
+ * @param {function():Promise<object>} getParsers - collection of parser objects
  */
 exports.makeServerlessAdapter = function (getParsers) {
   const provider = process.env.CLOUDPROVIDER || 'aws'
