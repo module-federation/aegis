@@ -7,7 +7,7 @@ let parsers
  * the the `aegis.handle` function. The AWS parser works with API GW running on a Nodejs
  * lambda. Create additional parsers to extend support to other clouds. For better
  * performance, use the WasmEdge runtime instead (under deveopment).
- 
+ *
  * @param {function():Promise<{function(...args):Promise<string>}>} service - callback starts service (aegis)
  * @param {"aws"|"google"|"azure"|"ibm"} provider - the name of the serverless provider
  * @param {{req:{send:function(),status:function()},res:{}}} parsers - messsage parsers
