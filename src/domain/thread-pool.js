@@ -7,6 +7,7 @@ import domainEvents from './domain-events'
 import ModelFactory, { DataSourceFactory } from '.'
 import { performance as perf } from 'perf_hooks'
 import os from 'os'
+import { Perf } from 'nats/lib/nats-base-client/util'
 
 const { poolOpen, poolClose, poolDrain, poolAbort } = domainEvents
 const broker = EventBrokerFactory.getInstance()
@@ -53,6 +54,8 @@ async function kill (thread, reason) {
   try {
     return await new Promise(resolve => {
       console.info({ msg: 'killing thread', id: thread.id, reason })
+      const TIMEOUT = 8000
+      const start = perf.now()
 
       const timerId = setTimeout(async () => {
         await thread.mainChannel.terminate()
@@ -62,12 +65,14 @@ async function kill (thread, reason) {
           reason
         })
         resolve(thread.id)
-      }, 8000)
+      }, TIMEOUT)
 
       thread.mainChannel.once('exit', () => {
         clearTimeout(timerId)
         thread.eventChannel.close()
-        console.info('clean exit of thread', thread.id, reason)
+        // the timeout will cause this to run if executed first
+        if (perf.now() - start < TIMEOUT)
+          console.info('clean exit of thread', thread.id, reason)
         resolve(thread.id)
       })
 
@@ -128,7 +133,7 @@ function newThread ({ pool, file, workerData }) {
       const timerId = setTimeout(async () => {
         const message = 'timedout creating thread'
         console.error({ fn: newThread.name, message })
-        reject('timeout')
+        reject(message)
       }, 50000)
 
       worker.once('message', async msg => {
@@ -300,6 +305,7 @@ export class ThreadPool extends EventEmitter {
       this.freeThreads.findIndex(t => t.id === thread.id),
       1
     )
+    return this
   }
 
   /**
@@ -847,8 +853,8 @@ const ThreadPoolFactory = (() => {
   return Object.freeze({
     getThreadPool,
     broadcastEvent,
-    listPools,
     fireEvent,
+    listPools,
     reloadAll,
     reload,
     status,

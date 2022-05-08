@@ -13,7 +13,7 @@ const cacheSize = configRoot.adapters.cacheSize || 3000
  * even when the database is offline.
  */
 export class DataSourceMongoDb extends DataSourceMemory {
-  constructor (maps, factory, name) {
+  constructor (map, factory, name) {
     super(map, factory, name)
     this.url = url
     this.cacheSize = cacheSize

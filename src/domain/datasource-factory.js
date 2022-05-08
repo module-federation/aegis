@@ -11,7 +11,7 @@
 
 import ModelFactory from '.'
 import * as adapters from '../adapters/datasources'
-import dsconfig from '../adapters/datasources'
+import { dsClasses } from '../adapters/datasources'
 import sysconf from '../config'
 import DataSource from './datasource'
 import { withSharedMemory } from './shared-memory'
@@ -67,7 +67,7 @@ const DataSourceFactory = (() => {
     const { memoryOnly, ephemeral, adapterName } = options
 
     if (memoryOnly || ephemeral) {
-      return dsconfig.getBaseClass(dsconfig.MEMORYADAPTER)
+      return dsClasses['DataSourceMemory']
     }
 
     if (adapterName) return adapters[adapterName] || DefaultDataSource
@@ -76,7 +76,7 @@ const DataSourceFactory = (() => {
       const url = spec.datasource.url
       const cacheSize = spec.datasource.cacheSize
       const adapterFactory = spec.datasource.factory
-      const BaseClass = dsconfig.getBaseClass(spec.datasource.baseClass)
+      const BaseClass = dsClasses[spec.datasource.baseClass]
       return adapterFactory(url, cacheSize, BaseClass)
     }
 

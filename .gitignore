@@ -7,3 +7,4 @@ node_modules
 .idea
 .DS_Store
 tst-rtry.js
+.VSCodeCounter/
