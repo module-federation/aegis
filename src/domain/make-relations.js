@@ -43,7 +43,8 @@ export const relationType = {
   containsMany: async (model, ds, rel) =>
     await Promise.all(
       model[rel.arrayKey].map(arrayItem => ds.find(arrayItem[rel.foreignKey]))
-    )
+    ),
+  findById: async (model, ds, rel) => ds.find(id)
 }
 
 const referentialIntegrity = {
@@ -134,13 +135,26 @@ export function requireRemoteObject (model, relation, broker, ...args) {
 
   console.debug({ fn: requireRemoteObject.name })
 
+  if (!model && relation.type !== 'findById') {
+    console.error({
+      fn: requireRemoteObject.name,
+      error: 'model param is dmissing'
+    })
+    return
+  }
+
+  const name = (model ? model.getName() : relation.modelName).toUpperCase()
+  const id = model ? model.getId() : relation.id
+  const eventSource = name
+  const eventTarget = model ? relation.modelName.toUpperCase() : null
+
   const requestData = {
     eventName: request,
-    modelName: model.getName().toUpperCase(),
+    modelName: name,
     eventType: externalCacheRequest.name,
-    eventSource: model.getName().toUpperCase(),
-    eventTarget: relation.modelName.toUpperCase(),
-    modelId: model.getId(),
+    eventSource,
+    eventTarget,
+    modelId: id,
     relation,
     model,
     args

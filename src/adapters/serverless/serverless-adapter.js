@@ -3,17 +3,12 @@
 let parsers
 
 /**
- * Start `service` if it hasn't been started
- * already, and wait for it to return the `invoke`
- * function, which allows us to call any controller
- * in the service. Save a reference to it, so if we
- * we are warm-started, we can use it again on the
- * next call without reloading the service.
- * @param {function():Promise<{function(...args):Promise<string>}>} service - callback starts service (aegis)
- * @param {"aws"|"google"|"azure"|"ibm"} provider - the name of the serverless provider
- * @param {{req:{send:function(),status:function()},res:{}}} parsers - messsage parsers
- * @returns {Promise<{ServerlessAdapter:function(...args):Promise<function()>}>}
- * call `invokeController` to parse the input and call the controller
+ * Decorates `require('@module-federation/aegis').aegis`. Transforms tne input and output for
+ * the `aegis.handle` function. The AWS parser works with API GW running on a Nodejs
+ * lambda. Create additional parsers to extend support to other clouds. For better
+ * performance, use the WasmEdge runtime instead (under development).
+ *
+ * @param {function():Promise<object>} getParsers - collection of parser objects
  */
 exports.makeServerlessAdapter = function (getParsers) {
   const provider = process.env.CLOUDPROVIDER || 'aws'

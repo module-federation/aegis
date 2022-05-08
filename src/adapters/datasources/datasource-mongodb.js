@@ -99,7 +99,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
    */
   async find (id) {
     try {
-      const cached = await super.find(id)
+      const cached = super.findSync(id)
       if (!cached) {
         return this.findDb(id)
       }
@@ -137,7 +137,10 @@ export class DataSourceMongoDb extends DataSourceMemory {
    */
   async save (id, data) {
     try {
-      await Promise.allSettled([super.save(id, data), this.saveDb(id, data)])
+      // use synchronous save to memory
+      super.saveSync(id, data)
+      // don't await - we don't need a resp
+      this.saveDb(id, data)
       return data
     } catch (error) {
       await this.checkConnection(error)
@@ -153,8 +156,9 @@ export class DataSourceMongoDb extends DataSourceMemory {
     try {
       if (cached) {
         //console.log("cache size", this.dataSource.size);
-        return super.list(filter)
+        return super.listSync(filter)
       }
+      // use a stream
       return await this.collection.find().toArray()
     } catch (error) {
       await this.checkConnection(error)

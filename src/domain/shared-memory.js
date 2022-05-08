@@ -126,8 +126,10 @@ export function withSharedMemory (
     return createDataSource.call(factory, name, {
       ...options,
       dsMap: sharedMap,
-      mixin: DsClass =>
-        class DataSourceSharedMemory extends SharedMemoryMixin(DsClass) {}
+      mixins: [
+        DsClass =>
+          class DataSourceSharedMemory extends SharedMemoryMixin(DsClass) {}
+      ].concat(options.mixins)
     })
 
   return createDataSource.call(factory, name, options)

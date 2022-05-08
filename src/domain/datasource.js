@@ -111,7 +111,7 @@ export default class DataSource {
   }
 
   getCacheSizeBytes () {
-    return this.count() * roughSizeOfObject(this.dsMap.reduce(a => a))
+    return this.count() * roughSizeOfObject(this.findSync({ count: 1 }))
   }
 
   /**

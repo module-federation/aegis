@@ -17,6 +17,13 @@ import makeHotReload from './hot-reload'
 import brokerEvents from './broker-events'
 
 import { isMainThread } from 'worker_threads'
+import { FederationMixin } from '../federated-query'
+
+const dsOpts = {
+  mixins: [
+    DsClass => class DataSourceFederated extends FederationMixin(DsClass) {}
+  ]
+}
 
 export function registerEvents () {
   // main thread handles event dispatch
@@ -44,7 +51,7 @@ function findLocalRelatedModels (modelName) {
 function findLocalRelatedDatasources (modelName) {
   return findLocalRelatedModels(modelName).map(modelName => ({
     modelName,
-    dsMap: DataSourceFactory.getSharedDataSource(modelName).dsMap
+    dsMap: DataSourceFactory.getSharedDataSource(modelName, dsOpts).dsMap
   }))
 }
 
@@ -64,12 +71,18 @@ function buildOptions (model) {
     return {
       ...options,
       // main thread does not write to persistent store
-      repository: DataSourceFactory.getSharedDataSource(model.modelName),
+      repository: DataSourceFactory.getSharedDataSource(
+        model.modelName,
+        dsOpts
+      ),
 
       // only main thread knows about thread pools (no nesting)
       threadpool: ThreadPoolFactory.getThreadPool(model.modelName, {
         preload: false,
-        sharedMap: DataSourceFactory.getSharedDataSource(model.modelName).dsMap,
+        sharedMap: DataSourceFactory.getSharedDataSource(
+          model.modelName,
+          dsOpts
+        ).dsMap,
         dsRelated: findLocalRelatedDatasources(model.modelName)
       })
     }
@@ -77,7 +90,7 @@ function buildOptions (model) {
     return {
       ...options,
       // only worker threads can write to persistent storage
-      repository: DataSourceFactory.getSharedDataSource(model.modelName)
+      repository: DataSourceFactory.getSharedDataSource(model.modelName, dsOpts)
     }
   }
 }
