@@ -15,6 +15,7 @@ import dsconfig from '../adapters/datasources'
 import sysconf from '../config'
 import DataSource from './datasource'
 import { withSharedMemory } from './shared-memory'
+import compose from './util/compose'
 
 const defaultAdapter = sysconf.hostConfig.adapters.defaultDatasource
 const DefaultDataSource = adapters[defaultAdapter]
@@ -54,7 +55,7 @@ const DataSourceFactory = (() => {
    * @property {string} adapterName specify the adapter to use
    * @property {Map<string,any>|import('sharedmap').SharedMap} dsMap
    * data source location and structure for private or shared memory
-   * @property {function(typeof DataSource):typeof DataSource} mixin
+   * @property {function(typeof DataSource):typeof DataSource[]} mixins
    */
 
   /**
@@ -93,8 +94,9 @@ const DataSourceFactory = (() => {
     const spec = ModelFactory.getModelSpec(name)
     const dsMap = options.dsMap || new Map()
     const DsClass = createDataSourceClass(spec, options)
-    const MixinClass = options.mixin ? options.mixin(DsClass) : DsClass
-    const newDs = new MixinClass(dsMap, this, name)
+    const DsMixinClass =
+      options.mixins.length > 0 ? compose(...options.mixins)(DsClass) : DsClass
+    const newDs = new DsMixinClass(dsMap, this, name)
     if (!options.ephemeral) dataSources.set(name, newDs)
     return newDs
   }
