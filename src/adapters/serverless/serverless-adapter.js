@@ -3,7 +3,7 @@
 let parsers
 
 /**
- * Decorates `require('@module-federation'.aegis`. Transforms tne input and output for
+ * Decorates `require('@module-federation/aegis').aegis`. Transforms tne input and output for
  * the `aegis.handle` function. The AWS parser works with API GW running on a Nodejs
  * lambda. Create additional parsers to extend support to other clouds. For better
  * performance, use the WasmEdge runtime instead (under development).
