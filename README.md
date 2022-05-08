@@ -1,5 +1,6 @@
-![NPM version][npm-image]][npm-url]
+[![NPM version][npm-image]][npm-url]
 [![NPM Downloads][downloads-image]][downloads-url]
+
 
 
 # ÆGIS
