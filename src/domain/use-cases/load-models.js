@@ -2,6 +2,7 @@
 
 import Serializer from '../serializer'
 import { resumeWorkflow } from '../orchestrator'
+import { isMainThread } from 'worker_threads'
 
 /**
  * @param {function(import("..").Model)} loadModel
@@ -81,18 +82,20 @@ export default function ({
   models,
   handlers = []
 }) {
-  const eventType = models.EventTypes.ONLOAD
-  const eventName = models.getEventName(eventType, modelName)
-  handlers.forEach(handler => broker.on(eventName, handler))
+  if (isMainThread) {
+    const eventType = models.EventTypes.ONLOAD
+    const eventName = models.getEventName(eventType, modelName)
+    handlers.forEach(handler => broker.on(eventName, handler))
 
-  return async function loadModels () {
-    const spec = models.getModelSpec(modelName)
+    return async function loadModels () {
+      const spec = models.getModelSpec(modelName)
 
-    setTimeout(handleRestart, 30000, repository, eventName)
+      setTimeout(handleRestart, 30000, repository, eventName)
 
-    return repository.load({
-      hydrate: hydrateModels(models.loadModel, broker, repository),
-      serializer: Serializer.addSerializer(spec.serializers)
-    })
+      return repository.load({
+        hydrate: hydrateModels(models.loadModel, broker, repository),
+        serializer: Serializer.addSerializer(spec.serializers)
+      })
+    }
   }
 }
