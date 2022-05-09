@@ -25,10 +25,9 @@ const options = {
 export class DataSourceMongoDb extends DataSourceMemory {
   constructor (map, factory, name) {
     super(map, factory, name)
-    this.url = url
     this.cacheSize = cacheSize
     this.options = options
-    //this.uri = `mongodb+srv://aegis:<password>@cluster0.trsdq.mongodb.net/${this.name}?retryWrites=true&w=majority`;
+    this.url = url
   }
 
   async connection () {
@@ -39,9 +38,8 @@ export class DataSourceMongoDb extends DataSourceMemory {
         connections.set(this.url, client)
       }
       const client = connections.get(this.url)
-      client.on('connectionClosed', () => console.warn('mongo conn closed'))
       client.on('connectionReady', () => console.log('mongo conn ready'))
-      client.on('error', () => connections.delete(this.url))
+      client.on('connectionClosed', () => connections.delete(this.url))
       return client
     } catch (error) {
       console.error({ fn: this.connection.name, error })
@@ -82,9 +80,11 @@ export class DataSourceMongoDb extends DataSourceMemory {
 
   async findDb (id) {
     try {
-      const model = (await this.collection()).findOne({ _id: id })
+      const model = await (await this.collection()).findOne({ _id: id })
       // add to the cache and return it
-      return super.save(id, this.hydrate(model))
+      const hydratedModel = this.hydrate(model)
+      super.saveSync(id, hydratedModel)
+      return hydratedModel
     } catch (error) {
       console.error({ fn: this.findDb.name, error })
     }
@@ -122,7 +122,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
         { ...clone, _id: id },
         { upsert: true }
       )
-      return data
+      return clone
     } catch (error) {
       console.error({ fn: this.saveDb.name, error })
     }
