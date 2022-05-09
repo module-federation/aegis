@@ -1,5 +1,6 @@
 'use strict'
 
+import { stringify } from 'querystring'
 import DataSource from '../../domain/datasource'
 
 /**
@@ -31,9 +32,18 @@ export class DataSourceMemory extends DataSource {
     return this.saveSync(id, data)
   }
 
+  dataType = {
+    [typeof string]: x => x,
+    [typeof object]: x => JSON.stringify(x),
+    [typeof undefined]: x => 'undefined'
+  }
+
   saveSync (id, data) {
-    this.dsMap.set(id, data)
-    return data
+    try {
+      this.dsMap.set(id, data)
+      return data
+    } catch (error) {
+    }
   }
 
   /**

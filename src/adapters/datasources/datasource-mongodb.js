@@ -8,6 +8,16 @@ const configRoot = require('../../config').hostConfig
 const cacheSize = configRoot.adapters.cacheSize || 3000
 
 /**
+ * @type {Map<string,MongoClient>}
+ */
+const connections = new Map()
+
+const options = {
+  //useNewUrlParserd: true,
+  useUnifiedTopology: true
+}
+
+/**
  * MongoDB adapter extends in-memory datasource to support caching.
  * The cache is always updated first, which allows the system to run
  * even when the database is offline.
@@ -17,6 +27,33 @@ export class DataSourceMongoDb extends DataSourceMemory {
     super(map, factory, name)
     this.url = url
     this.cacheSize = cacheSize
+    this.options = options
+    //this.uri = `mongodb+srv://aegis:<password>@cluster0.trsdq.mongodb.net/${this.name}?retryWrites=true&w=majority`;
+  }
+
+  async connection () {
+    try {
+      if (!connections.has(this.url)) {
+        const client = new MongoClient(this.url, this.options)
+        await client.connect()
+        connections.set(this.url, client)
+      }
+      const client = connections.get(this.url)
+      client.on('connectionClosed', () => console.warn('mongo conn closed'))
+      client.on('connectionReady', () => console.log('mongo conn ready'))
+      client.on('error', () => connections.delete(this.url))
+      return client
+    } catch (error) {
+      console.error({ fn: this.connection.name, error })
+    }
+  }
+
+  async collection () {
+    try {
+      return (await this.connection()).db(this.name).collection(this.name)
+    } catch (error) {
+      console.error({ fn: this.collection.name, error })
+    }
   }
 
   /**
@@ -27,68 +64,29 @@ export class DataSourceMongoDb extends DataSourceMemory {
    * }} options
    */
   load ({ hydrate, serializer }) {
-    this.hydrate = hydrate
-    this.serializer = serializer
-
-    this.connectDb()
-      .then(() => this.setCollection())
-      .then(() => this.loadModels())
-      .catch(e => console.error(e))
-  }
-
-  async connectDb () {
-    if (!this.client) {
-      this.client = await MongoClient.connect(this.url, {
-        useNewUrlParser: true,
-        useUnifiedTopology: true
-      })
-
-      if (!this.client || !this.client.isConnected) {
-        console.error("can't connect to db - using memory")
-      }
-    }
-  }
-
-  setCollection () {
     try {
-      this.collection = this.client.db(this.name).collection(this.name)
-    } catch (error) {
-      console.error('error setting collection', error)
-    }
+      this.hydrate = hydrate
+      this.serializer = serializer
+      this.loadModels()
+    } catch (error) {}
   }
 
   async loadModels () {
     try {
-      const cursor = this.collection.find().limit(this.cacheSize)
-      cursor.forEach(
-        async model => await super.save(model.id, this.hydrate(model))
-      )
+      const cursor = (await this.collection()).find().limit(this.cacheSize)
+      cursor.forEach(model => super.saveSync(model.id, this.hydrate(model)))
     } catch (error) {
-      console.error(error)
-    }
-  }
-
-  async checkConnection (error) {
-    try {
-      console.error('check connection on error', error)
-      await this.connectDb()
-      this.setCollection()
-    } catch (error) {
-      console.error(error)
+      console.error({ fn: this.loadModels.name, error })
     }
   }
 
   async findDb (id) {
     try {
-      const model = await this.collection.findOne({ _id: id })
-      if (!model) {
-        this.setCollection()
-        return model
-      }
+      const model = (await this.collection()).findOne({ _id: id })
       // add to the cache and return it
       return super.save(id, this.hydrate(model))
     } catch (error) {
-      this.checkConnection(error)
+      console.error({ fn: this.findDb.name, error })
     }
   }
 
@@ -105,7 +103,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
       }
       return cached
     } catch (error) {
-      await this.checkConnection(error)
+      console.error({ fn: this.find.name, error })
     }
   }
 
@@ -117,13 +115,17 @@ export class DataSourceMongoDb extends DataSourceMemory {
   }
 
   async saveDb (id, data) {
-    const clone = JSON.parse(this.serialize(data))
-    await this.collection.replaceOne(
-      { _id: id },
-      { ...clone, _id: id },
-      { upsert: true }
-    )
-    return data
+    try {
+      const clone = JSON.parse(this.serialize(data))
+      await (await this.collection()).replaceOne(
+        { _id: id },
+        { ...clone, _id: id },
+        { upsert: true }
+      )
+      return data
+    } catch (error) {
+      console.error({ fn: this.saveDb.name, error })
+    }
   }
 
   /**
@@ -140,10 +142,9 @@ export class DataSourceMongoDb extends DataSourceMemory {
       // use synchronous save to memory
       super.saveSync(id, data)
       // don't await - we don't need a resp
-      this.saveDb(id, data)
-      return data
+      return this.saveDb(id, data)
     } catch (error) {
-      await this.checkConnection(error)
+      console.error({ fn: this.save.name, error })
     }
   }
 
@@ -155,13 +156,12 @@ export class DataSourceMongoDb extends DataSourceMemory {
   async list (filter = null, cached = true) {
     try {
       if (cached) {
-        //console.log("cache size", this.dataSource.size);
         return super.listSync(filter)
       }
-      // use a stream
-      return await this.collection.find().toArray()
+      /** @todo use a stream */
+      return (await this.collection()).find().toArray()
     } catch (error) {
-      await this.checkConnection(error)
+      console.error({ fn: this.list.name, error })
     }
   }
 
@@ -175,7 +175,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
   async delete (id) {
     try {
       await Promise.all([
-        this.collection.deleteOne({ _id: id }),
+        await (await this.collection()).deleteOne({ _id: id }),
         super.delete(id)
       ])
     } catch (error) {
