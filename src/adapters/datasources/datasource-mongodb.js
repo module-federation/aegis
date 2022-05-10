@@ -34,13 +34,13 @@ export class DataSourceMongoDb extends DataSourceMemory {
     try {
       if (!connections.has(this.url)) {
         const client = new MongoClient(this.url, this.options)
+        client.on('connectionReady', () => console.log('mongo conn ready'))
+        client.on('connectionClosed', () => connections.delete(this.url))
         await client.connect()
         connections.set(this.url, client)
+        return client
       }
-      const client = connections.get(this.url)
-      client.on('connectionReady', () => console.log('mongo conn ready'))
-      client.on('connectionClosed', () => connections.delete(this.url))
-      return client
+      return connections.get(this.url)
     } catch (error) {
       console.error({ fn: this.connection.name, error })
     }
@@ -66,13 +66,15 @@ export class DataSourceMongoDb extends DataSourceMemory {
       this.hydrate = hydrate
       this.serializer = serializer
       this.loadModels()
-    } catch (error) {}
+    } catch (error) {
+      console.error(error)
+    }
   }
 
   async loadModels () {
     try {
       const cursor = (await this.collection()).find().limit(this.cacheSize)
-      cursor.forEach(model => super.saveSync(model.id, this.hydrate(model)))
+      cursor.forEach(model => super.saveSync(model.id, model))
     } catch (error) {
       console.error({ fn: this.loadModels.name, error })
     }
@@ -82,9 +84,9 @@ export class DataSourceMongoDb extends DataSourceMemory {
     try {
       const model = await (await this.collection()).findOne({ _id: id })
       // add to the cache and return it
-      const hydratedModel = this.hydrate(model)
-      super.saveSync(id, hydratedModel)
-      return hydratedModel
+      // const hydratedModel = this.hydrate(model)
+      return super.saveSync(id, model)
+      //return hydratedModel
     } catch (error) {
       console.error({ fn: this.findDb.name, error })
     }
@@ -98,9 +100,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
   async find (id) {
     try {
       const cached = super.findSync(id)
-      if (!cached) {
-        return this.findDb(id)
-      }
+      if (!cached) return this.findDb(id)
       return cached
     } catch (error) {
       console.error({ fn: this.find.name, error })
@@ -139,10 +139,9 @@ export class DataSourceMongoDb extends DataSourceMemory {
    */
   async save (id, data) {
     try {
-      // use synchronous save to memory
       super.saveSync(id, data)
-      // don't await - we don't need a resp
-      return this.saveDb(id, data)
+      await this.saveDb(id, data)
+      return data
     } catch (error) {
       console.error({ fn: this.save.name, error })
     }
@@ -155,11 +154,9 @@ export class DataSourceMongoDb extends DataSourceMemory {
    */
   async list (filter = null, cached = true) {
     try {
-      if (cached) {
-        return super.listSync(filter)
-      }
+      if (cached) return super.listSync(filter)
       /** @todo use a stream */
-      return (await this.collection()).find().toArray()
+      return await (await this.collection()).find().toArray()
     } catch (error) {
       console.error({ fn: this.list.name, error })
     }
@@ -174,10 +171,8 @@ export class DataSourceMongoDb extends DataSourceMemory {
    */
   async delete (id) {
     try {
-      await Promise.all([
-        await (await this.collection()).deleteOne({ _id: id }),
-        super.delete(id)
-      ])
+      await (await this.collection()).deleteOne({ _id: id })
+      super.deleteSync(id)
     } catch (error) {
       console.error(error)
     }
