@@ -12,6 +12,20 @@ const MAPSIZE = 2048 * 56
 const KEYSIZE = 32
 const OBJSIZE = 4056
 
+const dataType = {
+  save: {
+    string: x => x,
+    object: x => JSON.stringify(x),
+    number: x => x,
+    undefined: x => `${typeof x}`
+  },
+  find: {
+    string: x => JSON.parse(x),
+    object: x => x,
+    number: x => x,
+    undefined: x => x
+  }
+}
 /** @typedef {import('./datasource-factory').default} DataSourceFactory */
 
 /**
@@ -28,7 +42,7 @@ const SharedMemoryMixin = superclass =>
      * @returns {import('.').Model}
      */
     saveSync (id, data) {
-      return super.saveSync(id, JSON.stringify(data))
+      return super.saveSync(id, dataType.save[typeof data](data))
     }
 
     /**
@@ -39,12 +53,10 @@ const SharedMemoryMixin = superclass =>
      */
     findSync (id) {
       try {
-        if (!id) return console.log('no id provided', id)
-        const modelString = super.findSync(id)
-        if (!modelString) return
-        const model = JSON.parse(modelString)
-        if (isMainThread) return model
-        return ModelFactory.loadModel(broker, this, model, this.name)
+        if (!id) return console.log('no id provided')
+        const data = super.findSync(id)
+        const data2 = dataType.find[typeof data](data)
+        return ModelFactory.loadModel(broker, this, data2, this.name)
       } catch (error) {
         console.error({ fn: this.findSync.name, error })
       }

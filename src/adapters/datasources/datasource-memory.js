@@ -32,18 +32,11 @@ export class DataSourceMemory extends DataSource {
     return this.saveSync(id, data)
   }
 
-  dataType = {
-    [typeof string]: x => x,
-    [typeof object]: x => JSON.stringify(x),
-    [typeof undefined]: x => 'undefined'
-  }
-
   saveSync (id, data) {
-    try {
+    try {                                                                                                            dddd
       this.dsMap.set(id, data)
       return data
-    } catch (error) {
-    }
+    } catch (error) {}
   }
 
   /**
