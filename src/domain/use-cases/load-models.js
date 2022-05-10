@@ -81,12 +81,21 @@ export default function ({
   models,
   handlers = []
 }) {
+
   const eventType = models.EventTypes.ONLOAD
   const eventName = models.getEventName(eventType, modelName)
   handlers.forEach(handler => broker.on(eventName, handler))
 
   return async function loadModels () {
     const spec = models.getModelSpec(modelName)
+
+  if (isMainThread) {
+    const eventType = models.EventTypes.ONLOAD
+    const eventName = models.getEventName(eventType, modelName)
+    handlers.forEach(handler => broker.on(eventName, handler))
+
+    return async function loadModels () {
+      const spec = models.getModelSpec(modelName)
 
     setTimeout(handleRestart, 30000, repository, eventName)
 
