@@ -82,11 +82,15 @@ export default function ({
   models,
   handlers = []
 }) {
+  // main thread only
   if (isMainThread) {
     const eventType = models.EventTypes.ONLOAD
     const eventName = models.getEventName(eventType, modelName)
     handlers.forEach(handler => broker.on(eventName, handler))
 
+    /**
+     * Loads persited data from datd cc x
+     */
     return async function loadModels () {
       const spec = models.getModelSpec(modelName)
 
