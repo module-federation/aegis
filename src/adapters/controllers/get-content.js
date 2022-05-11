@@ -87,13 +87,13 @@ export default function getContent (httpRequest, content, defaultTitle) {
               text-decoration: none;
             }
             body {
-              background-color: w3-light-gray;
+              background-color: w3-dark-gray;
             }
             div.spacer {
               margin: 10px; 
             }
             table {
-              width: 65%;
+              width: 50%;
             }
             th {
               color: white;
@@ -107,10 +107,10 @@ export default function getContent (httpRequest, content, defaultTitle) {
           </style>
           </head>                     
           <body>
-          <div class="w3-container w3-light-gray">`
+          <div class="w3-container w3-dark-gray">`
 
       contents.forEach(function (content) {
-        text += `<div class="spacer"><table class="w3-table-all w3-hoverable w3-left-align">`
+        text += `<div class="w3-padding-large"><table class="w3-table w3-bordered w3-border w3-hover-grey w3-hoverable w3-hover-border-amber">`
         text += `<tr><th>key</th><th>value</th></tr>`
         Object.keys(content).forEach(key => {
           let val = content[key]
@@ -130,7 +130,7 @@ export default function getContent (httpRequest, content, defaultTitle) {
        * and worker threads, display links to the thread
        * equivalent of the main content.
        *
-       * E.g. Both the main and worker threads have events 
+       * E.g. Both the main and worker threads have events
        * but subcribe to different ones depending on the
        * application code running in the thread.
        */
