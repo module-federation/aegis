@@ -12,7 +12,7 @@ export class DataSourceFile extends DataSourceMemory {
    * @param {Set} map
    */
   constructor (map, factory, name) {
-    super(d, factory, name)
+    super(map, factory, name)
   }
 
   getFilePath () {

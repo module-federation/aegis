@@ -4,6 +4,7 @@ import SharedMap from 'sharedmap'
 import ModelFactory from '.'
 import { isMainThread, workerData } from 'worker_threads'
 import { EventBrokerFactory } from '.'
+import AppError from './util/app-error'
 
 const broker = EventBrokerFactory.getInstance()
 
@@ -28,7 +29,7 @@ const SharedMemoryMixin = superclass =>
      * @returns {import('.').Model}
      */
     saveSync (id, data) {
-      return super.saveSync(id, JSON.stringify(data))
+      return this.dsMap.set(id, JSON.stringify(data))
     }
 
     /**
@@ -39,9 +40,9 @@ const SharedMemoryMixin = superclass =>
      */
     findSync (id) {
       try {
-        if (!id) return console.log('no id provided', id)
+        if (!id) return AppError('no id provided')
         const modelString = super.findSync(id)
-        if (!modelString) return
+        if (!modelString) return AppError('no such id')
         const model = JSON.parse(modelString)
         if (isMainThread) return model
         return ModelFactory.loadModel(broker, this, model, this.name)
@@ -74,27 +75,34 @@ const SharedMemoryMixin = superclass =>
  */
 function findSharedMap (name) {
   try {
-    if (name === workerData.modelName) return workerData.sharedMap
+    if (name.toUpperCase() === workerData.modelName.toUpperCase())
+      return workerData.sharedMap
 
     if (workerData.dsRelated?.length > 0) {
-      const dsRel = workerData.dsRelated.find(ds => ds.modelName === name)
+      const dsRel = workerData.dsRelated.find(
+        ds => ds.modelName.toUpperCase() === name.toUpperCase()
+      )
       if (dsRel) {
         return dsRel.dsMap
       }
     }
-    return new Map()
+    return null
   } catch (error) {
     console.warn(error)
   }
 }
 
+function unmarshallSharedMap (name) {
+  const sharedMap = findSharedMap(name)
+  if (sharedMap) return Object.setPrototypeOf(sharedMap, SharedMap.prototype)
+  return null
+}
+
 function createSharedMap (mapsize, keysize, objsize, name) {
   try {
-    return isMainThread
-      ? Object.assign(new SharedMap(mapsize, keysize, objsize), {
-          modelName: name // assign modelName
-        })
-      : Object.setPrototypeOf(findSharedMap(name), SharedMap.prototype)
+    return Object.assign(new SharedMap(mapsize, keysize, objsize), {
+      modelName: name // assign modelName
+    })
   } catch (error) {
     console.error(error)
   }
@@ -119,8 +127,9 @@ export function withSharedMemory (
   const keysize = options.keysize || KEYSIZE
   const objsize = options.objsize || OBJSIZE
 
-  // use thread-safe shared map
-  const sharedMap = createSharedMap(mapsize, keysize, objsize, name)
+  const sharedMap = isMainThread
+    ? createSharedMap(mapsize, keysize, objsize, name)
+    : unmarshallSharedMap(name)
 
   if (sharedMap instanceof SharedMap)
     return createDataSource.call(factory, name, {

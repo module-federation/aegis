@@ -95,7 +95,7 @@ function connectEventChannel (worker, channel) {
   // transfer this port for the worker to use
   worker.postMessage({ eventPort: port2 }, [port2])
   // fire this event to forward to workers
-  broker.on('to_worker', async event => port1.postMessage(event))
+  broker.on('to_worker', async event => port1.postMessage(devent))
   port1.onmessage = async event => {
     console.log({ fn: 'main: port1.onmessage', data: event.data })
     if (event.data.eventName) await broker.notify('from_worker', event.data)
@@ -218,7 +218,10 @@ function postJob ({
       reject(error)
     })
 
-    thread[channel].postMessage({ name: jobName, data: jobData }, transfer)
+    thread[channel].postMessage(
+      { name: jobName, data: JSON.parse(JSON.stringify(jobData)) },
+      transfer
+    )
   }).catch(console.error)
 }
 

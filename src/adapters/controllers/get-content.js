@@ -80,7 +80,7 @@ export default function getContent (httpRequest, content, defaultTitle) {
           <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
           <title>${title}</title>
           <div class="w3-container w3-amber">
-            <a href="/index.html"> <img src="/aegis-logo.png" alt="aegis" width="65" height="65" style="font: x-large" /><b>ÆGIS</b> Federated Microservices</a>
+            <a href="/index.html"> <img src="/aegis-logo.png" alt="aegis" width="65" height="65" style="font: xx-large" /><b>ÆGIS</b> Federated Microservices</a>
           </div> 
           <style>
             a:link {
@@ -107,10 +107,10 @@ export default function getContent (httpRequest, content, defaultTitle) {
           </style>
           </head>                     
           <body>
-          <div class="w3-container w3-light-gray">`
+          <div class="w3-container w3-dark-gray">`
 
       contents.forEach(function (content) {
-        text += `<div class="spacer"><table class="w3-table-all w3-hoverable w3-left-align">`
+        text += `<div class="w3-padding-16"><table class="w3-table w3-bordered w3-border w3-hover-grey w3-hoverable w3-hover-border-amber">`
         text += `<tr><th>key</th><th>value</th></tr>`
         Object.keys(content).forEach(key => {
           let val = content[key]
@@ -130,7 +130,7 @@ export default function getContent (httpRequest, content, defaultTitle) {
        * and worker threads, display links to the thread
        * equivalent of the main content.
        *
-       * E.g. Both the main and worker threads have events 
+       * E.g. Both the main and worker threads have events
        * but subcribe to different ones depending on the
        * application code running in the thread.
        */
