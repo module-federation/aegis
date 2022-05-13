@@ -1,6 +1,5 @@
 'use strict'
 
-import { stringify } from 'querystring'
 import DataSource from '../../domain/datasource'
 
 /**
@@ -30,18 +29,7 @@ export class DataSourceMemory extends DataSource {
       })
     }
     return this.saveSync(id, data)
-  }
-
-  saveSync (id, data) {
-    try {                                                                                                            
-      this.dsMap.set(id, data)
-      return data
-    } catch (error) {}
-  }
-
-  /**
-   * @override
-   */
+  } 
   async find (id) {
     return this.findSync(id)
   }

@@ -123,7 +123,7 @@ const Model = (() => {
 
   /**
    * Add data and functions that support framework services.
-   * @param {{
+   * @paramn {{
    *  model:Model,
    *  args:*,
    *  spec:import('./index').ModelSpecification
@@ -137,6 +137,7 @@ const Model = (() => {
         onDelete = defaultOnDelete,
         validate = defaultValidate,
         ports,
+
         broker,
         modelName,
         datasource,
@@ -341,7 +342,7 @@ const Model = (() => {
        * @param {{key1, keyN}} filter
        * @returns {Model[]}
        */
-      async list(filter, cache = false) {
+      async list(filter, cache = true) {
         return datasource.list(filter, cache)
       },
 

@@ -2,8 +2,6 @@ import fs from 'fs'
 import path from 'path'
 import { DataSourceMemory } from './datasource-memory'
 
-const dirPath = process.env.DATASOURCE_DIRECTORY
-
 /**
  * Persistent storage on filesystem
  */
@@ -11,11 +9,12 @@ export class DataSourceFile extends DataSourceMemory {
   /**
    * @param {Set} map
    */
-  constructor (map, factory, name) {
-    super(d, factory, name)
+  constructor(map, factory, name) {
+    super(map, factory, name)
+    this.file = this.getFilePath()
   }
 
-  getFilePath () {
+  getFilePath() {
     return path.resolve(process.cwd(), 'public', `${this.name}.json`)
   }
   /**
@@ -25,54 +24,59 @@ export class DataSourceFile extends DataSourceMemory {
    *  serializer:import("../../domain/serializer").Serializer,
    * }} param0
    */
-  async load ({ hydrate, serializer }) {
-    this.file = this.getFilePath()
+  async load({ hydrate, serializer }) {
     console.log('path to filesystem storage:', this.file)
     this.serializer = serializer
     this.dsMap = this.readFile(hydrate)
   }
 
-  replace (key, value) {
+  replace(key, value) {
     if (value && this.serializer) {
       return this.serializer.serialize(key, value)
     }
     return value
   }
 
-  revive (key, value) {
+  revive(key, value) {
     if (value && this.serializer) {
       return this.serializer.deserialize(key, value)
     }
     return value
   }
 
-  writeFile () {
+  writeFile() {
     try {
-      const dataStr = JSON.stringify([...this.dsMap], this.replace)
+      const dataStr = JSON.stringify(this.dsMap.map(v => v), this.replace)
+
       fs.writeFileSync(this.file, dataStr)
     } catch (error) {
-      console.error(error)
+      console.error({ fn: this.writeFile.name, path: this.file, error })
     }
   }
 
   /**
    *
    */
-  readFile (hydrate) {
+  readFile(hydrate) {
     if (fs.existsSync(this.file)) {
       const models = fs.readFileSync(this.file, 'utf-8')
       if (models) {
-        return hydrate(new Map(JSON.parse(models, this.revive)))
+        JSON.parse(models, this.revive).forEach(
+          ([k, v]) => this.dsMap.set(k, v)
+        )
       }
     }
-    return new Map()
+    return this.dsMap
   }
 
+  findSync(id) {
+    return super.findSync(id)
+  }
   /**
    * @override
    * @param {*} id
    */
-  async delete (id) {
+  async delete(id) {
     await super.delete(id)
     this.writeFile()
   }
@@ -82,13 +86,13 @@ export class DataSourceFile extends DataSourceMemory {
    * @param {*} id
    * @param {*} data
    */
-  async save (id, data) {
+  async save(id, data) {
     const ds = await super.save(id, data)
     this.writeFile()
     return ds
   }
 
-  close () {
+  close() {
     this.writeFile()
   }
 }
