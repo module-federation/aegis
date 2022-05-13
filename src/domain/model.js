@@ -101,7 +101,7 @@ const Model = (() => {
   const defaultValidate = (model, changes) => defaultOnUpdate(model, changes)
 
   // caller can skip vadlidation, which is on by default
-  const optionalValidation = (model, changes, option = true) => {
+  const validateUpdates = (model, changes, option = true) => {
     if (option) return model[VALIDATE](changes, eventMask.update)
     return {
       ...model,
@@ -253,7 +253,7 @@ const Model = (() => {
        * @param {boolean} validate - run validation by default
        */
       async update (changes, validate = true) {
-        const delta = optionalValidation(this, changes, validate)
+        const delta = validateUpdates(this, changes, validate)
         const saved = await datasource.find(delta[ID])
 
         // merge changes with latest known version
