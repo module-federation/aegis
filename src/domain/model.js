@@ -282,24 +282,26 @@ const Model = (() => {
           [UPDATETIME]: Date.now()
         })
 
-        const final = rehydate(merge)
+        const final = rehydrate(merge)
         queueNotice(final)
         return final
       },
 
       /**
-       * Synchronous version of {@link update}. 
+       * Synchronous version of {@link Model.update}. 
        * Only updates cache. External storage is 
        * not updated and no event is sent. 
        * 
        * Useful for:
        * - immediate cache update
        * - controlling when/if event is sent
-       * - calling remote storage with custom adapter  
+       * - calling external storage with custom adapter  
        * 
        * Consider situations in which the point is not
        * to persist data, but to share it with other
-       * application components, as is done in workflow.
+       * application components, as is done in workflow
+       * or between local related model threads, which 
+       * use shared memory.
        * 
        * @param {*} changes 
        * @param {boolean} validate 
@@ -318,7 +320,7 @@ const Model = (() => {
         })
 
         // restore prototype if used
-        return rehydate(merge)
+        return rehydrate(merge)
       },
 
       /**
