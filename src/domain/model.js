@@ -253,13 +253,13 @@ const Model = (() => {
        * @param {boolean} validate - run validation by default
        */
       async update (changes, validate = true) {
-        const delta = validateUpdates(this, changes, validate)
-        const saved = await datasource.find(delta[ID])
+        const valid = validateUpdates(this, changes, validate)
+        const saved = await datasource.find(this[ID])
 
         // merge changes with latest known version
-        const merge = await datasource.save(delta[ID], {
+        const merge = await datasource.save(this[ID], {
           ...saved,
-          ...delta,
+          ...valid,
           [UPDATETIME]: Date.now()
         })
 
