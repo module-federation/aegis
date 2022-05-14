@@ -249,13 +249,13 @@ const Model = (() => {
        * with the new keyword, we have to 
        * restore its prototype.
        * 
-       * @param {} updatedModel 
+       * @param {} clonedModel 
        * @returns 
        */
-      rehydrate(updatedModel) {
+      rehydrate(clonedModel) {
         return model.prototype
-          ? Object.setPrototypeOf(updatedModel, model.prototype)
-          : updatedModel
+          ? Object.setPrototypeOf(clonedModel, model.prototype)
+          : clonedModel
       },
 
       /**
