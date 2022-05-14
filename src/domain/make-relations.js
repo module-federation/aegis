@@ -49,19 +49,7 @@ export const relationType = {
 
 const referentialIntegrity = {
   [relationType.manyToOne.name](fromModel, toModels, relation, ds) {
-    const dsFrom = ds.getFactory().getDataSource(fromModel.getName())
-    const latest = dsFrom.findSync(fromModel.getId())
-    const update = { ...latest, [relation.foreignKey]: toModels[0].getId() }
-    dsFrom.saveSync(fromModel.getId(), update)
-    // setTimeout(
-    //   () =>
-    //     dsFrom.saveSync(fromModel.getId(), {
-    //       ...dsFrom.findSync(fromModel.getId()),
-    //       [relation.foreignKey]: toModels[0].getId()
-    //     }),
-    //   1000
-    // )
-    return update
+    fromModel.updateSync({ [relation.foreignKey]: toModels[0].getId() }, false)
   },
 
   [relationType.oneToOne.name](fromModel, toModels, relation, ds) {
@@ -69,15 +57,13 @@ const referentialIntegrity = {
   },
 
   [relationType.oneToMany.name](fromModel, toModels, relation, ds) {
-    return Promise.allSettled(
-      toModels.map(m => {
-        const model = ds.findSync(m.id)
-        ds.saveSync({
-          ...model,
-          [relation.foreignKey]: fromModel.getId()
-        })
+    toModels.map(m => {
+      const model = ds.findSync(m.id)
+      ds.saveSync({
+        ...model,
+        [relation.foreignKey]: fromModel.getId()
       })
-    )
+    })
   },
 
   [relationType.containsMany.name](fromModel, toModels, relation, ds) { }
@@ -146,7 +132,7 @@ export function requireRemoteObject(model, relation, broker, ...args) {
   const name = (model ? model.getName() : relation.modelName).toUpperCase()
   const id = model ? model.getId() : relation.id
   const eventSource = name
-  const eventTarget = model ? relation.modelName.toUpperCase() : null
+  const eventTarget = model  ?relation.modelName.toUpperCase() : null
 
   const requestData = {
     eventName: request,
