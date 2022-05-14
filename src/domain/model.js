@@ -332,7 +332,7 @@ const Model = (() => {
        * @returns {Model[]}
        */
       listSync(filter) {
-        return datasource.listSync(filter)
+        return this.filter(query, [...this.dsMap.values()])
       },
 
       /**

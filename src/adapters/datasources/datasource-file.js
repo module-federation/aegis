@@ -27,7 +27,7 @@ export class DataSourceFile extends DataSourceMemory {
   async load({ hydrate, serializer }) {
     console.log('path to filesystem storage:', this.file)
     this.serializer = serializer
-    this.dsMap = this.readFile(hydrate)
+    this.readFile(hydrate)
   }
 
   replace(key, value) {
@@ -72,6 +72,7 @@ export class DataSourceFile extends DataSourceMemory {
   findSync(id) {
     return super.findSync(id)
   }
+  
   /**
    * @override
    * @param {*} id

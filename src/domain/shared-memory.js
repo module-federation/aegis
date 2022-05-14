@@ -43,9 +43,9 @@ const SharedMemoryMixin = superclass =>
         if (!id) return console.log('no id provided')
         const data = this.dsMap.has(id)
           ? JSON.parse(this.dsMap.get(id))
-          : AppError('no such id')
+          : null
 
-        return isMainThread || data.hasError()
+        return isMainThread
           ? data
           : ModelFactory.loadModel(broker, this, data, this.name)
 
@@ -56,14 +56,10 @@ const SharedMemoryMixin = superclass =>
 
     /**
      * @override
-     * @returns {import('.').Model[]}
+     * @returns 
      */
-    listSync(query) {
-      return this.filter(query, this.dsMap.map(v => JSON.parse(v)))
-    }
-
-    filter(query, list) {
-
+    listValues() {
+      return this.dsMap.map(v => JSON.parse(v))
     }
 
     /**
@@ -93,7 +89,7 @@ function findSharedMap(name) {
   }
 }
 
-function rehydrateSharedMap(name){
+function rehydrateSharedMap(name) {
   const sharedMap = findSharedMap(name)
   if (sharedMap) return Object.setPrototypeOf(sharedMap, SharedMap.prototype)
 }
