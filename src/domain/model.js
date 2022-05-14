@@ -122,6 +122,24 @@ const Model = (() => {
   }
 
   /**
+      * Because it is immutable, a model
+      * becomes a shallow clone the first
+      * time it is updated. Therefore, if
+      * the model is a class, uses 
+      * inheritance, or is instantiate 
+      * with the new keyword, we have to 
+      * restore its prototype.
+      * 
+      * @param {} clonedModel 
+      * @returns 
+      */
+  function rehydrate(clonedModel, model) {
+    return model.prototype
+      ? Object.setPrototypeOf(clonedModel, model.prototype)
+      : clonedModel
+  }
+
+  /**
    * Add data and functions that support framework services.
    * @paramn {{
    *  model:Model,
@@ -241,24 +259,6 @@ const Model = (() => {
       /** @typedef {import('./serializer.js').Serializer} Serializer */
 
       /**
-       * Because it is immutable, a model
-       * becomes a shallow clone the first
-       * time it is updated. Therefore, if
-       * the model is a class, uses 
-       * inheritance, or is instantiate 
-       * with the new keyword, we have to 
-       * restore its prototype.
-       * 
-       * @param {} clonedModel 
-       * @returns 
-       */
-      rehydrate(clonedModel) {
-        return model.prototype
-          ? Object.setPrototypeOf(clonedModel, model.prototype)
-          : clonedModel
-      },
-
-      /**
        * Concurrency strategy is to merge changes with
        * last saved copy; so {@link changes} should include
        * only the subset of properties that are changing.
@@ -283,7 +283,7 @@ const Model = (() => {
           [UPDATETIME]: Date.now()
         })
 
-        const final = rehydrate(merge)
+        const final = rehydrate(merge, model)
         queueNotice(final)
         return final
       },
@@ -306,7 +306,7 @@ const Model = (() => {
        * 
        * @param {*} changes 
        * @param {boolean} validate 
-       * @returns 
+       * @returns {Model}
        */
       async updateSync(changes, validate = true) {
         // get the last saved version
@@ -321,7 +321,7 @@ const Model = (() => {
         })
 
         // restore prototype if used
-        return rehydrate(merge)
+        return rehydrate(merge, model)
       },
 
       /**
