@@ -8,6 +8,7 @@ tasks:
       git clone https://github.com/module-federation/aegis-host
       cd aegis-host
       cp dotenv.example .env
+      yarn link @module-federation/aegis
       yarn
       yarn build
   - command: cd /workspace/aegis-host && yarn start
