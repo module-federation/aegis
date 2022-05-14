@@ -95,11 +95,11 @@ export default class DataSource {
    * @returns 
    */
   listSync(query) {
-    const values = this.listValues()
-    return query ? this.filter(query, values) : values
+    const list = this.generateList()
+    return query ? this.filterList(query, list) : list
   }
 
-  listValues() {
+  generateList() {
     return [...this.dsMap.values()]
   }
 
@@ -108,22 +108,22 @@ export default class DataSource {
    * @param {*} query 
    * @returns 
    */
-  filter(query, values) {
+  filterList(query, list) {
     if (query) {
       const count = query['count']
       if (count && !Number.isNaN(parseInt(count))) {
-        return values.splice(0, count)
+        return list.splice(0, count)
       }
 
       const keys = Object.keys(query)
 
       if (keys.length > 0) {
-        return values.filter(v =>
+        return list.filter(v =>
           keys.every(k => (v[k] ? query[k] === v[k] : false))
         )
       }
     }
-    return values
+    return list
   }
 
   /**

@@ -58,7 +58,7 @@ const SharedMemoryMixin = superclass =>
      * @override
      * @returns 
      */
-    listValues() {
+    generateList() {
       return this.dsMap.map(v => JSON.parse(v))
     }
 
