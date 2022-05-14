@@ -140,6 +140,7 @@
  * @property {string} modelName name of model (case-insenstive)
  * @property {string} endpoint URI reference (e.g. plural of `modelName`)
  * @property {function(...args): any} factory factory function that creates model instance
+ * @property {function()} [prototype] If the model has a protoype
  * @property {object} [dependencies] injected into the model for dependency and control inversion
  * @property {Array<import("./mixins").functionalMixin>} [mixins] favor functional composition over inheritance
  * to implement reusable domain logic, like input validation.

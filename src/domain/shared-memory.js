@@ -4,6 +4,7 @@ import SharedMap from 'sharedmap'
 import ModelFactory from '.'
 import { isMainThread, workerData } from 'worker_threads'
 import { EventBrokerFactory } from '.'
+import AppError from './util/app-error'
 
 const broker = EventBrokerFactory.getInstance()
 
@@ -12,20 +13,6 @@ const MAPSIZE = 2048 * 56
 const KEYSIZE = 32
 const OBJSIZE = 4056
 
-const dataType = {
-  save: {
-    string: x => x,
-    object: x => JSON.stringify(x),
-    number: x => x,
-    undefined: x => `${typeof x}`
-  },
-  find: {
-    string: x => JSON.parse(x),
-    object: x => x,
-    number: x => x,
-    undefined: x => x
-  }
-}
 /** @typedef {import('./datasource-factory').default} DataSourceFactory */
 
 /**
@@ -41,8 +28,8 @@ const SharedMemoryMixin = superclass =>
      * @override
      * @returns {import('.').Model}
      */
-    saveSync (id, data) {
-      return super.saveSync(id, dataType.save[typeof data](data))
+    saveSync(id, data) {
+      return this.dsMap.set(id, JSON.stringify(data))
     }
 
     /**
@@ -51,12 +38,17 @@ const SharedMemoryMixin = superclass =>
      * @param {*} id
      * @returns {import('.').Model}
      */
-    findSync (id) {
+    findSync(id) {
       try {
         if (!id) return console.log('no id provided')
-        const data = super.findSync(id)
-        const data2 = dataType.find[typeof data](data)
-        return ModelFactory.loadModel(broker, this, data2, this.name)
+        const data = this.dsMap.has(id)
+          ? JSON.parse(this.dsMap.get(id))
+          : null
+
+        return isMainThread
+          ? data
+          : ModelFactory.loadModel(broker, this, data, this.name)
+
       } catch (error) {
         console.error({ fn: this.findSync.name, error })
       }
@@ -64,9 +56,9 @@ const SharedMemoryMixin = superclass =>
 
     /**
      * @override
-     * @returns {import('.').Model[]}
+     * @returns 
      */
-    _listSync () {
+    listValues() {
       return this.dsMap.map(v => JSON.parse(v))
     }
 
@@ -74,7 +66,7 @@ const SharedMemoryMixin = superclass =>
      * @override
      * @returns {number}
      */
-    count () {
+    count() {
       return this.dsMap.length
     }
   }
@@ -84,29 +76,29 @@ const SharedMemoryMixin = superclass =>
  * @param {string} name i.e. modelName
  * @returns {SharedMap}
  */
-function findSharedMap (name) {
+function findSharedMap(name) {
   try {
     if (name === workerData.modelName) return workerData.sharedMap
-
     if (workerData.dsRelated?.length > 0) {
       const dsRel = workerData.dsRelated.find(ds => ds.modelName === name)
-      if (dsRel) {
-        return dsRel.dsMap
-      }
+      if (dsRel) return dsRel.dsMap
     }
-    return new Map()
+    return null
   } catch (error) {
     console.warn(error)
   }
 }
 
-function createSharedMap (mapsize, keysize, objsize, name) {
+function rehydrateSharedMap(name) {
+  const sharedMap = findSharedMap(name)
+  if (sharedMap) return Object.setPrototypeOf(sharedMap, SharedMap.prototype)
+}
+
+function createSharedMap(mapsize, keysize, objsize, name) {
   try {
-    return isMainThread
-      ? Object.assign(new SharedMap(mapsize, keysize, objsize), {
-          modelName: name // assign modelName
-        })
-      : Object.setPrototypeOf(findSharedMap(name), SharedMap.prototype)
+    return Object.assign(new SharedMap(mapsize, keysize, objsize), {
+      modelName: name // assign modelName
+    })
   } catch (error) {
     console.error(error)
   }
@@ -121,7 +113,7 @@ function createSharedMap (mapsize, keysize, objsize, name) {
  * @param {import('./datasource-factory').dsOpts} options
  * @returns {import('./datasource').default}
  */
-export function withSharedMemory (
+export function withSharedMemory(
   createDataSource,
   factory,
   name,
@@ -132,7 +124,9 @@ export function withSharedMemory (
   const objsize = options.objsize || OBJSIZE
 
   // use thread-safe shared map
-  const sharedMap = createSharedMap(mapsize, keysize, objsize, name)
+  const sharedMap = isMainThread
+    ? createSharedMap(mapsize, keysize, objsize, name)
+    : rehydrateSharedMap(name)
 
   if (sharedMap instanceof SharedMap)
     return createDataSource.call(factory, name, {
@@ -140,7 +134,7 @@ export function withSharedMemory (
       dsMap: sharedMap,
       mixins: [
         DsClass =>
-          class DataSourceSharedMemory extends SharedMemoryMixin(DsClass) {}
+          class DataSourceSharedMemory extends SharedMemoryMixin(DsClass) { }
       ].concat(options.mixins)
     })
 
