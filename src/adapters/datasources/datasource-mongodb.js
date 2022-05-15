@@ -30,15 +30,14 @@ export class DataSourceMongoDb extends DataSourceMemory {
     this.url = url
   }
 
-  async connection () {
+  async connection() {
     try {
       if (!connections.has(this.url)) {
         const client = new MongoClient(this.url, this.options)
-        client.on('connectionReady', () => console.log('mongo conn ready'))
-        client.on('connectionClosed', () => connections.delete(this.url))
         await client.connect()
         connections.set(this.url, client)
-        return client
+        client.on('connectionReady', () => console.log('mongo conn ready'))
+        client.on('connectionClosed', () => connections.delete(this.url))
       }
       return connections.get(this.url)
     } catch (error) {
@@ -46,7 +45,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
     }
   }
 
-  async collection () {
+  async collection() {
     try {
       return (await this.connection()).db(this.name).collection(this.name)
     } catch (error) {
@@ -61,7 +60,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
    *  serializer:import("../../lib/serializer").Serializer
    * }} options
    */
-  load ({ hydrate, serializer }) {
+  load({ hydrate, serializer }) {
     try {
       this.hydrate = hydrate
       this.serializer = serializer
@@ -71,22 +70,13 @@ export class DataSourceMongoDb extends DataSourceMemory {
     }
   }
 
-  async loadModels () {
-    try {
-      const cursor = (await this.collection()).find().limit(this.cacheSize)
-      cursor.forEach(model => super.saveSync(model.id, model))
-    } catch (error) {
-      console.error({ fn: this.loadModels.name, error })
-    }
-  }
-
-  async findDb (id) {
+  async findDb(id) {
     try {
       const model = await (await this.collection()).findOne({ _id: id })
       // add to the cache and return it
-      // const hydratedModel = this.hydrate(model)
-      return super.saveSync(id, model)
-      //return hydratedModel
+      const hydratedModel = this.hydrate(model)
+      super.saveSync(id, hydratedModel) // save to cache
+      return hydratedModel
     } catch (error) {
       console.error({ fn: this.findDb.name, error })
     }
@@ -97,7 +87,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
    * @overrid
    * @param {*} id - `Model.id`
    */
-  async find (id) {
+  async find(id) {
     try {
       const cached = super.findSync(id)
       if (!cached) return this.findDb(id)
@@ -107,7 +97,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
     }
   }
 
-  serialize (data) {
+  serialize(data) {
     if (this.serializer) {
       return JSON.stringify(data, this.serializer.serialize)
     }
@@ -137,7 +127,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
    * @param {*} id
    * @param {*} data
    */
-  async save (id, data) {
+  async save(id, data) {
     try {
       super.saveSync(id, data)
       await this.saveDb(id, data)
@@ -152,7 +142,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
    * @param {{key1:string, keyN:string}} filter - e.g. http query
    * @param {boolean} cached - use the cache if true, otherwise go to db.
    */
-  async list (filter = null, cached = true) {
+  async list(filter = null, cached = true) {
     try {
       if (cached) return super.listSync(filter)
       /** @todo use a stream */
@@ -169,7 +159,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
    * @override
    * @param {*} id
    */
-  async delete (id) {
+  async delete(id) {
     try {
       await (await this.collection()).deleteOne({ _id: id })
       super.deleteSync(id)
@@ -181,7 +171,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
   /**
    * Flush the cache to disk.
    */
-  flush () {
+  flush() {
     try {
       this.dsMap.reduce((a, b) => a.then(() => this.saveDb(b.getId(), b)), {})
     } catch (error) {
@@ -193,7 +183,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
    * Process terminating, flush cache, close connections.
    * @override
    */
-  close () {
+  close() {
     this.flush()
     this.client.close()
   }
