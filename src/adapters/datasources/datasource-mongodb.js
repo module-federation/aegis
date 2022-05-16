@@ -152,11 +152,11 @@ export class DataSourceMongoDb extends DataSourceMemory {
   }
 
   /**
-   * If `cached` is `false`, pipe db object stream to tranform.
-   * Add opening array bracket, serialize each record, apply filter,
+   * If `cached` is `false`, pipe filtered db object stream 
+   * to tranform. Add opening array bracket, serialize each record,
    * and finally add closing array bracket at end of stream. With
    * streams, we can support queries of very large tables, with 
-   * minimal memory usage on the node server.
+   * minimal memory overhead on the node server.
    * 
    * @override
    * @param {WritableStream} writeable - writeable stream
@@ -164,10 +164,10 @@ export class DataSourceMongoDb extends DataSourceMemory {
    * @param {boolean} cached - use cache if true, otherwise go to db.
    */
   async list(writeable, filter = null, cached = false) {
-    if (cached) return super.list(filter)
+    if (cached) return super.list(null, filter, true)
 
     let first = true
-    const transform = new Transform({
+    const serialize = new Transform({
       writableObjectMode: true,
 
       // start of array
@@ -178,18 +178,12 @@ export class DataSourceMongoDb extends DataSourceMemory {
 
       // each chunk is a record
       transform(chunk, encoding, callback) {
-        // apply filter
-        if (!Object.keys(filter).every(
-          k => chunk[k] && chunk[k] === filter[k])
-        ) return
-
         // comma-separate
         if (first) first = false
         else this.push(',')
 
         // serialize record
         this.push(JSON.stringify(chunk))
-
         callback()
       },
 
@@ -201,11 +195,11 @@ export class DataSourceMongoDb extends DataSourceMemory {
     })
 
     return new Promise(async (resolve, reject) => {
-      const readable = (await this.collection()).find().stream()
+      const readable = (await this.collection()).find(filter).stream()
       readable.on('error', reject)
       readable.on('end', resolve)
       // transform db stream then pipe to output
-      readable.pipe(transform).pipe(writeable)
+      readable.pipe(serialize).pipe(writeable)
     })
   }
 

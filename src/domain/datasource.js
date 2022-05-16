@@ -173,7 +173,7 @@ export default class DataSource {
    * @returns 
    */
   getCacheSizeBytes() {
-    return this.count() * roughSizeOfObject(this.findSync({ count: 1 }))
+    return this.count() * roughSizeOfObject(this.listSync({ count: 1 }))
   }
 
   /**

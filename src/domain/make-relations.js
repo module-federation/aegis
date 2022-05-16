@@ -9,9 +9,6 @@ const {
 
 const maxwait = process.env.REMOTE_OBJECT_MAXWAIT || 6000
 
-// export const localDatasources = modelName =>
-//   findLocalRelatedDatasources(modelName)
-
 export const relationType = {
   /**
    *
@@ -20,7 +17,7 @@ export const relationType = {
    * @param {import("./index").relations[relation]} rel
    */
   oneToMany: async (model, ds, rel) => {
-    return ds.list({ [rel.foreignKey]: model.getId() })
+    return ds.list(null, { [rel.foreignKey]: model.getId() }, true)
   },
   /**
    *
@@ -67,11 +64,6 @@ const referentialIntegrity = {
   },
 
   [relationType.containsMany.name](fromModel, toModels, relation, ds) { }
-
-  // [relationType.manyToMany.name] (fromModel, toModel, relation, ds) {
-  //   fromModel[relation.arrayKey].map(k => ds.findSync(fromModel.getId()),
-  //   [relation.foreignKey]: toModels[0].getId())
-  // }
 }
 
 /**
@@ -121,18 +113,10 @@ export function requireRemoteObject(model, relation, broker, ...args) {
 
   console.debug({ fn: requireRemoteObject.name })
 
-  if (!model && relation.type !== 'findById') {
-    console.error({
-      fn: requireRemoteObject.name,
-      error: 'model param is dmissing'
-    })
-    return
-  }
-
   const name = (model ? model.getName() : relation.modelName).toUpperCase()
   const id = model ? model.getId() : relation.id
   const eventSource = name
-  const eventTarget = model  ?relation.modelName.toUpperCase() : null
+  const eventTarget = model ? relation.modelName.toUpperCase() : null
 
   const requestData = {
     eventName: request,
@@ -205,7 +189,7 @@ export default function makeRelations(relations, datasource, broker) {
                 ...args
               )
 
-              // each arg contains input to create a new object
+              // new models: update foreign keys
               if (event?.args?.length > 0)
                 updateForeignKeys(this, event.model, rel, ds)
 
