@@ -34,14 +34,14 @@ const dataType = {
  * @callback
  */
 const SharedMemoryMixin = superclass =>
-  class extends superclass {                                                                               
+  class extends superclass {
 
     /**
      * @override
      * @returns {import('.').Model}
      */
     saveSync(id, data) {
-      return this.dsMap.set(id, dataType.in[typeof data](data))
+      return this.dsMap.set(id, JSON.stringify(data))
     }
 
     /**
@@ -53,14 +53,14 @@ const SharedMemoryMixin = superclass =>
     findSync(id) {
       try {
         if (!id) return console.log('no id provided')
-        const data = this.dsMap.get(id)
+        const data = JSON.parse(this.dsMap.get(id))
 
         return isMainThread
           ? data
           : ModelFactory.loadModel(
             broker,
             this,
-            dataType.out[typeof data](data),
+            data,
             this.name
           )
 

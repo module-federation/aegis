@@ -21,6 +21,8 @@ const options = {
   useUnifiedTopology: true
 }
 
+
+
 /**
  * MongoDB adapter extends in-memory datasource to support caching.
  * The cache is always updated first, which allows the system to run
@@ -150,10 +152,16 @@ export class DataSourceMongoDb extends DataSourceMemory {
   }
 
   /**
+   * If `cached` is `false`, pipe db object stream to tranform.
+   * Add opening array bracket, serialize each record, apply filter,
+   * and finally add closing array bracket at end of stream. With
+   * streams, we can support queries of very large tables, with 
+   * minimal memory usage on the node server.
+   * 
    * @override
-   * @param {WritableStream} writeable
-   * @param {{key1:string, keyN:string}} filter - e.g. http query
-   * @param {boolean} cached - use the cache if true, otherwise go to db.
+   * @param {WritableStream} writeable - writeable stream
+   * @param {{key1:string, keyN:string}} filter - e.g. from http query
+   * @param {boolean} cached - use cache if true, otherwise go to db.
    */
   async list(writeable, filter = null, cached = false) {
     if (cached) return super.list(filter)
@@ -162,18 +170,30 @@ export class DataSourceMongoDb extends DataSourceMemory {
     const transform = new Transform({
       writableObjectMode: true,
 
+      // start of array
       construct(callback) {
         this.push('[')
         callback()
       },
 
+      // each chunk is a record
       transform(chunk, encoding, callback) {
+        // apply filter
+        if (!Object.keys(filter).every(
+          k => chunk[k] && chunk[k] === filter[k])
+        ) return
+
+        // comma-separate
         if (first) first = false
         else this.push(',')
+
+        // serialize record
         this.push(JSON.stringify(chunk))
+
         callback()
       },
 
+      // end of array
       flush(callback) {
         this.push(']')
         callback()
@@ -184,6 +204,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
       const readable = (await this.collection()).find().stream()
       readable.on('error', reject)
       readable.on('end', resolve)
+      // transform db stream then pipe to output
       readable.pipe(transform).pipe(writeable)
     })
   }
