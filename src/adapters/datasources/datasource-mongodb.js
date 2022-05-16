@@ -97,7 +97,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
    * @overrid
    * @param {*} id - `Model.id`
    */
-  async find(id) { 
+  async find(id) {
     try {
       const cached = await super.find(id)
       if (!cached) return this.findDb(id)
@@ -156,6 +156,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
    * @param {boolean} cached - use the cache if true, otherwise go to db.
    */
   async list(writeable, filter = null, cached = false) {
+    let first = true
     const transform = new Transform({
       writableObjectMode: true,
 
@@ -165,6 +166,8 @@ export class DataSourceMongoDb extends DataSourceMemory {
       },
 
       transform(chunk, encoding, callback) {
+        if (first) first = false
+        else this.push(',')
         this.push(JSON.stringify(chunk))
         callback()
       },
