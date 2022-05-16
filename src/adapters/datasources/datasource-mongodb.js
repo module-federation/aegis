@@ -1,7 +1,11 @@
 'use strict'
 
+import { write } from 'fs'
+import { Stream } from 'stream'
+
 const MongoClient = require('mongodb').MongoClient
 const DataSourceMemory = require('./datasource-memory').DataSourceMemory
+const { Transform } = require('stream')
 
 const url = process.env.MONGODB_URL || 'mongodb://localhost:27017'
 const configRoot = require('../../config').hostConfig
@@ -23,7 +27,7 @@ const options = {
  * even when the database is offline.
  */
 export class DataSourceMongoDb extends DataSourceMemory {
-  constructor (map, factory, name) {
+  constructor(map, factory, name) {
     super(map, factory, name)
     this.cacheSize = cacheSize
     this.options = options
@@ -70,13 +74,19 @@ export class DataSourceMongoDb extends DataSourceMemory {
     }
   }
 
+  async loadModels() {
+    try {
+      const cursor = (await this.collection()).find().limit(this.cacheSize)
+      cursor.forEach(model => super.save(model.id, model))
+    } catch (error) {
+      console.error({ fn: this.loadModels.name, error })
+    }
+  }
+
   async findDb(id) {
     try {
-      const model = await (await this.collection()).findOne({ _id: id })
-      // add to the cache and return it
-      const hydratedModel = this.hydrate(model)
-      super.saveSync(id, hydratedModel) // save to cache
-      return hydratedModel
+      return (await this.collection()).findOne({ _id: id })
+      // return super.save(id, model)
     } catch (error) {
       console.error({ fn: this.findDb.name, error })
     }
@@ -87,9 +97,9 @@ export class DataSourceMongoDb extends DataSourceMemory {
    * @overrid
    * @param {*} id - `Model.id`
    */
-  async find(id) {
+  async find(id) { 
     try {
-      const cached = super.findSync(id)
+      const cached = await super.find(id)
       if (!cached) return this.findDb(id)
       return cached
     } catch (error) {
@@ -104,7 +114,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
     return JSON.stringify(data)
   }
 
-  async saveDb (id, data) {
+  async saveDb(id, data) {
     try {
       const clone = JSON.parse(this.serialize(data))
       await (await this.collection()).replaceOne(
@@ -129,9 +139,11 @@ export class DataSourceMongoDb extends DataSourceMemory {
    */
   async save(id, data) {
     try {
-      super.saveSync(id, data)
-      await this.saveDb(id, data)
-      return data
+      const [cache, db] = await Promise.all([
+        super.save(id, data),
+        this.saveDb(id, data)
+      ])
+      return cache || db
     } catch (error) {
       console.error({ fn: this.save.name, error })
     }
@@ -139,17 +151,38 @@ export class DataSourceMongoDb extends DataSourceMemory {
 
   /**
    * @override
+   * @param {WritableStream} writeable
    * @param {{key1:string, keyN:string}} filter - e.g. http query
    * @param {boolean} cached - use the cache if true, otherwise go to db.
    */
-  async list(filter = null, cached = true) {
-    try {
-      if (cached) return super.listSync(filter)
-      /** @todo use a stream */
-      return await (await this.collection()).find().toArray()
-    } catch (error) {
-      console.error({ fn: this.list.name, error })
-    }
+  async list(writeable, filter = null, cached = false) {
+    const transform = new Transform({
+      writableObjectMode: true,
+
+      construct(callback) {
+        this.push('[')
+        callback()
+      },
+
+      transform(chunk, encoding, callback) {
+        this.push(JSON.stringify(chunk))
+        callback()
+      },
+
+      flush(callback) {
+        this.push(']')
+        callback()
+      }
+    })
+
+    if (cached) return super.list(filter)
+
+    return new Promise(async (resolve, reject) => {
+      const readable = (await this.collection()).find().stream()
+      readable.on('error', reject)
+      readable.on('end', resolve)
+      readable.pipe(transform).pipe(writeable)
+    })
   }
 
   /**
@@ -162,7 +195,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
   async delete(id) {
     try {
       await (await this.collection()).deleteOne({ _id: id })
-      super.deleteSync(id)
+      super.delete(id)
     } catch (error) {
       console.error(error)
     }
@@ -185,6 +218,6 @@ export class DataSourceMongoDb extends DataSourceMemory {
    */
   close() {
     this.flush()
-    this.client.close()
   }
 }
+

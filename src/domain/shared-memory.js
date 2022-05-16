@@ -13,23 +13,35 @@ const MAPSIZE = 2048 * 56
 const KEYSIZE = 32
 const OBJSIZE = 4056
 
+const dataType = {
+  in: {
+    string: x => x,
+    object: x => JSON.stringify(x)
+  },
+  out: {
+    string: x => JSON.parse(x),
+    object: x => x
+  }
+}
+
 /** @typedef {import('./datasource-factory').default} DataSourceFactory */
 
 /**
  * compositional class mixin - so any class
  * in the hierarchy can use shared memory
  * @param {import('./datasource').default} superclass
- * @returns {import('./datasource').default} shared memory
+ * @returns {import('./datasource').default} s.hared memory
  * @callback
  */
 const SharedMemoryMixin = superclass =>
-  class extends superclass {
+  class extends superclass {                                                                               
+
     /**
      * @override
      * @returns {import('.').Model}
      */
     saveSync(id, data) {
-      return this.dsMap.set(id, JSON.stringify(data))
+      return this.dsMap.set(id, dataType.in[typeof data](data))
     }
 
     /**
@@ -41,13 +53,16 @@ const SharedMemoryMixin = superclass =>
     findSync(id) {
       try {
         if (!id) return console.log('no id provided')
-        const data = this.dsMap.has(id)
-          ? JSON.parse(this.dsMap.get(id))
-          : null
+        const data = this.dsMap.get(id)
 
         return isMainThread
           ? data
-          : ModelFactory.loadModel(broker, this, data, this.name)
+          : ModelFactory.loadModel(
+            broker,
+            this,
+            dataType.out[typeof data](data),
+            this.name
+          )
 
       } catch (error) {
         console.error({ fn: this.findSync.name, error })

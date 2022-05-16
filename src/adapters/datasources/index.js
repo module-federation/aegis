@@ -2,7 +2,7 @@ export * from './datasource-memory'
 export * from './datasource-file'
 export * from './datasource-mongodb'
 // export * from './datasource-ipfs'
-// export * from './datasource-solid-pod'
+// export * from './datasource-solidpod'
 
 import { DataSourceFile } from './datasource-file'
 import { DataSourceMemory } from './datasource-memory'
