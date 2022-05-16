@@ -4,7 +4,6 @@ import SharedMap from 'sharedmap'
 import ModelFactory from '.'
 import { isMainThread, workerData } from 'worker_threads'
 import { EventBrokerFactory } from '.'
-import AppError from './util/app-error'
 
 const broker = EventBrokerFactory.getInstance()
 
@@ -16,11 +15,13 @@ const OBJSIZE = 4056
 const dataType = {
   in: {
     string: x => x,
-    object: x => JSON.stringify(x)
+    object: x => JSON.stringify(x),
+    number: x => x
   },
   out: {
     string: x => JSON.parse(x),
-    object: x => x
+    object: x => x,
+    number: x => x
   }
 }
 
@@ -53,7 +54,8 @@ const SharedMemoryMixin = superclass =>
     findSync(id) {
       try {
         if (!id) return console.log('no id provided')
-        const data = JSON.parse(this.dsMap.get(id))
+        const raw = this.dsMap.get(id)
+        const data = dataType.out[typeof raw](raw)
 
         return isMainThread
           ? data

@@ -40,7 +40,7 @@ async function parseQuery(writeable, query, repository) {
     const dateFunc = DateFunctions[query.count]
 
     if (dateFunc) {
-      const list = await repository.list(writeable)
+      const list = await repository.list(null, null, true)
       return {
         count: dateFunc(list)
       }
@@ -50,9 +50,9 @@ async function parseQuery(writeable, query, repository) {
 
     if (searchTerms.length > 1) {
       const filter = { [searchTerms[0]]: searchTerms[1] }
-      const filteredList = await repository.list(null, filter, true)
-      
-      const result= {
+      const filteredList = await repository.list(null, null, true)
+
+      const result = {
         ...filter,
         count: filteredList.length
       }
@@ -61,11 +61,11 @@ async function parseQuery(writeable, query, repository) {
     }
 
     if (!Number.isNaN(parseInt(query.count))) {
-      return repository.list(writeable, query)
+      return repository.list(null, null, true)
     }
 
     return {
-      total: (await repository.list(writeable)).length,
+      total: (await repository.list(null, null, true)).length,
       cached: repository.count(),
       bytes: repository.getCacheSizeBytes()
     }

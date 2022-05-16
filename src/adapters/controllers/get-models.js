@@ -11,25 +11,24 @@ export default function getModelsFactory(listModels) {
     try {
       httpRequest.log(getModels.name)
 
-      /** @type {import('../../domain/model').Model[]}.*/
-      httpRequest.stream = true
       const writeable = httpRequest.res
       const query = httpRequest.query
-      return listModels({ writeable, query })
 
-      // const { content, contentType } = getContent(
-      //   httpRequest,
-      //   models,
-      //   models[0]?.modelName
-      // )
+      const models = await listModels({ writeable, query })
 
-      // return {
-      //   headers: {
-      //     'Content-Type': contentType
-      //   },
-      //   statusCode: 200,
-      //   body: content
-      // }
+      if (!models) {
+        httpRequest.stream = true
+        return
+      }
+      const { content, contentType } = getContent(httpRequest, models)
+
+      return {
+        headers: {
+          'Content-Type': contentType
+        },
+        statusCode: 200,
+        body: content
+      }
     } catch (e) {
       console.error(e)
 
