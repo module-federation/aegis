@@ -156,6 +156,8 @@ export class DataSourceMongoDb extends DataSourceMemory {
    * @param {boolean} cached - use the cache if true, otherwise go to db.
    */
   async list(writeable, filter = null, cached = false) {
+    if (cached) return super.list(filter)
+
     let first = true
     const transform = new Transform({
       writableObjectMode: true,
@@ -177,8 +179,6 @@ export class DataSourceMongoDb extends DataSourceMemory {
         callback()
       }
     })
-
-    if (cached) return super.list(filter)
 
     return new Promise(async (resolve, reject) => {
       const readable = (await this.collection()).find().stream()
