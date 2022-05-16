@@ -16,7 +16,10 @@
 /**
  * @param {httpController} controller
  */
-export default function buildCallback (controller) {
+export default function buildCallback(controller) {
+  /**
+   * @param {import("nats/lib/nats-base-client/types").StreamInfoRequestOptions}
+   */
   return async (req, res) => {
     const httpRequest = {
       body: req.body,
@@ -25,8 +28,8 @@ export default function buildCallback (controller) {
       ip: req.ip,
       method: req.method,
       path: req.path,
-      respond: res,
-      log (func) {
+      res: res,
+      log(func) {
         console.info({
           function: func,
           ip: httpRequest.ip,
@@ -40,6 +43,7 @@ export default function buildCallback (controller) {
 
     return controller(httpRequest)
       .then(httpResponse => {
+        if (httpRequest.stream) return
         if (httpResponse.headers) {
           res.set(httpResponse.headers)
         }

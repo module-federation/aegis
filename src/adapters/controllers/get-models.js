@@ -6,27 +6,30 @@ import getContent from './get-content'
  * @param {import("../use-cases/list-models").listModels} listModels
  * @returns {import("../adapters/http-adapter").httpController}
  */
-export default function getModelsFactory (listModels) {
-  return async function getModels (httpRequest) {
+export default function getModelsFactory(listModels) {
+  return async function getModels(httpRequest) {
     try {
       httpRequest.log(getModels.name)
 
       /** @type {import('../../domain/model').Model[]}.*/
-      const models = await listModels(httpRequest.query)
+      httpRequest.stream = true
+      const writeable = httpRequest.res
+      const query = httpRequest.query
+      return listModels({ writeable, query })
 
-      const { content, contentType } = getContent(
-        httpRequest,
-        models,
-        models[0]?.modelName
-      )
+      // const { content, contentType } = getContent(
+      //   httpRequest,
+      //   models,
+      //   models[0]?.modelName
+      // )
 
-      return {
-        headers: {
-          'Content-Type': contentType
-        },
-        statusCode: 200,
-        body: content
-      }
+      // return {
+      //   headers: {
+      //     'Content-Type': contentType
+      //   },
+      //   statusCode: 200,
+      //   body: content
+      // }
     } catch (e) {
       console.error(e)
 
