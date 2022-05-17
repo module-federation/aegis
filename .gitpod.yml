@@ -12,6 +12,6 @@ tasks:
       cd /workspace && rm -rf /tmp/mongodb && \
       sudo mkdir -p /workspace/db && \
       sudo chown gitpod:gitpod -R /workspace/db
-      mongod --dbpath /workspace/db
+      mongod --dbpath /workspace/db && \
       yarn && yarn build && yarn link
   - command: cd /workspace/aegis-host && yarn start
