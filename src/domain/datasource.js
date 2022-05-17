@@ -36,6 +36,7 @@ function roughSizeOfObject(...objects) {
  */
 export default class DataSource {
   constructor(map, factory, name) {
+    this.className = this.constructor.name
     this.dsMap = map
     this.factory = factory
     this.name = name
@@ -180,4 +181,8 @@ export default class DataSource {
    *
    */
   close() { }
+
+  getClassName () {
+    return this.className
+  }
 }

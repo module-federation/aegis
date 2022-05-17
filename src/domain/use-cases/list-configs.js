@@ -32,6 +32,7 @@ export default function listConfigsFactory ({
           ? datasources.getSharedDataSource(modelName).listSync()
           : datasources.listDataSources().map(k => ({
               dsname: k,
+              dstype: datasources.getSharedDataSource(k).getClassName(),
               objects: datasources.getSharedDataSource(k).count()
             })),
 
@@ -47,7 +48,7 @@ export default function listConfigsFactory ({
         modelName && isMainThread
           ? threadpools.getThreadPool(modelName).run(listConfigs.name, query)
           : modelName
-          ? models.getModelSpec(modelName)
+          ? models.getModelSpecs()
           : models.getModelSpecs(),
 
       threads: () => (isMainThread ? threadpools.status() : null),
