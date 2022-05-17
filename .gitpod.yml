@@ -14,4 +14,4 @@ tasks:
       sudo chown gitpod:gitpod -R /workspace/db
       mongod --dbpath /workspace/db
       yarn && yarn build && yarn link
-  - init: cd /workspace/aegis-host && yarn start
+  - command: cd /workspace/aegis-host && yarn start
