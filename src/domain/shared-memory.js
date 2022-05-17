@@ -13,12 +13,12 @@ const KEYSIZE = 32
 const OBJSIZE = 4056
 
 const dataType = {
-  in: {
+  write: {
     string: x => x,
     object: x => JSON.stringify(x),
     number: x => x
   },
-  out: {
+  read: {
     string: x => JSON.parse(x),
     object: x => x,
     number: x => x
@@ -37,12 +37,20 @@ const dataType = {
 const SharedMemoryMixin = superclass =>
   class extends superclass {
 
+    constructor(map, factory, name) {
+      super(map, factory, name)
+
+      // Indicate which class we extend
+      this.className = super.className
+      this.mixinClass = this.constructor.name
+    }
+
     /**
      * @override
      * @returns {import('.').Model}
      */
     saveSync(id, data) {
-      return this.dsMap.set(id, JSON.stringify(data))
+      return this.dsMap.set(id, dataType.write[typeof data](data))
     }
 
     /**
@@ -55,7 +63,7 @@ const SharedMemoryMixin = superclass =>
       try {
         if (!id) return console.log('no id provided')
         const raw = this.dsMap.get(id)
-        const data = dataType.out[typeof raw](raw)
+        const data = dataType.read[typeof raw](raw)
 
         return isMainThread
           ? data
@@ -86,6 +94,10 @@ const SharedMemoryMixin = superclass =>
     count() {
       return this.dsMap.length
     }
+
+    getClassName() {
+      return this.className
+    }
   }
 
 /**
@@ -94,16 +106,13 @@ const SharedMemoryMixin = superclass =>
  * @returns {SharedMap}
  */
 function findSharedMap(name) {
-  try {
-    if (name === workerData.modelName) return workerData.sharedMap
-    if (workerData.dsRelated?.length > 0) {
-      const dsRel = workerData.dsRelated.find(ds => ds.modelName === name)
-      if (dsRel) return dsRel.dsMap
-    }
-    return null
-  } catch (error) {
-    console.warn(error)
+  if (name === workerData.modelName) return workerData.sharedMap
+
+  if (workerData.dsRelated?.length > 0) {
+    const dsRel = workerData.dsRelated.find(ds => ds.modelName === name)
+    if (dsRel) return dsRel.dsMap
   }
+  return null
 }
 
 function rehydrateSharedMap(name) {
@@ -112,13 +121,9 @@ function rehydrateSharedMap(name) {
 }
 
 function createSharedMap(mapsize, keysize, objsize, name) {
-  try {
-    return Object.assign(new SharedMap(mapsize, keysize, objsize), {
-      modelName: name // assign modelName
-    })
-  } catch (error) {
-    console.error(error)
-  }
+  return Object.assign(new SharedMap(mapsize, keysize, objsize), {
+    modelName: name // assign modelName
+  })
 }
 
 /**
@@ -140,20 +145,25 @@ export function withSharedMemory(
   const keysize = options.keysize || KEYSIZE
   const objsize = options.objsize || OBJSIZE
 
-  // use thread-safe shared map
-  const sharedMap = isMainThread
-    ? createSharedMap(mapsize, keysize, objsize, name)
-    : rehydrateSharedMap(name)
+  try {
+    // use thread-safe shared map
+    const sharedMap = isMainThread
+      ? createSharedMap(mapsize, keysize, objsize, name)
+      : rehydrateSharedMap(name)
 
-  if (sharedMap instanceof SharedMap)
-    return createDataSource.call(factory, name, {
-      ...options,
-      dsMap: sharedMap,
-      mixins: [
-        DsClass =>
-          class DataSourceSharedMemory extends SharedMemoryMixin(DsClass) { }
-      ].concat(options.mixins)
-    })
+    if (sharedMap instanceof SharedMap)
+      return createDataSource.call(factory, name, {
+        ...options,
+        dsMap: sharedMap,
+        mixins: [
+          DsClass =>
+            class DataSourceSharedMemory extends SharedMemoryMixin(DsClass) { }
+        ].concat(options.mixins)
+      })
 
-  return createDataSource.call(factory, name, options)
+    return createDataSource.call(factory, name, options)
+  } catch (error) {
+    console.error({ fn: withSharedMemory.name, error })
+  }
+
 }

@@ -258,6 +258,10 @@ const Model = (() => {
 
       /** @typedef {import('./serializer.js').Serializer} Serializer */
 
+      getDataSourceType () {
+        return datasource.getClassName()
+      },
+
       /**
        * Concurrency strategy is to merge changes with
        * last saved copy; so {@link changes} should include
