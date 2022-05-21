@@ -90,6 +90,7 @@ yarn demo
 - Run on WasmEdge runtime
 - Run in the browser
 - Built-in, pluggable, streaming service mesh
+- PyNode - Python on Node - interpreted, not transpiled
 - Support for streaming media and realtime AI inference
 - Support for QUIC, NDI, WebRTC protocols
 - Addt'l datasource adapters: GraphDb, Blockchain, Solid Pod
