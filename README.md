@@ -87,7 +87,7 @@ yarn demo
 # Roadmap
 
 - More WebAssembly features
-- Run on WasmEdge runtime
+- Run on WasmEdge
 - Run in the browser
 - Built-in, pluggable, streaming service mesh
 - PyNode - Python on Node - interpreted, not transpiled
