@@ -37,6 +37,10 @@ _with_
 - non-functional, boilerplate code done for you
   - dynamically generated APIs and datasources
   - transparent integration and persistence
+  - Perform AI inference against streaming data in real time (AIoT)
+  - dedicated threadpools supporting CPU-bound workloads
+  - shared memory for efficient processing across threads
+  - Fast streaming using QUIC protocol and async I/0
   - built-in, extensible, observable, self-forming, high speed service mesh
   - autonomous self-administration (e.g. CA certs provisioned/renewed programmatically)
   - exhaustive portability: Aegis can run as a server, cluster, or serverless function, in the datacenter, on the edge and beyond (phone, drone, pi, eventually arduino)
