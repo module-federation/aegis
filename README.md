@@ -89,7 +89,7 @@ yarn demo
 - More WebAssembly features
 - Run on WasmEdge runtime
 - Run in the browser
-- Built-in, pluggable, fast service mesh
+- Built-in, pluggable, streaming service mesh
 - Support for streaming media and realtime AI inference
 - Support for QUIC, NDI, WebRTC protocols
 - Addt'l datasource adapters: GraphDb, Blockchain, Solid Pod
