@@ -14,7 +14,8 @@ See the [aegis-host](https://github.com/module-federation/aegis-host) repo for d
     </a>
 </div>
 
-## Consolidate your microservices (and run them in a single process)
+## Consolidate your microservices 
+(by running them together in a single process)
 
 - for decreased footprint,
 - better performance and
