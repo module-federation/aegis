@@ -92,7 +92,7 @@ yarn demo
 - Built-in, pluggable, fast service mesh
 - Support for streaming media and realtime AI inference
 - Support for QUIC, NDI, WebRTC protocols
-- Addt'l datasource adapters: Etherium, Solid Pod
+- Addt'l datasource adapters: GraphDb, Blockchain, Solid Pod
 - Support for MLOps
 - Adaptive, autonomous (Re)deployment based on AIOps
 
