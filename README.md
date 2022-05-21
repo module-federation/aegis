@@ -90,6 +90,7 @@ yarn demo
 - Run on WasmEdge
 - Run in the browser
 - Built-in, pluggable, streaming service mesh
+- Point cloud support for LiDAR integration
 - PyNode - Python on Node - interpreted, not transpiled
 - Support for streaming media and realtime AI inference
 - Support for QUIC, NDI, WebRTC protocols
