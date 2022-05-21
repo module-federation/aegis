@@ -14,7 +14,8 @@ See the [aegis-host](https://github.com/module-federation/aegis-host) repo for d
     </a>
 </div>
 
-## Consolidate your microservices
+## Consolidate your microservices 
+(by running them together in a single process)
 
 - for decreased footprint,
 - better performance and
@@ -38,12 +39,12 @@ _with_
   - transparent integration and persistence
   - built-in, extensible, observable, self-forming, high speed service mesh
   - autonomous self-administration (e.g. CA certs provisioned/renewed programmatically)
-  - exhaustive portability: Aegis can run as a server, cluster, or serverless function, in the datacenter, on the edge and beyond (phone, drone, arduino)
+  - exhaustive portability: Aegis can run as a server, cluster, or serverless function, in the datacenter, on the edge and beyond (phone, drone, pi, eventually arduino)
 - and capabilities that enhance the development experience
   - comprehensive, rapid deployment (deploy in seconds to any compute primitive: serverless, container, etc)
-  - runtime binding and hot reload (e.g. add new functionality on the fly, switch from MongoDB to Etherium live)
-  - zero downtime, zero installation, independent deployment (even for components running in the same process together)
-  - Polyglot, portable, containerless, sandboxed modules run at near native speeds
+  - runtime binding and hot reload (e.g. add new functionality on the fly, switch from on-prem to cloud live)
+  - zero downtime, zero installation, independent deployment--even for components running in the same process
+  - Polyglot, portable, containerless, sandboxed, AoT-compiled modules run safely anywhere, at native speeds
   - decentralized, scalable, highly composable, "tessellated" hexagonal architecture
 
 ### And do it all without deployment automation
@@ -87,14 +88,16 @@ yarn demo
 # Roadmap
 
 - More WebAssembly features
-- Run on WasmEdge runtime
+- Run on WasmEdge
 - Run in the browser
-- Built-in, pluggable, fast service mesh
+- Built-in, pluggable, streaming service mesh
+- Point cloud support for LiDAR integration
+- PyNode - Python on Node - interpreted, not transpiled
 - Support for streaming media and realtime AI inference
 - Support for QUIC, NDI, WebRTC protocols
-- Addt'l datasource adapters: Etherium, Solid Pod
+- Addt'l datasource adapters: GraphDb, Blockchain, Solid Pod
 - Support for MLOps
-- Adaptive, autonomous (Re)deployment based on AIOps
+- Adaptive, autonomous (Re)deployment based on AIOps "Not where is it deployed, but where is it deployed now?"
 
 
 [npm-image]: http://img.shields.io/npm/v/@module-federation/aegis.svg
