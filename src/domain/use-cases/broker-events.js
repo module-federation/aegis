@@ -16,12 +16,13 @@ let broadcastChannel
  * @param {*} broker
  * @returns
  */
-function createBroadcastChannel (modelName, broker) {
-  if (broadcastChannel) return
+function createBroadcastChannel(modelName, broker) {
+  if (broadcastChannel) return broadcastChannel
   broadcastChannel = new BroadcastChannel(modelName)
   // notify listeners
   broadcastChannel.onmessage = msgEvent =>
     broker.notify(msgEvent.data.eventName, msgEvent.data)
+  return broadcastChannel
 }
 
 /**
@@ -37,33 +38,33 @@ function createBroadcastChannel (modelName, broker) {
  * @param {import("../model-factory").ModelFactory} models
  * @param {import("../thread-pool").ThreadPoolFactory} threadpools
  */
-export default function brokerEvents (
+export default function brokerEvents(
   broker,
   datasources,
   models,
   threadpools
 ) {
   if (isMainThread) {
+    // forward all events from worker threads to the service mesh
+    broker.on('from_worker', async event => ServiceMesh.publish(event))
+
+    // forward every event from the service mesh to the workers
+    ServiceMesh.subscribe('*', event => {
+      console.log({ fn: 'from mesh', event })
+      broker.notify('to_worker', event)
+    })
+
     const listLocalModels = () =>
       models
         .getModelSpecs()
         .filter(spec => !spec.isCached)
         .map(spec => spec.modelName)
 
-    // forward any event that is not handled locally to the service mesh
-    broker.on('from_worker', async event => ServiceMesh.publish(event))
-
-    // forward everything from the service mesh to the worker threads
-    ServiceMesh.subscribe('*', event => {
-      console.log({ fn: 'from sm', event })
-      broker.notify('to_worker', event)
-    })
-
     // connect to mesh and provide fn to list installed services
     ServiceMesh.connect({ services: listLocalModels })
   } else {
     createBroadcastChannel(workerData.modelName, broker)
-    // create listeners that handle command events from main
+    // create listeners that handle events from main
     require('../domain-events').registerEvents(broker)
 
     // init distributed object cache

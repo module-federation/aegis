@@ -4,10 +4,11 @@
  * Websocket clients connect to a common ws server,
  * called a webswitch. When a client sends a message,
  * webswitch broadcasts the message to all other
- * connected clients, as well as any uplink webswitch
- * servers it can connect to. A Webswitch server can also
- * receive messgages from uplinks and will broadcast
- * those to its clients.
+ * connected clients, including a special webswitch
+ * server that acts as an uplink to another network,
+ * if one is defined. A Webswitch server can also
+ * receive messgages from an uplink and will broadcast
+ * those messages to its clients as well.
  */
 
 'use strict'
@@ -16,6 +17,7 @@ import os from 'os'
 import WebSocket from 'ws'
 import Dns from 'multicast-dns'
 import EventEmitter from 'events'
+import CircuitBreaker from '../../../domain/circuit-breaker'
 
 const HOSTNAME = 'webswitch.local'
 const SERVICENAME = 'webswitch'
@@ -29,8 +31,8 @@ const debug = config.debug || /true/i.test(process.env.DEBUG)
 const heartbeat = config.heartbeat || 10000
 const sslEnabled = /true/i.test(process.env.SSL_ENABLED)
 const clearPort = process.env.PORT || 80
-const sslPort = process.env.SSL_PORT || 443
-const activePort = sslEnabled ? sslPort : clearPort
+const cypherPort = process.env.SSL_PORT || 443
+const activePort = sslEnabled ? cypherPort : clearPort
 const activeProto = sslEnabled ? 'wss' : 'ws'
 const activeHost =
   process.env.DOMAIN ||
@@ -51,29 +53,28 @@ let uplinkCallback
 let dnsPriority
 const broker = new EventEmitter()
 /** @type {import('../../../domain/model-factory').ModelFactory} */
-let models
 let services = () => []
 /** @type {WebSocket} */
 let ws
 
 const DnsPriority = {
-  setHigh () {
+  setHigh() {
     dnsPriority = { priorities: 10, weight: 20 }
   },
-  setMedium () {
+  setMedium() {
     dnsPriority = { priorities: 20, weight: 40 }
   },
-  setLow () {
+  setLow() {
     dnsPriority = { priorities: 40, weight: 80 }
   },
-  getCurrent () {
+  getCurrent() {
     return dnsPriority
   },
-  match (prio) {
+  match(prio) {
     const { priority, weight } = this.getCurrent()
     return prio.priority === priority && prio.weight === weight
   },
-  setBackupPriority () {
+  setBackupPriority() {
     // set to low
     config.priority = 40
     config.weight = 80
@@ -82,7 +83,7 @@ const DnsPriority = {
 
 DnsPriority.setHigh()
 
-function checkTakeover () {
+function checkTakeover() {
   if (DnsPriority.getCurrent().priority === config.priority)
     activateBackup = true
 }
@@ -94,7 +95,7 @@ function checkTakeover () {
  *
  * @returns {Promise<string>} url
  */
-async function resolveServiceUrl () {
+async function resolveServiceUrl() {
   const dns = Dns()
   let url
 
@@ -125,7 +126,7 @@ async function resolveServiceUrl () {
      * @param {number} retries number of query attempts
      * @returns
      */
-    function runQuery (retries = 0) {
+    function runQuery(retries = 0) {
       if (retries > maxRetries / 2) {
         DnsPriority.setMedium()
         checkTakeover()
@@ -207,14 +208,14 @@ async function resolveServiceUrl () {
  * Set callback for uplink.
  * @param {function():Promise<void>} callback
  */
-export function onUplinkMessage (callback) {
+export function onUplinkMessage(callback) {
   uplinkCallback = callback
 }
 
 /**
  * server sets uplink host
  */
-export function setUplinkUrl (uplinkUrl) {
+export function setUplinkUrl(uplinkUrl) {
   serviceUrl = uplinkUrl
   ws = null // trigger reconnect
 }
@@ -244,7 +245,7 @@ export function setUplinkUrl (uplinkUrl) {
  * @param {import('../../../domain/event-broker').EventBroker} broker
  * @param {{allowMultiple:boolean, once:boolean}} [options]
  */
-export async function subscribe (eventName, callback) {
+export async function subscribe(eventName, callback) {
   try {
     broker.on(eventName, callback)
   } catch (error) {
@@ -252,7 +253,7 @@ export async function subscribe (eventName, callback) {
   }
 }
 
-function format (event) {
+function format(event) {
   if (event instanceof ArrayBuffer) {
     // binary frame
     const view = new DataView(event)
@@ -268,19 +269,26 @@ function format (event) {
  * @param {object} event
  * @returns
  */
-function send (event) {
-  if (ws?.readyState) {
-    ws.send(format(event))
+function send(event) {
+  if (ws?.readyState === WebSocket.OPEN) {
+    /**@type {import('../../../domain/circuit-breaker').breaker} */
+    const breaker = new CircuitBreaker('meshNode.send', ws.send)
+    breaker.detectError([TIMEOUTEVENT], broker)
+    breaker.invoke(format(event))
     return
   }
   setTimeout(send, 1000, event)
 }
 
 /**
- *
+ * ping switch every x inverval and timeout 
+ * after x inverval if no pong resp received.
+ * Timeout begins reconnect and eventually 
+ * new switch election process.
+ * 
  * @param {WebSocket} ws
  */
-function startHeartbeat () {
+function startHeartbeat() {
   let receivedPong = true
 
   ws.addListener('pong', function () {
@@ -291,14 +299,12 @@ function startHeartbeat () {
   const intervalId = setInterval(async function () {
     if (receivedPong) {
       receivedPong = false
-      // expect a pong back
       ws.ping(0x9)
     } else {
       try {
         clearInterval(intervalId)
 
-        if (broker)
-          await broker.notify(TIMEOUTEVENT, { error: 'server unresponsive' })
+        broker.emit(TIMEOUTEVENT, { error: 'server unresponsive' })
 
         console.error({
           fn: startHeartbeat.name,
@@ -306,7 +312,7 @@ function startHeartbeat () {
           msg: 'no response, trying new conn'
         })
 
-        // keep trying
+        // try to reconnect
         reconnect()
       } catch (error) {
         console.error(startHeartbeat.name, error)
@@ -327,7 +333,7 @@ const handshake = {
   isBackupSwitch,
   activateBackup,
 
-  serialize () {
+  serialize() {
     return JSON.stringify({
       ...this,
       mem: process.memoryUsage(),
@@ -336,7 +342,7 @@ const handshake = {
     })
   },
 
-  validate (message) {
+  validate(message) {
     if (message) {
       let msg
       const valid = message.eventName || message.proto === this.proto
@@ -355,7 +361,7 @@ const handshake = {
     return false
   },
 
-  becomeBackupSwitch (message) {
+  becomeBackupSwitch(message) {
     return message.isBackupSwitch === true
   }
 }
@@ -363,11 +369,10 @@ const handshake = {
 /**
  *
  */
-async function _connect () {
+async function connectToServiceMesh() {
   if (!ws) {
-    // null unless this is a switch or set manually by config file
     if (!serviceUrl) serviceUrl = await resolveServiceUrl()
-    console.info({ fn: _connect.name, serviceUrl })
+    console.info({ fn: connectToServiceMesh.name, serviceUrl })
 
     ws = new WebSocket(serviceUrl)
 
@@ -377,8 +382,9 @@ async function _connect () {
     })
 
     ws.on('error', function (error) {
-      console.error({ fn: _connect.name, error })
-      reconnect()
+      console.error({ fn: connectToServiceMesh.name, error })
+      if (!ws || ws.readyState !== WebSocket.OPEN)
+        reconnect()
     })
 
     ws.on('message', async function (message) {
@@ -417,37 +423,41 @@ async function _connect () {
  *  models:import('../../../domain/model-factory').ModelFactory
  * }} [serviceInfo]
  */
-export async function connect (serviceInfo = {}) {
+export async function connect(serviceInfo = {}) {
   services = serviceInfo.services
   console.info({ fn: connect.name, serviceInfo })
-  await _connect()
+  await connectToServiceMesh()
 }
 
-let reconnTimerId
+let reconnectTimerId
+
 /**
- *
+ * Try to open new socket. Every other minute
+ * try to get new service URL in case it has
+ * failed over.
  */
-async function reconnect () {
+async function reconnect() {
   let attempts = 0
-  try {
-    ws = null
-    if (!reconnTimerId) {
-      reconnTimerId = setInterval(() => {
-        if (++attempts % 10 === 0) {
-          // try new url after a minute
-          serviceUrl = null
-        }
-        if (ws) {
-          clearInterval(reconnTimerId)
-          reconnTimerId = null
-          return
-        }
-        _connect()
-      }, 6000)
-    }
-  } catch (error) {
-    console.error({ fn: reconnect.name, error })
+  ws = null
+
+  if (reconnectTimerId) {
+    console.warn('reconnect already in progress')
+    return
   }
+
+  reconnectTimerId = setInterval(async () => {
+    if (++attempts % 10 === 0) {
+      // try new url after a minute
+      serviceUrl = null
+    }
+    await connectToServiceMesh()
+
+    if (ws?.readyState === WebSocket.OPEN) {
+      clearInterval(reconnectTimerId)
+      console.info('reconnected to switch')
+      reconnectTimerId = 0
+    }
+  }, 6000)
 }
 
 /**
@@ -455,13 +465,13 @@ async function reconnect () {
  * @param {object} event
  * @returns
  */
-export async function publish (event) {
+export async function publish(event) {
   try {
     if (!event) {
       console.error(publish.name, 'no event provided')
       return
     }
-    await _connect()
+    await connectToServiceMesh()
     send(event)
   } catch (e) {
     console.error('publish', e)
