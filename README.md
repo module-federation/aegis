@@ -95,7 +95,7 @@ yarn demo
 - Support for QUIC, NDI, WebRTC protocols
 - Addt'l datasource adapters: GraphDb, Blockchain, Solid Pod
 - Support for MLOps
-- Adaptive, autonomous (Re)deployment based on AIOps
+- Adaptive, autonomous (Re)deployment based on AIOps "Not where is it deployed, but where is it deployed now?"
 
 
 [npm-image]: http://img.shields.io/npm/v/@module-federation/aegis.svg
