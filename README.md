@@ -39,7 +39,7 @@ _with_
   - transparent integration and persistence
   - built-in, extensible, observable, self-forming, high speed service mesh
   - autonomous self-administration (e.g. CA certs provisioned/renewed programmatically)
-  - exhaustive portability: Aegis can run as a server, cluster, or serverless function, in the datacenter, on the edge and beyond (phone, drone, arduino)
+  - exhaustive portability: Aegis can run as a server, cluster, or serverless function, in the datacenter, on the edge and beyond (phone, drone, pi, eventually arduino)
 - and capabilities that enhance the development experience
   - comprehensive, rapid deployment (deploy in seconds to any compute primitive: serverless, container, etc)
   - runtime binding and hot reload (e.g. add new functionality on the fly, switch from MongoDB to Etherium live)
