@@ -19,6 +19,7 @@ export const relationType = {
   oneToMany: async (model, ds, rel) => {
     return ds.list(null, { [rel.foreignKey]: model.getId() }, true)
   },
+
   /**
    *
    * @param {*} model
@@ -29,6 +30,7 @@ export const relationType = {
   oneToOne(model, ds, rel) {
     return this.manyToOne(model, ds, rel)
   },
+
   /**
    *
    * @param {import(".").Model} model
@@ -139,7 +141,8 @@ export function requireRemoteObject(model, relation, broker, ...args) {
 
 function isRelatedModelLocal(relation) {
   return require('.')
-    .default.getModelSpecs()
+    .default
+    .getModelSpecs()
     .filter(spec => !spec.isCached)
     .map(spec => spec.modelName.toUpperCase())
     .includes(relation.modelName.toUpperCase())
