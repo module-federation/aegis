@@ -4,7 +4,7 @@ export * as EventService from './event-bus'
 export * as StorageService from './persistence'
 export { default as CircuitBreaker } from '../domain/circuit-breaker'
 
-import { dns, whois } from './dns'
+import { dns, whois } from './middleware/network/dns'
 export const DnsService = dns
 export const WhoIsService = whois
 

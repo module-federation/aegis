@@ -1,13 +1,15 @@
 'use strict'
 
 import { nanoid } from 'nanoid'
+import { hostname } from 'os'
 
 const SERVICENAME = 'webswitch'
+const CLIENT_MAX_ERRORS = 3
 const startTime = Date.now()
 const uptime = () => Math.round(Math.abs((Date.now() - startTime) / 1000 / 60))
 const configRoot = require('../../../config').hostConfig
 const config = configRoot.services.serviceMesh.WebSwitch
-const DEBUG = /true/i.test(config.debug)
+const debug = /true/i.test(config.debug)
 const isSwitch = /true/i.test(process.env.IS_SWITCH) || config.isSwitch
 let messagesSent = 0
 let backupSwitch
@@ -25,7 +27,7 @@ export function attachServer (server) {
   server.broadcast = function (data, sender) {
     server.clients.forEach(function (client) {
       if (client.OPEN && client !== sender) {
-        console.assert(!DEBUG, 'sending client', client.info, data.toString())
+        console.assert(!debug, 'sending client', client.info, data.toString())
         client.send(data)
         messagesSent++
       }
@@ -52,7 +54,8 @@ export function attachServer (server) {
       clientsConnected: server.clients.size,
       uplink: server.uplink ? server.uplink.info : 'no uplink',
       isPrimarySwitch: isSwitch,
-      clients: [...server.clients].map(c => ({ ...c.info, open: c.OPEN }))
+      clients: [...server.clients].map(c => ({ ...c.info, open: c.OPEN })),
+      debug
     })
   }
 
@@ -80,10 +83,11 @@ export function attachServer (server) {
    * @param {WebSocket} client
    */
   server.on('connection', function (client) {
-    client.info = { address: client._socket.address(), id: nanoid() }
+    const clientAddress = client._socket.address()
+    const clientId = nanoid()
 
     client.addListener('ping', function () {
-      console.assert(!DEBUG, 'responding to client ping', client.info)
+      console.assert(!debug, 'responding to client ping', client.info)
       client.pong(0xa)
     })
 
@@ -94,14 +98,25 @@ export function attachServer (server) {
     })
 
     client.on('error', function (error) {
-      console.error(error)
+      client.info.errors++
+
+      console.error({ 
+        fn: 'client.on(error)', 
+        client: client.info, 
+        error 
+      })
+
+      if (client.info.errors > CLIENT_MAX_ERRORS) {
+        console.warn('terminating client: too many errors')
+        client.terminate()
+      }
     })
 
     client.on('message', function (message) {
       try {
         const msg = JSON.parse(message.toString())
 
-        if (client.info.initialized) {
+        if (client.info?.initialized) {
           if (msg == 'status') {
             server.sendStatus(client)
             return
@@ -111,29 +126,49 @@ export function attachServer (server) {
         }
 
         if (msg.proto === SERVICENAME) {
-          if (!backupSwitch && !isSwitch && msg.role === 'node')
-            backupSwitch = client.info.id
+          // if a backup switch is needed, is the client eligible?
+          if (
+            // are we the switch?
+            isSwitch && 
+            // is there a backup already?
+            !backupSwitch && 
+            // can't be a browser
+            msg.role === 'node' && 
+            // don't put backup on same host
+            msg.hostname !== hostname()
+          ) {
+            backupSwitch = clientId
+            console.info('new backup switch: ', clientId)
+          }
 
           client.info = {
             ...msg,
             initialized: true,
-            isBackupSwitch: backupSwitch === client.info.id
+            isBackupSwitch: backupSwitch === clientId,
+            id: clientId,
+            address: clientAddress,
+            errors: 0
           }
-          console.info('client initialized', client.info)
 
+          console.info('client initialized', client.info)
+          // tell client if its a backup switch or not
           client.send(JSON.stringify({ ...msg, ...client.info }))
+          // tell everyone about new client
+          server.broadcast(statusReport(), client) 
           return
         }
       } catch (e) {
         console.error(client.on.name, 'on message', e)
       }
 
+      // bad protocol
       client.terminate()
       console.warn('terminated client', client.info)
     })
   })
 
   try {
+    // configure uplink
     if (config.uplink) {
       const node = require('./node')
       server.uplink = node

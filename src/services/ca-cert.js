@@ -92,7 +92,7 @@ const directoryUrl = !/prod/i.test(process.env.NODE_ENV)
 
 /**
  * Provide DNS client and WHOIS implementations
- * @param {import('./dns/dns-provider').DnsProvider} dnsProvider
+ * @param {import('./middleware/network/dns/dns-provider').DnsProvider} dnsProvider
  * @param {function(domain):{getEmail:function()}} whois
  * @returns {function(domain,email?,challengePath?):Promise<string>}
  */

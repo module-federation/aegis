@@ -1,8 +1,5 @@
 'use strict'
 
-import { write } from 'fs'
-import { Stream } from 'stream'
-
 const MongoClient = require('mongodb').MongoClient
 const DataSourceMemory = require('./datasource-memory').DataSourceMemory
 const { Transform } = require('stream')
