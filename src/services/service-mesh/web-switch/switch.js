@@ -19,7 +19,7 @@ let backupSwitch
  * @param {import('ws').Server} server
  * @returns {import('ws').Server}
  */
-export function attachServer (server) {
+export function attachServer(server) {
   /**
    * @param {object} data
    * @param {WebSocket} sender
@@ -43,18 +43,19 @@ export function attachServer (server) {
    * @todo implement rate limit enforcement
    * @param {WebSocket} client
    */
-  server.setRateLimit = function (client) {}
+  server.setRateLimit = function (client) { }
 
-  function statusReport () {
+  function statusReport() {
     return JSON.stringify({
       eventName: 'meshStatusReport',
       servicePlugin: SERVICENAME,
       uptimeMinutes: uptime(),
       messagesSent,
       clientsConnected: server.clients.size,
+      hostname: hostname(),
       uplink: server.uplink ? server.uplink.info : 'no uplink',
       isPrimarySwitch: isSwitch,
-      clients: [...server.clients].map(c => ({ ...c.info, open: c.OPEN })),
+      clients: [...server.clients].map(c => ({ ...c.info, open: c.readyState === c.OPEN })),
       debug
     })
   }
@@ -68,9 +69,9 @@ export function attachServer (server) {
   }
 
   server.reassignBackupSwitch = function (client) {
-    if (client.info.id === backupSwitch) {
+    if (client.info?.id === backupSwitch) {
       for (let c of server.clients) {
-        if (c.info.id !== backupSwitch) {
+        if (c.info?.id !== backupSwitch) {
           backupSwitch = c.info.id
           c.isBackupSwitch = true
           return
@@ -79,12 +80,29 @@ export function attachServer (server) {
     }
   }
 
+
+  function setClientInfo(client, msg = {}, initialized = true) {
+    if (typeof client.info === 'undefined')
+      client.info = {}
+    if (!client.info.id)
+      client.info.id = nanoid()
+    if (typeof client.info.errors === 'undefined')
+      client.info.errors = 0
+    if (typeof client.info.role === 'undefined' && msg?.role)
+      client.info.role = msg.role
+    if (typeof client.info.hostname === 'undefined' && msg?.hostname)
+      client.info.hostname = msg.hostname
+    if (msg?.mem && msg?.cpu)
+      client.info.telemetry = { ...msg?.mem, ...msg?.cpu }
+    client.info.initialized = initialized
+    client.info.isBackupSwitch = backupSwitch === client.info.id
+  }
+
   /**
    * @param {WebSocket} client
    */
   server.on('connection', function (client) {
-    const clientAddress = client._socket.address()
-    const clientId = nanoid()
+    setClientInfo(client, null, false)
 
     client.addListener('ping', function () {
       console.assert(!debug, 'responding to client ping', client.info)
@@ -100,10 +118,10 @@ export function attachServer (server) {
     client.on('error', function (error) {
       client.info.errors++
 
-      console.error({ 
-        fn: 'client.on(error)', 
-        client: client.info, 
-        error 
+      console.error({
+        fn: 'client.on(error)',
+        client: client.info,
+        error
       })
 
       if (client.info.errors > CLIENT_MAX_ERRORS) {
@@ -116,45 +134,39 @@ export function attachServer (server) {
       try {
         const msg = JSON.parse(message.toString())
 
-        if (client.info?.initialized) {
+        if (client.info.initialized) {
           if (msg == 'status') {
             server.sendStatus(client)
+            setClientInfo(client, msg)
             return
           }
           server.broadcast(message, client)
           return
         }
 
-        if (msg.proto === SERVICENAME) {
+        if (msg.proto === SERVICENAME && msg.role) {
           // if a backup switch is needed, is the client eligible?
           if (
             // are we the switch?
-            isSwitch && 
+            isSwitch &&
             // is there a backup already?
-            !backupSwitch && 
+            !backupSwitch &&
             // can't be a browser
-            msg.role === 'node' && 
+            msg.role === 'node' &&
             // don't put backup on same host
             msg.hostname !== hostname()
           ) {
-            backupSwitch = clientId
-            console.info('new backup switch: ', clientId)
+            backupSwitch = client.info.id
+            console.info('new backup switch: ', id)
           }
-
-          client.info = {
-            ...msg,
-            initialized: true,
-            isBackupSwitch: backupSwitch === clientId,
-            id: clientId,
-            address: clientAddress,
-            errors: 0
-          }
+          setClientInfo(client, msg)
 
           console.info('client initialized', client.info)
           // tell client if its a backup switch or not
-          client.send(JSON.stringify({ ...msg, ...client.info }))
-          // tell everyone about new client
-          server.broadcast(statusReport(), client) 
+          client.send(JSON.stringify(client.info))
+          // tell everyone about new node (ignore browser)
+          if (client.info.role === 'node')
+            server.broadcast(statusReport(), client)
           return
         }
       } catch (e) {

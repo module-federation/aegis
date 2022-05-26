@@ -17,9 +17,6 @@ const options = {
   //useNewUrlParserd: true,
   useUnifiedTopology: true
 }
-
-
-
 /**
  * MongoDB adapter extends in-memory datasource to support caching.
  * The cache is always updated first, which allows the system to run

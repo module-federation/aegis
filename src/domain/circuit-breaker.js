@@ -268,7 +268,7 @@ const Switch = function (id, thresholds) {
  * @typedef breaker
  * @property {function(...any)} invoke call protected function with args
  * @property {function(Error)} handleError record an error
- * @property {function(string)} detectError listen for error events and
+ * @property {function(string)} detectErrors listen for error events and
  * update circuit breaker
  */
 

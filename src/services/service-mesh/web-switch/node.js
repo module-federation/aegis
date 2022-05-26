@@ -17,7 +17,7 @@ import os from 'os'
 import WebSocket from 'ws'
 import Dns from 'multicast-dns'
 import EventEmitter from 'events'
-import CircuitBreaker from '../../../domain/circuit-breaker'
+import CircuitBreaker from '../../../domain/circuit-breaker.js'
 
 const HOSTNAME = 'webswitch.local'
 const SERVICENAME = 'webswitch'
@@ -282,7 +282,7 @@ function send(event) {
     /**@type {import('../../../domain/circuit-breaker').breaker} */
     const breaker = new CircuitBreaker('meshNode.send', ws.send)
     breaker.detectErrors([TIMEOUTEVENT], broker)
-    breaker.invoke(format(event))
+    breaker.invoke.call(ws, format(event))
     return
   }
   setTimeout(send, 1000, event)
@@ -342,8 +342,9 @@ const handshake = {
   activateBackup,
 
   serialize() {
+    const self = {...this}
     return JSON.stringify({
-      ...this,
+      ...self,
       mem: process.memoryUsage(),
       cpu: process.cpuUsage(),
       models: services()
