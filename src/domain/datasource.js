@@ -1,5 +1,7 @@
 'use strict'
 
+import { Writable } from "stream"
+
 function roughSizeOfObject(...objects) {
   let bytes = 0
 
@@ -59,6 +61,11 @@ export default class DataSource {
    * @returns 
    */
   saveSync(id, data) {
+    return this.mapSave(id, data)
+  }
+
+
+  mapSave(id, data) {
     return this.dsMap.set(id, data)
   }
 
@@ -77,16 +84,21 @@ export default class DataSource {
    * @returns {import(".").Model}
    */
   findSync(id) {
+    return this.mapGet(id)
+  }
+
+  mapGet(id) {
     return this.dsMap.get(id)
   }
 
   /**
    * list model instances
+   * @param {Writable} [writable] - writable stream
    * @param {object} [query] - filter for properties of query 
    * @param {boolean} [cached] - list cached items, default is true
    * @returns {Promise<any[]>}
    */
-  async list(query = null, cached = true) {
+  async list(writable = null, query = null, cached = true) {
     return this.listSync(query)
   }
 
@@ -101,6 +113,10 @@ export default class DataSource {
   }
 
   generateList() {
+    return this.mapList()
+  }
+
+  mapList() {
     return [...this.dsMap.values()]
   }
 
@@ -136,10 +152,14 @@ export default class DataSource {
     return this.deleteSync(id)
   }
 
+
   deleteSync(id) {
-    return this.dsMap.delete(id)
+    return this.mapDelete(id)
   }
 
+  mapDelete(id) {
+    return this.dsMap.delete(id)
+  }
   /**
    *
    * @param {*} options
@@ -158,6 +178,10 @@ export default class DataSource {
    *
    */
   count() {
+    return this.mapCount()
+  }
+
+  mapCount() {
     return this.dsMap.size()
   }
 

@@ -158,7 +158,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
    * @param {boolean} cached - use cache if true, otherwise go to db.
    */
   async list(writable, filter = null, cached = false) {
-    if (cached) return super.list(null, filter, true)
+    if (cached) return super.list(null, filter, cached)
 
     let first = true
     const serialize = new Transform({
