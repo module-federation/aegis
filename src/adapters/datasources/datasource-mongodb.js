@@ -6,6 +6,7 @@ const { Transform } = require('stream')
 
 const url = process.env.MONGODB_URL || 'mongodb://localhost:27017'
 const configRoot = require('../../config').hostConfig
+const dsOptions = configRoot.adapters.datasources.DataSourceMongoDb.options || { runOffline:true }
 const cacheSize = configRoot.adapters.cacheSize || 3000
 
 /**
@@ -13,10 +14,11 @@ const cacheSize = configRoot.adapters.cacheSize || 3000
  */
 const connections = new Map()
 
-const options = {
+const mongoOpts = {
   //useNewUrlParserd: true,
   useUnifiedTopology: true
 }
+
 /**
  * MongoDB adapter extends in-memory datasource to support caching.
  * The cache is always updated first, which allows the system to run
@@ -26,14 +28,16 @@ export class DataSourceMongoDb extends DataSourceMemory {
   constructor(map, factory, name) {
     super(map, factory, name)
     this.cacheSize = cacheSize
-    this.options = options
+    this.mongoOpts = mongoOpts
+    /** keep running even if db is down */
+    this.runOffline = dsOptions.runOffline
     this.url = url
   }
 
   async connection() {
     try {
       if (!connections.has(this.url)) {
-        const client = new MongoClient(this.url, this.options)
+        const client = new MongoClient(this.url, this.mongoOpts)
         await client.connect()
         connections.set(this.url, client)
         client.on('connectionReady', () => console.log('mongo conn ready'))
@@ -95,7 +99,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
    */
   async find(id) {
     try {
-      const cached = await super.find(id)
+      const cached = super.findSync(id)
       if (!cached) return this.findDb(id)
       return cached
     } catch (error) {
@@ -126,8 +130,9 @@ export class DataSourceMongoDb extends DataSourceMemory {
 
   /**
    * Save to the cache first, then the db.
-   * Wait for both functions to complete. We
-   * keep running even if the db is offline.
+   * Wait for both functions to complete.
+   * Optionally keep running even if the 
+   * db is offline.
    *
    * @override
    * @param {*} id
@@ -135,13 +140,23 @@ export class DataSourceMongoDb extends DataSourceMemory {
    */
   async save(id, data) {
     try {
-      const [cache, db] = await Promise.all([
-        super.save(id, data),
-        this.saveDb(id, data)
-      ])
-      return cache || db
-    } catch (error) {
-      console.error({ fn: this.save.name, error })
+      const cache = super.saveSync(id, data)
+      try {
+        await this.saveDb(id, data)
+      } catch (error) {
+        // default is true
+        if (!this.runOffline) {
+          this.deleteSync(id)
+          // after delete mem and db are sync'd
+          console.error('db trans failed, rolled back')
+          return
+        }
+        // run while db is down - cache will be ahead
+        console.error('db trans failed, sync it later')
+      }
+      return cache
+    } catch(e) {
+      console.error(e)
     }
   }
 
@@ -153,12 +168,12 @@ export class DataSourceMongoDb extends DataSourceMemory {
    * minimal memory overhead on the node server.
    * 
    * @override
-   * @param {WritableStream} writable - writeable stream
+   * @param {WritableStream} writable - writable stream
    * @param {{key1:string, keyN:string}} filter - e.g. from http query
    * @param {boolean} cached - use cache if true, otherwise go to db.
    */
   async list(writable, filter = null, cached = false) {
-    if (cached) return super.list(null, filter, cached)
+    if (cached) return super.listSync(null, filter, cached)
 
     let first = true
     const serialize = new Transform({
