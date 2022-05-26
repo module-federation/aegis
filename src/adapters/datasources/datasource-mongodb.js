@@ -153,12 +153,12 @@ export class DataSourceMongoDb extends DataSourceMemory {
    * minimal memory overhead on the node server.
    * 
    * @override
-   * @param {WritableStream} writeable - writeable stream
+   * @param {WritableStream} writable - writeable stream
    * @param {{key1:string, keyN:string}} filter - e.g. from http query
    * @param {boolean} cached - use cache if true, otherwise go to db.
    */
-  async list(writeable, filter = null, cached = false) {
-    if (cached) return super.list(null, filter, true)
+  async list(writable, filter = null, cached = false) {
+    if (cached) return super.list(null, filter, cached)
 
     let first = true
     const serialize = new Transform({
@@ -193,7 +193,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
       readable.on('error', reject)
       readable.on('end', resolve)
       // transform db stream then pipe to output
-      readable.pipe(serialize).pipe(writeable)
+      readable.pipe(serialize).pipe(writable)
     })
   }
 

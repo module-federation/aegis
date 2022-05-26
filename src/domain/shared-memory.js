@@ -49,7 +49,7 @@ const SharedMemoryMixin = superclass =>
      * @override
      * @returns {import('.').Model}
      */
-    saveSync(id, data) {
+    mapSave(id, data) {
       return this.dsMap.set(id, dataType.write[typeof data](data))
     }
 
@@ -59,10 +59,11 @@ const SharedMemoryMixin = superclass =>
      * @param {*} id
      * @returns {import('.').Model}
      */
-    findSync(id) {
+    mapGet(id) {
       try {
         if (!id) return console.log('no id provided')
         const raw = this.dsMap.get(id)
+        if (!raw) return console.log('no data')
         const data = dataType.read[typeof raw](raw)
 
         return isMainThread
@@ -75,23 +76,19 @@ const SharedMemoryMixin = superclass =>
           )
 
       } catch (error) {
-        console.error({ fn: this.findSync.name, error })
+        console.error({ fn: this.mapGet.name, error })
       }
     }
-
+    
     /**
      * @override
      * @returns 
      */
-    generateList() {
+    mapList() {
       return this.dsMap.map(v => JSON.parse(v))
     }
 
-    /**
-     * @override
-     * @returns {number}
-     */
-    count() {
+    mapCount() {
       return this.dsMap.length
     }
 
