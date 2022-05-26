@@ -26,13 +26,13 @@ const TIMEOUTEVENT = 'webswitchTimeout'
 const configRoot = require('../../../config').hostConfig
 const config = configRoot.services.serviceMesh.WebSwitch
 const retryInterval = config.retryInterval || 2000
-const maxRetries = config.maxRetries || 5
+const maxRetries = config.maxRetries || 99
 const debug = config.debug || /true/i.test(process.env.DEBUG)
 const heartbeat = config.heartbeat || 10000
 const sslEnabled = /true/i.test(process.env.SSL_ENABLED)
 const clearPort = process.env.PORT || 80
-const cypherPort = process.env.SSL_PORT || 443
-const activePort = sslEnabled ? cypherPort : clearPort
+const cipherPort = process.env.SSL_PORT || 443
+const activePort = sslEnabled ? cipherPort : clearPort
 const activeProto = sslEnabled ? 'wss' : 'ws'
 const activeHost =
   process.env.DOMAIN ||
@@ -50,43 +50,51 @@ let isBackupSwitch = config.isBackupSwitch || false
 let activateBackup = false
 let uplinkCallback
 
-let dnsPriority
+/** event broker */
 const broker = new EventEmitter()
-/** @type {import('../../../domain/model-factory').ModelFactory} */
+/** get list of local services */
 let services = () => []
 /** @type {WebSocket} */
 let ws
 
-const DnsPriority = {
+let dnsPriority
+
+const DnsPriority = { 
+  High: { priority: 10, weight: 20 },
+  Medium: { priority: 20, weight: 40 },
+  Low:{ priority: 40, weight: 80 },
   setHigh() {
-    dnsPriority = { priorities: 10, weight: 20 }
+    dnsPriority = this.High
   },
   setMedium() {
-    dnsPriority = { priorities: 20, weight: 40 }
+    dnsPriority = this.Medium
   },
   setLow() {
-    dnsPriority = { priorities: 40, weight: 80 }
+    dnsPriority = this.Low
   },
   getCurrent() {
     return dnsPriority
   },
-  match(prio) {
+  matches(other) {
     const { priority, weight } = this.getCurrent()
-    return prio.priority === priority && prio.weight === weight
+    return (
+      other.priority === priority && 
+      other.weight === weight
+    )
   },
-  setBackupPriority() {
+  setBackupPriority(config) {
     // set to low
-    config.priority = 40
-    config.weight = 80
+    config.priority = this.Low.priority
+    config.weight = this.Low.weight
   }
 }
 
-DnsPriority.setHigh()
-
 function checkTakeover() {
-  if (DnsPriority.getCurrent().priority === config.priority)
+  if (DnsPriority.matches(config))
     activateBackup = true
 }
+
+dnsPriority = DnsPriority.High;
 
 /**
  * Use multicast DNS to find the host
@@ -107,7 +115,7 @@ async function resolveServiceUrl() {
         a =>
           a.name === SERVICENAME &&
           a.type === 'SRV' &&
-          DnsPriority.match(a.data)
+          DnsPriority.matches(a.data)
       )
 
       if (answer) {
@@ -127,11 +135,11 @@ async function resolveServiceUrl() {
      * @returns
      */
     function runQuery(retries = 0) {
-      if (retries > maxRetries / 2) {
+      if (retries > maxRetries / 3) {
         DnsPriority.setMedium()
-        checkTakeover()
-      } else if (retries > maxRetries) {
-        DnsPriority.setLow()
+        if (retries > maxRetries / 2) {
+          DnsPriority.setLow()
+        }
         checkTakeover()
       }
 
@@ -151,7 +159,7 @@ async function resolveServiceUrl() {
         return
       }
 
-      setTimeout(() => runQuery(retries++), retryInterval)
+      setTimeout(() => runQuery(++retries), retryInterval)
     }
 
     runQuery()
@@ -180,8 +188,8 @@ async function resolveServiceUrl() {
               type: 'SRV',
               data: {
                 port: activePort,
-                weight: config.priority,
-                priority: config.weight,
+                weight: config.weight,
+                priority: config.priority,
                 target: activeHost
               }
             }
@@ -273,7 +281,7 @@ function send(event) {
   if (ws?.readyState === WebSocket.OPEN) {
     /**@type {import('../../../domain/circuit-breaker').breaker} */
     const breaker = new CircuitBreaker('meshNode.send', ws.send)
-    breaker.detectError([TIMEOUTEVENT], broker)
+    breaker.detectErrors([TIMEOUTEVENT], broker)
     breaker.invoke(format(event))
     return
   }

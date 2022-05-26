@@ -32,6 +32,7 @@
     "ipfs": "^0.61.0",
     "jwks-rsa": "2.0.5",
     "mesh-link": "0.13.6",
+    "mocha-esm": "^1.1.1",
     "mongodb": "4.3.1",
     "multicast-dns": "7.2.4",
     "nanoid": "3.2.0",
