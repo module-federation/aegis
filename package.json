@@ -42,7 +42,7 @@
     "sharedmap": "^1.2.0",
     "standard": "^17.0.0",
     "webpack": "^5.66.0",
-    "whois": "2.13.7"
+    "whois": "2.13.9"
   },
   "devDependencies": {
     "@babel/cli": "7.17.10",
