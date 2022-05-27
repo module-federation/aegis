@@ -29,7 +29,7 @@
     "express": "4.17.2",
     "express-jwt": "6.1.2",
     "import-fresh": "3.3.0",
-    "ipfs": "^0.61.0",
+    "ipfs": "^0.62.0",
     "jwks-rsa": "2.0.5",
     "mesh-link": "0.13.6",
     "mocha-esm": "^1.1.1",
