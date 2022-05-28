@@ -35,7 +35,7 @@
     "mocha-esm": "^1.1.1",
     "mongodb": "4.3.1",
     "multicast-dns": "7.2.4",
-    "nanoid": "3.2.0",
+    "nanoid": "3.3.4",
     "nats": "2.7.1",
     "python-shell": "^3.0.1",
     "regenerator-runtime": "0.13.9",
