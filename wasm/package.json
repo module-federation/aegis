@@ -8,6 +8,6 @@
   "devDependencies": {
     "@assemblyscript/loader": "0.20.6",
     "as-bind": "0.8.2",
-    "assemblyscript": "0.20.6"
+    "assemblyscript": "0.20.7"
   }
 }
