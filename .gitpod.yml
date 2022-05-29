@@ -16,4 +16,4 @@
 #       yarn && yarn build && yarn link
 #   - command: cd /workspace/aegis-host && yarn start
 
-mainConfiguration: https://github.com/briteliteimmersive/ocvibe-litehouse-federated
+mainConfiguration: https://github.com/module-federawtion/aegis-app
