@@ -62,7 +62,7 @@
     "jest": "28.1.0",
     "jsdoc": "^3.6.10",
     "jsdoc-to-markdown": "^7.1.1",
-    "mocha": "9.2.2",
+    "mocha": "10.0.0",
     "nodemon": "2.0.15",
     "rimraf": "3.0.2",
     "split": "1.0.1",
