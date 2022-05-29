@@ -24,7 +24,7 @@
     "@octokit/rest": "18.12.0",
     "acme-client": "^2.0.1",
     "as-bind": "0.8.2",
-    "assemblyscript": "0.20.6",
+    "assemblyscript": "0.20.7",
     "dotenv": "16.0.1",
     "express": "4.17.2",
     "express-jwt": "6.1.2",
