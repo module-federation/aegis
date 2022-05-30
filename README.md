@@ -102,8 +102,8 @@ yarn demo
 - Addt'l datasource adapters: GraphDb, Blockchain, Solid Pod
 - Support for MLOps
 - Adaptive a = (Re)deployment based on AIOps "Not where is it deployed, but where is it deployed now?"
-- Trusted Execution Environment (TEE
-
+- Trusted Execution Environments
+- Data Privay via Zero Knowledge Proofs
 [npm-image]: http://img.shields.io/npm/v/@module-federation/aegis.svg
 [npm-url]: https://npmjs.org/package/@module-federation/aegis
 [downloads-image]: https://img.shields.io/npm/dm/@module-federation/aegis
