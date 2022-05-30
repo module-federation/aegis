@@ -91,7 +91,7 @@ yarn demo
 
 # Roadmap
 
-- More WebAssembly features\
+- More WebAssembly features
 - Run on WasmEdge
 - Run in the browser
 - Built-in, pluggable, streaming service mesh
