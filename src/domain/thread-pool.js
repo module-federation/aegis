@@ -4,10 +4,9 @@ import EventBrokerFactory from './event-broker'
 import { EventEmitter } from 'stream'
 import { Worker, BroadcastChannel } from 'worker_threads'
 import domainEvents from './domain-events'
-import ModelFactory, { DataSourceFactory } from '.'
+import ModelFactory from '.'
 import { performance as perf } from 'perf_hooks'
 import os from 'os'
-import { Perf } from 'nats/lib/nats-base-client/util'
 
 const { poolOpen, poolClose, poolDrain, poolAbort } = domainEvents
 const broker = EventBrokerFactory.getInstance()
@@ -148,6 +147,7 @@ function newThread ({ pool, file, workerData }) {
     }
   }).catch(console.error)
 }
+
 /**
  * Reallocate a newly freed thread (i.e. one that has
  * completed or failed to complete its job). If a job
@@ -159,6 +159,7 @@ function newThread ({ pool, file, workerData }) {
  */
 function reallocate (pool, freeThread) {
   if (pool.waitingJobs.length > 0) {
+    /** we don't await {@link postJob } */
     pool.waitingJobs.shift()(freeThread)
   } else {
     pool.freeThreads.push(freeThread)
@@ -166,19 +167,24 @@ function reallocate (pool, freeThread) {
 }
 
 /**
- * Post a job to a worker thread if available, otherwise
- * wait until one is. An optional callback can be used by
- * the caller to pass an upstream promise.
+ * Post a job to a worker thread if one ia available, otherwise
+ * queue the job until one is. Then run the callback, passing the
+ * results in the first param. The caller can specify a custom
+ * callback or just use the default.
+ *
+ *
+ * The caller passes a callback to get
+ * the results so this function doesn't have to `await`.
  *
  * @param {{
  *  pool:ThreadPool,
  *  jobName:string,
- *  jobData:any,
+ *  jobData:any
  *  thread:Thread,
  *  channel?:"mainChannel"|"eventChannel",
  *  cb?:(p) => p
  * }}
- * @returns {Promise<Thread>}
+ * @returns {Promise<Model>}
  */
 function postJob ({
   pool,
@@ -200,26 +206,25 @@ function postJob ({
       if (pool.noJobsRunning()) {
         pool.emit(NOJOBSRUNNING)
       }
-      return resolve(callback(result))
+      resolve(callback(result))
     })
 
     thread[channel].once('error', async error => {
       console.error({ fn: postJob.name, error })
-      // await pool.stopThread(thread, error)
-      // reallocate
+
       reallocate(pool, thread)
+
       pool.emit({
         eventName: 'ThreadException',
         message: 'unhandled error in thread',
         pool: pool.name,
         error
       })
-
-      reject(error)
+      reject(callback(error))
     })
 
     thread[channel].postMessage({ name: jobName, data: jobData }, transfer)
-  }).catch(console.error)
+  })
 }
 
 /**
@@ -465,30 +470,32 @@ export class ThreadPool extends EventEmitter {
       try {
         if (this.closed) {
           console.warn('pool is closed')
-        } else {
-          let thread = this.freeThreads.shift()
+          return reject(this)
+        }
 
-          if (!thread) {
-            try {
-              thread = await this.allocate()
-            } catch (error) {
-              console.error({ fn: this.run.name, error })
-            }
-          }
+        let thread = this.freeThreads.shift()
 
-          if (thread) {
-            const result = await postJob({
-              pool: this,
-              jobName,
-              jobData,
-              thread,
-              channel,
-              transfer
-            })
-
-            return resolve(result)
+        if (!thread) {
+          try {
+            thread = await this.allocate()
+          } catch (error) {
+            console.error({ fn: this.run.name, error })
           }
         }
+
+        if (thread) {
+          const result = await postJob({
+            pool: this,
+            jobName,
+            jobData,
+            thread,
+            channel,
+            transfer
+          })
+
+          return resolve(result)
+        }
+
         console.debug('no threads: queue job', jobName)
 
         this.waitingJobs.push(thread =>
@@ -734,12 +741,19 @@ const ThreadPoolFactory = (() => {
     if (pool) return pool.fireEvent(event)
   }
 
+  class ReloadError extends Error {
+    constructor (error) {
+      super(`fn: "reload" status: "failed" error: ${error}`)
+    }
+  }
+
   /**
    * This is the hot reload. Drain the pool,
    * stop the existing threads & start new
    * ones, which will have the latest code
    * @param {string} poolName i.e. modelName
    * @returns {Promise<ThreadPool>}
+   * @throws {ReloadError}
    */
   function reload (poolName) {
     return new Promise((resolve, reject) => {
@@ -758,8 +772,8 @@ const ThreadPoolFactory = (() => {
             .notify(poolOpen)
         )
         .then(resolve)
-        .catch(error => reject({ fn: reload.name, error }))
-    }).catch(console.error)
+        .catch(error => reject(new ReloadError(error)))
+    })
   }
 
   async function reloadAll () {
@@ -799,7 +813,7 @@ const ThreadPoolFactory = (() => {
         .then(() => pool.stopThreads(destroy.name))
         .then(() => resolve(threadPools.delete(pool)))
         .catch(reject)
-    }).catch(console.error)
+    })
   }
 
   function status (poolName = null) {

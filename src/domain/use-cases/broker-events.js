@@ -16,7 +16,7 @@ let broadcastChannel
  * @param {*} broker
  * @returns
  */
-function createBroadcastChannel(modelName, broker) {
+function createBroadcastChannel (modelName, broker) {
   if (broadcastChannel) return broadcastChannel
   broadcastChannel = new BroadcastChannel(modelName)
   // notify listeners
@@ -38,7 +38,7 @@ function createBroadcastChannel(modelName, broker) {
  * @param {import("../model-factory").ModelFactory} models
  * @param {import("../thread-pool").ThreadPoolFactory} threadpools
  */
-export default function brokerEvents(
+export default function brokerEvents (
   broker,
   datasources,
   models,
