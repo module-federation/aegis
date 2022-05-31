@@ -19,7 +19,7 @@ let backupSwitch
  * @param {import('ws').Server} server
  * @returns {import('ws').Server}
  */
-export function attachServer(server) {
+export function attachServer (server) {
   /**
    * @param {object} data
    * @param {WebSocket} sender
@@ -43,9 +43,9 @@ export function attachServer(server) {
    * @todo implement rate limit enforcement
    * @param {WebSocket} client
    */
-  server.setRateLimit = function (client) { }
+  server.setRateLimit = function (client) {}
 
-  function statusReport() {
+  function statusReport () {
     return JSON.stringify({
       eventName: 'meshStatusReport',
       servicePlugin: SERVICENAME,
@@ -55,7 +55,10 @@ export function attachServer(server) {
       hostname: hostname(),
       uplink: server.uplink ? server.uplink.info : 'no uplink',
       isPrimarySwitch: isSwitch,
-      clients: [...server.clients].map(c => ({ ...c.info, open: c.readyState === c.OPEN })),
+      clients: [...server.clients].map(c => ({
+        ...c.info,
+        open: c.readyState === c.OPEN
+      })),
       debug
     })
   }
@@ -80,20 +83,19 @@ export function attachServer(server) {
     }
   }
 
-
-  function setClientInfo(client, msg = {}, initialized = true) {
-    if (typeof client.info === 'undefined')
-      client.info = {}
-    if (!client.info.id)
-      client.info.id = nanoid()
-    if (typeof client.info.errors === 'undefined')
-      client.info.errors = 0
+  function setClientInfo (client, msg = {}, initialized = true) {
+    if (typeof client.info === 'undefined') client.info = {}
+    if (!client.info.id) client.info.id = nanoid()
+    if (typeof client.info.errors === 'undefined') client.info.errors = 0
     if (typeof client.info.role === 'undefined' && msg?.role)
       client.info.role = msg.role
     if (typeof client.info.hostname === 'undefined' && msg?.hostname)
       client.info.hostname = msg.hostname
     if (msg?.mem && msg?.cpu)
       client.info.telemetry = { ...msg?.mem, ...msg?.cpu }
+    if (msg?.apps) {
+      client.info.apps = msg.apps
+    }
     client.info.initialized = initialized
     client.info.isBackupSwitch = backupSwitch === client.info.id
   }
