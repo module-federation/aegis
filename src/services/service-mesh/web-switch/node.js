@@ -342,7 +342,7 @@ const handshake = {
       ...this,
       mem: process.memoryUsage(),
       cpu: process.cpuUsage(),
-      models: services()
+      apps: services()
     })
   },
 
