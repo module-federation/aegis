@@ -268,8 +268,6 @@ class EventBrokerImpl extends EventBroker {
       unsubscribe: () => this.off(eventName, eventCallbackWrapper)
     }
 
-    //console.debug([...handlers])
-
     const funcs = handlers.get(eventName)
     if (funcs) {
       if (singleton) return

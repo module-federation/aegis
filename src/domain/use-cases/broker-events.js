@@ -38,12 +38,7 @@ function createBroadcastChannel (modelName, broker) {
  * @param {import("../model-factory").ModelFactory} models
  * @param {import("../thread-pool").ThreadPoolFactory} threadpools
  */
-export default function brokerEvents (
-  broker,
-  datasources,
-  models,
-  threadpools
-) {
+export default function brokerEvents (broker, datasources, models) {
   if (isMainThread) {
     // forward all events from worker threads to the service mesh
     broker.on('from_worker', async event => ServiceMesh.publish(event))
