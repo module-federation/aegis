@@ -94,16 +94,18 @@ yarn demo
 - More WebAssembly features
 - Run on WasmEdge
 - Run in the browser
+- Run on Arduino
 - Built-in, pluggable, streaming service mesh
 - Point cloud support for LiDAR integration
 - PyNode - Python on Node - interpreted, not transpiled
 - Support for streaming media and realtime AI inference
 - Support for QUIC, NDI, WebRTC protocols
 - Addt'l datasource adapters: GraphDb, Blockchain, Solid Pod
-- Support for MLOps
-- Adaptive a = (Re)deployment based on AIOps "Not where is it deployed, but where is it deployed now?"
-- Trusted Execution Environments
-- Data Privay via Zero Knowledge Proofs
+- Adaptive Deployment (AIOps based dynamic infra)
+- Data privacy based on Zero Knowledge Proofs
+- OCI wrapper for wasm-based version
+- Federated Module Attestation
+- Smart Scaffolding
 
 [npm-image]: http://img.shields.io/npm/v/@module-federation/aegis.svg
 [npm-url]: https://npmjs.org/package/@module-federation/aegis
