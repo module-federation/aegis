@@ -109,7 +109,7 @@ const Model = (() => {
     }
   }
 
-  function queueNotice(model) {
+  function queueNotice (model) {
     console.debug(queueNotice.name, 'disabled')
     // setTimeout(
     //   async function () {
@@ -122,18 +122,18 @@ const Model = (() => {
   }
 
   /**
-      * Because it is immutable, a model
-      * becomes a shallow clone the first
-      * time it is updated. Therefore, if
-      * the model is a class, uses 
-      * inheritance, or is instantiate 
-      * with the new keyword, we have to 
-      * restore its prototype.
-      * 
-      * @param {} clonedModel 
-      * @returns 
-      */
-  function rehydrate(clonedModel, model) {
+   * Because it is immutable, a model
+   * becomes a shallow clone the first
+   * time it is updated. Therefore, if
+   * the model is a class, uses
+   * inheritance, or is instantiate
+   * with the new keyword, we have to
+   * restore its prototype.
+   *
+   * @param {} clonedModel
+   * @returns
+   */
+  function rehydrate (clonedModel, model) {
     return model.prototype
       ? Object.setPrototypeOf(clonedModel, model.prototype)
       : clonedModel
@@ -147,7 +147,7 @@ const Model = (() => {
    *  spec:import('./index').ModelSpecification
    * }} modelInfo
    */
-  function make(modelInfo) {
+  function make (modelInfo) {
     const {
       model,
       spec: {
@@ -184,12 +184,12 @@ const Model = (() => {
       [ID]: uuid(),
 
       // Called before update is committed
-      [ONUPDATE](changes) {
+      [ONUPDATE] (changes) {
         return onUpdate(this, changes)
       },
 
       // Called before delete is committed
-      [ONDELETE]() {
+      [ONDELETE] () {
         return onDelete(this)
       },
 
@@ -199,7 +199,7 @@ const Model = (() => {
        * @param {eventMask} event - event type, see {@link eventMask}.
        * @returns {Model} - updated model
        */
-      [VALIDATE](changes, event) {
+      [VALIDATE] (changes, event) {
         return validate(this, changes, event)
       },
 
@@ -209,7 +209,7 @@ const Model = (() => {
        * @param {number} event
        * @returns {string[]} key name/s: create, update, onload, delete
        */
-      getEventMaskName(event) {
+      getEventMaskName (event) {
         if (typeof event !== 'number') return
         const keys = Object.keys(eventMask).filter(k => eventMask[k] & event)
         return keys
@@ -219,7 +219,7 @@ const Model = (() => {
        * Compensate for downstream transaction failures.
        * Back out all previous port transactions
        */
-      async undo() {
+      async undo () {
         return compensate(this)
       },
 
@@ -231,7 +231,7 @@ const Model = (() => {
        * @param {boolean} [multi] - allow multiple listeners for event,
        * defaults to `true`
        */
-      addListener(eventName, callback, options) {
+      addListener (eventName, callback, options) {
         broker.on(eventName, callback, options)
       },
 
@@ -243,7 +243,7 @@ const Model = (() => {
        * @param {boolean} [forward] - forward event to service mesh,
        * defaults to `false`
        */
-      async emit(eventName, eventData, options) {
+      async emit (eventName, eventData, options) {
         await broker.notify(
           eventName,
           {
@@ -273,8 +273,9 @@ const Model = (() => {
        *
        * @param {object} changes - object containing updated props
        * @param {boolean} validate - run validation by default
+       * @returns {Promise<Model>}
        */
-      async update(changes, validate = true) {
+      async update (changes, validate = true) {
         // get the last saved version
         const saved = await datasource.find(this[ID])
         // merge changes with last saved and optionally validate
@@ -292,26 +293,26 @@ const Model = (() => {
       },
 
       /**
-       * Synchronous version of {@link Model.update}. 
-       * Only updates cache. External storage is 
-       * not updated and no event is sent. 
-       * 
+       * Synchronous version of {@link Model.update}.
+       * Only updates cache. External storage is
+       * not updated and no event is sent.
+       *
        * Useful for:
        * - immediate cache update
        * - controlling when/if event is sent
-       * - calling external storage with custom adapter  
-       * 
+       * - calling external storage with custom adapter
+       *
        * Consider situations in which the point is not
        * to persist data, but to share it with other
        * application components, as is done in workflow
-       * or between local related model threads, which 
+       * or between local related model threads, which
        * use shared memory.
-       * 
-       * @param {*} changes 
-       * @param {boolean} validate 
+       *
+       * @param {*} changes
+       * @param {boolean} validate
        * @returns {Model}
        */
-      async updateSync(changes, validate = true) {
+      updateSync (changes, validate = true) {
         // get the last saved version
         const saved = datasource.findSync(this[ID])
         // merge changes with lastest copy and optionally validate
@@ -334,7 +335,7 @@ const Model = (() => {
        * @param {{key1, keyN}} filter - list of required matching key-values
        * @returns {Model[]}
        */
-      listSync(filter) {
+      listSync (filter) {
         return this.filter(query, [...this.dsMap.values()])
       },
 
@@ -345,7 +346,7 @@ const Model = (() => {
        * @param {{key1, keyN}} filter
        * @returns {Model[]}
        */
-      async list(filter, cache = true) {
+      async list (filter, cache = true) {
         return datasource.list(filter, cache)
       },
 
@@ -353,7 +354,7 @@ const Model = (() => {
        * Original request passed in by caller
        * @returns arguments passed by caller
        */
-      getArgs() {
+      getArgs () {
         return modelInfo.args ? modelInfo.args : []
       },
 
@@ -361,7 +362,7 @@ const Model = (() => {
        * Identify events types.
        * @returns {eventMask}
        */
-      getEventMask() {
+      getEventMask () {
         return eventMask
       },
 
@@ -370,11 +371,11 @@ const Model = (() => {
        *
        * @returns {import(".").ModelSpecification}
        */
-      getSpec() {
+      getSpec () {
         return modelInfo.spec
       },
 
-      isCached() {
+      isCached () {
         return modelInfo.spec.isCached
       },
 
@@ -383,7 +384,7 @@ const Model = (() => {
        *
        * @returns {import(".").ports}
        */
-      getPorts() {
+      getPorts () {
         return modelInfo.spec.ports
       },
 
@@ -392,7 +393,7 @@ const Model = (() => {
        *
        * @returns
        */
-      getName() {
+      getName () {
         return this[MODELNAME]
       },
 
@@ -401,7 +402,7 @@ const Model = (() => {
        *
        * @returns {string}
        */
-      getId() {
+      getId () {
         return this[ID]
       },
 
@@ -410,7 +411,7 @@ const Model = (() => {
        *
        * @returns {string[]} history of ports called by this model instance
        */
-      getPortFlow() {
+      getPortFlow () {
         return this[PORTFLOW]
       },
 
@@ -420,7 +421,7 @@ const Model = (() => {
        * @param {string} key - string representation of Symbol
        * @returns {Symbol}
        */
-      getKey(key) {
+      getKey (key) {
         return keyMap[key]
       }
     }
