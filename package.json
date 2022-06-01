@@ -26,7 +26,7 @@
     "as-bind": "0.8.2",
     "assemblyscript": "0.20.7",
     "dotenv": "16.0.1",
-    "express": "4.17.2",
+    "express": "4.18.1",
     "express-jwt": "7.7.5",
     "import-fresh": "3.3.0",
     "ipfs": "^0.63.0",
