@@ -171,6 +171,11 @@ export default function DistributedCache ({
   const handleUpsert = asyncPipe(streamCode, hydrate, save)
 
   /**
+   * Having received a response to a request,
+   * update the local cache with the results
+   * and invoke the `route` callback, if one
+   * exists, to publish the results to other
+   * registered listeners.
    *
    * @param {function(string):string} parser
    * @param {function(object)} route what to do after updating
@@ -331,7 +336,7 @@ export default function DistributedCache ({
     )
 
   /**
-   * Listen for internal events requesting cache search and send to remote systems.
+   * Listen for internal events requesting cache search and forward externally.
    * @param {string} internalEvent name of internal event
    * @param {string} externalEvent name of external event
    */
@@ -361,7 +366,7 @@ export default function DistributedCache ({
    * Also listen for request and response events for locally
    * and remotely cached data.
    */
-  function start () {
+  function listen () {
     const modelSpecs = models.getModelSpecs()
     const localModels = [workerData.modelName.toUpperCase()]
     const remoteModels = [
@@ -383,7 +388,7 @@ export default function DistributedCache ({
 
     console.info('local models', localModels, 'remote models', remoteModels)
 
-    // Forward requests to, handle responses from, remote models
+    // Forward local requests to, handle responses from, related remote models
     remoteModels.forEach(function (modelName) {
       // listen for internal requests and forward externally
       forwardSearchRequest(
@@ -403,7 +408,7 @@ export default function DistributedCache ({
       ].forEach(receiveCrudBroadcast)
     })
 
-    // Respond to search requests and broadcast CRUD events
+    // Respond to external search requests and broadcast local CRUD events
     localModels.forEach(function (modelName) {
       // Listen for external requests and respond with search results
       answerSearchRequest(
@@ -422,6 +427,6 @@ export default function DistributedCache ({
   console.info('distributed object cache running')
 
   return Object.freeze({
-    start
+    listen
   })
 }

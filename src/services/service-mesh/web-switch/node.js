@@ -86,6 +86,12 @@ const DnsPriority = {
   }
 }
 
+/**
+ * If we have been selected to be a backup switch
+ * check if its time to takeover.
+ * Based on DNS load balancing: the lower the value
+ * the higher the priority and wieght. 
+ */
 function checkTakeover () {
   if (DnsPriority.matches(config)) activateBackup = true
 }
@@ -307,7 +313,6 @@ function startHeartbeat () {
     } else {
       try {
         clearInterval(intervalId)
-
         broker.emit(TIMEOUTEVENT, { error: 'server unresponsive' })
 
         console.error({

@@ -27,7 +27,7 @@ export const relationType = {
    * @param {*} rel
    * @returns
    */
-  oneToOne(model, ds, rel) {
+  oneToOne (model, ds, rel) {
     return this.manyToOne(model, ds, rel)
   },
 
@@ -47,15 +47,15 @@ export const relationType = {
 }
 
 const referentialIntegrity = {
-  [relationType.manyToOne.name](fromModel, toModels, relation, ds) {
+  [relationType.manyToOne.name] (fromModel, toModels, relation, ds) {
     fromModel.updateSync({ [relation.foreignKey]: toModels[0].getId() }, false)
   },
 
-  [relationType.oneToOne.name](fromModel, toModels, relation, ds) {
+  [relationType.oneToOne.name] (fromModel, toModels, relation, ds) {
     return this[relationType.manyToOne.name](fromModel, toModels, relation, ds)
   },
 
-  [relationType.oneToMany.name](fromModel, toModels, relation, ds) {
+  [relationType.oneToMany.name] (fromModel, toModels, relation, ds) {
     toModels.map(m => {
       const model = ds.findSync(m.id)
       ds.saveSync({
@@ -65,7 +65,7 @@ const referentialIntegrity = {
     })
   },
 
-  [relationType.containsMany.name](fromModel, toModels, relation, ds) { }
+  [relationType.containsMany.name] (fromModel, toModels, relation, ds) {}
 }
 
 /**
@@ -75,7 +75,7 @@ const referentialIntegrity = {
  * @param {import('./index').relations[x]} relation
  * @param {import('./model-factory').Datasource} ds
  */
-function updateForeignKeys(fromModel, toModels, relation, ds) {
+function updateForeignKeys (fromModel, toModels, relation, ds) {
   console.debug({ fn: updateForeignKeys.name, toModels })
   return referentialIntegrity[relation.type](fromModel, toModels, relation, ds)
 }
@@ -88,7 +88,7 @@ function updateForeignKeys(fromModel, toModels, relation, ds) {
  * @param {import('./datasource').default} ds
  * @returns
  */
-async function createNewModels(args, fromModel, relation, ds) {
+async function createNewModels (args, fromModel, relation, ds) {
   if (args.length > 0) {
     const { UseCaseService } = require('.')
 
@@ -109,7 +109,7 @@ async function createNewModels(args, fromModel, relation, ds) {
  * @param {import("./event-broker").EventBroker} broker
  * @returns {Promise<import(".").Event>} source model
  */
-export function requireRemoteObject(model, relation, broker, ...args) {
+export function requireRemoteObject (model, relation, broker, ...args) {
   const request = internalCacheRequest(relation.modelName)
   const response = internalCacheResponse(relation.modelName)
 
@@ -139,10 +139,9 @@ export function requireRemoteObject(model, relation, broker, ...args) {
   })
 }
 
-function isRelatedModelLocal(relation) {
+function isRelatedModelLocal (relation) {
   return require('.')
-    .default
-    .getModelSpecs()
+    .default.getModelSpecs()
     .filter(spec => !spec.isCached)
     .map(spec => spec.modelName.toUpperCase())
     .includes(relation.modelName.toUpperCase())
@@ -153,7 +152,7 @@ function isRelatedModelLocal(relation) {
  * @param {import("./index").relations} relations
  * @param {import("./datasource").default} datasource
  */
-export default function makeRelations(relations, datasource, broker) {
+export default function makeRelations (relations, datasource, broker) {
   if (Object.getOwnPropertyNames(relations).length < 1) return
 
   return Object.keys(relations)
@@ -170,7 +169,7 @@ export default function makeRelations(relations, datasource, broker) {
 
         return {
           // the relation function
-          async [relation](...args) {
+          async [relation] (...args) {
             // Get or create datasource of related object
             const ds = datasource.getFactory().getDataSource(modelName)
 

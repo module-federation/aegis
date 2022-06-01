@@ -6,7 +6,9 @@ const { Transform } = require('stream')
 
 const url = process.env.MONGODB_URL || 'mongodb://localhost:27017'
 const configRoot = require('../../config').hostConfig
-const dsOptions = configRoot.adapters.datasources.DataSourceMongoDb.options || { runOffline:true }
+const dsOptions = configRoot.adapters.datasources.DataSourceMongoDb.options || {
+  runOffline: true
+}
 const cacheSize = configRoot.adapters.cacheSize || 3000
 
 /**
@@ -25,7 +27,7 @@ const mongoOpts = {
  * even when the database is offline.
  */
 export class DataSourceMongoDb extends DataSourceMemory {
-  constructor(map, factory, name) {
+  constructor (map, factory, name) {
     super(map, factory, name)
     this.cacheSize = cacheSize
     this.mongoOpts = mongoOpts
@@ -34,7 +36,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
     this.url = url
   }
 
-  async connection() {
+  async connection () {
     try {
       if (!connections.has(this.url)) {
         const client = new MongoClient(this.url, this.mongoOpts)
@@ -49,7 +51,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
     }
   }
 
-  async collection() {
+  async collection () {
     try {
       return (await this.connection()).db(this.name).collection(this.name)
     } catch (error) {
@@ -64,7 +66,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
    *  serializer:import("../../lib/serializer").Serializer
    * }} options
    */
-  load({ hydrate, serializer }) {
+  load ({ hydrate, serializer }) {
     try {
       this.hydrate = hydrate
       this.serializer = serializer
@@ -74,7 +76,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
     }
   }
 
-  async loadModels() {
+  async loadModels () {
     try {
       const cursor = (await this.collection()).find().limit(this.cacheSize)
       cursor.forEach(model => super.save(model.id, model))
@@ -83,10 +85,11 @@ export class DataSourceMongoDb extends DataSourceMemory {
     }
   }
 
-  async findDb(id) {
+  async findDb (id) {
     try {
-      return (await this.collection()).findOne({ _id: id })
-      // return super.save(id, model)
+      const model = (await this.collection()).findOne({ _id: id })
+      // save it to the cache
+      return super.saveSync(id, model)
     } catch (error) {
       console.error({ fn: this.findDb.name, error })
     }
@@ -97,7 +100,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
    * @overrid
    * @param {*} id - `Model.id`
    */
-  async find(id) {
+  async find (id) {
     try {
       const cached = super.findSync(id)
       if (!cached) return this.findDb(id)
@@ -107,14 +110,14 @@ export class DataSourceMongoDb extends DataSourceMemory {
     }
   }
 
-  serialize(data) {
+  serialize (data) {
     if (this.serializer) {
       return JSON.stringify(data, this.serializer.serialize)
     }
     return JSON.stringify(data)
   }
 
-  async saveDb(id, data) {
+  async saveDb (id, data) {
     try {
       const clone = JSON.parse(this.serialize(data))
       await (await this.collection()).replaceOne(
@@ -131,14 +134,14 @@ export class DataSourceMongoDb extends DataSourceMemory {
   /**
    * Save to the cache first, then the db.
    * Wait for both functions to complete.
-   * Optionally keep running even if the 
+   * Optionally keep running even if the
    * db is offline.
    *
    * @override
    * @param {*} id
    * @param {*} data
    */
-  async save(id, data) {
+  async save (id, data) {
     try {
       const cache = super.saveSync(id, data)
       try {
@@ -155,61 +158,69 @@ export class DataSourceMongoDb extends DataSourceMemory {
         console.error('db trans failed, sync it later')
       }
       return cache
-    } catch(e) {
+    } catch (e) {
       console.error(e)
     }
   }
 
   /**
-   * If `cached` is `false`, pipe filtered db object stream 
+   * If `cached` is `false`, pipe filtered db object stream
    * to tranform. Add opening array bracket, serialize each record,
    * and finally add closing array bracket at end of stream. With
-   * streams, we can support queries of very large tables, with 
+   * streams, we can support queries of very large tables, with
    * minimal memory overhead on the node server.
-   * 
+   *
    * @override
    * @param {WritableStream} writable - writable stream
    * @param {{key1:string, keyN:string}} filter - e.g. from http query
    * @param {boolean} cached - use cache if true, otherwise go to db.
    */
-  async list(writable, filter = null, cached = false) {
-    if (cached) return super.listSync(null, filter, cached)
+  async list (writable, filter = null, cached = false) {
+    try {
+      if (cached) return super.listSync(null, filter, cached)
 
-    let first = true
-    const serialize = new Transform({
-      writableObjectMode: true,
+      let first = true
+      const serialize = new Transform({
+        writableObjectMode: true,
 
-      // start of array
-      construct(callback) {
-        this.push('[')
-        callback()
-      },
+        // start of array
+        construct (callback) {
+          this.push('[')
+          callback()
+        },
 
-      // each chunk is a record
-      transform(chunk, encoding, callback) {
-        // comma-separate
-        if (first) first = false
-        else this.push(',')
+        // each chunk is a record
+        transform (chunk, encoding, callback) {
+          // comma-separate
+          if (first) first = false
+          else this.push(',')
 
-        // serialize record
-        this.push(JSON.stringify(chunk))
-        callback()
-      },
+          // serialize record
+          this.push(JSON.stringify(chunk))
+          callback()
+        },
 
-      // end of array
-      flush(callback) {
-        this.push(']')
-        callback()
-      }
-    })
+        // end of array
+        flush (callback) {
+          this.push(']')
+          callback()
+        }
+      })
 
-    return new Promise(async (resolve, reject) => {
-      const readable = (await this.collection()).find(filter).stream()
-      readable.on('error', reject)
-      readable.on('end', resolve)
-      // transform db stream then pipe to output
-      readable.pipe(serialize).pipe(writable)
-    })
+      return new Promise(async (resolve, reject) => {
+        const readable = (await this.collection()).find(filter).stream()
+        readable.on('error', reject)
+        readable.on('end', resolve)
+        // transform db stream then pipe to output
+        readable.pipe(serialize).pipe(writable)
+      })
+    } catch (error) {
+      console.error({ fn: this.list.name, error })
+    }
+  }
+
+  async count () {
+    return await (await this.collection()).countDocuments()
   }
 
   /**
@@ -219,10 +230,10 @@ export class DataSourceMongoDb extends DataSourceMemory {
    * @override
    * @param {*} id
    */
-  async delete(id) {
+  async delete (id) {
     try {
       await (await this.collection()).deleteOne({ _id: id })
-      super.delete(id)
+      super.deleteSync(id)
     } catch (error) {
       console.error(error)
     }
@@ -231,7 +242,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
   /**
    * Flush the cache to disk.
    */
-  flush() {
+  flush () {
     try {
       this.dsMap.reduce((a, b) => a.then(() => this.saveDb(b.getId(), b)), {})
     } catch (error) {
@@ -243,8 +254,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
    * Process terminating, flush cache, close connections.
    * @override
    */
-  close() {
+  close () {
     this.flush()
   }
 }
-

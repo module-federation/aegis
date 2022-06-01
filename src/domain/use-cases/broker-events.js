@@ -6,6 +6,7 @@ import DistributedCache from '../distributed-cache'
 // import EventBus from '../../services/event-bus'
 import { ServiceMeshAdapter as ServiceMesh } from '../../adapters'
 import { BroadcastChannel, isMainThread, workerData } from 'worker_threads'
+import { ThreadPool } from '../thread-pool'
 
 /** @type {BroadcastChannel}*/
 let broadcastChannel
@@ -24,17 +25,18 @@ function createBroadcastChannel (modelName, broker) {
     broker.notify(msgEvent.data.eventName, msgEvent.data)
   return broadcastChannel
 }
+/** @typedef {ThreadPool} threadpool*/
 
 /**
- * Broker events between {@link ThreadPoolFactory} and remote mesh instances.
+ * Broker events between {@link threadpool}s and remote mesh instances.
  * - an event raised by one pool may need to be processed by another
  * - an event raised by one aegis instance may need to be processed by another
- * - event forwarding
+ * - port event forwarding
  * - distributed object cache
  *    - crud lifecycle events
- *    - find obj / cache miss
+ *    - cache miss search
  * @param {import('../event-broker').EventBroker} broker
- * @param module:src/domain/threadpool-factory datasources
+ * @param {import('../shared-memory').DataSourceFactory} datasources
  * @param {import("../model-factory").ModelFactory} models
  * @param {import("../thread-pool").ThreadPoolFactory} threadpools
  */
@@ -45,7 +47,7 @@ export default function brokerEvents (broker, datasources, models) {
 
     // forward every event from the service mesh to the workers
     ServiceMesh.subscribe('*', event => {
-      console.log({ fn: 'from mesh', event })
+      console.debug({ fn: 'from mesh', event })
       broker.notify('to_worker', event)
     })
 
@@ -63,7 +65,7 @@ export default function brokerEvents (broker, datasources, models) {
     require('../domain-events').registerEvents(broker)
 
     // init distributed object cache
-    const manager = DistributedCache({
+    const cache = DistributedCache({
       models,
       broker,
       datasources,
@@ -71,7 +73,7 @@ export default function brokerEvents (broker, datasources, models) {
       subscribe: (eventName, cb) => broker.on(eventName, cb)
     })
 
-    manager.start()
+    cache.listen()
   }
 
   /**

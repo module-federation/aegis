@@ -155,7 +155,6 @@ const Model = (() => {
         onDelete = defaultOnDelete,
         validate = defaultValidate,
         ports,
-
         broker,
         modelName,
         datasource,

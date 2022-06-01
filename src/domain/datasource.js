@@ -1,15 +1,15 @@
 'use strict'
 
-import { Writable } from "stream"
+import { Writable } from 'stream'
 
-function roughSizeOfObject(...objects) {
+function roughSizeOfObject (...objects) {
   let bytes = 0
 
   objects.forEach(object => {
     const objectList = []
     const stack = [object]
     while (stack.length) {
-      var value = stack.pop()
+      const value = stack.pop()
 
       if (typeof value === 'boolean') {
         bytes += 4
@@ -37,7 +37,7 @@ function roughSizeOfObject(...objects) {
  * Abstract datasource class
  */
 export default class DataSource {
-  constructor(map, factory, name) {
+  constructor (map, factory, name) {
     this.className = this.constructor.name
     this.dsMap = map
     this.factory = factory
@@ -50,22 +50,21 @@ export default class DataSource {
    * @param {*} data
    * @returns {Promise<object>}
    */
-  async save(id, data) {
-    this.saveSync(id, data)
+  async save (id, data) {
+    return this.saveSync(id, data)
   }
 
   /**
-   * 
-   * @param {string} id 
-   * @param {import(".").Model} data 
-   * @returns 
+   *
+   * @param {string} id
+   * @param {import(".").Model} data
+   * @returns
    */
-  saveSync(id, data) {
-    return this.mapSave(id, data)
+  saveSync (id, data) {
+    return this.mapSet(id, data)
   }
 
-
-  mapSave(id, data) {
+  mapSet (id, data) {
     return this.dsMap.set(id, data)
   }
 
@@ -74,58 +73,58 @@ export default class DataSource {
    * @param {*} id record id
    * @returns {Promise<any>} record
    */
-  async find(id) {
+  async find (id) {
     return this.findSync(id)
   }
 
   /**
-   * 
-   * @param {string} id 
+   *
+   * @param {string} id
    * @returns {import(".").Model}
    */
-  findSync(id) {
+  findSync (id) {
     return this.mapGet(id)
   }
 
-  mapGet(id) {
+  mapGet (id) {
     return this.dsMap.get(id)
   }
 
   /**
    * list model instances
    * @param {Writable} [writable] - writable stream
-   * @param {object} [query] - filter for properties of query 
+   * @param {object} [query] - filter for properties of query
    * @param {boolean} [cached] - list cached items, default is true
    * @returns {Promise<any[]>}
    */
-  async list(writable = null, query = null, cached = true) {
+  async list (writable = null, query = null, cached = true) {
     return this.listSync(query)
   }
 
   /**
-   * 
-   * @param {object} query 
-   * @returns 
+   *
+   * @param {object} query
+   * @returns
    */
-  listSync(query) {
+  listSync (query) {
     const list = this.generateList()
     return query ? this.filterList(query, list) : list
   }
 
-  generateList() {
-    return this.mapList()
+  generateList () {
+    return this.mapToArray()
   }
 
-  mapList() {
+  mapToArray () {
     return [...this.dsMap.values()]
   }
 
   /**
-   * 
-   * @param {*} query 
-   * @returns 
+   *
+   * @param {*} query
+   * @returns
    */
-  filterList(query, list) {
+  filterList (query, list) {
     if (query) {
       const count = query['count']
       if (count && !Number.isNaN(parseInt(count))) {
@@ -148,63 +147,66 @@ export default class DataSource {
    * @param {*} id
    * @param {boolean} sync sync cluster nodes, true by default
    */
-  async delete(id, sync = true) {
+  async delete (id, sync = true) {
     return this.deleteSync(id)
   }
 
-
-  deleteSync(id) {
+  deleteSync (id) {
     return this.mapDelete(id)
   }
 
-  mapDelete(id) {
+  mapDelete (id) {
     return this.dsMap.delete(id)
   }
   /**
    *
    * @param {*} options
    */
-  async load(options) { }
+  async load (options) {}
 
   /**
    *
    * @returns {import("./datasource-factory").DataSourceFactory}
    */
-  getFactory() {
+  getFactory () {
     return this.factory
   }
 
   /**
    *
    */
-  count() {
+  async count () {
+    return this.countSync()
+  }
+
+  countSync () {
     return this.mapCount()
   }
 
-  mapCount() {
+  mapCount () {
     return this.dsMap.size()
   }
 
   /**
-   * 
-   * @returns 
+   *
+   * @returns
    */
-  getCacheSize() {
-    return this.count()
+  getCacheSize () {
+    return this.countSync()
   }
 
   /**
-   * 
-   * @returns 
+   *
+   * @returns
    */
-  getCacheSizeBytes() {
-    return this.count() * roughSizeOfObject(this.listSync({ count: 1 }))
+  getCacheSizeBytes () {
+    return this.countSync() * roughSizeOfObject(this.listSync({ count: 1 }))
   }
 
   /**
    *
    */
-  close() { }
+  close () {}
 
   getClassName () {
     return this.className

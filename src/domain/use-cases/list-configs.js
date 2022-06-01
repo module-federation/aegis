@@ -33,7 +33,7 @@ export default function listConfigsFactory ({
           : datasources.listDataSources().map(k => ({
               dsname: k,
               dstype: datasources.getSharedDataSource(k).getClassName(),
-              objects: datasources.getSharedDataSource(k).count()
+              objects: datasources.getSharedDataSource(k).countSync()
             })),
 
       events: () =>

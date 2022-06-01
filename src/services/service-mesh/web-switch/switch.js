@@ -138,8 +138,8 @@ export function attachServer (server) {
 
         if (client.info.initialized) {
           if (msg == 'status') {
-            server.sendStatus(client)
             setClientInfo(client, msg)
+            server.sendStatus(client)
             return
           }
           server.broadcast(message, client)

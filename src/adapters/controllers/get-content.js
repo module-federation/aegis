@@ -69,7 +69,7 @@ export default function getContent (httpRequest, content, defaultTitle) {
     if (httpRequest.query.html) {
       const title = getResourceName(httpRequest, defaultTitle)
 
-      let text = `
+      let html = `
           <!DOCTYPE html>
           <html>
           <head>
@@ -101,15 +101,15 @@ export default function getContent (httpRequest, content, defaultTitle) {
               class="navbar-brand mb-0 text-warning h1 navbar-toggler"
             >
               <span class="text-black\"><b>ÆGIS</b></span>
-              <span class="text-black"> Domain Model API</span>
+              <span class="text-black"> FEDERATED MICROSERVICES</span>
             </span>
           </a>
           </div>
           </nav>`
 
       contents.forEach(function (content) {
-        text += `<table class="table table-dark table-striped table-hover">  <thead>`
-        text += `<tr><th scope="col">key</th><th scope="col">value</th></tr></thead>`
+        html += `<table class="table table-dark table-striped table-hover">  <thead>`
+        html += `<tr><th scope="col">key</th><th scope="col">value</th></tr></thead>`
         Object.keys(content).forEach(key => {
           let val = content[key]
 
@@ -118,9 +118,9 @@ export default function getContent (httpRequest, content, defaultTitle) {
               JSON.stringify(val, null, 2)
             )}</code></pre>`
 
-          text += `<tr><td style="width:100px">${key}</td><td>${val}</td></tr>`
+          html += `<tr><td style="width:100px">${key}</td><td>${val}</td></tr>`
         })
-        text += '</div></table>'
+        html += '</div></table>'
       })
 
       /**
@@ -143,27 +143,27 @@ export default function getContent (httpRequest, content, defaultTitle) {
         let queryText = ''
         queryParams.forEach(p => (queryText += p + '&'))
 
-        text += '<div class="mb3">'
+        html += '<div class="mb3">'
         ModelFactory.getModelSpecs().forEach(s => {
-          text += `<a href="${httpRequest.path}?${queryText}modelName=${s.modelName}">View thread info for ${s.modelName}</a><br>`
+          html += `<a href="${httpRequest.path}?${queryText}modelName=${s.modelName}">View thread info for ${s.modelName}</a><br>`
           try {
             console.debug(httpRequest.query.details === 'data')
             if (httpRequest.query.details === 'data') {
               const related = findLocalRelatedModels(s.modelName)
               related.forEach(
                 rel =>
-                  (text += `<a href="${httpRequest.path}?${queryText}modelName=${s.modelName}&poolName=${rel}">View ${s.modelName} thread info for ${rel}</a><br>`)
+                  (html += `<a href="${httpRequest.path}?${queryText}modelName=${s.modelName}&poolName=${rel}">View ${s.modelName} thread info for ${rel}</a><br>`)
               )
             }
           } catch (error) {
             console.error(error)
           }
         })
-        text += '</div>'
+        html += '</div>'
       }
-      text += '</div></body></html>'
+      html += '</div></body></html>'
 
-      return { contentType: 'text/html', content: text }
+      return { contentType: 'text/html', content: html }
     }
   } catch (error) {
     console.log(error)

@@ -1,8 +1,5 @@
 'use strict'
 
-import { read } from "fs"
-import { Stream } from "stream"
-
 const DateFunctions = {
   today: list =>
     list.filter(m => new Date(m.createTime).getDate() === new Date().getDate())
@@ -21,26 +18,25 @@ const DateFunctions = {
     ).length
 }
 
-function streamList(writeable, list) {
-  const readable = Stream.Readable({ read() { } })
-  readable.pipe(writeable)
-  list.forEach(element => readable.push(element))
-  readable.push(null)
-}
 /**
  *
+ * @param {Writable} writable
  * @param {*} query
  * @param {import("../datasource").default} repository
  * @returns
  */
-async function parseQuery(writeable, query, repository) {
+async function parseQuery (writable, query, repository) {
   //return Array.from(repository.dsMap.keys())
+
+  // should we only search cached data?
+  //const cached = query.cached || query.cacheOnly || false
+  const cached = true
 
   if (query?.count) {
     const dateFunc = DateFunctions[query.count]
 
     if (dateFunc) {
-      const list = await repository.list(null, null, true)
+      const list = await repository.list(writable, null, cached)
       return {
         count: dateFunc(list)
       }
@@ -50,27 +46,27 @@ async function parseQuery(writeable, query, repository) {
 
     if (searchTerms.length > 1) {
       const filter = { [searchTerms[0]]: searchTerms[1] }
-      const filteredList = await repository.list(null, null, true)
+      const filteredList = await repository.list(writable, null, cached)
 
       const result = {
         ...filter,
         count: filteredList.length
       }
 
-      streamList(writeable, [result])
+      return result
     }
 
     if (!Number.isNaN(parseInt(query.count))) {
-      return repository.list(null, null, true)
+      return repository.list(writable, null, cached)
     }
 
     return {
-      total: (await repository.list(null, null, true)).length,
-      cached: repository.count(),
+      total: await repository.count(),
+      cached: repository.countSync(),
       bytes: repository.getCacheSizeBytes()
     }
   }
-  return repository.list(writeable, query)
+  return repository.list(writable, query)
 }
 
 /**
@@ -81,8 +77,8 @@ async function parseQuery(writeable, query, repository) {
  * @param {{repository:import('../datasource').default}}
  * @returns {listModels}
  */
-export default function makeListModels({ repository } = {}) {
-  return async function listModels({ writeable, query }) {
-    return parseQuery(writeable, query, repository)
+export default function makeListModels ({ repository } = {}) {
+  return async function listModels ({ writable, query }) {
+    return parseQuery(writable, query, repository)
   }
 }
