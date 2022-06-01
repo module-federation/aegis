@@ -12,14 +12,15 @@ function prettifyJson (json) {
       let cls = '<span>'
       if (/^"/.test(match)) {
         if (/:$/.test(match)) {
-          cls = "<span style='color: blue'>"
+          cls = "<span style='color: lightblue'>"
         } else {
           cls = '<span>'
         }
       } else if (/true|false/.test(match)) {
-        cls = "<span style='color: violet'>"
+        cls =
+          "<span style='color: lightgreen                                                                         '>"
       } else if (/null/.test(match)) {
-        cls = "<span style='color: green'>"
+        cls = "<span style='color: orange'>"
       }
       return cls + match + '</span>'
     }
@@ -40,9 +41,7 @@ function findLocalRelatedModels (modelName) {
   const localModels = ModelFactory.getModelSpecs().map(s =>
     s.modelName.toUpperCase()
   )
-  //console.debug({ localModels })
   const spec = ModelFactory.getModelSpec(modelName)
-  //console.debug({ spec })
   const result = !spec?.relations
     ? []
     : Object.keys(spec.relations)
@@ -77,41 +76,40 @@ export default function getContent (httpRequest, content, defaultTitle) {
           <meta charset="utf-8" />
           <meta name="viewport" content="width=device-width, initial-scale=1" />
           <link rel="icon" type="image/png" href="/aegis-logo.png" />
-          <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+          
+          <link
+            href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css"
+            rel="stylesheet"
+            integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3"
+            crossorigin="anonymous"
+          />
+          
           <title>${title}</title>
-          <div class="w3-container w3-amber">
-            <a href="/index.html"> <img src="/aegis-logo.png" alt="aegis" width="65" height="65" style="font: x-large" /><b>ÆGIS</b> Federated Microservices</a>
-          </div> 
-          <style>
-            a:link {
-              text-decoration: none;
-            }
-            body {
-              background-color: w3-dark-gray;
-            }
-            div.spacer {
-              margin: 10px; 
-            }
-            table {
-              width: 50%;
-            }
-            th {
-              color: white;
-              background: black;
-              font-size: 12px;
-            }
-            td {
-              text-align: left;
-              font-size: 12px;
-            }
-          </style>
-          </head>                     
-          <body>
-          <div class="w3-container w3-dark-gray">`
+          </head>
+          <body class="bg-dark">
+          <script
+            src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"
+            integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p"
+            crossorigin="anonymous"
+          ></script>
+
+          <nav class="navbar navbar-dark bg-warning" aria-label="navbar">
+          <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+              <img src="/aegis-logo.png" alt="aegis" width="65" height="65" />
+              <span
+              class="navbar-brand mb-0 text-warning h1 navbar-toggler"
+            >
+              <span class="text-black\"><b>ÆGIS</b></span>
+              <span class="text-black"> Domain Model API</span>
+            </span>
+          </a>
+          </div>
+          </nav>`
 
       contents.forEach(function (content) {
-        text += `<div class="w3-padding-large"><table class="w3-table w3-bordered w3-border w3-hover-grey w3-hoverable w3-hover-border-amber">`
-        text += `<tr><th>key</th><th>value</th></tr>`
+        text += `<table class="table table-dark table-striped table-hover">  <thead>`
+        text += `<tr><th scope="col">key</th><th scope="col">value</th></tr></thead>`
         Object.keys(content).forEach(key => {
           let val = content[key]
 
@@ -122,7 +120,7 @@ export default function getContent (httpRequest, content, defaultTitle) {
 
           text += `<tr><td style="width:100px">${key}</td><td>${val}</td></tr>`
         })
-        text += '</table></div>'
+        text += '</div></table>'
       })
 
       /**
@@ -145,7 +143,7 @@ export default function getContent (httpRequest, content, defaultTitle) {
         let queryText = ''
         queryParams.forEach(p => (queryText += p + '&'))
 
-        text += '<div class="spacer">'
+        text += '<div class="mb3">'
         ModelFactory.getModelSpecs().forEach(s => {
           text += `<a href="${httpRequest.path}?${queryText}modelName=${s.modelName}">View thread info for ${s.modelName}</a><br>`
           try {
