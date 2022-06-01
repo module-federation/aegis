@@ -67,7 +67,9 @@ export default function getContent (httpRequest, content, defaultTitle) {
       return { contentType: 'application/json', content }
 
     if (httpRequest.query.html) {
-      const title = getResourceName(httpRequest, defaultTitle)
+      const title =
+        getResourceName(httpRequest, defaultTitle) ||
+        'AEGIS FEDERATED MICROSERVICES'
 
       let html = `
           <!DOCTYPE html>
@@ -85,6 +87,31 @@ export default function getContent (httpRequest, content, defaultTitle) {
           />
           
           <title>${title}</title>
+          <style>
+            a:link {
+              color: orange;
+              background-color: transparent;
+              text-decoration: none;
+            }
+
+            a:visited {
+              color: pink;
+              background-color: transparent;
+              text-decoration: none;
+            }
+
+            a:hover {
+              color: fusia;
+              background-color: transparent;
+              text-decoration: underline;
+            }
+
+            a:active {
+              color: yellow;
+              background-color: transparent;
+              text-decoration: underline;
+            }
+            </style>
           </head>
           <body class="bg-dark">
           <script
@@ -100,8 +127,7 @@ export default function getContent (httpRequest, content, defaultTitle) {
               <span
               class="navbar-brand mb-0 text-warning h1 navbar-toggler"
             >
-              <span class="text-black\"><b>ÆGIS</b></span>
-              <span class="text-black"> FEDERATED MICROSERVICES</span>
+              <span class="text-black\">${title}</span>
             </span>
           </a>
           </div>
