@@ -31,7 +31,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
     super(map, factory, name)
     this.cacheSize = cacheSize
     this.mongoOpts = mongoOpts
-    /** keep running even if db is down */
+    // keep running even if db is down
     this.runOffline = dsOptions.runOffline
     this.url = url
   }
