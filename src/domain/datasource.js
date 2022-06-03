@@ -193,6 +193,10 @@ export default class DataSource {
     return this.countSync()
   }
 
+  /**
+   * 
+   * @returns 
+   */
   countSync () {
     return this.mapCount()
   }
