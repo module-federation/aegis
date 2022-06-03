@@ -107,7 +107,7 @@ export default class DataSource {
    * @param {boolean} [cached] - list cached items, default is true
    * @returns {Promise<any[]>}
    */
-  async list (query = null, cached = true) {
+  async list (query = null) {
     return this.listSync(query)
   }
 
@@ -125,6 +125,10 @@ export default class DataSource {
     return this.mapToArray()
   }
 
+  /**
+   *
+   * @returns
+   */
   mapToArray () {
     return [...this.dsMap.values()]
   }
