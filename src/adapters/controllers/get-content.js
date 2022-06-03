@@ -124,12 +124,10 @@ export default function getContent (httpRequest, content, defaultTitle) {
           <div class="container-fluid">
             <a class="navbar-brand" href="/">
               <img src="/aegis-logo.png" alt="aegis" width="65" height="65" />
-              <span
-              class="navbar-brand mb-0 text-warning h1 navbar-toggler"
-            >
-              <span class="text-black\">${title}</span>
-            </span>
-          </a>
+              <span class="navbar-brand mb-0 text-warning h1">
+                <span class="text-black\"><b>${title}</b></span>
+              </span>
+            </a>
           </div>
           </nav>`
 

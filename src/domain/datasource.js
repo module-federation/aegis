@@ -34,7 +34,7 @@ function roughSizeOfObject (...objects) {
 }
 
 /**
- * Abstract datasource class
+ * Data source base class
  */
 export default class DataSource {
   constructor (map, factory, name) {
@@ -45,7 +45,8 @@ export default class DataSource {
   }
 
   /**
-   * Upsert model instance
+   * Upsert model instance asynchronomously
+   * to handle I/0 latency and concurrency
    * @param {*} id
    * @param {*} data
    * @returns {Promise<object>}
@@ -55,7 +56,9 @@ export default class DataSource {
   }
 
   /**
-   *
+   * Synchronous cache write. Dont use
+   * this method to call a remote datasource.
+   * Use async {@link save} instead.
    * @param {string} id
    * @param {import(".").Model} data
    * @returns
@@ -64,6 +67,13 @@ export default class DataSource {
     return this.mapSet(id, data)
   }
 
+  /**
+   * Override this method to implement a custom
+   * datasource map.
+   * @param {*} id
+   * @param {*} data
+   * @returns
+   */
   mapSet (id, data) {
     return this.dsMap.set(id, data)
   }
@@ -97,7 +107,7 @@ export default class DataSource {
    * @param {boolean} [cached] - list cached items, default is true
    * @returns {Promise<any[]>}
    */
-  async list (writable = null, query = null, cached = true) {
+  async list (query = null, cached = true) {
     return this.listSync(query)
   }
 

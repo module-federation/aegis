@@ -145,22 +145,24 @@ function newThread ({ pool, file, workerData }) {
       console.error({ fn: newThread.name, error })
       reject(error)
     }
-  }).catch(console.error)
 }
 
 /**
- * Reallocate a newly freed thread (i.e. one that has
- * completed or failed to complete its job). If a job
- * is waiting, run it. Otherwise, return the thread to
- * {@link ThreadPool.freeThreads}.
+ * Reallocate a newly freed thread. If a job
+ * is waiting, run it. Otherwise, return the
+ * thread to {@link ThreadPool.freeThreads}.
  *
  * @param {ThreadPool} pool
  * @param {Thread} freeThread
  */
 function reallocate (pool, freeThread) {
   if (pool.waitingJobs.length > 0) {
-    /** we don't await {@link postJob } */
-    pool.waitingJobs.shift()(freeThread)
+    try {
+      // don't await, upstream promise resolves
+      pool.waitingJobs.shift()(freeThread)
+    } catch (error) {
+      console.error({ fn: reallocate.name, error })
+    }
   } else {
     pool.freeThreads.push(freeThread)
   }
@@ -173,8 +175,8 @@ function reallocate (pool, freeThread) {
  * callback or just use the default.
  *
  *
- * The caller passes a callback to get
- * the results so this function doesn't have to `await`.
+ * The caller passes a callback to get the results,
+ * so there's no need to `await`.
  *
  * @param {{
  *  pool:ThreadPool,
