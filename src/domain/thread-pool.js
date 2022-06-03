@@ -145,6 +145,7 @@ function newThread ({ pool, file, workerData }) {
       console.error({ fn: newThread.name, error })
       reject(error)
     }
+  })
 }
 
 /**
