@@ -180,8 +180,11 @@ const Model = (() => {
       // model class name
       [MODELNAME]: modelName,
 
-      // model instance uuid
-      [ID]: uuid(),
+      // if provided, use ID from caller for idempotence
+      [ID]:
+        modelInfo.args && modelInfo.args[0]
+          ? modelInfo.args[0].requestId || uuid()
+          : uuid(),
 
       // Called before update is committed
       [ONUPDATE] (changes) {

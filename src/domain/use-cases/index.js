@@ -62,17 +62,25 @@ function buildOptions (model) {
   }
 
   if (isMainThread) {
+    const ds = DataSourceFactory.getSharedDataSource(model.modelName)
+
     return {
       ...options,
       // main thread does not write to persistent store
-      repository: DataSourceFactory.getSharedDataSource(model.modelName),
+      repository: ds,
 
       // only main thread knows about thread pools (no nesting)
       threadpool: ThreadPoolFactory.getThreadPool(model.modelName, {
         preload: false,
-        sharedMap: DataSourceFactory.getSharedDataSource(model.modelName).dsMap,
+        sharedMap: ds.dsMap,
         dsRelated: findLocalRelatedDatasources(model.modelName)
-      })
+      }),
+
+      // if caller provides id, use it as key for idempotency
+      async idempotent (input) {
+        if (!input.requestId) return
+        return ds.find(m => m.getId() === input.requestId)
+      }
     }
   } else {
     return {

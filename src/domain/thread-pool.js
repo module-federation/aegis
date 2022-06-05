@@ -158,23 +158,21 @@ function newThread ({ pool, file, workerData }) {
  */
 function reallocate (pool, freeThread) {
   if (pool.waitingJobs.length > 0) {
-    try {
-      // don't await, upstream promise resolves
-      pool.waitingJobs.shift()(freeThread)
-    } catch (error) {
-      console.error({ fn: reallocate.name, error })
-    }
+    // call `postJob`: the caller has provided a callback to run
+    // when the job is done so just catch any errors and move on
+    pool.waitingJobs
+      .shift()(freeThread)
+      .catch(error => console.error({ fn: reallocate.name, error }))
   } else {
     pool.freeThreads.push(freeThread)
   }
 }
 
 /**
- * Post a job to a worker thread if one ia available, otherwise
+ * Post a job to a worker thread if one is available, otherwise
  * queue the job until one is. Then run the callback, passing the
  * results in the first param. The caller can specify a custom
  * callback or just use the default.
- *
  *
  * The caller passes a callback to get the results,
  * so there's no need to `await`.
@@ -214,6 +212,7 @@ function postJob ({
 
     thread[channel].once('error', async error => {
       console.error({ fn: postJob.name, error })
+      pool.incrementErrorCount()
 
       reallocate(pool, thread)
 
@@ -265,6 +264,7 @@ export class ThreadPool extends EventEmitter {
     this.queueTolerance = options.queueTolerance || DEFAULT_JOBQUEUE_TOLERANCE
     this.durationTolerance =
       options.durationTolerance || DEFAULT_DURATION_TOLERANCE
+      this.jobTime
     this.closed = false
     this.options = options
     this.reloads = 0
@@ -406,6 +406,15 @@ export class ThreadPool extends EventEmitter {
     return this.avgJobTime
   }
 
+  incrementErrorCount () {
+    this.errors++
+    return this
+  }
+
+  errorCount () {
+    return this.errors
+  }
+
   status () {
     return {
       name: this.name,
@@ -421,8 +430,13 @@ export class ThreadPool extends EventEmitter {
       queueRate: this.jobQueueRate(),
       queueRateTolerance: this.jobQueueThreshold(),
       deployments: this.deploymentCount(),
+      errors: this.errorCount(),
       since: new Date(this.startTime).toUTCString()
     }
+  }
+
+  errorRateThreshold () {
+    return this.errorRateTolerance
   }
 
   capacityAvailable () {
@@ -439,6 +453,12 @@ export class ThreadPool extends EventEmitter {
       },
       longJobDuration () {
         return pool.avgJobDuration() > pool.jobDurationThreshold()
+      },
+      tooManyErrors () {
+        return (
+          (pool.errorCount() / pool.totJobTime()) * 100 >
+          pool.errorRateThreshold()
+        )
       }
     }
     return (

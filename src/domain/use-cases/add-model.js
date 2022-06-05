@@ -27,6 +27,7 @@ export default function makeAddModel ({
   models,
   repository,
   threadpool,
+  idempotent,
   broker,
   handlers = []
 } = {}) {
@@ -40,8 +41,13 @@ export default function makeAddModel ({
   /** @type {addModel} */
   async function addModel (input) {
     if (isMainThread) {
+      //
+      const existingRecord = await idempotent(input)
+      if (existingRecord) return existingRecord
+
       const model = await threadpool.run(addModel.name, input)
       if (model.hasError) throw new Error(model.message)
+
       return model
     } else {
       try {

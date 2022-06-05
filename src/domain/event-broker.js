@@ -7,7 +7,7 @@ import Event from './event'
 import hash from './util/hash'
 
 const debug = process.env.DEBUG
-const handlerDebug = false
+const debugHandler = false
 
 /**
  * @callback eventHandler
@@ -101,15 +101,15 @@ async function runHandler (eventName, eventData = {}, handle) {
     return
   }
 
-  if (handlerDebug)
-    console.debug('handler running', {
+  if (debugHandler)
+    console.debug('event fired', {
       eventName,
       eventData
     })
   else console.debug('handler running', eventName)
 
   /**
-   * @type {eventHandler}
+   * @type {eventHandler}````
    */
   await handle(eventData)
 }
