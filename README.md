@@ -1,6 +1,6 @@
 [![NPM version][npm-image]][npm-url]
 [![NPM Downloads][downloads-image]][downloads-url]
-
+[![Gitpod][gitpod-image]][gitpod-url]
 
 
 # ÆGIS
@@ -116,4 +116,7 @@ yarn demo
 [npm-url]: https://npmjs.org/package/@module-federation/aegis
 [downloads-image]: https://img.shields.io/npm/dm/@module-federation/aegis
 [downloads-url]: https://npmjs.org/package/@module-federation/aegis
+[gitpod-image]: https://img.shields.io/badge/Gitpod-ready--to--code-908a85?logo=gitpod
+[gitpod-url]: https://gitpod.io/github.com/module-federation/aegis
+
 
