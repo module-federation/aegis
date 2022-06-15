@@ -15,9 +15,9 @@ const EVENTCHANNEL = 'eventChannel'
 const NOJOBSRUNNING = 'noJobsRunning'
 const DEFAULT_THREADPOOL_MIN = 1
 const DEFAULT_THREADPOOL_MAX = 2
-const DEFAULT_JOBQUEUE_TOLERANCE = 25
-const DEFAULT_DURATION_TOLERANCE = 1000
-const DEFAULT_JOB_ABORT_DURATION = 180000
+const DEFAULT_QUEUE_TOLERANCE = 25
+const DEFAULT_SPEED_TOLERANCE = 1000
+const DEFAULT_ABORT_TOLERANCE = 180000
 
 /**
  * @typedef {object} Thread
@@ -253,26 +253,26 @@ export class ThreadPool extends EventEmitter {
   } = {}) {
     super(options)
     /** @type {Thread[]} */
+    this.threads = []
+    /** @type {Thread[]} */
     this.freeThreads = []
+    /** @type {Map<string,function()>}*/
     this.waitingJobs = waitingJobs
     this.file = file
     this.name = name
     this.workerData = workerData
     this.maxThreads = options.maxThreads // set by ThreadPoolFactory
     this.minThreads = options.minThreads || DEFAULT_THREADPOOL_MIN
-    this.abortTolerance = options.abortTolerance || DEFAULT_JOB_ABORT_DURATION
-    this.queueTolerance = options.queueTolerance || DEFAULT_JOBQUEUE_TOLERANCE
-    this.durationTolerance =
-      options.durationTolerance || DEFAULT_DURATION_TOLERANCE
-      this.jobTime
+    this.abortTolerance = options.abortTolerance || DEFAULT_ABORT_TOLERANCE
+    this.queueTolerance = options.queueTolerance || DEFAULT_QUEUE_TOLERANCE
+    this.speedTolerance = options.durationTolerance || DEFAULT_SPEED_TOLERANCE
+    this.errorCount = 0
+    this.jobTime
     this.closed = false
     this.options = options
     this.reloads = 0
-    this.jobsRequested = 0
-    this.jobsQueued = 0
+    this.jobsRequested = this.jobsQueued = 0
     this.totJobTime = 0
-    /** @type {Thread[]} */
-    this.threads = []
     this.startTime = Date.now()
     this.broadcastChannel = options.bc
     this.aborting = false
@@ -317,12 +317,16 @@ export class ThreadPool extends EventEmitter {
     return this
   }
 
-  async stopThread (thread, reason) {
-    await thread.stop(reason)
-    this.threads.splice(
+  spliceAt( ),  ) {
+    this.splice(
       this.threads.findIndex(t => t.id === thread.id),
       1
     )
+  }
+
+  async stopThread (thread, reason) {
+    await thread.stop(reason)
+this.splice(3)
     this.freeThreads.splice(
       this.freeThreads.findIndex(t => t.id === thread.id),
       1
@@ -399,7 +403,7 @@ export class ThreadPool extends EventEmitter {
   }
 
   jobDurationThreshold () {
-    return this.durationTolerance
+    return this.speedTolerance
   }
 
   avgJobDuration () {
@@ -490,12 +494,12 @@ export class ThreadPool extends EventEmitter {
     return new Promise(async resolve => {
       this.jobsRequested++
 
-      try {
-        if (this.closed) {
-          console.warn('pool is closed')
-          return reject(this)
-        }
+      if (this.closed) {
+        console.warn('pool is closed')
+        return reject(this)
+      }
 
+      try {
         let thread = this.freeThreads.shift()
 
         if (!thread) {
@@ -621,8 +625,12 @@ export class ThreadPool extends EventEmitter {
     }
   }
 
-  broadcastEvent (event) {
-    this.broadcastChannel.postMessage(event)
+  /**
+   * send event to all worker threads in this pool
+   * @param {string} eventName
+   */
+  broadcastEvent (eventName) {
+    this.broadcastChannel.postMessage(eventName)
   }
 }
 
@@ -632,6 +640,7 @@ export class ThreadPool extends EventEmitter {
 const ThreadPoolFactory = (() => {
   /** @type {Map<string, ThreadPool>} */
   const threadPools = new Map()
+
   /** @type {Map<string, BroadcastChannel>} */
   const broadcastChannels = new Map()
 
@@ -646,7 +655,7 @@ const ThreadPoolFactory = (() => {
   }
 
   /**
-   * Send message to all threads of a pool.
+   * Send `event` to all threads of a `poolName`.
    * @param {import('.').Event} event
    * @param {string} poolName same as `modelName`
    */
@@ -886,7 +895,9 @@ const ThreadPoolFactory = (() => {
               console.warn('killing stuck threads', pool.status())
               await pool.abort('stuck threads')
               // get waitng jobs going
-              pool.waitingJobs.shift()(await pool.allocate())
+              pool.waitingJobs
+                .shift()(await pool.allocate())
+                .catch(error => console.error(error))
             }
           }, pool.abortTolerance)
         }

@@ -111,14 +111,6 @@ const Model = (() => {
 
   function queueNotice (model) {
     console.debug(queueNotice.name, 'disabled')
-    // setTimeout(
-    //   async function () {
-    //     const eventName = 'UPDATE' + model.getName().toUpperCase()
-    //     await model.emit(eventName, { desc: 'domain update', time: Date.now() })
-    //   },
-    //   3000,
-    //   model
-    // )
   }
 
   /**
@@ -146,6 +138,7 @@ const Model = (() => {
    *  args:*,
    *  spec:import('./index').ModelSpecification
    * }} modelInfo
+   * @returns {Model}
    */
   function make (modelInfo) {
     const {
@@ -457,7 +450,9 @@ const Model = (() => {
 
   const validate = event => model => model[VALIDATE]({}, event)
 
-  // Create model instance
+  /**
+   * Create model instance
+   */
   const makeModel = asyncPipe(
     Model,
     withTimestamp(CREATETIME),
@@ -470,7 +465,9 @@ const Model = (() => {
     Object.freeze
   )
 
-  // Recreate model from deserialized object
+  /**
+   * Recreate model from deserialized object
+   */
   const loadModel = pipe(
     make,
     withSerializers(

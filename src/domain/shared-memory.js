@@ -117,8 +117,7 @@ function createSharedMap (mapsize, keysize, objsize, name) {
 }
 
 /**
- * Decorator adds support for thread-safe shared {@link Map} using
- * {@link SharedArrayBuffer}.
+ * Decorator adds support for thread-safe shared {@link Map} using {@link SharedArrayBuffer}.
  *
  * @param {function():import('./datasource').default} createDataSource in {@link DataSourceFactory}
  * @param {import('./datasource-factory').DataSourceFactory} factory

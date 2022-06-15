@@ -109,7 +109,7 @@ async function runHandler (eventName, eventData = {}, handle) {
   else console.debug('handler running', eventName)
 
   /**
-   * @type {eventHandler}````
+   * @type {eventHandler}
    */
   await handle(eventData)
 }

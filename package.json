@@ -32,15 +32,14 @@
     "ipfs": "^0.63.0",
     "jwks-rsa": "2.1.3",
     "mesh-link": "0.13.6",
-    "mocha-esm": "^1.1.1",
     "mongodb": "4.6.0",
     "multicast-dns": "7.2.5",
     "nanoid": "3.3.4",
     "nats": "2.7.1",
+    "path-to-regexp": "^6.2.1",
     "python-shell": "^3.0.1",
     "regenerator-runtime": "0.13.9",
     "sharedmap": "^1.2.0",
-    "standard": "^17.0.0",
     "webpack": "^5.66.0",
     "whois": "2.13.9"
   },
@@ -63,9 +62,11 @@
     "jsdoc": "^3.6.10",
     "jsdoc-to-markdown": "^7.1.1",
     "mocha": "10.0.0",
+    "mocha-esm": "^1.1.1",
     "nodemon": "2.0.16",
     "rimraf": "3.0.2",
     "split": "1.0.1",
+    "standard": "^17.0.0",
     "yarn": "^1.22.17"
   }
 }

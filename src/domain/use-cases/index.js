@@ -11,6 +11,7 @@ import makeListModels from './list-models'
 import makeFindModel from './find-model'
 import makeRemoveModel from './remove-model'
 import makeLoadModels from './load-models'
+import makeDeployModel from './deploy-model'
 import makeListConfig from './list-configs'
 import makeEmitEvent from './emit-event'
 import makeHotReload from './hot-reload'
@@ -123,6 +124,7 @@ const findModels = () => make(makeFindModel)
 const removeModels = () => make(makeRemoveModel)
 const loadModels = () => make(makeLoadModels)
 const emitEvents = () => make(makeEmitEvent)
+const deployModels = () => make(makeDeployModel)
 const hotReload = () => [
   {
     endpoint: 'reload',
@@ -150,7 +152,8 @@ export const UseCases = {
   listConfigs,
   hotReload,
   registerEvents,
-  emitEvents
+  emitEvents,
+  deployModels
 }
 
 /**
@@ -159,7 +162,7 @@ export const UseCases = {
  * An alias for the service could be "InboundPorts"
  *
  * @param {string} [modelName]
- * @returns
+ * @returns 
  */
 export function UseCaseService (modelName = null) {
   if (typeof modelName === 'string') {
@@ -172,6 +175,7 @@ export function UseCaseService (modelName = null) {
       removeModel: makeOne(modelNameUpper, makeRemoveModel),
       loadModels: makeOne(modelNameUpper, makeLoadModels),
       emitEvent: makeOne(modelNameUpper, makeEmitEvent),
+      deployModel: makeOne(modelNameUpper, makeDeployModel),
       listConfigs: listConfigs()
     }
   }
@@ -182,6 +186,7 @@ export function UseCaseService (modelName = null) {
     findModels: findModels(),
     removeModels: removeModels(),
     loadModelSpecs: loadModelSpecs(),
+    deployModel: deployModels(),
     hotReload: hotReload(),
     emitEvent: emitEvents(),
     listConfigs: listConfigs()

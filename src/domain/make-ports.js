@@ -250,6 +250,7 @@ export default function makePorts (ports, adapters, broker) {
         async [port] (...args) {
           // check if the port defines breaker thresholds
           const thresholds = portConf.circuitBreaker
+
           /**
            * the circuit breaker instance
            * @type {import('./circuit-breaker').breaker}

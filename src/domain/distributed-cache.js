@@ -316,6 +316,11 @@ export default function DistributedCache ({
       updateCache(async event => broker.notify(internalName, event))
     )
 
+  const fulfillDeploymentRequest = request =>
+    subscribe(request, () =>
+      UseCaseService(request.modelName.toUpperCase()).deployModel()
+    )
+
   /**
    * Listen for search request from remote system, search and send response.
    *
@@ -415,6 +420,12 @@ export default function DistributedCache ({
         externalCacheRequest(modelName),
         externalCacheResponse(modelName)
       )
+
+      fulfillDeploymentRequest(
+        externalDeploymentRequest(modelName),
+        externalDeploymentResponse(modelName)
+      )
+
       // Listen for local CRUD events and forward externally
       ;[
         models.getEventName(models.EventTypes.UPDATE, modelName),
