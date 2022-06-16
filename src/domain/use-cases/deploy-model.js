@@ -9,7 +9,7 @@ const compiler = webpack(config)
 // `compiler.run()` doesn't support promises yet, only callbacks
 async function compile () {
   await new Promise((resolve, reject) => {
-    compiler.run((err, res) => {
+    compiler.run((err, res) => { 
       if (err) {
         return reject(err)
       }

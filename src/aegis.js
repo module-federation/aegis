@@ -4,7 +4,6 @@ const services = require('./services')
 const adapters = require('./adapters')
 const domain = require('./domain')
 const { pathToRegexp } = require('path-to-regexp')
-
 const { StorageService } = services
 const { StorageAdapter } = adapters
 const { find, save } = StorageAdapter
@@ -58,14 +57,6 @@ class RouteMap extends Map {
 const routes = new RouteMap()
 
 const route = {
-  /**
-   *
-   * @param {*} path
-   * @param {*} method
-   * @param {*} controllers
-   * @param {*} http
-   * @param {*} router
-   */
   server (path, method, controllers, http, router) {
     controllers().forEach(ctlr =>
       router[method](path(ctlr.endpoint), http(ctlr.fn))
@@ -86,7 +77,7 @@ const route = {
     })
   },
 
-  specRoutes (adapter, getConfig, serverMode, router) {},
+  userRoutes (adapter, getConfig, serverMode, router) {},
 
   adminRoute (adapter, getConfig, serverMode, router) {
     const adminPath = `${apiRoot}/config`
@@ -105,7 +96,7 @@ async function makeRoutes (router = null) {
   route[serverMode](endpointId, 'patch', patchModels, http, router)
   route[serverMode](endpointId, 'delete', deleteModels, http, router)
   route[serverMode](endpointCmd, 'patch', patchModels, http, router)
-  route.specRoutes(http, getRoutes, serverMode, router)
+  route.userRoutes(http, getRoutes, serverMode, router)
   route.adminRoute(http, getConfig, serverMode, router)
 }
 

@@ -317,16 +317,8 @@ export class ThreadPool extends EventEmitter {
     return this
   }
 
-  spliceAt( ),  ) {
-    this.splice(
-      this.threads.findIndex(t => t.id === thread.id),
-      1
-    )
-  }
-
   async stopThread (thread, reason) {
     await thread.stop(reason)
-this.splice(3)
     this.freeThreads.splice(
       this.freeThreads.findIndex(t => t.id === thread.id),
       1
