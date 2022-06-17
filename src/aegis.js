@@ -31,7 +31,7 @@ const endpointCmd = e => `${modelPath}/${e}/:id/:command`
 
 /**
  * Store routes and their controllers for direct invocation
- * (i.e. without an http server, as in the case of serverless)
+ * as serverless functions
  * @extends {Map}
  */
 class RouteMap extends Map {

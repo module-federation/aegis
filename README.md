@@ -1,4 +1,4 @@
-[![NPM version][npm-image]][npm-url]
+`[![NPM version][npm-image]][npm-url]
 [![NPM Downloads][downloads-image]][downloads-url]
 [![Gitpod][gitpod-image]][gitpod-url]
 

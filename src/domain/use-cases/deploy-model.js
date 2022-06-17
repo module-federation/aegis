@@ -1,21 +1,22 @@
 import { importRemoteCache } from '../index.js'
+import path from 'path'
 
-const config = require('../../../webpack.config')
+const config = '' // require(path.join(process.cwd(), 'wepack.config.js'))
 const webpack = require('webpack')
 const fs = require('fs')
 
-const compiler = webpack(config)
+//.const compiler = webpack(config)
 
 // `compiler.run()` doesn't support promises yet, only callbacks
 async function compile () {
-  await new Promise((resolve, reject) => {
-    compiler.run((err, res) => { 
-      if (err) {
-        return reject(err)
-      }
-      resolve(res)
-    })
-  })
+  // await new Promise((resolve, reject) => {
+  //   compiler.run((err, res) => {
+  //     if (err) {
+  //       return reject(err)
+  //     }
+  //     resolve(res)
+  //   })
+  // })
 }
 
 export function makeRegisterRemote () {

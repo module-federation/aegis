@@ -5,7 +5,6 @@ export * as StorageAdapter from './persistence'
 export { ServerlessAdapter } from './serverless'
 export * as controllers from './controllers'
 export * as webassembly from './webassembly'
-
 import * as ServiceMeshPluginAdapter from './service-mesh'
 import { ServiceMeshPlugin } from '../services'
 
