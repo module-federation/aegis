@@ -266,7 +266,7 @@ export class ThreadPool extends EventEmitter {
     this.abortTolerance = options.abortTolerance || DEFAULT_ABORT_TOLERANCE
     this.queueTolerance = options.queueTolerance || DEFAULT_QUEUE_TOLERANCE
     this.speedTolerance = options.durationTolerance || DEFAULT_SPEED_TOLERANCE
-    this.errorCount = 0
+    this.errors = 0
     this.jobTime
     this.closed = false
     this.options = options
@@ -656,7 +656,7 @@ const ThreadPoolFactory = (() => {
   }
 
   /**
-   * By default the system-wide thread upper limit is the total # of cores.
+   * By default the system-wide thread upper limit = the total # of cores.
    * The default behavior is to spread threads/cores evenly between models.
    * @param {*} options
    * @returns
@@ -675,18 +675,18 @@ const ThreadPoolFactory = (() => {
 
   /**
    * Creates a pool for use by a domain {@link Model}.
-   * Provides a thread-safe {@link Map}.
-   * @param {string} modelName named for the {@link Model} using it
+   * Provides thread-safe {@link Map}.
+   * @param {string} poolName use {@link Model.getName()}
    * @param {threadOptions} options
    * @returns
    */
-  function createThreadPool (modelName, options) {
-    console.debug({ fn: createThreadPool.name, modelName, options })
+  function createThreadPool (poolName, options) {
+    console.debug({ fn: createThreadPool.name, modelName: poolName, options })
 
     // include the address of the shared array for the worker to access
     const sharedMap = options.sharedMap
     const maxThreads = calculateMaxThreads()
-    const bc = getBroadcastChannel(modelName)
+    const bc = getBroadcastChannel(poolName)
     const dsRelated = options.dsRelated || {}
     const initData = options.initData || {}
     const file = options.file || options.eval || './dist/worker.js'
@@ -694,12 +694,12 @@ const ThreadPoolFactory = (() => {
     try {
       const pool = new ThreadPool({
         file,
-        name: modelName,
-        workerData: { modelName, sharedMap, dsRelated, initData },
+        name: poolName,
+        workerData: { poolName, sharedMap, dsRelated, initData },
         options: { ...options, maxThreads, bc }
       })
 
-      threadPools.set(modelName, pool)
+      threadPools.set(poolName, pool)
       return pool
     } catch (error) {
       console.error({ fn: createThreadPool.name, error })

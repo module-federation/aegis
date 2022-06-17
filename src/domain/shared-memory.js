@@ -96,7 +96,7 @@ const SharedMemoryMixin = superclass =>
  * @returns {SharedMap}
  */
 function findSharedMap (name) {
-  if (name === workerData.modelName) return workerData.sharedMap
+  if (name === workerData.poolName) return workerData.sharedMap
 
   if (workerData.dsRelated?.length > 0) {
     const dsRel = workerData.dsRelated.find(ds => ds.modelName === name)

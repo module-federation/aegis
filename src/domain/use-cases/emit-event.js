@@ -34,7 +34,7 @@ export default function makeEmitEvent ({
       if (isMainThread) {
         await threadpool.run(input.eventName, input)
       } else {
-        console.debug({ pool: workerData.modelName, fn: emitEvent.name, input })
+        console.debug({ pool: workerData.poolName, fn: emitEvent.name, input })
         await broker.notify(input.eventName, input)
       }
     } catch (error) {

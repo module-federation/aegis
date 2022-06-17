@@ -60,7 +60,7 @@ export default function brokerEvents (broker, datasources, models) {
     // connect to mesh and provide fn to list installed services
     ServiceMesh.connect({ services: listLocalModels })
   } else {
-    createBroadcastChannel(workerData.modelName, broker)
+    createBroadcastChannel(workerData.poolName, broker)
     // create listeners that handle events from main
     require('../domain-events').registerEvents(broker)
 
