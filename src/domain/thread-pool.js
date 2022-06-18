@@ -15,9 +15,10 @@ const EVENTCHANNEL = 'eventChannel'
 const NOJOBSRUNNING = 'noJobsRunning'
 const DEFAULT_THREADPOOL_MIN = 1
 const DEFAULT_THREADPOOL_MAX = 2
-const DEFAULT_QUEUE_TOLERANCE = 25
-const DEFAULT_SPEED_TOLERANCE = 1000
-const DEFAULT_ABORT_TOLERANCE = 180000
+const DEFAULT_JOBQUEUE_MAX = 25
+const DEFAULT_JOBERROR_MAX = 10
+const DEFAULT_EXECTIME_MAX = 1000
+const DEFAULT_TIME_TO_LIVE = 180000
 
 /**
  * @typedef {object} Thread
@@ -183,7 +184,7 @@ function reallocate (pool, freeThread) {
  *  jobData:any
  *  thread:Thread,
  *  channel?:"mainChannel"|"eventChannel",
- *  cb?:(p) => p
+ *  callback?:(p) => p
  * }}
  * @returns {Promise<Model>}
  */
@@ -194,16 +195,17 @@ function postJob ({
   thread,
   channel = MAINCHANNEL,
   transfer = [],
-  callback = r => r
+  callback = result => result
 }) {
   return new Promise((resolve, reject) => {
     const startTime = perf.now()
 
     thread[channel].once('message', result => {
       pool.jobTime(perf.now() - startTime)
-      // reallocate freed thread
+      // reallocate thread
       reallocate(pool, thread)
 
+      // Was this the only job running?
       if (pool.noJobsRunning()) {
         pool.emit(NOJOBSRUNNING)
       }
@@ -213,7 +215,7 @@ function postJob ({
     thread[channel].once('error', async error => {
       console.error({ fn: postJob.name, error })
       pool.incrementErrorCount()
-
+      // reallocate thread
       reallocate(pool, thread)
 
       pool.emit({
@@ -256,18 +258,18 @@ export class ThreadPool extends EventEmitter {
     this.threads = []
     /** @type {Thread[]} */
     this.freeThreads = []
-    /** @type {Map<string,function()>}*/
+    /** @type {Array<(Thread)=>postJob>}*/
     this.waitingJobs = waitingJobs
     this.file = file
     this.name = name
     this.workerData = workerData
-    this.maxThreads = options.maxThreads // set by ThreadPoolFactory
+    this.maxThreads = options.maxThreads || DEFAULT_THREADPOOL_MAX
     this.minThreads = options.minThreads || DEFAULT_THREADPOOL_MIN
-    this.abortTolerance = options.abortTolerance || DEFAULT_ABORT_TOLERANCE
-    this.queueTolerance = options.queueTolerance || DEFAULT_QUEUE_TOLERANCE
-    this.speedTolerance = options.durationTolerance || DEFAULT_SPEED_TOLERANCE
+    this.jobAbortTtl = options.jobAbortTtl || DEFAULT_TIME_TO_LIVE
+    this.jobQueueMax = options.jobQueueMax || DEFAULT_JOBQUEUE_MAX
+    this.execTimeMax = options.execTimeMax || DEFAULT_EXECTIME_MAX
+    this.jobErrorMax = options.jobErrorMax || DEFAULT_JOBERROR_MAX
     this.errors = 0
-    this.jobTime
     this.closed = false
     this.options = options
     this.reloads = 0
@@ -385,7 +387,7 @@ export class ThreadPool extends EventEmitter {
   }
 
   jobQueueThreshold () {
-    return this.queueTolerance
+    return this.jobQueueMax
   }
 
   jobTime (millisec) {
@@ -395,7 +397,7 @@ export class ThreadPool extends EventEmitter {
   }
 
   jobDurationThreshold () {
-    return this.speedTolerance
+    return this.execTimeMax
   }
 
   avgJobDuration () {
@@ -409,6 +411,14 @@ export class ThreadPool extends EventEmitter {
 
   errorCount () {
     return this.errors
+  }
+
+  errorRateThreshold () {
+    return this.jobErrorMax
+  }
+
+  errorRate () {
+    return (pool.errorCount() / pool.totJobTime()) * 100
   }
 
   status () {
@@ -425,14 +435,12 @@ export class ThreadPool extends EventEmitter {
       durationTolerance: this.jobDurationThreshold(),
       queueRate: this.jobQueueRate(),
       queueRateTolerance: this.jobQueueThreshold(),
-      deployments: this.deploymentCount(),
+      errorRate: this.errorRate(),
+      errorRateTolerance: this.errorRateThreshold(),
       errors: this.errorCount(),
+      deployments: this.deploymentCount(),
       since: new Date(this.startTime).toUTCString()
     }
-  }
-
-  errorRateThreshold () {
-    return this.errorRateTolerance
   }
 
   capacityAvailable () {
@@ -451,10 +459,7 @@ export class ThreadPool extends EventEmitter {
         return pool.avgJobDuration() > pool.jobDurationThreshold()
       },
       tooManyErrors () {
-        return (
-          (pool.errorCount() / pool.totJobTime()) * 100 >
-          pool.errorRateThreshold()
-        )
+        return pool.errorRate() > pool.errorRateThreshold()
       }
     }
     return (
@@ -782,7 +787,7 @@ const ThreadPoolFactory = (() => {
   function reload (poolName) {
     return new Promise((resolve, reject) => {
       const pool = threadPools.get(poolName.toUpperCase())
-      if (!pool) reject('no such pool', pool)
+      if (!pool) reject(`no such pool ${pool}`)
       pool
         .close()
         .notify(poolClose)
@@ -858,7 +863,7 @@ const ThreadPoolFactory = (() => {
   let monitorIntervalId
 
   const poolMaxAbortTime = () =>
-    Math.max(...[...threadPools].map(pool => pool[1].abortTolerance))
+    Math.max(...[...threadPools].map(pool => pool[1].jobAbortTtl))
 
   /**
    * Monitor pools for stuck threads and restart them
@@ -886,12 +891,14 @@ const ThreadPoolFactory = (() => {
               // no threads are avail and no work done for 3 minutes
               console.warn('killing stuck threads', pool.status())
               await pool.abort('stuck threads')
+
               // get waitng jobs going
-              pool.waitingJobs
-                .shift()(await pool.allocate())
-                .catch(error => console.error(error))
+              if (pool.waitingJobs.length > 1)
+                pool.waitingJobs
+                  .shift()(await pool.allocate())
+                  .catch(error => console.error(error))
             }
-          }, pool.abortTolerance)
+          }, pool.jobAbortTtl)
         }
       })
     }, poolMaxAbortTime() * 1.5)
