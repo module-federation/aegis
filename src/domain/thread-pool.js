@@ -418,7 +418,7 @@ export class ThreadPool extends EventEmitter {
   }
 
   errorRate () {
-    return (pool.errorCount() / pool.totJobTime()) * 100
+    return (this.errorCount() / this.totJobTime()) * 100
   }
 
   status () {
