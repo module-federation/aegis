@@ -688,7 +688,7 @@ const ThreadPoolFactory = (() => {
   function createThreadPool (poolName, options) {
     console.debug({ fn: createThreadPool.name, modelName: poolName, options })
 
-    // include the address of the shared array for the worker to access
+    // include the shared array for the worker to access
     const sharedMap = options.sharedMap
     const maxThreads = calculateMaxThreads()
     const bc = getBroadcastChannel(poolName)
@@ -853,11 +853,13 @@ const ThreadPoolFactory = (() => {
   }
 
   function listen (cb, poolName, eventName) {
-    // if (poolName === '*') threadPools.forEach(pool => pool.on(eventName, cb))
-    // else
-    //   [...threadPools]
-    //     .find(pool => pool.name.toUpperCase() === poolName.toUpperCase())
-    //     .on(eventName, cb)
+    if (poolName === '*') threadPools.forEach(pool => pool.on(eventName, cb))
+    else {
+      const pool = [...threadPools.values()].find(
+        pool => pool.name.toUpperCase() === poolName.toUpperCase()
+      )
+      if (pool) pool.on(eventName, cb)
+    }
   }
 
   let monitorIntervalId

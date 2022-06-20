@@ -37,7 +37,7 @@ const endpointCmd = e => `${modelPath}/${e}/:id/:command`
 class RouteMap extends Map {
   find (path) {
     return [...super.keys()].find(
-      regex => regex instanceof RegExp && regex.match(path)
+      regex => regex instanceof RegExp && regex.test(path)
     )
   }
 
@@ -46,11 +46,15 @@ class RouteMap extends Map {
   }
 
   has (path) {
-    return this.find(path) ? true : false
+    this.hasPath = path
+    // record so we dont search twice
+    this.path = this.find(path)
+    return this.path ? true : false
   }
 
   get (path) {
-    return this.find(path)
+    // if values are equal we know the answer
+    return this.hasPath === path ? this.path : this.find(path)
   }
 }
 

@@ -201,14 +201,14 @@ const Model = (() => {
 
       /**
        * Return the `eventMask` key name of the value of `event`.
-       * Could potentially return multiple key names. See {@link eventMask}.
+       * See {@link eventMask}.
        * @param {number} event
-       * @returns {string[]} key name/s: create, update, onload, delete
+       * @returns {string} key name/s: create, update, onload, delete
        */
       getEventMaskName (event) {
         if (typeof event !== 'number') return
-        const keys = Object.keys(eventMask).filter(k => eventMask[k] & event)
-        return keys
+        const key = Object.keys(eventMask).find(k => eventMask[k] & event)
+        return key
       },
 
       /**
