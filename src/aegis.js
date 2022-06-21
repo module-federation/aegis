@@ -42,10 +42,16 @@ class RouteMap extends Map {
   }
 
   set (path, method) {
-    const matcher = match(path)
-    const regex = pathToRegexp(path)
-    if (super.has(path)) super.set(path, { ...super.get(path), ...method })
-    else super.set(path, { ...method, regex, matcher })
+    if (super.has(path)) {
+      super.set(path, { ...super.get(path), ...method })
+      return
+    }
+
+    super.set(path, {
+      ...method,
+      regex: pathToRegexp(path),
+      matcher: match(path)
+    })
   }
 
   has (path) {
