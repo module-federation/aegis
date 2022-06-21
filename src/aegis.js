@@ -3,7 +3,7 @@
 const services = require('./services')
 const adapters = require('./adapters')
 const domain = require('./domain')
-const { pathToRegexp } = require('path-to-regexp')
+const { pathToRegexp, match } = require('path-to-regexp')
 const { StorageService } = services
 const { StorageAdapter } = adapters
 const { find, save } = StorageAdapter
@@ -36,90 +36,89 @@ const endpointCmd = e => `${modelPath}/${e}/:id/:command`
  */
 class RouteMap extends Map {
   find (path) {
-    return [...super.keys()].find(
-      regex => regex instanceof RegExp && regex.test(path)
-    )
+    const routeInfo = [...super.values()].find(v => v.regex.test(path))
+    if (routeInfo)
+      return { ...routeInfo, params: routeInfo.matcher(path).params }
   }
 
   set (path, method) {
-    super.set(pathToRegexp(path), method)
+    const matcher = match(path)
+    const regex = pathToRegexp(path)
+    if (super.has(path)) super.set(path, { ...super.get(path), ...method })
+    else super.set(path, { ...method, regex, matcher })
   }
 
   has (path) {
     this.hasPath = path
-    // record so we dont search twice
-    this.path = this.find(path)
-    return this.path ? true : false
+    this.routeInfo = this.find(path)
+    return this.routeInfo ? true : false
   }
 
   get (path) {
-    // if values are equal we know the answer
-    return this.hasPath === path ? this.path : this.find(path)
+    // if equal we already know the answer
+    return path === this.hasPath ? this.routeInfo : this.find(path)
   }
 }
 
 const routes = new RouteMap()
 
 const route = {
-  server (path, method, controllers, http, router) {
+  autoRoutes (path, method, controllers, http) {
     controllers().forEach(ctlr =>
-      router[method](path(ctlr.endpoint), http(ctlr.fn))
+      routes.set(path(ctlr.endpoint), { [method]: http(ctlr.fn) })
     )
   },
 
-  serverless (path, method, controllers, http) {
-    controllers().forEach(ctlr => {
-      const modelPath = path(ctlr.endpoint)
-      if (routes.has(modelPath)) {
-        routes.set(modelPath, {
-          ...routes.get(modelPath),
-          [method]: http(ctlr.fn)
-        })
-        return
-      }
-      routes.set(modelPath, { [method]: http(ctlr.fn) })
-    })
-  },
+  userRoutes (adapter, getRoutes) {},
 
-  userRoutes (adapter, getConfig, serverMode, router) {},
-
-  adminRoute (adapter, getConfig, serverMode, router) {
+  adminRoute (adapter, getConfig) {
     const adminPath = `${apiRoot}/config`
-    if (/serverless/i.test(serverMode))
-      routes.set(adminPath, adapter(getConfig()))
-    else router.get(adminPath, adapter(getConfig()))
+    routes.set(adminPath, { get: adapter(getConfig()) })
   }
 }
 
-async function makeRoutes (router = null) {
-  const serverMode = router ? 'server' : 'serverless'
-  route[serverMode](endpoint, 'use', liveUpdate, http, router)
-  route[serverMode](endpoint, 'get', getModels, http, router)
-  route[serverMode](endpoint, 'post', postModels, http, router)
-  route[serverMode](endpointId, 'get', getModelsById, http, router)
-  route[serverMode](endpointId, 'patch', patchModels, http, router)
-  route[serverMode](endpointId, 'delete', deleteModels, http, router)
-  route[serverMode](endpointCmd, 'patch', patchModels, http, router)
-  route.userRoutes(http, getRoutes, serverMode, router)
-  route.adminRoute(http, getConfig, serverMode, router)
+async function makeRoutes () {
+  route.autoRoutes(endpoint, 'use', liveUpdate, http)
+  route.autoRoutes(endpoint, 'get', getModels, http)
+  route.autoRoutes(endpoint, 'post', postModels, http)
+  route.autoRoutes(endpointId, 'get', getModelsById, http)
+  route.autoRoutes(endpointId, 'patch', patchModels, http)
+  route.autoRoutes(endpointId, 'delete', deleteModels, http)
+  route.autoRoutes(endpointCmd, 'patch', patchModels, http)
+  route.userRoutes(http, getRoutes)
+  route.adminRoute(http, getConfig)
+  console.log(routes)
 }
 
-async function initServerless () {
-  return {
-    async handle (path, method, req, res) {
-      if (!routes.has(path)) throw new Error('not found')
-      const controller = routes.get(path)[method]
-      if (typeof controller !== 'function')
-        throw new Error('no controller for', path, method)
-      return controller(req, res)
-    }
+/**
+ *
+ * @param {*} path
+ * @param {*} method
+ * @param {Request} req
+ * @param {Response} res
+ * @returns
+ */
+async function handle (path, method, req, res) {
+  const routeInfo = routes.get(path)
+  if (!routeInfo) {
+    console.warn('no controller for', path)
+    res.status(404).send('not found')
+    return
   }
+  const controller = routeInfo[method.toLowerCase()]
+  if (typeof controller !== 'function') {
+    console.warn('no controller for', path, method)
+    res.status(404).send('not found')
+    return
+  }
+  const requestInfo = Object.assign(req, { params: routeInfo.params })
+  return controller(requestInfo, res)
 }
 
-exports.init = async function (remotes, router) {
+exports.init = async function (remotes) {
   await importRemotes(remotes, overrides)
   const cache = initCache()
-  makeRoutes(router)
+  makeRoutes()
   await cache.load()
-  return initServerless()
+  return handle
 }

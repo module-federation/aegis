@@ -694,7 +694,7 @@ const ThreadPoolFactory = (() => {
     const bc = getBroadcastChannel(poolName)
     const dsRelated = options.dsRelated || {}
     const initData = options.initData || {}
-    const file = options.file || options.eval || './dist/worker.js'
+    const file = options.file || options.eval || './src/worker.js'
 
     try {
       const pool = new ThreadPool({
