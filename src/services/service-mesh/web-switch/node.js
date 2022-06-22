@@ -90,7 +90,7 @@ const DnsPriority = {
  * If we have been selected to be a backup switch
  * check if its time to takeover.
  * Based on DNS load balancing: the lower the value
- * the higher the priority and wieght. 
+ * the higher the priority and wieght.
  */
 function checkTakeover () {
   if (DnsPriority.matches(config)) activateBackup = true
@@ -282,7 +282,14 @@ function format (event) {
 function send (event) {
   if (ws?.readyState === WebSocket.OPEN) {
     /**@type {import('../../../domain/circuit-breaker').breaker} */
-    const breaker = new CircuitBreaker('meshNode.send', ws.send)
+    const breaker = new CircuitBreaker('meshNode.send', ws.send, {
+      default: {
+        errorRate: 100,
+        callVolume: 100,
+        intervalMs: 100,
+        fallbackFn: () => console.log('fallback fn mesh.send')
+      }
+    })
     breaker.detectErrors([TIMEOUTEVENT], broker)
     breaker.invoke.call(ws, format(event))
     return

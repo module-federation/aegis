@@ -8,7 +8,7 @@ const { StorageService } = services
 const { StorageAdapter } = adapters
 const { find, save } = StorageAdapter
 const overrides = { find, save, ...StorageService }
-const { importRemotes } = domain
+const { importRemotes, ThreadPoolFactory } = domain
 
 const {
   deleteModels,
@@ -84,7 +84,7 @@ const route = {
 }
 
 async function makeRoutes () {
-  route.autoRoutes(endpoint, 'use', liveUpdate, http)
+  route.autoRoutes(endpoint, 'get', liveUpdate, http)
   route.autoRoutes(endpoint, 'get', getModels, http)
   route.autoRoutes(endpoint, 'post', postModels, http)
   route.autoRoutes(endpointId, 'get', getModelsById, http)
@@ -97,9 +97,11 @@ async function makeRoutes () {
 }
 
 /**
+ * Universal controller - find the controller for
+ * a given {@link path} and invoke it.
  *
- * @param {*} path
- * @param {*} method
+ * @param {string} path
+ * @param {'get'|'patch'|'post'|'delete'} method
  * @param {Request} req
  * @param {Response} res
  * @returns
@@ -111,19 +113,38 @@ async function handle (path, method, req, res) {
     res.status(404).send('not found')
     return
   }
+
   const controller = routeInfo[method.toLowerCase()]
   if (typeof controller !== 'function') {
     console.warn('no controller for', path, method)
     res.status(404).send('not found')
     return
   }
+
   const requestInfo = Object.assign(req, { params: routeInfo.params })
   return controller(requestInfo, res)
 }
 
+function shutdownThreads () {
+  if (ThreadPoolFactory.listPools().length > 0) ThreadPoolFactory.destroy()
+}
+
+/**
+ * When called to perform a hot reload, stop all thread pools.
+ * Import remote modules, then build APIs, storage adapters, etc.
+ * Return {@link handle} universal controller for use by server
+ * or serverless function.
+ *
+ * @param {import('../webpack/remote-entries-type')} remotes
+ * @returns {function(string,string,Request,Response)} {@link handle}
+ */
 exports.init = async function (remotes) {
+  // no-op when called the first time
+  shutdownThreads()
+  // stream federated components
   await importRemotes(remotes, overrides)
   const cache = initCache()
+  // create endpoints
   makeRoutes()
   await cache.load()
   return handle

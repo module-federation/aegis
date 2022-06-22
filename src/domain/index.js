@@ -364,4 +364,6 @@ export { default as DistributedCache } from './distributed-cache'
 
 export { default as DataSourceFactory } from './datasource-factory'
 
+export { default as ThreadPoolFactory } from './thread-pool'
+
 export default ModelFactory
