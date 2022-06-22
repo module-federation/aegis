@@ -108,9 +108,12 @@ yarn demo
 - Addt'l datasource adapters: GraphDb, Blockchain, Solid Pod
 - Adaptive Deployment (AIOps based dynamic infra)
 - Data privacy based on Zero Knowledge Proofs
-- OCI wrapper for wasm-based version
+- OCI wrapper for wasm-based runtime
 - Federated Module Attestation
 - Smart Scaffolding
+- Application-based Sharding
+- Passwordless authentication
+- [Medusa](https://github.com/module-federation/medusa) integration
 
 [npm-image]: http://img.shields.io/npm/v/@module-federation/aegis.svg
 [npm-url]: https://npmjs.org/package/@module-federation/aegis
