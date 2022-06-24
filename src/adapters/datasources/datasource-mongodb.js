@@ -34,6 +34,8 @@ export class DataSourceMongoDb extends DataSourceMemory {
     // keep running even if db is down
     this.runOffline = dsOptions.runOffline
     this.url = url
+    this.className = DataSourceMongoDb.name
+    console.log(this)
   }
 
   async connection () {

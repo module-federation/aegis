@@ -18,7 +18,6 @@ import makeHotReload from './hot-reload'
 import brokerEvents from './broker-events'
 
 import { isMainThread } from 'worker_threads'
-import { FederationMixin } from '../federated-query'
 
 export function registerEvents () {
   // main thread handles event dispatch
@@ -142,6 +141,25 @@ const listConfigs = () =>
     threadpools: ThreadPoolFactory
   })
 
+function getUserRoutes (modelName) {
+  const specs = modelName
+    ? [ModelFactory.getModelSpec(modelName)]
+    : ModelFactory.getModelSpecs()
+  return specs
+    .filter(spec => spec.routes)
+    .flatMap(spec =>
+      Object.keys(spec.routes).flatMap(route =>
+        Object.keys(route)
+          .filter(route => typeof route === 'function')
+          .map(method => ({
+            path: route,
+            [method.name]: method
+          }))
+      )
+    )
+    .flat()
+}
+
 export const UseCases = {
   addModels,
   editModels,
@@ -153,7 +171,8 @@ export const UseCases = {
   hotReload,
   registerEvents,
   emitEvents,
-  deployModels
+  deployModels,
+  getUserRoutes
 }
 
 /**
@@ -162,7 +181,7 @@ export const UseCases = {
  * An alias for the service could be "InboundPorts"
  *
  * @param {string} [modelName]
- * @returns 
+ * @returns
  */
 export function UseCaseService (modelName = null) {
   if (typeof modelName === 'string') {
@@ -176,6 +195,7 @@ export function UseCaseService (modelName = null) {
       loadModels: makeOne(modelNameUpper, makeLoadModels),
       emitEvent: makeOne(modelNameUpper, makeEmitEvent),
       deployModel: makeOne(modelNameUpper, makeDeployModel),
+      getRoutes: () => getUserRoutes(modelNameUpper),
       listConfigs: listConfigs()
     }
   }
@@ -189,6 +209,7 @@ export function UseCaseService (modelName = null) {
     deployModel: deployModels(),
     hotReload: hotReload(),
     emitEvent: emitEvents(),
-    listConfigs: listConfigs()
+    listConfigs: listConfigs(),
+    getRoutes: getUserRoutes()
   }
 }

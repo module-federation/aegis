@@ -12,6 +12,7 @@ export class DataSourceFile extends DataSourceMemory {
   constructor(map, factory, name) {
     super(map, factory, name)
     this.file = this.getFilePath()
+    this.className = DataSourceFile.name
   }
 
   getFilePath() {

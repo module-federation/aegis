@@ -11,6 +11,7 @@ const {
   listModels,
   removeModels,
   hotReload,
+  getUserRoutes,
   registerEvents,
   buildModels
 } = UseCases
@@ -22,7 +23,7 @@ import getModelByIdFactory from './get-model-by-id'
 import deleteModelFactory from './delete-model'
 import getConfigFactory from './get-config'
 import makeLiveUpdate from './live-update'
-import {} from './'
+
 function make (useCases, controllerFactory) {
   return useCases().map(uc => ({
     endpoint: uc.endpoint,
@@ -37,6 +38,7 @@ export const getModelsById = () => make(findModels, getModelByIdFactory)
 export const deleteModels = () => make(removeModels, deleteModelFactory)
 export const liveUpdate = () => make(hotReload, makeLiveUpdate)
 export const getConfig = () => getConfigFactory(listConfigs())
+export const getRoutes = () => getUserRoutes()
 
 export const initCache = () => {
   const label = '\ntime to load cache'

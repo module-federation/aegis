@@ -32,7 +32,6 @@ export default function listConfigsFactory ({
           ? datasources.getSharedDataSource(modelName).listSync()
           : datasources.listDataSources().map(k => ({
               dsname: k,
-              dstype: datasources.getSharedDataSource(k).getClassName(),
               objects: datasources.getSharedDataSource(k).countSync()
             })),
 

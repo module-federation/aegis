@@ -68,31 +68,33 @@ class RouteMap extends Map {
 
 const routes = new RouteMap()
 
-const route = {
-  autoRoutes (path, method, controllers, http) {
+const router = {
+  autoRoutes (path, method, controllers, adapter) {
     controllers().forEach(ctlr =>
-      routes.set(path(ctlr.endpoint), { [method]: http(ctlr.fn) })
+      routes.set(path(ctlr.endpoint), { [method]: adapter(ctlr.fn) })
     )
   },
 
-  userRoutes (adapter, getRoutes) {},
+  userRoutes (getRoutes) {
+    getRoutes().forEach(route => routes.set(route.path, route))
+  },
 
-  adminRoute (adapter, getConfig) {
+  adminRoute (getConfig, adapter) {
     const adminPath = `${apiRoot}/config`
     routes.set(adminPath, { get: adapter(getConfig()) })
   }
 }
 
 async function makeRoutes () {
-  route.autoRoutes(endpoint, 'get', liveUpdate, http)
-  route.autoRoutes(endpoint, 'get', getModels, http)
-  route.autoRoutes(endpoint, 'post', postModels, http)
-  route.autoRoutes(endpointId, 'get', getModelsById, http)
-  route.autoRoutes(endpointId, 'patch', patchModels, http)
-  route.autoRoutes(endpointId, 'delete', deleteModels, http)
-  route.autoRoutes(endpointCmd, 'patch', patchModels, http)
-  route.userRoutes(http, getRoutes)
-  route.adminRoute(http, getConfig)
+  router.autoRoutes(endpoint, 'get', liveUpdate, http)
+  router.autoRoutes(endpoint, 'get', getModels, http)
+  router.autoRoutes(endpoint, 'post', postModels, http)
+  router.autoRoutes(endpointId, 'get', getModelsById, http)
+  router.autoRoutes(endpointId, 'patch', patchModels, http)
+  router.autoRoutes(endpointId, 'delete', deleteModels, http)
+  router.autoRoutes(endpointCmd, 'patch', patchModels, http)
+  router.adminRoute(getConfig, http)
+  router.userRoutes(getRoutes)
   console.log(routes)
 }
 
@@ -117,7 +119,7 @@ async function handle (path, method, req, res) {
   const controller = routeInfo[method.toLowerCase()]
   if (typeof controller !== 'function') {
     console.warn('no controller for', path, method)
-    res.status(404).send('not found')
+    res.status(500).send('bad config')
     return
   }
 
@@ -126,7 +128,10 @@ async function handle (path, method, req, res) {
 }
 
 function shutdownThreads () {
-  if (ThreadPoolFactory.listPools().length > 0) ThreadPoolFactory.destroy()
+  if (ThreadPoolFactory.listPools().length > 0) {
+    console.log('shutting down threads')
+    ThreadPoolFactory.destroy()
+  }
 }
 
 /**
@@ -139,7 +144,7 @@ function shutdownThreads () {
  * @returns {function(string,string,Request,Response)} {@link handle}
  */
 exports.init = async function (remotes) {
-  // no-op when called the first time
+  // don't orphan threads
   shutdownThreads()
   // stream federated components
   await importRemotes(remotes, overrides)
