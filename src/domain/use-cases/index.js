@@ -195,7 +195,7 @@ export function UseCaseService (modelName = null) {
       loadModels: makeOne(modelNameUpper, makeLoadModels),
       emitEvent: makeOne(modelNameUpper, makeEmitEvent),
       deployModel: makeOne(modelNameUpper, makeDeployModel),
-      getRoutes: () => getUserRoutes(modelNameUpper),
+      getRoutes: getUserRoutes(modelNameUpper),
       listConfigs: listConfigs()
     }
   }

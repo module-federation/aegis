@@ -95,7 +95,7 @@ export default function getContent (httpRequest, content, defaultTitle) {
             }
 
             a:visited {
-              color: pink;
+              color: aqua;
               background-color: transparent;
               text-decoration: none;
             }

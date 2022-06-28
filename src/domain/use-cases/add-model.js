@@ -59,7 +59,6 @@ export default function makeAddModel ({
         )
         await repository.save(model.getId(), model)
 
-        console.debug(typeof model)
         try {
           const event = models.createEvent(eventType, modelName, model)
           await broker.notify(eventName, event)

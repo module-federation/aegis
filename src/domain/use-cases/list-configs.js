@@ -80,11 +80,7 @@ export default function listConfigsFactory ({
           : models.getModelSpecs().map(spec => ({
               modelName: spec.modelName,
               ports: spec.ports ? Object.values(spec.ports) : {}
-            })),
-      circuitBreakers: () =>
-        isMainThread
-          ? threadpools.getThreadPool(modelName).run(listConfigs.name, query)
-          : require('../circuit-breaker').getErrorLogs()
+            }))
     }
 
     if (query?.details && typeof configTypes[query.details] === 'function')
