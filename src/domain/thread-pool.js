@@ -805,7 +805,7 @@ const ThreadPoolFactory = (() => {
     })
   }
 
-  async function reloadAll () {
+  async function reloadPools () {
     try {
       await Promise.all([...threadPools].map(async ([pool]) => reload(pool)))
       removeUndeployedPools()
@@ -842,6 +842,13 @@ const ThreadPoolFactory = (() => {
         .then(() => pool.stopThreads(destroy.name))
         .then(() => resolve(threadPools.delete(pool)))
         .catch(reject)
+    })
+  }
+
+  function destroyPools () {
+    listPools().forEach(pool => {
+      console.log('shutting down threadpool', pool)
+      destroy(pool)
     })
   }
 
@@ -916,16 +923,19 @@ const ThreadPoolFactory = (() => {
 
   monitorPools()
 
+  broker.on('reload', destroyPools)
+
   return Object.freeze({
     getThreadPool,
     broadcastEvent,
     fireEvent,
     listPools,
-    reloadAll,
+    reloadPools,
     reload,
     status,
     listen,
     destroy,
+    destroyPools,
     pauseMonitoring,
     resumeMonitoring
   })

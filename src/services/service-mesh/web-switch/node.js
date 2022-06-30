@@ -492,6 +492,11 @@ export async function publish (event) {
       console.error(publish.name, 'no event provided')
       return
     }
+    if (event.eventName === 'reload') {
+      ws.close(8007)
+      ws = null
+      return
+    }
     await connectToServiceMesh()
     send(event)
   } catch (e) {

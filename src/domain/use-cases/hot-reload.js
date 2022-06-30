@@ -80,7 +80,7 @@ export default function makeHotReload ({ models, broker } = {}) {
           return resolve(ThreadPoolFactory.status(modelName))
         } else {
           // compile()
-          await ThreadPoolFactory.reloadAll()
+          await ThreadPoolFactory.reloadPools()
           return resolve(ThreadPoolFactory.status())
         }
       } catch (error) {

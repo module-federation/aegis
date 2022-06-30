@@ -45,9 +45,16 @@ const Event = (() => {
    * @param {options} options
    * @returns {Readonly<Event>}
    */
-  const Event = ({ factory, args = {}, eventType, modelName } = {}) => ({
+  const Event = ({
+    factory,
+    args = {},
+    eventType,
+    eventName,
+    modelName
+  } = {}) => ({
     eventName:
-      eventType && modelName && eventType.concat(modelName).toUpperCase(),
+      eventName ||
+      (eventType && modelName && eventType.concat(modelName)).toUpperCase(),
     eventType,
     modelName,
     eventSource: modelName?.toUpperCase(),

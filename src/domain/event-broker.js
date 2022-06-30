@@ -123,19 +123,20 @@ async function runHandler (eventName, eventData = {}, handle) {
  */
 async function notify (eventName, eventData = {}, options = {}) {
   const run = runHandler.bind(this)
-  let data = eventData
+  const data =
+    typeof eventData === 'object'
+      ? eventData
+      : Event.create({ args: eventData, eventName })
   let match = false
 
-  if (options) {
-    data = { ...eventData, _options: { ...options } }
-  }
+  const formattedEvent = { ...data, _options: { ...options } }
 
   try {
     if (handlers.has(eventName)) {
       match = true
       await Promise.allSettled(
         handlers.get(eventName).map(async fn => {
-          await run(eventName, data, fn)
+          await run(eventName, formattedEvent, fn)
         })
       )
     }
@@ -145,7 +146,7 @@ async function notify (eventName, eventData = {}, options = {}) {
     await Promise.allSettled(
       [...handlers]
         .filter(([k]) => k instanceof RegExp && k.test(eventName))
-        .map(([, v]) => v.map(fn => run(eventName, data, fn)))
+        .map(([, v]) => v.map(fn => run(eventName, formattedEvent, fn)))
     )
   } catch (error) {
     handleError(notify.name, error)

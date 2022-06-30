@@ -1,5 +1,6 @@
 'use strict'
 
+import e from 'express'
 import { nanoid } from 'nanoid'
 import { hostname } from 'os'
 
@@ -107,9 +108,7 @@ export function attachServer (server) {
       client.info.hostname = msg.hostname
     if (msg?.mem && msg?.cpu)
       client.info.telemetry = { ...msg?.mem, ...msg?.cpu }
-    if (msg?.apps) {
-      client.info.apps = msg.apps
-    }
+    if (msg?.apps) client.info.apps = msg.apps
     client.info.initialized = initialized
     client.info.isBackupSwitch = backupSwitch === client.info.id
   }
@@ -125,10 +124,13 @@ export function attachServer (server) {
       client.pong(0xa)
     })
 
-    client.on('close', function () {
-      console.warn('client disconnecting', client.info)
+    client.on('close', function (code) {
+      if (code === 8007) console.info('client reloading', client.info)
+      else {
+        console.warn('client disconnecting', client.info)
+        server.broadcast(statusReport(), client)
+      }
       server.reassignBackupSwitch(client)
-      server.broadcast(statusReport(), client)
     })
 
     client.on('error', function (error) {

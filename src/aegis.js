@@ -1,14 +1,15 @@
 'use strict'
 
+const { EventBrokerFactory, importRemotes } = require('./domain')
 const services = require('./services')
 const adapters = require('./adapters')
-const domain = require('./domain')
 const { pathToRegexp, match } = require('path-to-regexp')
 const { StorageService } = services
 const { StorageAdapter } = adapters
 const { find, save } = StorageAdapter
 const overrides = { find, save, ...StorageService }
-const { importRemotes, ThreadPoolFactory } = domain
+
+const broker = EventBrokerFactory.getInstance()
 
 const {
   deleteModels,
@@ -127,13 +128,6 @@ async function handle (path, method, req, res) {
   return controller(requestInfo, res)
 }
 
-function shutdownThreads () {
-  if (ThreadPoolFactory.listPools().length > 0) {
-    console.log('shutting down threads')
-    ThreadPoolFactory.destroy()
-  }
-}
-
 /**
  * When called to perform a hot reload, stop all thread pools.
  * Import remote modules, then build APIs, storage adapters, etc.
@@ -144,8 +138,8 @@ function shutdownThreads () {
  * @returns {function(string,string,Request,Response)} {@link handle}
  */
 exports.init = async function (remotes) {
-  // don't orphan threads
-  shutdownThreads()
+  // tell components to dispose of any system resources
+  await broker.notify('reload', 'system init or reload')
   // stream federated components
   await importRemotes(remotes, overrides)
   const cache = initCache()
