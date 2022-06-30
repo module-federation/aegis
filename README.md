@@ -57,7 +57,7 @@ You don't need that anymore.
 
 ---
 
-## Using ÆGIS
+## Getting started
 
 ### Install [<img src="https://github.com/tysonrm/cluster-rolling-restart/blob/main/npm-tile.png">](https://www.npmjs.com/package/@module-federation/aegis)
 
