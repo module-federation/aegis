@@ -83,24 +83,28 @@ export function attachServer (server) {
     }
   }
 
+  function deleteDuplicateClient (client, hostname) {
+    const prevClient = [...server.clients].find(
+      c => c.info.hostname === hostname
+    )
+
+    console.warn({
+      msg: 'deleting previous connection to client',
+      client: prevClient.info
+    })
+
+    if (prevClient) prevClient.close(8008)
+    server.clients.delete(prevClient)
+  }
+
   function setClientInfo (client, msg = {}, initialized = true) {
     if (typeof client.info === 'undefined') client.info = {}
     if (!client.info.id) client.info.id = nanoid()
     if (typeof client.info.errors === 'undefined') client.info.errors = 0
     if (typeof client.info.role === 'undefined' && msg?.role)
       client.info.role = msg.role
-    if (typeof client.info.hostname === 'undefined' && msg?.hostname) {
-      const prevClient = [...server.clients].find(
-        c => c.info.hostname === msg.hostname
-      )
-      console.warn({
-        msg: 'deleting previous connection to client',
-        client: prevClient.info
-      })
-      if (prevClient) prevClient.close(8008)
-      server.clients.delete(prevClient)
+    if (typeof client.info.hostname === 'undefined' && msg?.hostname)
       client.info.hostname = msg.hostname
-    }
     if (msg?.mem && msg?.cpu)
       client.info.telemetry = { ...msg?.mem, ...msg?.cpu }
     if (msg?.apps) {
@@ -145,6 +149,7 @@ export function attachServer (server) {
     client.on('message', function (message) {
       try {
         const msg = JSON.parse(message.toString())
+        deleteDuplicateClient(client, msg.hostname)
 
         if (client.info.initialized) {
           if (msg == 'status') {
