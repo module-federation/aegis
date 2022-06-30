@@ -89,8 +89,13 @@ export function attachServer (server) {
     if (typeof client.info.errors === 'undefined') client.info.errors = 0
     if (typeof client.info.role === 'undefined' && msg?.role)
       client.info.role = msg.role
-    if (typeof client.info.hostname === 'undefined' && msg?.hostname)
+    if (typeof client.info.hostname === 'undefined' && msg?.hostname) {
+      const prevClient = [...server.clients].find(
+        c => c.info.hostname === msg.hostname
+      )
+      if (prevClient) prevClient.close(8008)
       client.info.hostname = msg.hostname
+    }
     if (msg?.mem && msg?.cpu)
       client.info.telemetry = { ...msg?.mem, ...msg?.cpu }
     if (msg?.apps) {

@@ -402,6 +402,12 @@ async function connectToServiceMesh () {
       if (!ws || ws.readyState !== WebSocket.OPEN) reconnect()
     })
 
+    ws.on('close', function (code) {
+      if (code === '8008') {
+        console.log('server dropped duplicated connection')
+      }
+    })
+
     ws.on('message', async function (message) {
       try {
         const event = JSON.parse(message.toString())
