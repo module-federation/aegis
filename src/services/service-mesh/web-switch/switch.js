@@ -93,7 +93,12 @@ export function attachServer (server) {
       const prevClient = [...server.clients].find(
         c => c.info.hostname === msg.hostname
       )
+      console.warn({
+        msg: 'deleting previous connection to client',
+        client: prevClient.info
+      })
       if (prevClient) prevClient.close(8008)
+      server.clients.delete(prevClient)
       client.info.hostname = msg.hostname
     }
     if (msg?.mem && msg?.cpu)
