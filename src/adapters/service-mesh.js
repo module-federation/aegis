@@ -25,6 +25,8 @@ export function attachServer (service) {
   }
 }
 
-export function close (reason) {
-  service.close('reload')
+export function close (service) {
+  return function (reason) {
+    service.close('reload')
+  }
 }
