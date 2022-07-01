@@ -44,6 +44,8 @@ export default function brokerEvents (broker, datasources, models) {
   if (isMainThread) {
     // forward all events from worker threads to the service mesh
     broker.on('from_worker', async event => ServiceMesh.publish(event))
+    // forward reload event to mesh
+    broker.on('reload', async event => ServiceMesh.close('reload'))
 
     // forward every event from the service mesh to the workers
     ServiceMesh.subscribe('*', event => {

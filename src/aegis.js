@@ -139,7 +139,7 @@ async function handle (path, method, req, res) {
  */
 exports.init = async function (remotes) {
   // tell components to dispose of any system resources
-  await broker.notify('reload', 'system init or reload')
+  await broker.notify('reload', 'system init/reload')
   // stream federated components
   await importRemotes(remotes, overrides)
   const cache = initCache()

@@ -848,7 +848,8 @@ const ThreadPoolFactory = (() => {
   function destroyPools () {
     listPools().forEach(pool => {
       console.log('shutting down threadpool', pool)
-      destroy(pool)
+      // don't destroy pools that were just started - could be preload
+      if (Date.now() - pool.startTime > 2000) destroy(pool)
     })
   }
 

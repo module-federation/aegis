@@ -286,7 +286,7 @@ function send (event) {
       default: {
         errorRate: 100,
         callVolume: 100,
-        intervalMs: 100,
+        intervalMs: 10000,
         fallbackFn: () => console.log('fallback fn mesh.send')
       }
     })
@@ -422,7 +422,7 @@ async function connectToServiceMesh () {
 
             // notify subscribers of all events
             if (event.eventName !== '*') {
-              broker.listeners('*').forEach(l => l(event))
+              broker.listeners('*').forEach(lstnr => lstnr(event))
             }
             // send to uplink if there is one
             if (uplinkCallback) await uplinkCallback(message)
@@ -451,6 +451,7 @@ export async function connect (serviceInfo = {}) {
 }
 
 let reconnectTimerId
+let attempts = 0
 
 /**
  * Try to open new socket. Every other minute
@@ -463,9 +464,6 @@ async function reconnect () {
     return
   }
 
-  let attempts = 0
-  ws = null
-
   reconnectTimerId = setInterval(async () => {
     if (++attempts % 10 === 0) {
       // try new url after a minute
@@ -477,6 +475,7 @@ async function reconnect () {
       clearInterval(reconnectTimerId)
       console.info('reconnected to switch')
       reconnectTimerId = 0
+      attempts = 0
     }
   }, 6000)
 }
@@ -492,14 +491,22 @@ export async function publish (event) {
       console.error(publish.name, 'no event provided')
       return
     }
+
     if (event.eventName === 'reload') {
       ws.close(8007)
       ws = null
       return
     }
+
     await connectToServiceMesh()
     send(event)
   } catch (e) {
     console.error('publish', e)
   }
+}
+
+export function close (reason) {
+  console.warn('disconnecting from mesh')
+  ws.close(8009)
+  ws = null
 }
