@@ -24,3 +24,7 @@ export function attachServer (service) {
     service.attachServer(server)
   }
 }
+
+export function close (reason) {
+  service.close('reload')
+}
