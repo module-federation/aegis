@@ -127,7 +127,12 @@ export function attachServer (server) {
     })
 
     client.on('close', function (code, reason) {
-      console.info({ msg: 'client closing', code, reason, client: client.info })
+      console.info({
+        msg: 'client closing',
+        code,
+        reason: reason.toString(),
+        client: client.info
+      })
       server.broadcast(statusReport(), client)
       server.reassignBackupSwitch(client)
     })
@@ -150,8 +155,6 @@ export function attachServer (server) {
     client.on('message', function (message) {
       try {
         const msg = JSON.parse(message.toString())
-        setClientInfo(client, msg, false)
-        deduplicateClient(client, msg.hostname)
 
         if (client.info.initialized) {
           if (msg == 'status') {
@@ -163,8 +166,11 @@ export function attachServer (server) {
           return
         }
 
-        if (msg.proto === SERVICENAME && msg.role) {
-          setClientInfo(client, msg)
+        setClientInfo(client, msg, false)
+        deduplicateClient(client, msg.hostname)
+
+        if (msg.proto === SERVICENAME) {
+          setClientInfo(client, msg, true)
           // if a backup switch is needed, is the client eligible?
           if (
             // are we the switch?
@@ -176,7 +182,7 @@ export function attachServer (server) {
             // don't put backup on same host
             msg.hostname !== hostname()
           ) {
-            backupSwitch = q.info.id
+            backupSwitch = client.info.id
             console.info('new backup switch: ', id)
           }
 
