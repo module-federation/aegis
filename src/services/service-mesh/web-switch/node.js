@@ -317,23 +317,28 @@ function startHeartbeat () {
   const intervalId = setInterval(async function () {
     if (receivedPong) {
       receivedPong = false
-      ws.ping(0x9)
-    } else {
       try {
-        clearInterval(intervalId)
-        broker.emit(TIMEOUTEVENT, { error: 'server unresponsive' })
-
-        console.error({
-          fn: startHeartbeat.name,
-          receivedPong,
-          msg: 'no response, trying new conn'
-        })
-
-        // try to reconnect
-        reconnect()
+        ws.ping(0x9)
       } catch (error) {
-        console.error(startHeartbeat.name, error)
+        console.error({ fn: 'interval', error })
       }
+      return
+    }
+
+    try {
+      clearInterval(intervalId)
+      broker.emit(TIMEOUTEVENT, { error: 'server unresponsive' })
+
+      console.error({
+        fn: startHeartbeat.name,
+        receivedPong,
+        msg: 'no response, trying new conn'
+      })
+
+      // try to reconnect
+      reconnect()
+    } catch (error) {
+      console.error(startHeartbeat.name, error)
     }
   }, heartbeat)
 }
