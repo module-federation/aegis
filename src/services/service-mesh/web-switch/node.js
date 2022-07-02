@@ -402,10 +402,12 @@ async function connectToServiceMesh () {
       if (!ws || ws.readyState !== WebSocket.OPEN) reconnect()
     })
 
-    ws.on('close', function (code) {
-      if (code === '8008') {
-        console.log('server dropped duplicated connection')
-      }
+    ws.on('close', function (code, reason) {
+      console.log({
+        msg: 'server dropped duplicated connection',
+        code,
+        reason: reason.toString()
+      })
     })
 
     ws.on('message', async function (message) {
@@ -460,20 +462,21 @@ let attempts = 0
  */
 async function reconnect () {
   if (reconnectTimerId) {
-    console.warn('reconnect already in progress')
+    console.warn({ msg: 'reconnect in progress', attempts })
     return
   }
 
   reconnectTimerId = setInterval(async () => {
     if (++attempts % 10 === 0) {
       // try new url after a minute
+      console.warn({ msg: 'try new service url', attempts })
       serviceUrl = null
     }
     await connectToServiceMesh()
 
     if (ws?.readyState === WebSocket.OPEN) {
       clearInterval(reconnectTimerId)
-      console.info('reconnected to switch')
+      console.info({ msg: 'connected to switch', serviceUrl, attempts })
       reconnectTimerId = 0
       attempts = 0
     }
@@ -492,12 +495,6 @@ export async function publish (event) {
       return
     }
 
-    if (event.eventName === 'reload') {
-      ws.close(8007)
-      ws = null
-      return
-    }
-
     await connectToServiceMesh()
     send(event)
   } catch (e) {
@@ -507,6 +504,7 @@ export async function publish (event) {
 
 export function close (reason) {
   console.warn('disconnecting from mesh', reason)
-  ws.close(8009)
+  ws.close(4999, Buffer.from(reason))
   ws = null
+  return
 }
