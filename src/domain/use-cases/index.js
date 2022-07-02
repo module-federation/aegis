@@ -141,13 +141,37 @@ const listConfigs = () =>
     threadpools: ThreadPoolFactory
   })
 
+const api = {
+  ...UseCaseService(),
+  eventBroker: EventBrokerFactory.getInstance(),
+  modelSpec: ModelFactory.getModelSpec(),
+  dataSource: DataSourceFactory.getDataSource()
+}
+
+function userController (fn) {
+  return function (req, res) {
+    return fn(req, res, api)
+  }
+}
+
 function getUserRoutes (modelName) {
   const specs = modelName
     ? [ModelFactory.getModelSpec(modelName)]
     : ModelFactory.getModelSpecs()
-  return specs.filter(spec => spec.routes).map(spec => spec.routes).flat()
-}
 
+  return specs
+    .filter(spec => spec.routes)
+    .map(spec =>
+      spec.routes.map(route =>
+        Object.values(route)
+          .map(v => {
+            if (typeof v === 'function') return { [v.name]: userController(v) }
+            return { v }
+          })
+          .reduce((a, b) => ({ ...a, ...b }))
+      )
+    )
+}
 export const UseCases = {
   addModels,
   editModels,
