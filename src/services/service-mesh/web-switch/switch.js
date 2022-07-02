@@ -89,12 +89,14 @@ export function attachServer (server) {
       c => c.info.hostname === hostname && c.info.role === 'node'
     )
 
+    if (!prevClient) return
+
+    prevClient.close(4998, Buffer.from('duplicate'))
+
     console.warn({
-      msg: 'deleting previous connection to client',
+      msg: 'dropped previous connection to client',
       client: prevClient.info
     })
-
-    if (prevClient) prevClient.close(8008)
     server.clients.delete(prevClient)
   }
 

@@ -110,6 +110,7 @@ async function resolveServiceUrl () {
   let url
 
   return new Promise(function (resolve) {
+    console.log('resolving service url')
     dns.on('response', function (response) {
       debug && console.debug({ fn: resolveServiceUrl.name, response })
 
@@ -437,6 +438,7 @@ async function connectToServiceMesh () {
       }
     })
   }
+  console.warn('websocket exits')
 }
 
 /**
@@ -472,6 +474,7 @@ async function reconnect () {
       console.warn({ msg: 'try new service url', attempts })
       serviceUrl = null
     }
+    ws = null
     await connectToServiceMesh()
 
     if (ws?.readyState === WebSocket.OPEN) {
