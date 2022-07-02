@@ -432,6 +432,7 @@ async function connectToServiceMesh () {
             if (event.eventName !== '*') {
               broker.listeners('*').forEach(lstnr => lstnr(event))
             }
+
             // send to uplink if there is one
             if (uplinkCallback) await uplinkCallback(message)
           }
@@ -514,5 +515,4 @@ export function close (reason) {
   console.warn('disconnecting from mesh', reason)
   ws.close(4999, Buffer.from(reason))
   ws = null
-  return
 }
