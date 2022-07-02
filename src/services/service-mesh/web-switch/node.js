@@ -392,59 +392,63 @@ const handshake = {
  *
  */
 async function connectToServiceMesh () {
-  if (!ws) {
-    if (!serviceUrl) serviceUrl = await resolveServiceUrl()
-    console.info({ fn: connectToServiceMesh.name, serviceUrl })
+  try {
+    if (!ws) {
+      if (!serviceUrl) serviceUrl = await resolveServiceUrl()
+      console.info({ fn: connectToServiceMesh.name, serviceUrl })
 
-    ws = new WebSocket(serviceUrl)
+      ws = new WebSocket(serviceUrl)
 
-    ws.on('open', function () {
-      send(handshake.serialize())
-      startHeartbeat()
-    })
-
-    ws.on('error', function (error) {
-      console.error({ fn: connectToServiceMesh.name, error })
-      if (!ws || ws.readyState !== WebSocket.OPEN) reconnect()
-    })
-
-    ws.on('close', function (code, reason) {
-      console.log({
-        msg: 'server dropped duplicated connection',
-        code,
-        reason: reason.toString()
+      ws.on('open', function () {
+        send(handshake.serialize())
+        startHeartbeat()
       })
-    })
 
-    ws.on('message', async function (message) {
-      try {
-        const event = JSON.parse(message.toString())
-        //debug &&
-        console.debug('received event:', event)
+      ws.on('error', function (error) {
+        console.error({ fn: connectToServiceMesh.name, error })
+        if (!ws || ws.readyState !== WebSocket.OPEN) reconnect()
+      })
 
-        if (handshake.validate(event)) {
-          // process event
-          if (event.eventName) {
-            // notify subscribers of this event
-            broker.emit(event.eventName, event)
+      ws.on('close', function (code, reason) {
+        console.log({
+          msg: 'server dropped duplicated connection',
+          code,
+          reason: reason.toString()
+        })
+      })
 
-            // notify subscribers of all events
-            if (event.eventName !== '*') {
-              broker.listeners('*').forEach(lstnr => lstnr(event))
+      ws.on('message', async function (message) {
+        try {
+          const event = JSON.parse(message.toString())
+          //debug &&
+          console.debug('received event:', event)
+
+          if (handshake.validate(event)) {
+            // process event
+            if (event.eventName) {
+              // notify subscribers of this event
+              broker.emit(event.eventName, event)
+
+              // notify subscribers of all events
+              if (event.eventName !== '*') {
+                broker.listeners('*').forEach(lstnr => lstnr(event))
+              }
+
+              // send to uplink if there is one
+              if (uplinkCallback) await uplinkCallback(message)
             }
-
-            // send to uplink if there is one
-            if (uplinkCallback) await uplinkCallback(message)
+            return
           }
-          return
+          console.warn('unknown message type', message.toString())
+        } catch (error) {
+          console.error({ fn: ws.on.name + '("message")', error })
         }
-        console.warn('unknown message type', message.toString())
-      } catch (error) {
-        console.error({ fn: ws.on.name + '("message")', error })
-      }
-    })
+      })
+    }
+    console.warn('websocket exits')
+  } catch (error) {
+    console.error({ fn: connectToServiceMesh.name, error })
   }
-  console.warn('websocket exits')
 }
 
 /**
@@ -512,7 +516,11 @@ export async function publish (event) {
 }
 
 export function close (reason) {
-  console.warn('disconnecting from mesh', reason)
-  ws.close(4999, Buffer.from(reason))
-  ws = null
+  try {
+    console.warn('disconnecting from mesh', reason)
+    if (ws) ws.close(4999, Buffer.from(reason))
+    ws = null
+  } catch (error) {
+    console.error({ fn: close.name, error })
+  }
 }
