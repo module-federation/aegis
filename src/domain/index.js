@@ -159,8 +159,8 @@
  * @property {accessControlList} [accessControlList] - configure authorization
  * @property {number} [start] - create `start` instances of the model
  * @property {datasource} [datasource] - define custom datasource
- * @property {{ fn: function(), path: string }[]} [routes] - custom routes
- */
+ * @property {Array<{ [x:string]: function(), path: string }>} [routes] - custom routes
+
 
 /**
  * @callback command

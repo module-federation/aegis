@@ -145,19 +145,7 @@ function getUserRoutes (modelName) {
   const specs = modelName
     ? [ModelFactory.getModelSpec(modelName)]
     : ModelFactory.getModelSpecs()
-  return specs
-    .filter(spec => spec.routes)
-    .flatMap(spec =>
-      Object.keys(spec.routes).flatMap(route =>
-        Object.keys(route)
-          .filter(route => typeof route === 'function')
-          .map(method => ({
-            path: route,
-            [method.name]: method
-          }))
-      )
-    )
-    .flat()
+  return specs.filter(spec => spec.routes).map(spec => spec.routes).flat()
 }
 
 export const UseCases = {
