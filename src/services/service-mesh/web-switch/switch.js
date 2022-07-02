@@ -89,7 +89,7 @@ export function attachServer (server) {
       c => c.info.hostname === hostname && c.info.role === 'node'
     )
 
-    if (!prevClient) return
+    if (!prevClient || prevClient === client) return
 
     prevClient.close(4998, Buffer.from('duplicate'))
 
@@ -126,12 +126,9 @@ export function attachServer (server) {
       client.pong(0xa)
     })
 
-    client.on('close', function (code) {
-      if (code === 8007) console.info('client reloading', client.info)
-      else {
-        console.warn('client disconnecting', client.info)
-        server.broadcast(statusReport(), client)
-      }
+    client.on('close', function (code, reason) {
+      console.info({ msg: 'client closing', code, reason, client: client.info })
+      server.broadcast(statusReport(), client)
       server.reassignBackupSwitch(client)
     })
 
