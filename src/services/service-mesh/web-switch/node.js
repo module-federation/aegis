@@ -506,7 +506,7 @@ export async function publish (event) {
 }
 
 export function close (reason) {
-  console.warn('disconnecting from mesh')
+  console.warn('disconnecting from mesh', reason)
   ws.close(8009)
   ws = null
 }

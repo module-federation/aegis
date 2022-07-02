@@ -75,7 +75,7 @@ export function attachServer (server) {
   server.reassignBackupSwitch = function (client) {
     if (client.info?.id === backupSwitch) {
       for (let c of server.clients) {
-        if (c.info?.id !== backupSwitch) {
+        if (c.info.role === 'node' && c.info.id !== backupSwitch) {
           backupSwitch = c.info.id
           c.isBackupSwitch = true
           return
@@ -84,9 +84,9 @@ export function attachServer (server) {
     }
   }
 
-  function deleteDuplicateClient (client, hostname) {
+  function deduplicateClient (client, hostname) {
     const prevClient = [...server.clients].find(
-      c => c.info.hostname === hostname
+      c => c.info.hostname === hostname && c.info.role === 'node'
     )
 
     console.warn({
@@ -151,7 +151,8 @@ export function attachServer (server) {
     client.on('message', function (message) {
       try {
         const msg = JSON.parse(message.toString())
-        deleteDuplicateClient(client, msg.hostname)
+        setClientInfo(client, msg, false)
+        deduplicateClient(client, msg.hostname)
 
         if (client.info.initialized) {
           if (msg == 'status') {

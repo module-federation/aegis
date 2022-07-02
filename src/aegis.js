@@ -3,12 +3,11 @@
 const { EventBrokerFactory, importRemotes } = require('./domain')
 const services = require('./services')
 const adapters = require('./adapters')
-const { pathToRegexp, match } = require('path-to-regexp')
 const { StorageService } = services
 const { StorageAdapter } = adapters
+const { pathToRegexp, match } = require('path-to-regexp')
 const { find, save } = StorageAdapter
 const overrides = { find, save, ...StorageService }
-
 const broker = EventBrokerFactory.getInstance()
 
 const {
@@ -100,8 +99,8 @@ async function makeRoutes () {
 }
 
 /**
- * Universal controller - find the controller for
- * a given {@link path} and invoke it.
+ * Universal controller - find the controller
+ * for a given {@link path} and invoke it.
  *
  * @param {string} path
  * @param {'get'|'patch'|'post'|'delete'} method
@@ -120,12 +119,20 @@ async function handle (path, method, req, res) {
   const controller = routeInfo[method.toLowerCase()]
   if (typeof controller !== 'function') {
     console.warn('no controller for', path, method)
-    res.status(500).send('bad config')
+    res.status(400).send('bad request')
     return
   }
 
   const requestInfo = Object.assign(req, { params: routeInfo.params })
   return controller(requestInfo, res)
+}
+
+/**
+ * tell components to dispose of any system resources
+ */
+exports.dispose = async function () {
+  console.log('system hot-reloading')
+  await broker.notify('reload', 'system reload')
 }
 
 /**
@@ -138,13 +145,13 @@ async function handle (path, method, req, res) {
  * @returns {function(string,string,Request,Response)} {@link handle}
  */
 exports.init = async function (remotes) {
-  // tell components to dispose of any system resources
-  await broker.notify('reload', 'system init/reload')
   // stream federated components
   await importRemotes(remotes, overrides)
   const cache = initCache()
   // create endpoints
   makeRoutes()
+  // load from storage
   await cache.load()
+  // hand controllers
   return handle
 }
