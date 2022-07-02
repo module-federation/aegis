@@ -165,6 +165,7 @@ export function attachServer (server) {
         }
 
         if (msg.proto === SERVICENAME && msg.role) {
+          setClientInfo(client, msg)
           // if a backup switch is needed, is the client eligible?
           if (
             // are we the switch?
@@ -176,10 +177,9 @@ export function attachServer (server) {
             // don't put backup on same host
             msg.hostname !== hostname()
           ) {
-            backupSwitch = client.info.id
+            backupSwitch = q.info.id
             console.info('new backup switch: ', id)
           }
-          setClientInfo(client, msg)
 
           console.info('client initialized', client.info)
           // tell client if its a backup switch or not
