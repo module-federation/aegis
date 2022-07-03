@@ -29,6 +29,11 @@ export function registerEvents () {
   )
 }
 
+/**
+ *
+ * @param {*} modelName
+ * @returns
+ */
 function findLocalRelatedModels (modelName) {
   const localModels = ModelFactory.getModelSpecs().map(spec =>
     spec.modelName.toUpperCase()
@@ -42,6 +47,11 @@ function findLocalRelatedModels (modelName) {
   return result
 }
 
+/**
+ *
+ * @param {*} modelName
+ * @returns
+ */
 function findLocalRelatedDatasources (modelName) {
   return findLocalRelatedModels(modelName).map(modelName => ({
     modelName,
@@ -141,6 +151,11 @@ const listConfigs = () =>
     threadpools: ThreadPoolFactory
   })
 
+/**
+ *
+ * @param {*} modelName
+ * @returns
+ */
 const api = modelName => ({
   ...UseCaseService(modelName),
   eventBroker: EventBrokerFactory.getInstance(),
@@ -148,24 +163,35 @@ const api = modelName => ({
   dataSource: DataSourceFactory.getDataSource(modelName)
 })
 
-const userController = (fn, modelName) => (req, res) =>
-  fn(req, res, api(modelName))
+/**
+ *
+ * @param {*} fn
+ * @param {*} api
+ * @returns
+ */
+const userController = (fn, api) => (req, res) => fn(req, res, api)
 
-function getUserRoutes () {
+/**
+ *
+ * @returns
+ */
+export function getUserRoutes () {
   return ModelFactory.getModelSpecs()
-    .filter(spec => spec.routes)
+    .filter(spec => typeof spec.routes !== 'undefined')
     .map(spec =>
       spec.routes
+        .filter(route => typeof route !== 'undefined')
         .map(route =>
-          Object.values(route)
-            .map(v => {
-              if (typeof v === 'function')
-                return { [v.name]: userController(v, spec.modelName) }
-              return { v }
+          Object.keys(route)
+            .map(k => {
+              if (typeof route[k] === 'function')
+                return {
+                  [k]: userController(route[k], api(spec.modelName))
+                }
+              return { [k]: route[k] }
             })
             .reduce((a, b) => ({ ...a, ...b }))
         )
-        .flat()
     )
     .flat()
 }
@@ -181,8 +207,7 @@ export const UseCases = {
   hotReload,
   registerEvents,
   emitEvents,
-  deployModels,
-  getUserRoutes
+  deployModels
 }
 
 /**
@@ -205,7 +230,6 @@ export function UseCaseService (modelName = null) {
       loadModels: makeOne(modelNameUpper, makeLoadModels),
       emitEvent: makeOne(modelNameUpper, makeEmitEvent),
       deployModel: makeOne(modelNameUpper, makeDeployModel),
-      getRoutes: getUserRoutes(modelNameUpper),
       listConfigs: listConfigs()
     }
   }
@@ -219,7 +243,6 @@ export function UseCaseService (modelName = null) {
     deployModel: deployModels(),
     hotReload: hotReload(),
     emitEvent: emitEvents(),
-    listConfigs: listConfigs(),
-    getRoutes: getUserRoutes()
+    listConfigs: listConfigs()
   }
 }

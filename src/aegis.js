@@ -75,13 +75,13 @@ const router = {
     )
   },
 
-  userRoutes (getRoutes) {
-    getRoutes().forEach(route => routes.set(route.path, route))
+  userRoutes (controllers) {
+    controllers().forEach(route => routes.set(route.path, route))
   },
 
-  adminRoute (getConfig, adapter) {
+  adminRoute (controller, adapter) {
     const adminPath = `${apiRoot}/config`
-    routes.set(adminPath, { get: adapter(getConfig()) })
+    routes.set(adminPath, { get: adapter(controller()) })
   }
 }
 

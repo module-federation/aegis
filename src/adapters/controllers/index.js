@@ -1,6 +1,6 @@
 'use strict'
 
-import { UseCases } from '../../domain/use-cases'
+import { UseCases, getUserRoutes } from '../../domain/use-cases'
 
 const {
   addModels,
@@ -11,7 +11,6 @@ const {
   listModels,
   removeModels,
   hotReload,
-  getUserRoutes,
   registerEvents,
   buildModels
 } = UseCases
