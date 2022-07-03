@@ -141,37 +141,35 @@ const listConfigs = () =>
     threadpools: ThreadPoolFactory
   })
 
-const api = {
-  ...UseCaseService(),
+const api = modelName => ({
+  ...UseCaseService(modelName),
   eventBroker: EventBrokerFactory.getInstance(),
-  modelSpec: ModelFactory.getModelSpec(),
-  dataSource: DataSourceFactory.getDataSource()
-}
+  modelSpec: ModelFactory.getModelSpec(modelName),
+  dataSource: DataSourceFactory.getDataSource(modelName)
+})
 
-function userController (fn) {
-  return function (req, res) {
-    return fn(req, res, api)
-  }
-}
+const userController = (fn, modelName) => (req, res) =>
+  fn(req, res, api(modelName))
 
-function getUserRoutes (modelName) {
-  const specs = modelName
-    ? [ModelFactory.getModelSpec(modelName)]
-    : ModelFactory.getModelSpecs()
-
-  return specs
+function getUserRoutes () {
+  return ModelFactory.getModelSpecs()
     .filter(spec => spec.routes)
     .map(spec =>
-      spec.routes.map(route =>
-        Object.values(route)
-          .map(v => {
-            if (typeof v === 'function') return { [v.name]: userController(v) }
-            return { v }
-          })
-          .reduce((a, b) => ({ ...a, ...b }))
-      )
+      spec.routes
+        .map(route =>
+          Object.values(route)
+            .map(v => {
+              if (typeof v === 'function')
+                return { [v.name]: userController(v, spec.modelName) }
+              return { v }
+            })
+            .reduce((a, b) => ({ ...a, ...b }))
+        )
+        .flat()
     )
+    .flat()
 }
+
 export const UseCases = {
   addModels,
   editModels,
