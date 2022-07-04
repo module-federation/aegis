@@ -76,7 +76,7 @@ const router = {
   },
 
   userRoutes (controllers) {
-    controllers().forEach(route => routes.set(route.path, route))
+    controllers().forEach(ctlr => routes.set(ctlr.path, ctlr))
   },
 
   adminRoute (controller, adapter) {
@@ -118,13 +118,18 @@ async function handle (path, method, req, res) {
 
   const controller = routeInfo[method.toLowerCase()]
   if (typeof controller !== 'function') {
-    console.warn('no controller for', path, method)
-    res.status(400).send('bad request')
+    console.warn('no controller for', path, q
     return
   }
 
   const requestInfo = Object.assign(req, { params: routeInfo.params })
-  return controller(requestInfo, res)
+
+  try {
+    return await controller(requestInfo, res)
+  } catch (error) {
+    console.error({ fn: handle.name, error })
+    res.res.status(500).send({ msg: 'an error occured', error })
+  }
 }
 
 /**

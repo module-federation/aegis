@@ -169,7 +169,7 @@ const api = modelName => ({
  * @param {*} api
  * @returns
  */
-const userController = (fn, api) => (req, res) => fn(req, res, api)
+const userController = (fn, api) => (req, res) => fn({ req, res, api })
 
 /**
  *
@@ -181,17 +181,18 @@ export function getUserRoutes () {
     .map(spec =>
       spec.routes
         .filter(route => typeof route !== 'undefined')
-        .map(route =>
-          Object.keys(route)
+        .map(route => {
+          const apifn = api(spec.modelName)
+          return Object.keys(route)
             .map(k => {
               if (typeof route[k] === 'function')
                 return {
-                  [k]: userController(route[k], api(spec.modelName))
+                  [k]: userController(route[k], apifn)
                 }
               return { [k]: route[k] }
             })
             .reduce((a, b) => ({ ...a, ...b }))
-        )
+        })
     )
     .flat()
 }
