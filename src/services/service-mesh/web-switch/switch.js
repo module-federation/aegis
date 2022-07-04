@@ -87,7 +87,9 @@ export function attachServer (server) {
   function deduplicateClient (client, hostname) {
     const origClient = [...server.clients].find(
       c =>
-        c.info.hostname === hostname && c !== client && c.info.role === 'node'
+        c.info.hostname === hostname &&
+        c.info.id !== client.info.id &&
+        c.info.role === 'node'
     )
 
     if (!origClient) return

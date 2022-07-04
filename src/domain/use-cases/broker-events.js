@@ -60,7 +60,7 @@ export default function brokerEvents (broker, datasources, models) {
         .map(spec => spec.modelName)
 
     // connect to mesh and provide fn to list installed services
-    ServiceMesh.connect({ services: listLocalModels })
+    ServiceMesh.connect({ listServices: listLocalModels })
   } else {
     createBroadcastChannel(workerData.poolName, broker)
     // create listeners that handle events from main
