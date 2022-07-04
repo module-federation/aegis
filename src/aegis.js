@@ -128,7 +128,7 @@ async function handle (path, method, req, res) {
     return await controller(requestInfo, res)
   } catch (error) {
     console.error({ fn: handle.name, error })
-    res.res.status(500).send({ msg: 'an error occured', error })
+    res.status(500).send({ msg: 'an error occured', error })
   }
 }
 
