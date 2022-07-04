@@ -93,9 +93,11 @@ export function attachServer (server) {
     if (origClient) {
       origClient.removeAllListeners()
       origClient.send = async () => {}
-      // origClient.close(4889, 'dropping old connection')
-      // server.clients.delete(origClient)
+      origClient.close(4889, 'dropping old connection')
+      server.clients.delete(origClient)
     }
+
+    client.pong(0xa)
 
     client.addListener('ping', function () {
       console.assert(!debug, 'responding to client ping', client.info)
