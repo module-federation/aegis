@@ -118,7 +118,7 @@ async function handle (path, method, req, res) {
 
   const controller = routeInfo[method.toLowerCase()]
   if (typeof controller !== 'function') {
-    console.warn('no controller for', path, q
+    console.warn('no controller for', path, method)
     return
   }
 
