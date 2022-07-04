@@ -96,7 +96,7 @@ export function attachServer (server) {
       msg: 'ignoring duplicate connection to client',
       client: client.info
     })
-    server.clients.delete(dupClient)
+    server.clients.delete(client)
   }
 
   function setClientInfo (client, msg = {}, initialized = true) {
