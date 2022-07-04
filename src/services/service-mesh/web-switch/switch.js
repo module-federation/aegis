@@ -110,7 +110,7 @@ export function attachServer (server) {
     if (msg?.hostname) client.info.hostname = msg.hostname
     if (msg?.mem && msg?.cpu) client.info.telemetry = { ...msg.mem, ...msg.cpu }
     if (msg?.apps) client.info.apps = msg.apps
-    client.info.initialized = initialized
+    client.info.initialized = msg.proto === SERVICENAME ? true : initialized
     client.info.isBackupSwitch = backupSwitch === client.info.id
   }
 
