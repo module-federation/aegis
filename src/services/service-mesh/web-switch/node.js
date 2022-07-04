@@ -57,7 +57,7 @@ let services = () => []
 /** @type {WebSocket} */
 let ws
 
-let dnsPriority = DnsPriority.High
+let dnsPriority
 
 const DnsPriority = {
   High: { priority: 10, weight: 20 },
@@ -85,6 +85,8 @@ const DnsPriority = {
     config.weight = this.Low.weight
   }
 }
+
+dnsPriority = DnsPriority.High
 
 /**
  * If we have been selected to be a backup switch
