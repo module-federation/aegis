@@ -152,11 +152,11 @@ const listConfigs = () =>
   })
 
 /**
+ * Expose use-case functions l domain ports
  *
  * @param {*} modelName
- * @returns
  */
-const api = modelName => ({
+const domainPorts = modelName => ({
   ...UseCaseService(modelName),
   eventBroker: EventBrokerFactory.getInstance(),
   modelSpec: ModelFactory.getModelSpec(modelName),
@@ -189,12 +189,12 @@ export function getUserRoutes () {
       spec.routes
         .filter(route => typeof route !== 'undefined')
         .map(route => {
-          const ports = api(spec.modelName)
+          const userApi = domainPorts(spec.modelName)
           return Object.keys(route)
             .map(k =>
               typeof route[k] === 'function'
                 ? {
-                    [k]: userController(route[k], ports)
+                    [k]: userController(route[k], userApi)
                   }
                 : { [k]: route[k] }
             )

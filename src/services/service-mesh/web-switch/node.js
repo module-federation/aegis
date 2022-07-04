@@ -426,7 +426,6 @@ async function connectToServiceMesh () {
       ws.on('message', async function (message) {
         try {
           const event = JSON.parse(message.toString())
-          //debug &&
           console.debug('received event:', event)
 
           if (handshake.validate(event)) {
