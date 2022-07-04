@@ -166,10 +166,17 @@ const api = modelName => ({
 /**
  *
  * @param {*} fn
- * @param {*} api
+ * @param {*} ports
  * @returns
  */
-const userController = (fn, api) => (req, res) => fn({ req, res, api })
+const userController = (fn, ports) => async (req, res) => {
+  try {
+    return await fn(req, res, ports)
+  } catch (error) {
+    console.error({ fn: userController.name, error })
+    res.status(500).send({ msg: 'error occurred', error })
+  }
+}
 
 /**
  *
@@ -182,15 +189,15 @@ export function getUserRoutes () {
       spec.routes
         .filter(route => typeof route !== 'undefined')
         .map(route => {
-          const apifn = api(spec.modelName)
+          const ports = api(spec.modelName)
           return Object.keys(route)
-            .map(k => {
-              if (typeof route[k] === 'function')
-                return {
-                  [k]: userController(route[k], apifn)
-                }
-              return { [k]: route[k] }
-            })
+            .map(k =>
+              typeof route[k] === 'function'
+                ? {
+                    [k]: userController(route[k], ports)
+                  }
+                : { [k]: route[k] }
+            )
             .reduce((a, b) => ({ ...a, ...b }))
         })
     )

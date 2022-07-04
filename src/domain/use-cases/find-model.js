@@ -1,4 +1,4 @@
-'use strict'
+                                                                                                                          'use strict'
 
 import { isMainThread } from 'worker_threads'
 import executeCommand from './execute-command'
