@@ -90,20 +90,17 @@ export function attachServer (server) {
         c.info.hostname === hostname && c !== client && c.info.role === 'node'
     )
 
-    if (!origClient) return false
-
-    if (client.readyState === WebSocket.OPEN) {
-      console.log('orig client still open')
-      origClient.close(4889, 'dropping old connection')
-      server.clients.delete(origClient)
-
-      client.addListener('ping', function () {
-        console.assert(!debug, 'responding to client ping', client.info)
-        client.pong(0xa)
-      })
+    if (origClient) {
+      origClient.removeAllListeners()
+      origClient.send = async () => {}
+      // origClient.close(4889, 'dropping old connection')
+      // server.clients.delete(origClient)
     }
 
-    return true
+    client.addListener('ping', function () {
+      console.assert(!debug, 'responding to client ping', client.info)
+      client.pong(0xa)
+    })
   }
 
   function setClientInfo (client, msg = {}, initialized = true) {
