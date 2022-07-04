@@ -85,30 +85,33 @@ export function attachServer (server) {
   }
 
   function deduplicateClient (client, hostname) {
-    const dupClient = [...server.clients].find(
+    const origClient = [...server.clients].find(
       c =>
         c.info.hostname === hostname && c !== client && c.info.role === 'node'
     )
 
-    if (!dupClient) return
+    if (!origClient) return false
 
-    console.warn({
-      msg: 'ignoring duplicate connection to client',
-      client: client.info
-    })
-    //server.clients.delete(client)
+    if (client.readyState === WebSocket.OPEN) {
+      console.log('orig client still open')
+      origClient.close(4889, 'dropping old connection')
+      server.clients.delete(origClient)
+
+      client.addListener('ping', function () {
+        console.assert(!debug, 'responding to client ping', client.info)
+        client.pong(0xa)
+      })
+    }
+
+    return true
   }
 
   function setClientInfo (client, msg = {}, initialized = true) {
     if (typeof client.info === 'undefined') client.info = {}
     if (!client.info.id) client.info.id = nanoid()
-    if (typeof client.info.errors === 'undefined') client.info.errors = 0
-    if (typeof client.info.role === 'undefined' && msg?.role)
-      client.info.role = msg.role
-    if (typeof client.info.hostname === 'undefined' && msg?.hostname)
-      client.info.hostname = msg.hostname
-    if (msg?.mem && msg?.cpu)
-      client.info.telemetry = { ...msg?.mem, ...msg?.cpu }
+    if (msg?.role) client.info.role = msg.role
+    if (msg?.hostname) client.info.hostname = msg.hostname
+    if (msg?.mem && msg?.cpu) client.info.telemetry = { ...msg.mem, ...msg.cpu }
     if (msg?.apps) client.info.apps = msg.apps
     client.info.initialized = initialized
     client.info.isBackupSwitch = backupSwitch === client.info.id
@@ -127,7 +130,8 @@ export function attachServer (server) {
         reason: reason.toString(),
         client: client.info
       })
-      server.broadcast(statusReport(),        )
+      client.info.closeEvent = true
+      server.broadcast(statusReport())
       server.reassignBackupSwitch(client)
     })
 
@@ -142,7 +146,7 @@ export function attachServer (server) {
 
       if (client.info.errors > CLIENT_MAX_ERRORS) {
         console.warn('terminating client: too many errors')
-        client.terminate()
+        client.close(4888, 'too many errors')
       }
     })
 
@@ -160,17 +164,10 @@ export function attachServer (server) {
           return
         }
 
-        setClientInfo(client, msg, false)
-        deduplicateClient(client, msg.hostname)
-
         if (msg.proto === SERVICENAME) {
+          deduplicateClient(client, msg.hostname)
           setClientInfo(client, msg, true)
 
-          client.addListener('ping', function () {
-            console.assert(!debug, 'responding to client ping', client.info)
-            client.pong(0xa)
-          })
-          
           // if a backup switch is needed, is the client eligible?
           if (
             // are we the switch?

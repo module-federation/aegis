@@ -57,7 +57,7 @@ let services = () => []
 /** @type {WebSocket} */
 let ws
 
-let dnsPriority
+let dnsPriority = DnsPriority.High
 
 const DnsPriority = {
   High: { priority: 10, weight: 20 },
@@ -91,12 +91,11 @@ const DnsPriority = {
  * check if its time to takeover.
  * Based on DNS load balancing: the lower the value
  * the higher the priority and wieght.
+ * @returns {boolean} if true assume backup switch role
  */
-function checkTakeover () {
-  if (DnsPriority.matches(config)) activateBackup = true
+function takeoverNow () {
+  if (DnsPriority.matches(config)) return (activateBackup = true)
 }
-
-dnsPriority = DnsPriority.High
 
 /**
  * Use multicast DNS to find the host
@@ -114,15 +113,19 @@ async function resolveServiceUrl () {
     dns.on('response', function (response) {
       debug && console.debug({ fn: resolveServiceUrl.name, response })
 
-      const answer = response.answers.find(
-        a =>
-          a.name === SERVICENAME &&
-          a.type === 'SRV' &&
-          DnsPriority.matches(a.data)
+      const fromSwitch = response.answers.find(
+        answer =>
+          answer.name === SERVICENAME &&
+          answer.type === 'SRV' &&
+          DnsPriority.matches(answer.data)
       )
 
-      if (answer) {
-        url = _url(protocol, answer.data.target, answer.data.port)
+      if (fromSwitch) {
+        url = _url(
+          fromSwitch.data.proto,
+          fromSwitch.data.target,
+          fromSwitch.data.port
+        )
         console.info({ msg: 'found dns service record for', SERVICENAME, url })
         resolve(url)
       }
@@ -143,7 +146,7 @@ async function resolveServiceUrl () {
         if (retries > maxRetries / 2) {
           DnsPriority.setLow()
         }
-        checkTakeover()
+        takeoverNow()
       }
 
       // query the service name
@@ -170,11 +173,11 @@ async function resolveServiceUrl () {
     dns.on('query', function (query) {
       debug && console.debug('got a query packet:', query)
 
-      const questions = query.questions.filter(
-        q => q.name === SERVICENAME || q.name === HOSTNAME
+      const forSwitch = query.questions.filter(
+        question => question.name === SERVICENAME || question.name === HOSTNAME
       )
 
-      if (!questions[0]) {
+      if (!forSwitch[0]) {
         console.assert(!debug, {
           fn: 'dns query',
           msg: 'no questions',
@@ -190,10 +193,11 @@ async function resolveServiceUrl () {
               name: SERVICENAME,
               type: 'SRV',
               data: {
+                proto: activeProto,
                 port: activePort,
+                target: activeHost,
                 weight: config.weight,
-                priority: config.priority,
-                target: activeHost
+                priority: config.priority
               }
             }
           ]
