@@ -85,19 +85,18 @@ export function attachServer (server) {
   }
 
   function deduplicateClient (client, hostname) {
-    const prevClient = [...server.clients].find(
-      c => c.info.hostname === hostname && c.info.role === 'node'
+    const dupClient = [...server.clients].find(
+      c =>
+        c.info.hostname === hostname &&`` c !== client && c.info.role === 'node'
     )
 
-    if (!prevClient || prevClient === client) return
-
-    prevClient.close(4998, Buffer.from('duplicate'))
+    if (!dupClient) return
 
     console.warn({
-      msg: 'dropped previous connection to client',
-      client: prevClient.info
+      msg: 'ignoring duplicate connection to client',
+      client: client.info
     })
-    server.clients.delete(prevClient)
+    server.clients.delete(dupClient)
   }
 
   function setClientInfo (client, msg = {}, initialized = true) {
