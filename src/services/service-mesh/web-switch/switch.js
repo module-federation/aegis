@@ -120,11 +120,6 @@ export function attachServer (server) {
   server.on('connection', function (client) {
     setClientInfo(client, null, false)
 
-    client.addListener('ping', function () {
-      console.assert(!debug, 'responding to client ping', client.info)
-      client.pong(0xa)
-    })
-
     client.on('close', function (code, reason) {
       console.info({
         msg: 'client closing',
@@ -132,7 +127,7 @@ export function attachServer (server) {
         reason: reason.toString(),
         client: client.info
       })
-      server.broadcast(statusReport(), client)
+      server.broadcast(statusReport(),        )
       server.reassignBackupSwitch(client)
     })
 
@@ -170,6 +165,12 @@ export function attachServer (server) {
 
         if (msg.proto === SERVICENAME) {
           setClientInfo(client, msg, true)
+
+          client.addListener('ping', function () {
+            console.assert(!debug, 'responding to client ping', client.info)
+            client.pong(0xa)
+          })
+          
           // if a backup switch is needed, is the client eligible?
           if (
             // are we the switch?
