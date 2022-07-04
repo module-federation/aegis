@@ -18,6 +18,7 @@ import WebSocket from 'ws'
 import Dns from 'multicast-dns'
 import EventEmitter from 'events'
 import CircuitBreaker from '../../../domain/circuit-breaker.js'
+import { clearInterval } from 'timers'
 
 const HOSTNAME = 'webswitch.local'
 const SERVICENAME = 'webswitch'
@@ -53,7 +54,7 @@ let uplinkCallback
 /** event broker */
 const broker = new EventEmitter()
 /** get list of local services */
-let services = () => []
+let listServices = () => []
 /** @type {WebSocket} */
 let ws
 
@@ -93,10 +94,9 @@ dnsPriority = DnsPriority.High
  * check if its time to takeover.
  * Based on DNS load balancing: the lower the value
  * the higher the priority and wieght.
- * @returns {boolean} if true assume backup switch role
  */
-function takeoverNow () {
-  if (DnsPriority.matches(config)) return (activateBackup = true)
+function assumeSwitchRole () {
+  if (DnsPriority.matches(config)) activateBackup = true
 }
 
 /**
@@ -148,7 +148,7 @@ async function resolveServiceUrl () {
         if (retries > maxRetries / 2) {
           DnsPriority.setLow()
         }
-        takeoverNow()
+        assumeSwitchRole()
       }
 
       // query the service name
@@ -288,7 +288,7 @@ function format (event) {
  */
 function send (event) {
   if (ws?.readyState === WebSocket.OPEN) {
-    /**@type {import('../../../domain/circuit-breaker').breaker} */
+    /** @type {import('../../../domain/circuit-breaker').breaker} */
     const breaker = new CircuitBreaker('meshNode.send', ws.send, {
       default: {
         errorRate: 100,
@@ -366,7 +366,7 @@ const handshake = {
       ...this,
       mem: process.memoryUsage(),
       cpu: process.cpuUsage(),
-      apps: services()
+      apps: listServices()
     })
   },
 
@@ -450,7 +450,6 @@ async function connectToServiceMesh () {
         }
       })
     }
-    console.warn('websocket exits')
   } catch (error) {
     console.error({ fn: connectToServiceMesh.name, error })
   }
@@ -458,14 +457,10 @@ async function connectToServiceMesh () {
 
 /**
  *
- * @param {{
- *  broker:import('../../../domain/event-broker').EventBroker,
- *  models:import('../../../domain/model-factory').ModelFactory
- * }} [serviceInfo]
+ * @param {{listServices:function():string[]}} [serviceInfo]
  */
 export async function connect (serviceInfo = {}) {
-  services = serviceInfo.services
-  console.info({ fn: connect.name, serviceInfo })
+  listServices = serviceInfo.listServices
   await connectToServiceMesh()
 }
 
@@ -500,7 +495,7 @@ async function reconnect () {
     }
   }, 6000)
 }
-
+let stopping = false
 /**
  * Call this method to broadcast a message on the web-switch network
  * @param {object} event
@@ -508,6 +503,8 @@ async function reconnect () {
  */
 export async function publish (event) {
   try {
+    if (stopping) return
+
     if (!event) {
       console.error(publish.name, 'no event provided')
       return
@@ -523,6 +520,8 @@ export async function publish (event) {
 export function close (reason) {
   try {
     console.warn('disconnecting from mesh', reason)
+    clearInterval(reconnectTimerId)
+    stopping = true
     if (ws) ws.close(4999, Buffer.from(reason))
     ws = null
   } catch (error) {
