@@ -90,12 +90,12 @@ export function attachServer (server) {
         c.info.hostname === hostname && c !== client && c.info.role === 'node'
     )
 
-    if (origClient) {
-      origClient.removeAllListeners()
-      origClient.send = async () => {}
-      origClient.close(4889, 'dropping old connection')
-      server.clients.delete(origClient)
-    }
+    if (!origClient) return
+
+    client.removeAllListeners()
+    client.send = async () => {}
+    client.close(4889, 'dropping old connection')
+    server.clients.delete(client)
 
     client.pong(0xa)
 
@@ -112,7 +112,8 @@ export function attachServer (server) {
     if (msg?.hostname) client.info.hostname = msg.hostname
     if (msg?.mem && msg?.cpu) client.info.telemetry = { ...msg.mem, ...msg.cpu }
     if (msg?.apps) client.info.apps = msg.apps
-    client.info.initialized = msg.proto === SERVICENAME ? true : initialized
+    if (msg?.proto)
+      client.info.initialized = msg.proto === SERVICENAME ? true : initialized
     client.info.isBackupSwitch = backupSwitch === client.info.id
   }
 
