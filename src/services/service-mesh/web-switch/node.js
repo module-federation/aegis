@@ -419,7 +419,7 @@ async function connectToServiceMesh (options = {}) {
 
       ws.on('close', function (code, reason) {
         console.log({
-          msg: 'server dropped duplicated connection',
+          msg: 'connection closed',
           code,
           reason: reason.toString()
         })
@@ -488,7 +488,7 @@ async function reconnect () {
     }
     if (ws) ws.close(4887, Buffer.from('close before reconnect'))
     ws = null
-    await connectToServiceMesh({agent: new Agent()})
+    await connectToServiceMesh({ agent: new Agent() })
 
     if (ws?.readyState === WebSocket.OPEN) {
       clearInterval(reconnectTimerId)
