@@ -1,8 +1,12 @@
 'use strict'
 
+import { readCsrDomains } from 'acme-client/lib/crypto/forge'
+import { R } from 'core-js/modules/_export'
+import { Socket } from 'dgram'
 import e from 'express'
 import { nanoid } from 'nanoid'
 import { hostname } from 'os'
+import { websocket, Server } from 'ws'
 
 const SERVICENAME = 'webswitch'
 const CLIENT_MAX_ERRORS = 3
@@ -17,64 +21,59 @@ let backupSwitch
 
 /**
  *
- * @param {import('ws').Server} server
+ * @param {import('https').Server} httpServer
  * @returns {import('ws').Server}
  */
-export function attachServer (server) {
-  /**
-   * @param {object} data
-   * @param {WebSocket} sender
-   */
-  server.broadcast = function (data, sender) {
-    server.clients.forEach(function (client) {
-      if (client.OPEN && client !== sender) {
-        console.assert(!debug, 'sending client', client.info, data.toString())
-        client.send(data)
-        messagesSent++
-      }
-    })
+export function attachServer (httpServer, secureCtx = {}) {
+  const clients = new Map()
 
-    if (server.uplink && server.uplink !== sender) {
-      server.uplink.publish(data)
-      messagesSent++
+  const wss = new Server({
+    ...secureCtx,
+    clientTracking: false,
+    server: httpServer
+  })
+
+  /**
+   *
+   * @param {{request:Request, socket:Socket, head}} evidence
+   */
+  function protocolRules ({ request, socket }) {
+    const rules = {
+      wrongName: () => request.json().then(data => data.proto !== SERVICENAME),
+      duplicate: () =>
+        clients.filter(
+          client => client.address === socket.remoteAddress().address
+        )
     }
+    const broken = thisRule => rules[thisRule]()
+    return Promise.race(Object.keys(rules).some(broken))
   }
 
-  /**
-   * @todo implement rate limit enforcement
-   * @param {WebSocket} client
-   */
-  server.setRateLimit = function (client) {}
+  wss.on('upgrade', async (request, socket, head) => {
+    const broken = await protocolRules({ request, socket, head })
 
-  function statusReport () {
-    return JSON.stringify({
-      eventName: 'meshStatusReport',
-      servicePlugin: SERVICENAME,
-      uptimeMinutes: uptime(),
-      messagesSent,
-      clientsConnected: server.clients.size,
-      hostname: hostname(),
-      uplink: server.uplink ? server.uplink.info : 'no uplink',
-      isPrimarySwitch: isSwitch,
-      clients: [...server.clients].map(c => ({
-        ...c.info,
-        open: c.readyState === c.OPEN
-      })),
-      debug
-    })
-  }
+    if (broken) {
+      console.warn('bad request')
+      socket.destroy()
+      return
+    }
+
+    wss.handleUpgrade(request, socket, head, ws =>
+      wss.emit('connection', ws, request)
+    )
+  })
 
   /**
    *
    * @param {WebSocket} client
    */
-  server.sendStatus = function (client) {
+  wss.sendStatus = function (client) {
     client.send(statusReport())
   }
 
-  server.reassignBackupSwitch = function (client) {
+  wss.reassignBackupSwitch = function (client) {
     if (client.info?.id === backupSwitch) {
-      for (let c of server.clients) {
+      for (let c of wss.clients) {
         if (c.info.role === 'node' && c.info.id !== backupSwitch) {
           backupSwitch = c.info.id
           c.isBackupSwitch = true
@@ -82,29 +81,6 @@ export function attachServer (server) {
         }
       }
     }
-  }
-
-  function deduplicateClient (client, hostname) {
-    const origClient = [...server.clients].find(
-      c =>
-        c.info.hostname === hostname &&
-        c.info.id !== client.info.id &&
-        c.info.role === 'node'
-    )
-
-    if (!origClient) return
-
-    client.removeAllListeners()
-    client.send = async () => {}
-    client.close(4889, 'dropping old connection')
-    server.clients.delete(client)
-
-    client.pong(0xa)
-
-    client.addListener('ping', function () {
-      console.assert(!debug, 'responding to client ping', client.info)
-      client.pong(0xa)
-    })
   }
 
   function setClientInfo (client, msg = {}, initialized = true) {
@@ -122,7 +98,7 @@ export function attachServer (server) {
   /**
    * @param {WebSocket} client
    */
-  server.on('connection', function (client) {
+  wss.on('connection', function (client) {
     setClientInfo(client, null, false)
 
     client.on('close', function (code, reason) {
@@ -133,8 +109,8 @@ export function attachServer (server) {
         client: client.info
       })
       client.info.closeEvent = true
-      server.broadcast(statusReport())
-      server.reassignBackupSwitch(client)
+      wss.broadcast(statusReport())
+      wss.reassignBackupSwitch(client)
     })
 
     client.on('error', function (error) {
@@ -159,10 +135,10 @@ export function attachServer (server) {
         if (client.info.initialized) {
           if (msg == 'status') {
             setClientInfo(client, msg)
-            server.sendStatus(client)
+            wss.sendStatus(client)
             return
           }
-          server.broadcast(message, client)
+          wss.broadcast(message, client)
           return
         }
 
@@ -189,8 +165,7 @@ export function attachServer (server) {
           // tell client if its a backup switch or not
           client.send(JSON.stringify(client.info))
           // tell everyone about new node (ignore browser)
-          if (client.info.role === 'node')
-            server.broadcast(statusReport(), client)
+          if (client.info.role === 'node') wss.broadcast(statusReport(), client)
           return
         }
       } catch (e) {
@@ -207,14 +182,14 @@ export function attachServer (server) {
     // configure uplink
     if (config.uplink) {
       const node = require('./node')
-      server.uplink = node
+      wss.uplink = node
       node.setUplinkUrl(config.uplink)
-      node.onUplinkMessage(msg => server.broadcast(msg, node))
+      node.onUplinkMessage(msg => wss.broadcast(msg, node))
       node.connect()
     }
   } catch (e) {
     console.error('uplink', e)
   }
 
-  return server
+  return wss
 }

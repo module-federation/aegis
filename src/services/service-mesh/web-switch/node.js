@@ -19,6 +19,8 @@ import Dns from 'multicast-dns'
 import EventEmitter from 'events'
 import CircuitBreaker from '../../../domain/circuit-breaker.js'
 import { clearInterval } from 'timers'
+import { http } from '../../../adapters/controllers/index.js'
+import { Agent } from 'https'
 
 const HOSTNAME = 'webswitch.local'
 const SERVICENAME = 'webswitch'
@@ -397,13 +399,13 @@ const handshake = {
 /**
  *
  */
-async function connectToServiceMesh () {
+async function connectToServiceMesh (options = {}) {
   try {
     if (!ws) {
       if (!serviceUrl) serviceUrl = await resolveServiceUrl()
       console.info({ fn: connectToServiceMesh.name, serviceUrl })
 
-      ws = new WebSocket(serviceUrl)
+      ws = new WebSocket(serviceUrl, options)
 
       ws.on('open', function () {
         send(handshake.serialize())
@@ -484,8 +486,9 @@ async function reconnect () {
       console.warn({ msg: 'try new service url', attempts })
       serviceUrl = null
     }
+    if (ws) ws.close(4887, Buffer.from('close before reconnect'))
     ws = null
-    await connectToServiceMesh()
+    await connectToServiceMesh({agent: new Agent()})
 
     if (ws?.readyState === WebSocket.OPEN) {
       clearInterval(reconnectTimerId)
@@ -495,7 +498,9 @@ async function reconnect () {
     }
   }, 6000)
 }
+
 let stopping = false
+
 /**
  * Call this method to broadcast a message on the web-switch network
  * @param {object} event
@@ -519,9 +524,9 @@ export async function publish (event) {
 
 export function close (reason) {
   try {
+    stopping = true
     console.warn('disconnecting from mesh', reason)
     clearInterval(reconnectTimerId)
-    stopping = true
     if (ws) ws.close(4999, Buffer.from(reason))
     ws = null
   } catch (error) {
