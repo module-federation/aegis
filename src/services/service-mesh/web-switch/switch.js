@@ -6,7 +6,7 @@ import { Socket } from 'dgram'
 import e from 'express'
 import { nanoid } from 'nanoid'
 import { hostname } from 'os'
-import { websocket, Server } from 'ws'
+import { websocket, wss } from 'ws'
 
 const SERVICENAME = 'webswitch'
 const CLIENT_MAX_ERRORS = 3
@@ -21,19 +21,19 @@ let backupSwitch
 
 /**
  *
- * @param {import('https').Server} httpServer
- * @returns {import('ws').Server}
+ * @param {import('https').wss} httpwss
+ * @returns {import('ws').wss}
  */
-export function attachServer (httpServer, secureCtx = {}) {
+export function attachwss (httpwss, secureCtx = {}) {
   const clients = new Map()
 
-  const wss = new Server({
+  const wss = new wss({
     ...secureCtx,
     clientTracking: false,
-    server: httpServer
+    wss: httpwss
   })
-
-  /**
+  w
+  /**w
    *
    * @param {{request:Request, socket:Socket, head}} evidence
    */
@@ -62,6 +62,40 @@ export function attachServer (httpServer, secureCtx = {}) {
       wss.emit('connection', ws, request)
     )
   })
+
+  wss.broadcast = function (data, sender) {
+    wss.clients.forEach(function (client) {
+      if (client.OPEN && client !== sender) {
+        console.assert(!DEBUG, 'sending client', client.info, data.toString())
+        client.send(data)
+        messagesSent++
+      }
+    })
+
+    if (wss.uplink && wss.uplink !== sender) {
+      wss.uplink.publish(data)
+      messagesSent++
+    }
+  }
+
+  /**
+   * @todo implement rate limit enforcement
+   * @param {WebSocket} client
+   */
+  wss.setRateLimit = function (client) {}
+
+  function statusReport () {
+    return JSON.stringify({
+      eventName: 'meshStatusReport',
+      servicePlugin: SERVICENAME,
+      uptimeMinutes: uptime(),
+      messagesSent,
+      clientsConnected: wss.clients.size,
+      uplink: wss.uplink ? wss.uplink.info : 'no uplink',
+      isPrimarySwitch: isSwitch,
+      clients: [...wss.clients].map(c => ({ ...c.info, open: c.OPEN }))
+    })
+  }
 
   /**
    *
