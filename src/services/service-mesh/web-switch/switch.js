@@ -1,12 +1,10 @@
 'use strict'
 
 import { readCsrDomains } from 'acme-client/lib/crypto/forge'
-import { R } from 'core-js/modules/_export'
 import { Socket } from 'dgram'
-import e from 'express'
 import { nanoid } from 'nanoid'
 import { hostname } from 'os'
-import { websocket, wss } from 'ws'
+import { Server } from 'ws'
 
 const SERVICENAME = 'webswitch'
 const CLIENT_MAX_ERRORS = 3
@@ -20,36 +18,52 @@ let messagesSent = 0
 let backupSwitch
 
 /**
- *
- * @param {import('https').wss} httpwss
- * @returns {import('ws').wss}
+ * Attach {@link ServiceMeshAdapter} to the API listener socket.
+ * Listen for upgrade events from http server and switch
+ * client to WebSockets protocol. Clients connecting this
+ * way are using the service mesh, not the REST API. Use
+ * key + cert in {@link secureCtx} for secure connection.
+ * @param {https.Server|http.Server} httpServer
+ * @param {tls.SecureContext} [secureCtx] if ssl enabled
+ * @returns {import('ws').server}
  */
-export function attachwss (httpwss, secureCtx = {}) {
+export function attachServer (httpServer, secureCtx = {}) {
+  /**
+   * list of client connections (federation hosts, browsers, etc)
+   * @type {Map<string,WebSocket>}
+   */
   const clients = new Map()
 
-  const wss = new wss({
+  /**
+   * WebSocket {@link server} that may serve as the webswitch.
+   */
+  const server = new Server({
     ...secureCtx,
     clientTracking: false,
-    wss: httpwss
+    server: httpServer
   })
-  w
+
   /**w
    *
    * @param {{request:Request, socket:Socket, head}} evidence
    */
-  function protocolRules ({ request, socket }) {
+  async function protocolRules ({ request, socket }) {
+    const payload = await request.json()
+
     const rules = {
-      wrongName: () => request.json().then(data => data.proto !== SERVICENAME),
+      wrongName: () => payload.proto !== SERVICENAME,
       duplicate: () =>
-        clients.filter(
-          client => client.address === socket.remoteAddress().address
-        )
+        [...clients.values()].filter(
+          client =>
+            client.address === socket.remoteAddress().address &&
+            (client.role === payload.role) === 'node'
+        ).length > 0
     }
     const broken = thisRule => rules[thisRule]()
     return Promise.race(Object.keys(rules).some(broken))
   }
 
-  wss.on('upgrade', async (request, socket, head) => {
+  server.on('upgrade', async (request, socket, head) => {
     const broken = await protocolRules({ request, socket, head })
 
     if (broken) {
@@ -57,23 +71,22 @@ export function attachwss (httpwss, secureCtx = {}) {
       socket.destroy()
       return
     }
-
-    wss.handleUpgrade(request, socket, head, ws =>
-      wss.emit('connection', ws, request)
+    server.handleUpgrade(request, socket, head, ws =>
+      server.emit('connection', ws, request)
     )
   })
 
-  wss.broadcast = function (data, sender) {
-    wss.clients.forEach(function (client) {
-      if (client.OPEN && client !== sender) {
+  server.broadcast = function (data, sender) {
+    clients.forEach(function (client) {
+      if (client.readyState === WebSocket.OPEN && client !== sender) {
         console.assert(!DEBUG, 'sending client', client.info, data.toString())
         client.send(data)
         messagesSent++
       }
     })
 
-    if (wss.uplink && wss.uplink !== sender) {
-      wss.uplink.publish(data)
+    if (server.uplink && server.uplink !== sender) {
+      server.uplink.publish(data)
       messagesSent++
     }
   }
@@ -82,7 +95,7 @@ export function attachwss (httpwss, secureCtx = {}) {
    * @todo implement rate limit enforcement
    * @param {WebSocket} client
    */
-  wss.setRateLimit = function (client) {}
+  server.setRateLimit = function (client) {}
 
   function statusReport () {
     return JSON.stringify({
@@ -90,10 +103,10 @@ export function attachwss (httpwss, secureCtx = {}) {
       servicePlugin: SERVICENAME,
       uptimeMinutes: uptime(),
       messagesSent,
-      clientsConnected: wss.clients.size,
-      uplink: wss.uplink ? wss.uplink.info : 'no uplink',
+      clientsConnected: clients.size,
+      uplink: server.uplink ? server.uplink.info : 'no uplink',
       isPrimarySwitch: isSwitch,
-      clients: [...wss.clients].map(c => ({ ...c.info, open: c.OPEN }))
+      clients: [...clients].map(c => ({ ...c.info, open: c.OPEN }))
     })
   }
 
@@ -101,13 +114,13 @@ export function attachwss (httpwss, secureCtx = {}) {
    *
    * @param {WebSocket} client
    */
-  wss.sendStatus = function (client) {
+  server.sendStatus = function (client) {
     client.send(statusReport())
   }
 
-  wss.reassignBackupSwitch = function (client) {
+  server.reassignBackupSwitch = function (client) {
     if (client.info?.id === backupSwitch) {
-      for (let c of wss.clients) {
+      for (let c of server.clients) {
         if (c.info.role === 'node' && c.info.id !== backupSwitch) {
           backupSwitch = c.info.id
           c.isBackupSwitch = true
@@ -132,7 +145,7 @@ export function attachwss (httpwss, secureCtx = {}) {
   /**
    * @param {WebSocket} client
    */
-  wss.on('connection', function (client) {
+  server.on('connection', function (client) {
     setClientInfo(client, null, false)
 
     client.on('close', function (code, reason) {
@@ -143,8 +156,8 @@ export function attachwss (httpwss, secureCtx = {}) {
         client: client.info
       })
       client.info.closeEvent = true
-      wss.broadcast(statusReport())
-      wss.reassignBackupSwitch(client)
+      server.broadcast(statusReport())
+      server.reassignBackupSwitch(client)
     })
 
     client.on('error', function (error) {
@@ -169,10 +182,10 @@ export function attachwss (httpwss, secureCtx = {}) {
         if (client.info.initialized) {
           if (msg == 'status') {
             setClientInfo(client, msg)
-            wss.sendStatus(client)
+            server.sendStatus(client)
             return
           }
-          wss.broadcast(message, client)
+          server.broadcast(message, client)
           return
         }
 
@@ -199,7 +212,8 @@ export function attachwss (httpwss, secureCtx = {}) {
           // tell client if its a backup switch or not
           client.send(JSON.stringify(client.info))
           // tell everyone about new node (ignore browser)
-          if (client.info.role === 'node') wss.broadcast(statusReport(), client)
+          if (client.info.role === 'node')
+            server.broadcast(statusReport(), client)
           return
         }
       } catch (e) {
@@ -216,14 +230,14 @@ export function attachwss (httpwss, secureCtx = {}) {
     // configure uplink
     if (config.uplink) {
       const node = require('./node')
-      wss.uplink = node
+      server.uplink = node
       node.setUplinkUrl(config.uplink)
-      node.onUplinkMessage(msg => wss.broadcast(msg, node))
+      node.onUplinkMessage(msg => server.broadcast(msg, node))
       node.connect()
     }
   } catch (e) {
     console.error('uplink', e)
   }
 
-  return wss
+  return server
 }

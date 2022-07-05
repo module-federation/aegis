@@ -527,6 +527,7 @@ export function close (reason) {
     stopping = true
     console.warn('disconnecting from mesh', reason)
     clearInterval(reconnectTimerId)
+    ws.protocol = SERVICENAME
     if (ws) ws.close(4999, Buffer.from(reason))
     ws = null
   } catch (error) {
