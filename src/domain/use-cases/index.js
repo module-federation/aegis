@@ -184,17 +184,17 @@ const userController = (fn, ports) => async (req, res) => {
  */
 export function getUserRoutes () {
   return ModelFactory.getModelSpecs()
-    .filter(spec => typeof spec.routes !== 'undefined')
+    .filter(spec => spec.routes)
     .map(spec =>
       spec.routes
-        .filter(route => typeof route !== 'undefined')
+        .filter(route => route)
         .map(route => {
-          const userApi = domainPorts(spec.modelName)
+          const api = domainPorts(spec.modelName)
           return Object.keys(route)
             .map(k =>
               typeof route[k] === 'function'
                 ? {
-                    [k]: userController(route[k], userApi)
+                    [k]: userController(route[k], api)
                   }
                 : { [k]: route[k] }
             )

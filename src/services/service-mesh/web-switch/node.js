@@ -177,7 +177,7 @@ async function resolveServiceUrl () {
     dns.on('query', function (query) {
       debug && console.debug('got a query packet:', query)
 
-      const forSwitch = query.questions.filteforr(
+      const forSwitch = query.questions.filter(
         question => question.name === SERVICENAME || question.name === HOSTNAME
       )
 
