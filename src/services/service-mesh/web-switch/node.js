@@ -213,7 +213,7 @@ async function resolveServiceUrl () {
           isBackupSwitch,
           activateBackup,
           msg: 'answering query packet',
-          questions,
+          forSwitch,
           answer
         })
 
