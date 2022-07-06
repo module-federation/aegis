@@ -158,7 +158,7 @@ export function attachServer (httpServer, secureCtx = {}) {
           reason: reason.toString(),
           client: client.info
         })
-        client.info.closeEvent = true
+        clients.delete(client)
         server.broadcast(statusReport())
         server.reassignBackupSwitch(client)
       })
@@ -194,6 +194,7 @@ export function attachServer (httpServer, secureCtx = {}) {
 
           if (msg.proto === SERVICENAME) {
             setClientInfo(client, msg, true)
+            clients.add(client)
 
             // if a backup switch is needed, is the client eligible?
             if (
@@ -223,7 +224,7 @@ export function attachServer (httpServer, secureCtx = {}) {
         }
 
         // bad protocol
-        client.terminate()
+        client.terminate()  
         console.warn('terminated client', client.info)
       })
     })
