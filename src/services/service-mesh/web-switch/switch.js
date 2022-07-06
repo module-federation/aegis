@@ -1,6 +1,7 @@
 'use strict'
 
 import { readCsrDomains } from 'acme-client/lib/crypto/forge'
+import { Hash } from 'crypto'
 import { Socket } from 'dgram'
 import { nanoid } from 'nanoid'
 import { hostname } from 'os'
@@ -30,9 +31,9 @@ let backupSwitch
 export function attachServer (httpServer, secureCtx = {}) {
   /**
    * list of client connections (federation hosts, browsers, etc)
-   * @type {Map<string,WebSocket>}
+   * @type {Set<WebSocket>}
    */
-  const clients = new Map()
+  const clients = new Set()
 
   /**
    * WebSocket {@link server} that may serve as the webswitch.
@@ -120,10 +121,10 @@ export function attachServer (httpServer, secureCtx = {}) {
 
   server.reassignBackupSwitch = function (client) {
     if (client.info?.id === backupSwitch) {
-      for (let c of server.clients) {
-        if (c.info.role === 'node' && c.info.id !== backupSwitch) {
-          backupSwitch = c.info.id
-          c.isBackupSwitch = true
+      for (let clnt of clients) {
+        if (clnt.info.role === 'node' && clnt.info.id !== backupSwitch) {
+          backupSwitch = clnt.info.id
+          clnt.isBackupSwitch = true
           return
         }
       }
@@ -132,112 +133,114 @@ export function attachServer (httpServer, secureCtx = {}) {
 
   function setClientInfo (client, msg = {}, initialized = true) {
     if (typeof client.info === 'undefined') client.info = {}
+
     if (!client.info.id) client.info.id = nanoid()
     if (msg?.role) client.info.role = msg.role
     if (msg?.hostname) client.info.hostname = msg.hostname
     if (msg?.mem && msg?.cpu) client.info.telemetry = { ...msg.mem, ...msg.cpu }
     if (msg?.apps) client.info.apps = msg.apps
-    if (msg?.proto)
+    if (msg?.proto) {
       client.info.initialized = msg.proto === SERVICENAME ? true : initialized
-    client.info.isBackupSwitch = backupSwitch === client.info.id
-  }
+      clients.add(client)
+      client.info.isBackupSwitch = backupSwitch === client.info.id
+    }
 
-  /**
-   * @param {WebSocket} client
-   */
-  server.on('connection', function (client) {
-    setClientInfo(client, null, false)
+    /**
+     * @param {WebSocket} client
+     */
+    server.on('connection', function (client) {
+      setClientInfo(client, null, false)
 
-    client.on('close', function (code, reason) {
-      console.info({
-        msg: 'client closing',
-        code,
-        reason: reason.toString(),
-        client: client.info
-      })
-      client.info.closeEvent = true
-      server.broadcast(statusReport())
-      server.reassignBackupSwitch(client)
-    })
-
-    client.on('error', function (error) {
-      client.info.errors++
-
-      console.error({
-        fn: 'client.on(error)',
-        client: client.info,
-        error
+      client.on('close', function (code, reason) {
+        console.info({
+          msg: 'client closing',
+          code,
+          reason: reason.toString(),
+          client: client.info
+        })
+        client.info.closeEvent = true
+        server.broadcast(statusReport())
+        server.reassignBackupSwitch(client)
       })
 
-      if (client.info.errors > CLIENT_MAX_ERRORS) {
-        console.warn('terminating client: too many errors')
-        client.close(4888, 'too many errors')
-      }
-    })
+      client.on('error', function (error) {
+        client.info.errors++
 
-    client.on('message', function (message) {
-      try {
-        const msg = JSON.parse(message.toString())
+        console.error({
+          fn: 'client.on(error)',
+          client: client.info,
+          error
+        })
 
-        if (client.info.initialized) {
-          if (msg == 'status') {
-            setClientInfo(client, msg)
-            server.sendStatus(client)
+        if (client.info.errors > CLIENT_MAX_ERRORS) {
+          console.warn('terminating client: too many errors')
+          client.close(4888, 'too many errors')
+        }
+      })
+
+      client.on('message', function (message) {
+        try {
+          const msg = JSON.parse(message.toString())
+
+          if (client.info.initialized) {
+            if (msg == 'status') {
+              setClientInfo(client, msg)
+              server.sendStatus(client)
+              return
+            }
+            server.broadcast(message, client)
             return
           }
-          server.broadcast(message, client)
-          return
-        }
 
-        if (msg.proto === SERVICENAME) {
-          deduplicateClient(client, msg.hostname)
-          setClientInfo(client, msg, true)
+          if (msg.proto === SERVICENAME) {
+            setClientInfo(client, msg, true)
 
-          // if a backup switch is needed, is the client eligible?
-          if (
-            // are we the switch?
-            isSwitch &&
-            // is there a backup already?
-            !backupSwitch &&
-            // can't be a browser
-            msg.role === 'node' &&
-            // don't put backup on same host
-            msg.hostname !== hostname()
-          ) {
-            backupSwitch = client.info.id
-            console.info('new backup switch: ', id)
+            // if a backup switch is needed, is the client eligible?
+            if (
+              // are we the switch?
+              isSwitch &&
+              // is there a backup already?
+              !backupSwitch &&
+              // can't be a browser
+              msg.role === 'node' &&
+              // don't put backup on same host
+              msg.hostname !== hostname()
+            ) {
+              backupSwitch = client.info.id
+              console.info('new backup switch: ', id)
+            }
+
+            console.info('client initialized', client.info)
+            // tell client if its a backup switch or not
+            client.send(JSON.stringify(client.info))
+            // tell everyone about new node (ignore browser)
+            if (client.info.role === 'node')
+              server.broadcast(statusReport(), client)
+            return
           }
-
-          console.info('client initialized', client.info)
-          // tell client if its a backup switch or not
-          client.send(JSON.stringify(client.info))
-          // tell everyone about new node (ignore browser)
-          if (client.info.role === 'node')
-            server.broadcast(statusReport(), client)
-          return
+        } catch (e) {
+          console.error(client.on.name, 'on message', e)
         }
-      } catch (e) {
-        console.error(client.on.name, 'on message', e)
-      }
 
-      // bad protocol
-      client.terminate()
-      console.warn('terminated client', client.info)
+        // bad protocol
+        client.terminate()
+        console.warn('terminated client', client.info)
+      })
     })
-  })
 
-  try {
-    // configure uplink
-    if (config.uplink) {
-      const node = require('./node')
-      server.uplink = node
-      node.setUplinkUrl(config.uplink)
-      node.onUplinkMessage(msg => server.broadcast(msg, node))
-      node.connect()
+    try {
+      // configure uplink
+      if (config.uplink) {
+        const node = require('./node')
+        server.uplink = node
+        node.setUplinkUrl(config.uplink)
+        node.onUplinkMessage(msg => server.broadcast(msg, node))
+        node.connect()
+      }
+    } catch (e) {
+      console.error('uplink', e)
     }
-  } catch (e) {
-    console.error('uplink', e)
-  }
 
-  return server
+    return server
+  }
 }
