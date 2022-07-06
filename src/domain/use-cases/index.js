@@ -180,30 +180,32 @@ const userController = (fn, ports) => async (req, res) => {
 
 /**
  * Extract user-defined endpoints from the modelSpec and
- * decorate the user's callback such that it includes a 
+ * decorate the user's callback such that it includes a
  * third argument, which is a set of inbound port functions
- * the user to call. 
- * 
+ * the user to call.
+ *
  * @returns {import('../index').endpoint}
  */
 export function getUserRoutes () {
   return ModelFactory.getModelSpecs()
     .filter(spec => spec.routes)
-    .map(spec =>
-      spec.routes
-        .filter(route => route)
-        .map(route => {
-          const api = domainPorts(spec.modelName)
-          return Object.keys(route)
-            .map(key =>
-              typeof route[key] === 'function'
-                ? {
-                    [key]: userController(route[key], api)
-                  }
-                : { [key]: route[key] }
-            )
-            .reduce((a, b) => ({ ...a, ...b }))
-        })
+    .map(
+      spec =>
+        spec.routes &&
+        spec.routes
+          .filter(route => route)
+          .map(route => {
+            const api = domainPorts(spec.modelName)
+            return Object.keys(route)
+              .map(key =>
+                typeof route[key] === 'function'
+                  ? {
+                      [key]: userController(route[key], api)
+                    }
+                  : { [key]: route[key] }
+              )
+              .reduce((a, b) => ({ ...a, ...b }))
+          })
     )
     .flat()
 }
