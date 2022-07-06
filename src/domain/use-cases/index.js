@@ -187,11 +187,10 @@ const userController = (fn, ports) => async (req, res) => {
  * @returns {import('../index').endpoint}
  */
 export function getUserRoutes () {
-  return ModelFactory.getModelSpecs()
-    .filter(spec => spec.routes)
-    .map(
-      spec =>
-        spec.routes &&
+  try {
+    return ModelFactory.getModelSpecs()
+      .filter(spec => spec?.routes)
+      .map(spec =>
         spec.routes
           .filter(route => route)
           .map(route => {
@@ -206,8 +205,11 @@ export function getUserRoutes () {
               )
               .reduce((a, b) => ({ ...a, ...b }))
           })
-    )
-    .flat()
+      )
+      .flat()
+  } catch (error) {
+    console.error({ fn: getUserRoutes.name, error })
+  }
 }
 
 export const UseCases = {
