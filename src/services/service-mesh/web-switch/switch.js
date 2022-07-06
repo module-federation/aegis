@@ -139,109 +139,107 @@ export function attachServer (httpServer, secureCtx = {}) {
     if (msg?.hostname) client.info.hostname = msg.hostname
     if (msg?.mem && msg?.cpu) client.info.telemetry = { ...msg.mem, ...msg.cpu }
     if (msg?.apps) client.info.apps = msg.apps
-    if (msg?.proto) {
+    if (msg?.proto)
       client.info.initialized = msg.proto === SERVICENAME ? true : initialized
-      clients.add(client)
-      client.info.isBackupSwitch = backupSwitch === client.info.id
-    }
+    client.info.isBackupSwitch = backupSwitch === client.info.id
+  }
 
-    /**
-     * @param {WebSocket} client
-     */
-    server.on('connection', function (client) {
-      setClientInfo(client, null, false)
+  /**
+   * @param {WebSocket} client
+   */
+  server.on('connection', function (client) {
+    setClientInfo(client, null, false)
 
-      client.on('close', function (code, reason) {
-        console.info({
-          msg: 'client closing',
-          code,
-          reason: reason.toString(),
-          client: client.info
-        })
-        clients.delete(client)
-        server.broadcast(statusReport())
-        server.reassignBackupSwitch(client)
+    client.on('close', function (code, reason) {
+      console.info({
+        msg: 'client closing',
+        code,
+        reason: reason.toString(),
+        client: client.info
       })
-
-      client.on('error', function (error) {
-        client.info.errors++
-
-        console.error({
-          fn: 'client.on(error)',
-          client: client.info,
-          error
-        })
-
-        if (client.info.errors > CLIENT_MAX_ERRORS) {
-          console.warn('terminating client: too many errors')
-          client.close(4888, 'too many errors')
-        }
-      })
-
-      client.on('message', function (message) {
-        try {
-          const msg = JSON.parse(message.toString())
-
-          if (client.info.initialized) {
-            if (msg == 'status') {
-              setClientInfo(client, msg)
-              server.sendStatus(client)
-              return
-            }
-            server.broadcast(message, client)
-            return
-          }
-
-          if (msg.proto === SERVICENAME) {
-            setClientInfo(client, msg, true)
-            clients.add(client)
-
-            // if a backup switch is needed, is the client eligible?
-            if (
-              // are we the switch?
-              isSwitch &&
-              // is there a backup already?
-              !backupSwitch &&
-              // can't be a browser
-              msg.role === 'node' &&
-              // don't put backup on same host
-              msg.hostname !== hostname()
-            ) {
-              backupSwitch = client.info.id
-              console.info('new backup switch: ', id)
-            }
-
-            console.info('client initialized', client.info)
-            // tell client if its a backup switch or not
-            client.send(JSON.stringify(client.info))
-            // tell everyone about new node (ignore browser)
-            if (client.info.role === 'node')
-              server.broadcast(statusReport(), client)
-            return
-          }
-        } catch (e) {
-          console.error(client.on.name, 'on message', e)
-        }
-
-        // bad protocol
-        client.terminate()  
-        console.warn('terminated client', client.info)
-      })
+      clients.delete(client)
+      server.broadcast(statusReport())
+      server.reassignBackupSwitch(client)
     })
 
-    try {
-      // configure uplink
-      if (config.uplink) {
-        const node = require('./node')
-        server.uplink = node
-        node.setUplinkUrl(config.uplink)
-        node.onUplinkMessage(msg => server.broadcast(msg, node))
-        node.connect()
-      }
-    } catch (e) {
-      console.error('uplink', e)
-    }
+    client.on('error', function (error) {
+      client.info.errors++
 
-    return server
+      console.error({
+        fn: 'client.on(error)',
+        client: client.info,
+        error
+      })
+
+      if (client.info.errors > CLIENT_MAX_ERRORS) {
+        console.warn('terminating client: too many errors')
+        client.close(4888, 'too many errors')
+      }
+    })
+
+    client.on('message', function (message) {
+      try {
+        const msg = JSON.parse(message.toString())
+
+        if (client.info.initialized) {
+          if (msg == 'status') {
+            setClientInfo(client, msg)
+            server.sendStatus(client)
+            return
+          }
+          server.broadcast(message, client)
+          return
+        }
+
+        if (msg.proto === SERVICENAME) {
+          setClientInfo(client, msg, true)
+          clients.add(client)
+
+          // if a backup switch is needed, is the client eligible?
+          if (
+            // are we the switch?
+            isSwitch &&
+            // is there a backup already?
+            !backupSwitch &&
+            // can't be a browser
+            msg.role === 'node' &&
+            // don't put backup on same host
+            msg.hostname !== hostname()
+          ) {
+            backupSwitch = client.info.id
+            console.info('new backup switch: ', id)
+          }
+
+          console.info('client initialized', client.info)
+          // tell client if its a backup switch or not
+          client.send(JSON.stringify(client.info))
+          // tell everyone about new node (ignore browser)
+          if (client.info.role === 'node')
+            server.broadcast(statusReport(), client)
+          return
+        }
+      } catch (e) {
+        console.error(client.on.name, 'on message', e)
+      }
+
+      // bad protocol
+      client.terminate()
+      console.warn('terminated client', client.info)
+    })
+  })
+
+  try {
+    // configure uplink
+    if (config.uplink) {
+      const node = require('./node')
+      server.uplink = node
+      node.setUplinkUrl(config.uplink)
+      node.onUplinkMessage(msg => server.broadcast(msg, node))
+      node.connect()
+    }
+  } catch (e) {
+    console.error('uplink', e)
   }
+
+  return server
 }
