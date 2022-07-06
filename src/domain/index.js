@@ -136,6 +136,17 @@
  */
 
 /**
+ * @typedef {{
+ *  [path: string]: {
+ *    get?: controller,
+ *    post?: controller,
+ *    patch?: controller,
+ *    delete?:controller
+ *   }
+ * }} endpoints
+ */
+
+/**
  * @typedef {Object} ModelSpecification Specify model data and behavior
  * @property {string} modelName name of model (case-insenstive)
  * @property {string} endpoint URI reference (e.g. plural of `modelName`)

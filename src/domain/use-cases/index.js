@@ -152,7 +152,7 @@ const listConfigs = () =>
   })
 
 /**
- * Expose use-case functions l domain ports
+ * Expose domain ports
  *
  * @param {*} modelName
  */
@@ -179,8 +179,12 @@ const userController = (fn, ports) => async (req, res) => {
 }
 
 /**
- *
- * @returns
+ * Extract user-defined endpoints from the modelSpec and
+ * decorate the user's callback such that it includes a 
+ * third argument, which is a set of inbound port functions
+ * the user to call. 
+ * 
+ * @returns {import('../index').endpoint}
  */
 export function getUserRoutes () {
   return ModelFactory.getModelSpecs()
@@ -191,12 +195,12 @@ export function getUserRoutes () {
         .map(route => {
           const api = domainPorts(spec.modelName)
           return Object.keys(route)
-            .map(k =>
-              typeof route[k] === 'function'
+            .map(key =>
+              typeof route[key] === 'function'
                 ? {
-                    [k]: userController(route[k], api)
+                    [key]: userController(route[key], api)
                   }
-                : { [k]: route[k] }
+                : { [key]: route[key] }
             )
             .reduce((a, b) => ({ ...a, ...b }))
         })
