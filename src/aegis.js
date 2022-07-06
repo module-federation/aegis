@@ -76,7 +76,9 @@ const router = {
   },
 
   userRoutes (controllers) {
-    controllers().forEach(ctlr => routes.set(ctlr.path, ctlr))
+    try {
+      controllers().forEach(ctlr => routes.set(ctlr.path, ctlr))
+    } catch (error) {}
   },
 
   adminRoute (controller, adapter) {
