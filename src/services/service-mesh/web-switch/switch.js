@@ -161,7 +161,7 @@ export function attachServer (httpServer, secureCtx = {}) {
   server.broadcast = function (data, sender) {
     clients.forEach(function (client) {
       if (client.readyState === WebSocket.OPEN && client !== sender) {
-        console.assert(!DEBUG, 'sending client', client.info, data.toString())
+        console.assert(!debug, 'sending client', client.info, data.toString())
         client.send(data)
         messagesSent++
       }
