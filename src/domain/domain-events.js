@@ -44,7 +44,9 @@ const domainEvents = {
   poolOpen: modelName => `poolOpen_${String(modelName).toUpperCase()}`,
   poolClose: modelName => `poolClose_${String(modelName).toUpperCase()}`,
   poolDrain: modelName => `poolDrain_${String(modelName).toUpperCase()}`,
-  poolAbort: modelName => `poolAbort_${String(modelName).toUpperCase()}`
+  poolAbort: modelName => `poolAbort_${String(modelName).toUpperCase()}`,
+  badUserRoute: error => `badUserRoute error: ${error}`,
+  reload: 'reload'
 }
 
 export default domainEvents

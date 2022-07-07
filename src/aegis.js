@@ -1,8 +1,10 @@
 'use strict'
 
-const { EventBrokerFactory, importRemotes } = require('./domain')
+const domain = require('./domain')
 const services = require('./services')
 const adapters = require('./adapters')
+const { EventBrokerFactory, DomainEvents, importRemotes } = domain
+const { badUserRoute, reload } = DomainEvents
 const { StorageService } = services
 const { StorageAdapter } = adapters
 const { pathToRegexp, match } = require('path-to-regexp')
@@ -78,7 +80,10 @@ const router = {
   userRoutes (controllers) {
     try {
       controllers().forEach(ctlr => routes.set(ctlr.path, ctlr))
-    } catch (error) {}
+    } catch (error) {
+      broker.notify(badUserRoute.name, badUserRoute(error))
+      console.warn(badUserRoute(error))
+    }
   },
 
   adminRoute (controller, adapter) {
@@ -101,8 +106,9 @@ async function makeRoutes () {
 }
 
 /**
- * Universal controller - find the controller
- * for a given {@link path} and invoke it.
+ * Invoke the controller for a given
+ * {@link path} and {@link method}.
+ *
  *
  * @param {string} path
  * @param {'get'|'patch'|'post'|'delete'} method
@@ -112,6 +118,7 @@ async function makeRoutes () {
  */
 async function handle (path, method, req, res) {
   const routeInfo = routes.get(path)
+
   if (!routeInfo) {
     console.warn('no controller for', path)
     res.status(404).send('not found')
@@ -119,6 +126,7 @@ async function handle (path, method, req, res) {
   }
 
   const controller = routeInfo[method.toLowerCase()]
+
   if (typeof controller !== 'function') {
     console.warn('no controller for', path, method)
     res.status(404).send('not found')
@@ -131,22 +139,22 @@ async function handle (path, method, req, res) {
     return await controller(requestInfo, res)
   } catch (error) {
     console.error({ fn: handle.name, error })
-    res.status(500).send({ msg: 'an error occured', error })
+    res.status(500).send(error.message)
   }
 }
 
 /**
- * tell components to dispose of any system resources
+ * Tell components to clean up any system resources
  */
 exports.dispose = async function () {
   console.log('system hot-reloading')
-  await broker.notify('reload', 'system reload')
+  await broker.notify(reload, 'system reload')
 }
 
 /**
  * When called to perform a hot reload, stop all thread pools.
  * Import remote modules, then build APIs, storage adapters, etc.
- * Return {@link handle} universal controller for use by server
+ * Return controller interface  {@link handle} for use by server
  * or serverless function.
  *
  * @param {import('../webpack/remote-entries-type')} remotes

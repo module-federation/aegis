@@ -378,4 +378,6 @@ export { default as DataSourceFactory } from './datasource-factory'
 
 export { default as ThreadPoolFactory } from './thread-pool'
 
+export { default as DomainEvents } from './domain-events'
+
 export default ModelFactory
