@@ -153,8 +153,8 @@ export function attachServer (httpServer, secureCtx = {}) {
       }
 
       // bad protocol
-      client.terminate()
-      console.warn('terminated client', client.info)
+      // client.terminate()
+      // console.warn('terminated client', client.info)
     })
   })
 
