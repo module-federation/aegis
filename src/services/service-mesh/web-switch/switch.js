@@ -5,7 +5,7 @@ import { Hash } from 'crypto'
 import { Socket } from 'dgram'
 import { nanoid } from 'nanoid'
 import { hostname } from 'os'
-import { Server } from 'ws'
+import { Server, WebSocket } from 'ws'
 
 const SERVICENAME = 'webswitch'
 const CLIENT_MAX_ERRORS = 3
