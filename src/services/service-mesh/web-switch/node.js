@@ -413,7 +413,6 @@ async function connectToServiceMesh (options = {}) {
       if (!serviceUrl) serviceUrl = await resolveServiceUrl()
       console.info({ fn: connectToServiceMesh.name, serviceUrl })
 
-      //const ws = getWebSocket({newSocket:true, serviceUrl, options})
       ws = new WebSocket(serviceUrl, options)
 
       ws.on('open', function () {
@@ -432,6 +431,8 @@ async function connectToServiceMesh (options = {}) {
           code,
           reason: reason.toString()
         })
+
+        // terminate on close
         if (ws) ws.terminate()
       })
 
@@ -515,6 +516,7 @@ async function reconnect () {
           console.info({ msg: 'connected to switch', serviceUrl, attempts })
           reconnectTimerId = 0
           attempts = 0
+          stopping = false
         }
       }, 4000)
     }, 6000)
