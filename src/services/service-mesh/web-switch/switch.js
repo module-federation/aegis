@@ -77,12 +77,12 @@ export function attachServer (httpServer, secureCtx = {}) {
   )
 
   server.on('upgrade', async (request, socket, head) => {
-    const broken = await protocolRules({ request, socket, head })
-    if (broken) {
-      console.warn('protocol error')
-      socket.destroy()
-      return
-    }
+    // const broken = await protocolRules({ request, socket, head })
+    // if (broken) {
+    //   console.warn('protocol error')
+    //   socket.destroy()
+    //   return
+    // }
     server.handleUpgrade(request, socket, head, ws =>
       server.emit('connection', ws, request)
     )
