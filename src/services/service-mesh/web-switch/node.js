@@ -17,10 +17,11 @@ import os from 'os'
 import WebSocket from 'ws'
 import Dns from 'multicast-dns'
 import EventEmitter from 'events'
-import CircuitBreaker from '../../../domain/circuit-breaker.js'
+import CircuitBreaker, { logError } from '../../../domain/circuit-breaker.js'
 import { clearInterval } from 'timers'
 import { http } from '../../../adapters/controllers/index.js'
 import { Agent } from 'https'
+import { Socket } from 'dgram'
 
 const HOSTNAME = 'webswitch.local'
 const SERVICENAME = 'webswitch'
@@ -291,12 +292,17 @@ function format (event) {
 function send (event) {
   if (ws?.readyState === WebSocket.OPEN) {
     /** @type {import('../../../domain/circuit-breaker').breaker} */
-    const breaker = new CircuitBreaker('meshNode.send', ws.send, {
+    const breaker = new CircuitBreaker('meshNode', ws.send, {
       default: {
         errorRate: 100,
         callVolume: 100,
         intervalMs: 10000,
-        fallbackFn: () => console.log('fallback fn mesh.send')
+        fallbackFn: () => {
+          if (ws) {
+            ws.close(4990, 'circuitbreaker reconnect')
+            reconnect()
+          }
+        }
       }
     })
     breaker.detectErrors([TIMEOUTEVENT], broker)
@@ -344,7 +350,7 @@ function startHeartbeat () {
         msg: 'no response, trying new conn'
       })
       // terminate this socket
-      if (ws) ws.terminate()
+      if (ws) ws.close(4989, 'heartbeat timeout')
       // try to reconnect
       reconnect()
     } catch (error) {
@@ -407,6 +413,7 @@ async function connectToServiceMesh (options = {}) {
       if (!serviceUrl) serviceUrl = await resolveServiceUrl()
       console.info({ fn: connectToServiceMesh.name, serviceUrl })
 
+      //const ws = getWebSocket({newSocket:true, serviceUrl, options})
       ws = new WebSocket(serviceUrl, options)
 
       ws.on('open', function () {
@@ -416,7 +423,7 @@ async function connectToServiceMesh (options = {}) {
 
       ws.on('error', function (error) {
         console.error({ fn: connectToServiceMesh.name, error })
-        if (!ws || ws.readyState !== WebSocket.OPEN) reconnect()
+        logError('service_mesh')
       })
 
       ws.on('close', function (code, reason) {
@@ -478,32 +485,42 @@ let attempts = 0
  * failed over.
  */
 async function reconnect () {
-  if (reconnectTimerId) {
-    console.warn({ msg: 'reconnect in progress', attempts })
-    return
+  try {
+    if (reconnectTimerId) {
+      console.warn({ msg: 'reconnect in progress', attempts })
+      return
+    }
+
+    reconnectTimerId = setInterval(async () => {
+      // if (++attempts % 10 === 0) {
+      //   // try new url after a minute
+      //   console.warn({ msg: 'try new service url', attempts })
+      //   serviceUrl = null
+      // }
+      ++attempts
+
+      if (ws) {
+        console.warn('on retry, terminating existing socket')
+        ws.close(4999, 'close for reconnect')
+        stopping = true
+        ws = null
+      }
+
+      // try reconnecting in a few secs
+      setTimeout(async () => {
+        await connectToServiceMesh({ agent: new Agent() })
+
+        if (ws?.readyState === WebSocket.OPEN) {
+          clearInterval(reconnectTimerId)
+          console.info({ msg: 'connected to switch', serviceUrl, attempts })
+          reconnectTimerId = 0
+          attempts = 0
+        }
+      }, 4000)
+    }, 6000)
+  } catch (error) {
+    console.error(error)
   }
-
-  reconnectTimerId = setInterval(async () => {
-    // if (++attempts % 10 === 0) {
-    //   // try new url after a minute
-    //   console.warn({ msg: 'try new service url', attempts })
-    //   serviceUrl = null
-    // }
-    ++attempts
-    if (ws) {
-      console.warn('on retry, terminating existing socket')
-      ws.terminate()
-    }
-    ws = null
-    await connectToServiceMesh({ agent: new Agent() })
-
-    if (ws?.readyState === WebSocket.OPEN) {
-      clearInterval(reconnectTimerId)
-      console.info({ msg: 'connected to switch', serviceUrl, attempts })
-      reconnectTimerId = 0
-      attempts = 0
-    }
-  }, 6000)
 }
 
 let stopping = false
@@ -535,6 +552,7 @@ export function close (reason) {
     console.warn('disconnecting from mesh', reason)
     clearInterval(reconnectTimerId)
     if (!ws) return
+
     console.warn('connection closed, terminating socket')
     ws.terminate()
     ws = null
