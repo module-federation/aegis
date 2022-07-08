@@ -51,30 +51,29 @@ export function attachServer (httpServer, secureCtx = {}) {
       client.send(message)
     }
     if (retries.length < CLIENT_MAX_RETRIES)
-      setTimeout(1000, sendClient, client, message, retries.push(1))
+      setTimeout(sendClient, 1000, client, message, retries.push(1))
   }
-  ;-(
-    /**
-     * Look for `evidence` of {@link rules} violation and return result
-     * @param {{request:Request, socket:Socket, head}} evidence
-     * @returns {boolean} if true, one or more rules has been broken
-     */
-    async function protocolRules ({ request, socket }) {
-      const payload = await request.json()
 
-      const rules = {
-        wrongName: () => payload.proto !== SERVICENAME,
-        duplicate: () =>
-          [...clients.values()].filter(
-            client =>
-              client.address === socket.remoteAddress().address &&
-              (client.role === payload.role) === 'node'
-          ).length > 0
-      }
-      const broken = thisRule => rules[thisRule]()
-      return Promise.race(Object.keys(rules).some(broken))
+  /**
+   * Look for `evidence` of {@link rules} violation and return result
+   * @param {{request:Request, socket:Socket, head}} evidence
+   * @returns {boolean} if true, one or more rules has been broken
+   */
+  async function protocolRules ({ request, socket }) {
+    const payload = await request.json()
+
+    const rules = {
+      wrongName: () => payload.proto !== SERVICENAME,
+      duplicate: () =>
+        [...clients.values()].filter(
+          client =>
+            client.address === socket.remoteAddress().address &&
+            (client.role === payload.role) === 'node'
+        ).length > 0
     }
-  )
+    const broken = thisRule => rules[thisRule]()
+    return Promise.race(Object.keys(rules).some(broken))
+  }
 
   server.on('upgrade', async (request, socket, head) => {
     // const broken = await protocolRules({ request, socket, head })
