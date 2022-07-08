@@ -325,8 +325,10 @@ function startHeartbeat () {
   const intervalId = setInterval(async function () {
     if (receivedPong) {
       receivedPong = false
+
       try {
-        ws.ping(0x9)
+        if (ws) ws.ping(0x9)
+        else clearInterval(intervalId)
       } catch (error) {
         console.error({ fn: 'interval', error })
       }
@@ -335,18 +337,14 @@ function startHeartbeat () {
 
     try {
       clearInterval(intervalId)
-
       broker.emit(TIMEOUTEVENT, { error: 'server unresponsive' })
-
       console.error({
         fn: startHeartbeat.name,
         receivedPong,
         msg: 'no response, trying new conn'
       })
-
       // terminate this socket
-      ws.terminate()
-
+      if (ws) ws.terminate()
       // try to reconnect
       reconnect()
     } catch (error) {
@@ -486,11 +484,12 @@ async function reconnect () {
   }
 
   reconnectTimerId = setInterval(async () => {
-    if (++attempts % 10 === 0) {
-      // try new url after a minute
-      console.warn({ msg: 'try new service url', attempts })
-      serviceUrl = null
-    }
+    // if (++attempts % 10 === 0) {
+    //   // try new url after a minute
+    //   console.warn({ msg: 'try new service url', attempts })
+    //   serviceUrl = null
+    // }
+    ++attempts
     if (ws) {
       console.warn('on retry, terminating existing socket')
       ws.terminate()
