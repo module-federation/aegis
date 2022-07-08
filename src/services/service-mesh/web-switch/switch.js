@@ -245,7 +245,7 @@ export function attachServer (httpServer, secureCtx = {}) {
     if (!client.info.id) client.info.id = nanoid()
     if (msg?.role) client.info.role = msg.role
     if (msg?.hostname) client.info.hostname = msg.hostname
-    if (msg?.pid) client.info.pid = msg.pid
+    if (msg?.pid) client.info.pid = msg.role === 'browser' ? nanoid() : msg.pid
     if (msg?.mem && msg?.cpu) client.info.telemetry = { ...msg.mem, ...msg.cpu }
     if (msg?.apps) client.info.apps = msg.apps
     if (msg?.proto) client.info.initialized = initialized
