@@ -153,7 +153,7 @@ export function attachServer (httpServer, secureCtx = {}) {
             msg.hostname !== hostname()
           ) {
             backupSwitch = client.info.id
-            console.info('new backup switch: ', id)
+            console.info('new backup switch: ', client.info)
           }
 
           console.info('client initialized', client.info)
