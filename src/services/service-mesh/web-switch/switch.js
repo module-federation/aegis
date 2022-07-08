@@ -99,7 +99,7 @@ export function attachServer (httpServer, secureCtx = {}) {
     setClientInfo(client, msg, false)
     const uniqueName = generateClientName(client)
 
-    if (client.has(uniqueName)) {
+    if (clients.has(uniqueName)) {
       const oldClient = clients.get(uniqueName)
       if (oldClient) oldClient.terminate()
     }
