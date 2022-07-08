@@ -405,6 +405,13 @@ const handshake = {
   }
 }
 
+function getProtocolHeaders () {
+  const headers = new Map()
+  headers.set('webswitch-name', os.hostname() + process.pid)
+  headers.set('webswitch-role', 'node')
+  return headers
+}
+
 /**
  *
  */
@@ -414,7 +421,10 @@ async function connectToServiceMesh (options = {}) {
       if (!serviceUrl) serviceUrl = await resolveServiceUrl()
       console.info({ fn: connectToServiceMesh.name, serviceUrl })
 
-      ws = new WebSocket(serviceUrl, options)
+      ws = new WebSocket(serviceUrl, {
+        ...options,
+        headers: getProtocolHeaders()
+      })
 
       ws.on('open', function () {
         send(handshake.serialize())
@@ -508,7 +518,7 @@ async function reconnect () {
         ws = null
       }
 
-      // try reconnecting in a few secs
+      // try reconnecting in a few secs with a new agent
       setTimeout(async () => {
         await connectToServiceMesh({ agent: new Agent() })
 
@@ -569,7 +579,7 @@ export function close (reason) {
 
     // check after a while if its closed,
     setTimeout(() => {
-      if (ws.readyState !== ws.CLOSED) ws.terminate()
+      if (ws?.readyState !== ws?.CLOSED) ws.terminate()
     }, 2500)
 
     ws = null

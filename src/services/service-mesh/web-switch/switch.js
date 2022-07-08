@@ -61,29 +61,34 @@ export function attachServer (httpServer, secureCtx = {}) {
    * @param {{request:Request, socket:Socket, head}} evidence
    * @returns {boolean} if true, one or more rules has been broken
    */
-  async function protocolRules ({ request, socket }) {
-    const payload = await request.json()
+  function protocolRules ({ request, socket }) {
+    const headers = {
+      uniqueName: 'webswitch-name',
+      role: 'webswitch-role'
+    }
+    const hKeys = Object.keys(headers)
 
     const rules = {
-      wrongName: () => payload.proto !== SERVICENAME,
-      duplicate: () =>
+      missingHeaders: () =>
+        hKeys.filter(h => request.headers.has(h)).length !== hKeys.length,
+      duplicateNames: () =>
         [...clients.values()].filter(
           client =>
-            client.address === socket.remoteAddress().address &&
-            (client.role === payload.role) === 'node'
+            client.uniqueName === request.headers.get(headers.uniqueName) &&
+            (client.role === request.headers.get(headers.role)) === 'node'
         ).length > 0
     }
-    const broken = thisRule => rules[thisRule]()
-    return Promise.race(Object.keys(rules).some(broken))
+    const broken = rule => rules[rule]()
+    return Object.keys(rules).filter(broken)
   }
 
-  server.on('upgrade', async (request, socket, head) => {
-    // const broken = await protocolRules({ request, socket, head })
-    // if (broken) {
-    //   console.warn('protocol error')
-    //   socket.destroy()
-    //   return
-    // }
+  server.on('upgrade', (request, socket, head) => {
+    const broken = protocolRules({ request, socket, head })
+    if (broken.length > 0) {
+      console.warn('protocol error', ...broken)
+      socket.destroy()
+      return
+    }
     server.handleUpgrade(request, socket, head, ws =>
       server.emit('connection', ws, request)
     )
@@ -96,18 +101,20 @@ export function attachServer (httpServer, secureCtx = {}) {
   }
 
   function trackClient (client, msg) {
-    setClientInfo(client, msg, false)
+    setClientInfo(client, msg)
     const uniqueName = generateClientName(client)
 
     if (clients.has(uniqueName)) {
+      console.warn('found duplicate name', uniqueName)
       const oldClient = clients.get(uniqueName)
       if (oldClient) oldClient.terminate()
     }
+    client.info.initialized = true
     clients.set(uniqueName, client)
   }
 
   server.on('connection', function (client) {
-    setClientInfo(client, null, false)
+    setClientInfo(client, null)
 
     client.on('error', function (error) {
       client.info.errors++
@@ -188,14 +195,14 @@ export function attachServer (httpServer, secureCtx = {}) {
 
   server.broadcast = function (data, sender) {
     clients.forEach(function (client) {
-      if (client.info.uniqueName !== sender.info.uniqueName) {
+      if (client?.info?.uniqueName !== sender?.info?.uniqueName) {
         console.assert(!debug, 'sending client', client.info, data.toString())
         sendClient(client, data)
         messagesSent++
       }
     })
 
-    if (server.uplink && server.uplink !== sender) {
+    if (server?.uplink && server?.uplink !== sender) {
       server.uplink.publish(data)
       messagesSent++
     }
@@ -216,10 +223,9 @@ export function attachServer (httpServer, secureCtx = {}) {
       clientsConnected: clients.size,
       uplink: server.uplink ? server.uplink.info : 'no uplink',
       isPrimarySwitch: isSwitch,
-      clients: [...clients].map(c => ({
-        ...c.info,
-        state: c.readyState,
-        uniqueName: c.uniqueName
+      clients: [...clients.values()].map(v => ({
+        ...v.info,
+        state: v.readyState
       }))
     })
   }
@@ -244,7 +250,7 @@ export function attachServer (httpServer, secureCtx = {}) {
     }
   }
 
-  function setClientInfo (client, msg = {}, initialized = true) {
+  function setClientInfo (client, msg = {}) {
     if (typeof client.info === 'undefined') client.info = {}
     if (!client.info.id) client.info.id = nanoid()
     if (msg?.role) client.info.role = msg.role
@@ -252,7 +258,6 @@ export function attachServer (httpServer, secureCtx = {}) {
     if (msg?.pid) client.info.pid = msg.role === 'browser' ? nanoid() : msg.pid
     if (msg?.mem && msg?.cpu) client.info.telemetry = { ...msg.mem, ...msg.cpu }
     if (msg?.apps) client.info.apps = msg.apps
-    if (msg?.proto) client.info.initialized = initialized
     client.info.isBackupSwitch = backupSwitch === client.info.id
   }
 
