@@ -243,7 +243,7 @@ export function attachServer (httpServer, secureCtx = {}) {
       for (let c of clients) {
         if (c?.info?.role === 'node' && c.info.id !== backupSwitch) {
           backupSwitch = c.info.id
-          c.isBackupSwitch = true
+          c.info.isBackupSwitch = true
           return
         }
       }
