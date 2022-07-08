@@ -91,7 +91,7 @@ export function attachServer (httpServer, secureCtx = {}) {
 
   function generateClientName (client) {
     const name = client.info.hostname + client.info.pid
-    client.uniqueName = name
+    client.info.uniqueName = name
     return name
   }
 
@@ -188,7 +188,7 @@ export function attachServer (httpServer, secureCtx = {}) {
 
   server.broadcast = function (data, sender) {
     clients.forEach(function (client) {
-      if (client.readyState === WebSocket.OPEN && client !== sender) {
+      if (client.info.uniqueName !== sender.info.uniqueName) {
         console.assert(!debug, 'sending client', client.info, data.toString())
         sendClient(client, data)
         messagesSent++
@@ -216,7 +216,11 @@ export function attachServer (httpServer, secureCtx = {}) {
       clientsConnected: clients.size,
       uplink: server.uplink ? server.uplink.info : 'no uplink',
       isPrimarySwitch: isSwitch,
-      clients: [...clients].map(c => ({ ...c.info, open: c.OPEN }))
+      clients: [...clients].map(c => ({
+        ...c.info,
+        state: c.readyState,
+        uniqueName: c.uniqueName
+      }))
     })
   }
 
