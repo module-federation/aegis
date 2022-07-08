@@ -26,6 +26,7 @@ import { Socket } from 'dgram'
 const HOSTNAME = 'webswitch.local'
 const SERVICENAME = 'webswitch'
 const TIMEOUTEVENT = 'webswitchTimeout'
+const ERROREVENT = 'webswitchError'
 
 const configRoot = require('../../../config').hostConfig
 const config = configRoot.services.serviceMesh.WebSwitch
@@ -292,7 +293,7 @@ function format (event) {
 function send (event) {
   if (ws?.readyState === WebSocket.OPEN) {
     /** @type {import('../../../domain/circuit-breaker').breaker} */
-    const breaker = new CircuitBreaker('meshNode', ws.send, {
+    const breaker = new CircuitBreaker('webswitch-node-send', ws.send, {
       default: {
         errorRate: 100,
         callVolume: 100,
@@ -305,7 +306,7 @@ function send (event) {
         }
       }
     })
-    breaker.detectErrors([TIMEOUTEVENT], broker)
+    breaker.detectErrors([TIMEOUTEVENT, ERROREVENT], broker)
     breaker.invoke.call(ws, format(event))
     return
   }
@@ -422,7 +423,7 @@ async function connectToServiceMesh (options = {}) {
 
       ws.on('error', function (error) {
         console.error({ fn: connectToServiceMesh.name, error })
-        logError('service_mesh')
+        broker.emit(ERROREVENT, error)
       })
 
       ws.on('close', function (code, reason) {
@@ -548,6 +549,14 @@ export async function publish (event) {
   }
 }
 
+/**
+ * Close the connection to the webswitch.
+ * Clear the heartbeat timer. Check after
+ * a second if the conn is not CLOSED.
+ * If not CLOSED terminate.
+ * @param {string} reason
+ * @returns
+ */
 export function close (reason) {
   try {
     stopping = true
@@ -556,7 +565,13 @@ export function close (reason) {
     if (!ws) return
 
     console.warn('connection closed, terminating socket')
-    ws.terminate()
+    ws.close(4960, reason)
+
+    // check after a while if its closed,
+    setTimeout(() => {
+      if (ws.readyState !== ws.CLOSED) ws.terminate()
+    }, 2500)
+
     ws = null
   } catch (error) {
     console.error({ fn: close.name, error })

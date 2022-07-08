@@ -3,6 +3,7 @@
 import { readCsrDomains } from 'acme-client/lib/crypto/forge'
 import { Hash } from 'crypto'
 import { Socket } from 'dgram'
+import e from 'express'
 import { nanoid } from 'nanoid'
 import { hostname } from 'os'
 import { Server, WebSocket } from 'ws'
@@ -33,9 +34,9 @@ let backupSwitch
 export function attachServer (httpServer, secureCtx = {}) {
   /**
    * list of client connections (federation hosts, browsers, etc)
-   * @type {Set<WebSocket>}
+   * @type {Map<WebSocket>}
    */
-  const clients = new Set()
+  const clients = new Map()
 
   /**
    * WebSocket {@link server} that may serve as the webswitch.
@@ -49,6 +50,7 @@ export function attachServer (httpServer, secureCtx = {}) {
   function sendClient (client, message, retries = []) {
     if (client.readyState === WebSocket.OPEN) {
       client.send(message)
+      return
     }
     if (retries.length < CLIENT_MAX_RETRIES)
       setTimeout(sendClient, 1000, client, message, retries.push(1))
@@ -87,9 +89,26 @@ export function attachServer (httpServer, secureCtx = {}) {
     )
   })
 
+  function generateClientName (client) {
+    const name = client.info.hostname + client.info.pid
+    client.uniqueName = name
+    return name
+  }
+
+  function trackClient (client, msg) {
+    setClientInfo(client, msg, false)
+    const uniqueName = generateClientName(client)
+
+    if (client.has(uniqueName)) {
+      const oldClient = clients.get(uniqueName)
+      if (oldClient) oldClient.terminate()
+    }
+    clients.set(uniqueName, client)
+  }
+
   server.on('connection', function (client) {
     setClientInfo(client, null, false)
-    client.protocol
+
     client.on('error', function (error) {
       client.info.errors++
 
@@ -120,8 +139,7 @@ export function attachServer (httpServer, secureCtx = {}) {
         }
 
         if (msg.proto === SERVICENAME) {
-          setClientInfo(client, msg, true)
-          clients.add(client)
+          trackClient(client, msg)
 
           // if a backup switch is needed, is the client eligible?
           if (
@@ -162,7 +180,7 @@ export function attachServer (httpServer, secureCtx = {}) {
         reason: reason.toString(),
         client: client.info
       })
-      clients.delete(client)
+      clients.delete(client.uniqueName)
       server.broadcast(statusReport())
       server.reassignBackupSwitch(client)
     })
@@ -227,6 +245,7 @@ export function attachServer (httpServer, secureCtx = {}) {
     if (!client.info.id) client.info.id = nanoid()
     if (msg?.role) client.info.role = msg.role
     if (msg?.hostname) client.info.hostname = msg.hostname
+    if (msg?.pid) client.info.pid = msg.id
     if (msg?.mem && msg?.cpu) client.info.telemetry = { ...msg.mem, ...msg.cpu }
     if (msg?.apps) client.info.apps = msg.apps
     if (msg?.proto) client.info.initialized = initialized
