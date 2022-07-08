@@ -241,7 +241,7 @@ export function attachServer (httpServer, secureCtx = {}) {
   server.reassignBackupSwitch = function (client) {
     if (client.info?.id === backupSwitch) {
       for (let c of clients) {
-        if (c.info.role === 'node' && c.info.id !== backupSwitch) {
+        if (c?.info?.role === 'node' && c.info.id !== backupSwitch) {
           backupSwitch = c.info.id
           c.isBackupSwitch = true
           return
