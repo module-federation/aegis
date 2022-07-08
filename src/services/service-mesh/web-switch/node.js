@@ -495,7 +495,7 @@ async function reconnect () {
       ws.terminate()
     }
     ws = null
-    await connectToServiceMesh()
+    await connectToServiceMesh({ agent: new Agent() })
 
     if (ws?.readyState === WebSocket.OPEN) {
       clearInterval(reconnectTimerId)
