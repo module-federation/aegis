@@ -9,6 +9,8 @@ import { Server, WebSocket } from 'ws'
 
 const SERVICENAME = 'webswitch'
 const CLIENT_MAX_ERRORS = 3
+const CLIENT_MAX_RETRIES = 10
+
 const startTime = Date.now()
 const uptime = () => Math.round(Math.abs((Date.now() - startTime) / 1000 / 60))
 const configRoot = require('../../../config').hostConfig
@@ -44,34 +46,43 @@ export function attachServer (httpServer, secureCtx = {}) {
     server: httpServer
   })
 
-  /**w
-   *
-   * @param {{request:Request, socket:Socket, head}} evidence
-   */
-  async function protocolRules ({ request, socket }) {
-    const payload = await request.json()
-
-    const rules = {
-      wrongName: () => payload.proto !== SERVICENAME,
-      duplicate: () =>
-        [...clients.values()].filter(
-          client =>
-            client.address === socket.remoteAddress().address &&
-            (client.role === payload.role) === 'node'
-        ).length > 0
+  function sendClient (client, message, retries = []) {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(message)
     }
-    const broken = thisRule => rules[thisRule]()
-    return Promise.race(Object.keys(rules).some(broken))
+    if (retries.length < CLIENT_MAX_RETRIES)
+      setTimeout(1000, sendClient, client, message, retries.push(1))
   }
+  ;-(
+    /**
+     * Look for `evidence` of {@link rules} violation and return result
+     * @param {{request:Request, socket:Socket, head}} evidence
+     * @returns {boolean} if true, one or more rules has been broken
+     */
+    async function protocolRules ({ request, socket }) {
+      const payload = await request.json()
+
+      const rules = {
+        wrongName: () => payload.proto !== SERVICENAME,
+        duplicate: () =>
+          [...clients.values()].filter(
+            client =>
+              client.address === socket.remoteAddress().address &&
+              (client.role === payload.role) === 'node'
+          ).length > 0
+      }
+      const broken = thisRule => rules[thisRule]()
+      return Promise.race(Object.keys(rules).some(broken))
+    }
+  )
 
   server.on('upgrade', async (request, socket, head) => {
-    // const broken = await protocolRules({ request, socket, head })
-
-    // if (broken) {
-    //   console.warn('bad request')
-    //   socket.destroy()
-    //   return
-    // }
+    const broken = await protocolRules({ request, socket, head })
+    if (broken) {
+      console.warn('protocol error')
+      socket.destroy()
+      return
+    }
     server.handleUpgrade(request, socket, head, ws =>
       server.emit('connection', ws, request)
     )
@@ -79,19 +90,7 @@ export function attachServer (httpServer, secureCtx = {}) {
 
   server.on('connection', function (client) {
     setClientInfo(client, null, false)
-
-    client.on('close', function (code, reason) {
-      console.info({
-        msg: 'client closing',
-        code,
-        reason: reason.toString(),
-        client: client.info
-      })
-      clients.delete(client)
-      server.broadcast(statusReport())
-      server.reassignBackupSwitch(client)
-    })
-
+    client.protocol
     client.on('error', function (error) {
       client.info.errors++
 
@@ -142,7 +141,7 @@ export function attachServer (httpServer, secureCtx = {}) {
 
           console.info('client initialized', client.info)
           // tell client if its a backup switch or not
-          client.send(JSON.stringify(client.info))
+          sendClient(client, JSON.stringify(client.info))
           // tell everyone about new node (ignore browser)
           if (client.info.role === 'node')
             server.broadcast(statusReport(), client)
@@ -156,13 +155,25 @@ export function attachServer (httpServer, secureCtx = {}) {
       // client.terminate()
       // console.warn('terminated client', client.info)
     })
+
+    client.on('close', function (code, reason) {
+      console.info({
+        msg: 'client closing',
+        code,
+        reason: reason.toString(),
+        client: client.info
+      })
+      clients.delete(client)
+      server.broadcast(statusReport())
+      server.reassignBackupSwitch(client)
+    })
   })
 
   server.broadcast = function (data, sender) {
     clients.forEach(function (client) {
       if (client.readyState === WebSocket.OPEN && client !== sender) {
         console.assert(!debug, 'sending client', client.info, data.toString())
-        client.send(data)
+        sendClient(client, data)
         messagesSent++
       }
     })
@@ -197,15 +208,15 @@ export function attachServer (httpServer, secureCtx = {}) {
    * @param {WebSocket} client
    */
   server.sendStatus = function (client) {
-    client.send(statusReport())
+    sendClient(client, statusReport())
   }
 
   server.reassignBackupSwitch = function (client) {
     if (client.info?.id === backupSwitch) {
-      for (let clnt of clients) {
-        if (clnt.info.role === 'node' && clnt.info.id !== backupSwitch) {
-          backupSwitch = clnt.info.id
-          clnt.isBackupSwitch = true
+      for (let c of clients) {
+        if (c.info.role === 'node' && c.info.id !== backupSwitch) {
+          backupSwitch = c.info.id
+          c.isBackupSwitch = true
           return
         }
       }
@@ -222,10 +233,6 @@ export function attachServer (httpServer, secureCtx = {}) {
     if (msg?.proto) client.info.initialized = initialized
     client.info.isBackupSwitch = backupSwitch === client.info.id
   }
-
-  /**
-   * @param {WebSocket} client
-   */
 
   try {
     // configure uplink

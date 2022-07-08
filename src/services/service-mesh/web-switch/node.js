@@ -335,6 +335,7 @@ function startHeartbeat () {
 
     try {
       clearInterval(intervalId)
+
       broker.emit(TIMEOUTEVENT, { error: 'server unresponsive' })
 
       console.error({
@@ -342,6 +343,9 @@ function startHeartbeat () {
         receivedPong,
         msg: 'no response, trying new conn'
       })
+
+      // terminate this socket
+      ws.terminate()
 
       // try to reconnect
       reconnect()
@@ -419,10 +423,11 @@ async function connectToServiceMesh (options = {}) {
 
       ws.on('close', function (code, reason) {
         console.log({
-          msg: 'connection closed',
+          msg: 'connection closed, terminating socket',
           code,
           reason: reason.toString()
         })
+        if (ws) ws.terminate()
       })
 
       ws.on('message', async function (message) {
@@ -486,9 +491,12 @@ async function reconnect () {
       console.warn({ msg: 'try new service url', attempts })
       serviceUrl = null
     }
-    if (ws) ws.close(4887, Buffer.from('close before reconnect'))
+    if (ws) {
+      console.warn('on retry, terminating existing socket')
+      ws.terminate()
+    }
     ws = null
-    await connectToServiceMesh({ agent: new Agent() })
+    await connectToServiceMesh()
 
     if (ws?.readyState === WebSocket.OPEN) {
       clearInterval(reconnectTimerId)
@@ -527,8 +535,9 @@ export function close (reason) {
     stopping = true
     console.warn('disconnecting from mesh', reason)
     clearInterval(reconnectTimerId)
-    ws.protocol = SERVICENAME
-    if (ws) ws.close(4999, Buffer.from(reason))
+    if (!ws) return
+    console.warn('connection closed, terminating socket')
+    ws.terminate()
     ws = null
   } catch (error) {
     console.error({ fn: close.name, error })

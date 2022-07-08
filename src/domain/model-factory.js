@@ -23,7 +23,7 @@ import Event from './event'
  * @property {function(Model,object):Model} updateModel
  * @property {function(Model):Model} deleteModel
  * @property {function(string,string):string} getEventName
- * @property {{CREATE:string,UPDATE:string,DELETE:string}} EventTypes
+ * @property {{CREATE:string,UPDATE:string,DELETE:string,ONLOAD:string}} EventTypes
  * @property {function(any):string} getModelId
  * @property {function(Model):string[]} getPortFlow
  * @property {loadModel} loadModel
