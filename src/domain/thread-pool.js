@@ -195,7 +195,8 @@ function postJob ({
   thread,
   channel = MAINCHANNEL,
   transfer = [],
-  callback = result => result
+  resolve: res = result => result,
+  reject: rej = error => error
 }) {
   return new Promise((resolve, reject) => {
     const startTime = perf.now()
@@ -209,22 +210,30 @@ function postJob ({
       if (pool.noJobsRunning()) {
         pool.emit(NOJOBSRUNNING)
       }
-      resolve(callback(result))
+      resolve(res(result))
     })
 
     thread[channel].once('error', async error => {
-      console.error({ fn: postJob.name, error })
-      pool.incrementErrorCount()
+      console.error({
+        fn: postJob.name,
+        warning: 'Unhandled exception in thread',
+        error
+      })
       // reallocate thread
       reallocate(pool, thread)
 
-      pool.emit({
+      pool.emit('ThreadException', {
         eventName: 'ThreadException',
-        message: 'unhandled error in thread',
-        pool: pool.name,
-        error
+        eventTarget: 'AppMonitor',
+        modelName: 'AppAgent',
+        model: {
+          message: 'unhandled error in thread',
+          app: pool.name,
+          pool: pool.name,
+          error
+        }
       })
-      reject(callback(error))
+      reject(rej(error))
     })
 
     thread[channel].postMessage({ name: jobName, data: jobData }, transfer)
@@ -488,7 +497,7 @@ export class ThreadPool extends EventEmitter {
   run (jobName, jobData, options = {}) {
     const { channel = MAINCHANNEL, transfer = [] } = options
 
-    return new Promise(async resolve => {
+    return new Promise(async (resolve, reject) => {
       this.jobsRequested++
 
       if (this.closed) {
@@ -496,18 +505,18 @@ export class ThreadPool extends EventEmitter {
         return reject(this)
       }
 
-      try {
-        let thread = this.freeThreads.shift()
+      let thread = this.freeThreads.shift()
 
-        if (!thread) {
-          try {
-            thread = await this.allocate()
-          } catch (error) {
-            console.error({ fn: this.run.name, error })
-          }
+      if (!thread) {
+        try {
+          thread = await this.allocate()
+        } catch (error) {
+          console.error({ fn: this.run.name, error })
         }
+      }
 
-        if (thread) {
+      if (thread) {
+        try {
           const result = await postJob({
             pool: this,
             jobName,
@@ -518,26 +527,27 @@ export class ThreadPool extends EventEmitter {
           })
 
           return resolve(result)
+        } catch (error) {
+          return reject(error)
         }
-
-        console.debug('no threads: queue job', jobName)
-
-        this.waitingJobs.push(thread =>
-          postJob({
-            pool: this,
-            jobName,
-            jobData,
-            thread,
-            channel,
-            transfer,
-            callback: result => resolve(result)
-          })
-        )
-
-        this.jobsQueued++
-      } catch (error) {
-        console.error(this.run.name, error)
       }
+
+      console.debug('no threads: queue job', jobName)
+
+      this.waitingJobs.push(thread =>
+        postJob({
+          pool: this,
+          jobName,
+          jobData,
+          thread,
+          channel,
+          transfer,
+          resolve,
+          reject
+        })
+      )
+
+      this.jobsQueued++
     })
   }
 
@@ -552,7 +562,7 @@ export class ThreadPool extends EventEmitter {
     } catch (error) {
       console.error({ fn: this.abort.name, error })
     } finally {
-      this.aborting = false
+      setTimeout(() => (this.aborting = false), 10000)
       this.closed = false
     }
   }
@@ -815,11 +825,8 @@ const ThreadPoolFactory = (() => {
   }
 
   async function removeUndeployedPools () {
-    const pools = ThreadPoolFactory.listPools().map(pool => pool.toUpperCase())
-
-    const allModels = ModelFactory.getModelSpecs().map(spec =>
-      spec.modelName.toUpperCase()
-    )
+    const pools = ThreadPoolFactory.listPools().map(pool => pool)
+    const allModels = ModelFactory.getModelSpecs().map(spec => spec.modelName)
 
     await Promise.all(
       pools
@@ -881,6 +888,8 @@ const ThreadPoolFactory = (() => {
   function monitorPools () {
     monitorIntervalId = setInterval(() => {
       threadPools.forEach(pool => {
+        if (pool.aborting) return
+
         const workRequested = pool.totalTransactions()
         const workWaiting = pool.jobQueueDepth()
         const workersAvail = pool.availThreadCount()
@@ -889,9 +898,10 @@ const ThreadPoolFactory = (() => {
         // work is waiting but no workers available
         if (workWaiting > 0 && workersAvail < 1) {
           // give some time to correct
-          if (pool.aborting) return
 
           setTimeout(async () => {
+            if (pool.aborting) return
+
             // has any work been done in the last 3 minutes?
             if (
               pool.jobQueueDepth() > 0 &&
@@ -900,13 +910,15 @@ const ThreadPoolFactory = (() => {
             ) {
               // no threads are avail and no work done for 3 minutes
               console.warn('killing stuck threads', pool.status())
+              pool.aborting = true
               await pool.abort('stuck threads')
 
               // get waitng jobs going
-              if (pool.waitingJobs.length > 1)
-                pool.waitingJobs
-                  .shift()(await pool.allocate())
-                  .catch(error => console.error(error))
+              if (pool.waitingJobs.length > 1) {
+                const postJob = pool.waitingJobs.shift()
+                const thread = await pool.allocate()
+                if (thread) postJob(thread)
+              }
             }
           }, pool.jobAbortTtl)
         }

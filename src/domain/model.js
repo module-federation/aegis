@@ -275,7 +275,7 @@ const Model = (() => {
         // get the last saved version
         const saved = await datasource.find(this[ID])
         // merge changes with last saved and optionally validate
-        const valid = validateUpdates(saved, changes, validate)
+        const valid = validateUpdates(saved || this, changes, validate)
 
         // update timestamp
         const merge = await datasource.save(this[ID], {
@@ -312,7 +312,7 @@ const Model = (() => {
         // get the last saved version
         const saved = datasource.findSync(this[ID])
         // merge changes with lastest copy and optionally validate
-        const valid = validateUpdates(saved, changes, validate)
+        const valid = validateUpdates(saved || this, changes, validate)
 
         // update timestamp
         const merge = datasource.saveSync(this[ID], {
@@ -506,11 +506,7 @@ const Model = (() => {
      *
      */
     update: function (model, changes) {
-      const valid = model[VALIDATE](changes, eventMask.update)
-      return {
-        ...valid,
-        [UPDATETIME]: Date.now()
-      }
+      return model.update(changes)
     },
 
     /**

@@ -50,20 +50,6 @@ export default function makeHotReload ({ models, broker } = {}) {
   // Add an event whose callback invokes this factory.
   broker.on(domainEvents.hotReload, hotReload)
 
-  const events = Object.keys(domainEvents).filter(e => /^pool.*/.test(e))
-  models
-    .getModelSpecs()
-    .map(spec => spec.modelName)
-    .forEach(pool =>
-      events.forEach(event =>
-        ThreadPoolFactory.listen(
-          data => broker.notify(data.eventName, data),
-          pool,
-          domainEvents[event](pool)
-        )
-      )
-    )
-
   /**
    */
   async function hotReload (modelName) {

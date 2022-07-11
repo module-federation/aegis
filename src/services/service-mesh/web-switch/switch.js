@@ -20,6 +20,12 @@ const debug = /true/i.test(config.debug)
 const isSwitch = /true/i.test(process.env.IS_SWITCH) || config.isSwitch
 let messagesSent = 0
 let backupSwitch
+const headers = {
+  role: 'X-WebSwitch-Role',
+  pid: 'X-WebSwitch-PID',
+  host: 'X-WebSwitch-Host'
+}
+const headersList = Object.values(headers)
 
 /**
  * Attach {@link ServiceMeshAdapter} to the API listener socket.
@@ -34,7 +40,7 @@ let backupSwitch
 export function attachServer (httpServer, secureCtx = {}) {
   /**
    * list of client connections (federation hosts, browsers, etc)
-   * @type {Map<WebSocket>}
+   * @type {Map<string,WebSocket>}
    */
   const clients = new Map()
 
@@ -47,71 +53,49 @@ export function attachServer (httpServer, secureCtx = {}) {
     server: httpServer
   })
 
-  function sendClient (client, message, retries = []) {
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(message)
-      return
-    }
-    if (retries.length < CLIENT_MAX_RETRIES)
-      setTimeout(sendClient, 1000, client, message, retries.push(1))
-  }
-
   /**
    * Look for `evidence` of {@link rules} violation and return result
    * @param {{request:Request, socket:Socket, head}} evidence
    * @returns {boolean} if true, one or more rules has been broken
    */
   function protocolRules ({ request, socket }) {
+    const WEBSWITCH_MAX_CLIENTS = 10000
     const headers = {
-      uniqueName: 'webswitch-name',
-      role: 'webswitch-role'
+      role: 'X-WebSwitch-Role',
+      pid: 'X-WebSwitch-PID',
+      host: 'X-WebSwitch-Host'
     }
-    const hKeys = Object.keys(headers)
+    const headerList = Object.values(headers)
 
     const rules = {
       missingHeaders: () =>
-        hKeys.filter(h => request.headers.has(h)).length !== hKeys.length,
-      duplicateNames: () =>
-        [...clients.values()].filter(
-          client =>
-            client.uniqueName === request.headers.get(headers.uniqueName) &&
-            (client.role === request.headers.get(headers.role)) === 'node'
-        ).length > 0
+        headerList.filter(h => request.headers.has(h)).length <
+        headerList.length,
+      maxConnections: () => clients.size + 1 > WEBSWITCH_MAX_CLIENTS,
+      unauthorized: () => false
     }
     const broken = rule => rules[rule]()
     return Object.keys(rules).filter(broken)
   }
 
-  server.on('upgrade', (request, socket, head) => {
-    const broken = protocolRules({ request, socket, head })
-    if (broken.length > 0) {
-      console.warn('protocol error', ...broken)
-      socket.destroy()
-      return
-    }
-    server.handleUpgrade(request, socket, head, ws =>
-      server.emit('connection', ws, request)
+  function missingHeaders (request) {
+    return (
+      headersList.filter(h => request.headers.has(h)).length <
+      headersList.length
     )
+  }
+
+  server.on('upgrade', (request, socket, head) => {
+    server.handleUpgrade(request, socket, head, ws => {
+      console.log('**********************************************************')
+      if (missingHeaders(request)) {
+        console.error('missing headers')
+        socket.destroy()
+        return
+      }
+      server.emit('connection', ws, request)
+    })
   })
-
-  function generateClientName (client) {
-    const name = client.info.hostname + client.info.pid
-    client.info.uniqueName = name
-    return name
-  }
-
-  function trackClient (client, msg) {
-    setClientInfo(client, msg)
-    const uniqueName = generateClientName(client)
-
-    if (clients.has(uniqueName)) {
-      console.warn('found duplicate name', uniqueName)
-      const oldClient = clients.get(uniqueName)
-      if (oldClient) oldClient.terminate()
-    }
-    client.info.initialized = true
-    clients.set(uniqueName, client)
-  }
 
   server.on('connection', function (client) {
     setClientInfo(client, null)
@@ -137,38 +121,21 @@ export function attachServer (httpServer, secureCtx = {}) {
 
         if (client.info.initialized) {
           if (msg === 'status') {
-            setClientInfo(client, msg)
-            server.sendStatus(client)
+            sendStatus(client)
             return
           }
-          server.broadcast(message, client)
+          broadcast(message, client)
           return
         }
 
-        if (msg.proto === SERVICENAME) {
+        if (checkProtocol(msg)) {
           trackClient(client, msg)
-
           // if a backup switch is needed, is the client eligible?
-          if (
-            // are we the switch?
-            isSwitch &&
-            // is there a backup already?
-            !backupSwitch &&
-            // can't be a browser
-            msg.role === 'node' &&
-            // don't put backup on same host
-            msg.hostname !== hostname()
-          ) {
-            backupSwitch = client.info.id
-            console.info('new backup switch: ', client.info)
-          }
-
-          console.info('client initialized', client.info)
+          assignBackup(client)
           // tell client if its a backup switch or not
           sendClient(client, JSON.stringify(client.info))
-          // tell everyone about new node (ignore browser)
-          if (client.info.role === 'node')
-            server.broadcast(statusReport(), client)
+          // tell everyone about new node (ignore browsers)
+          if (client.info.role === 'node') broadcast(statusReport(), client)
           return
         }
       } catch (e) {
@@ -176,8 +143,8 @@ export function attachServer (httpServer, secureCtx = {}) {
       }
 
       // bad protocol
-      // client.terminate()
-      // console.warn('terminated client', client.info)
+      client.terminate()
+      console.warn('terminated client', client.info)
     })
 
     client.on('close', function (code, reason) {
@@ -187,13 +154,13 @@ export function attachServer (httpServer, secureCtx = {}) {
         reason: reason.toString(),
         client: client.info
       })
-      clients.delete(client.uniqueName)
-      server.broadcast(statusReport())
-      server.reassignBackupSwitch(client)
+      clients.delete(client.info.uniqueName)
+      reassignBackup(client)
+      broadcast(statusReport())
     })
   })
 
-  server.broadcast = function (data, sender) {
+  function broadcast (data, sender) {
     clients.forEach(function (client) {
       if (client?.info?.uniqueName !== sender?.info?.uniqueName) {
         console.assert(!debug, 'sending client', client.info, data.toString())
@@ -212,7 +179,66 @@ export function attachServer (httpServer, secureCtx = {}) {
    * @todo implement rate limit enforcement
    * @param {WebSocket} client
    */
-  server.setRateLimit = function (client) {}
+  function setRateLimit (client) {}
+
+  function sendClient (client, message, retries = []) {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(message)
+      return
+    }
+    if (retries.length < CLIENT_MAX_RETRIES)
+      setTimeout(sendClient, 1000, client, message, retries.push(1))
+  }
+
+  function createUniqueName (client) {
+    return client.info.hostname + client.info.pid
+  }
+
+  function trackClient (client, msg) {
+    setClientInfo(client, msg)
+    const uniqueName = createUniqueName(client)
+
+    if (clients.has(uniqueName)) {
+      console.warn('found duplicate name', uniqueName)
+      const oldClient = clients.get(uniqueName)
+      if (oldClient) oldClient.terminate()
+    }
+    client.info.initialized = true
+    client.info.uniqueName = uniqueName
+    console.info('client initialized', client.info)
+    clients.set(uniqueName, client)
+  }
+
+  function checkProtocol (msg) {
+    return msg.proto === SERVICENAME
+  }
+
+  function assignBackup (client) {
+    if (
+      isSwitch &&
+      // is there a backup already?
+      !backupSwitch &&
+      // can't be a browser
+      client.role === 'node' &&
+      // don't put backup on same host
+      client.hostname !== hostname()
+    ) {
+      backupSwitch = client.info.id
+      console.info('new backup switch: ', client.info)
+    }
+  }
+
+  function reassignBackup (client) {
+    if (client.info?.id === backupSwitch) {
+      for (let c of clients) {
+        if (c?.info?.role === 'node' && c.info.id !== backupSwitch) {
+          backupSwitch = c.info.id
+          c.info.isBackupSwitch = true
+          return
+        }
+      }
+    }
+  }
 
   function statusReport () {
     return JSON.stringify({
@@ -234,28 +260,16 @@ export function attachServer (httpServer, secureCtx = {}) {
    *
    * @param {WebSocket} client
    */
-  server.sendStatus = function (client) {
+  function sendStatus (client) {
     sendClient(client, statusReport())
   }
 
-  server.reassignBackupSwitch = function (client) {
-    if (client.info?.id === backupSwitch) {
-      for (let c of clients) {
-        if (c?.info?.role === 'node' && c.info.id !== backupSwitch) {
-          backupSwitch = c.info.id
-          c.info.isBackupSwitch = true
-          return
-        }
-      }
-    }
-  }
-
-  function setClientInfo (client, msg = {}) {
+  function setClientInfo (client, msg) {
     if (typeof client.info === 'undefined') client.info = {}
     if (!client.info.id) client.info.id = nanoid()
     if (msg?.role) client.info.role = msg.role
     if (msg?.hostname) client.info.hostname = msg.hostname
-    if (msg?.pid) client.info.pid = msg.role === 'browser' ? nanoid() : msg.pid
+    if (msg?.pid) client.info.pid = msg.pid
     if (msg?.mem && msg?.cpu) client.info.telemetry = { ...msg.mem, ...msg.cpu }
     if (msg?.apps) client.info.apps = msg.apps
     client.info.isBackupSwitch = backupSwitch === client.info.id
@@ -267,7 +281,7 @@ export function attachServer (httpServer, secureCtx = {}) {
       const node = require('./node')
       server.uplink = node
       node.setUplinkUrl(config.uplink)
-      node.onUplinkMessage(msg => server.broadcast(msg, node))
+      node.onUplinkMessage(msg => broadcast(msg, node))
       node.connect()
     }
   } catch (e) {
