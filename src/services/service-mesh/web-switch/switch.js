@@ -114,6 +114,8 @@ export function attachServer (httpServer, secureCtx = {}) {
         client.close(4888, 'too many errors')
       }
     })
+    
+    client.on('pong', () => client.pong(0x9))
 
     client.on('message', function (message) {
       try {
