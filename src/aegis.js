@@ -92,7 +92,7 @@ const router = {
   }
 }
 
-async function makeRoutes () {
+function makeRoutes () {
   router.autoRoutes(endpoint, 'get', liveUpdate, http)
   router.autoRoutes(endpoint, 'get', getModels, http)
   router.autoRoutes(endpoint, 'post', postModels, http)
