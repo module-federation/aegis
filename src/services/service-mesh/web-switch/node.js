@@ -600,16 +600,11 @@ class ServiceMeshClient extends EventEmitter {
 
   resolveUrl () {}
 
-  clearInterval () {
-    this.timerId && clearInterval(this.timerId)
-  }
-
   setOptions (options) {}
 
   connect (options = null) {
     if (this.ws) return
     this.setOptions(options)
-    this.clearInterval()
     this.url = this.resolveUrl()
     this.ws = new WebSocket(this.url)
     this.ws.on('close', () => setTimeout(() => this.connect(), 6000))

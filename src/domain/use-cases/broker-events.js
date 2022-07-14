@@ -17,62 +17,6 @@ import os from 'os'
 /** @type {BroadcastChannel}*/
 let broadcastChannel
 
-class ServiceMeshClient extends EventEmitter {
-  constructor () {
-    super()
-    this.ws = null
-  }
-
-  connect () {
-    if (this.ws) return
-    this.url = this.resolveURL()
-    this.ws = new WebSocket(this.url)
-    this.ws.on('close', () => setTimeout(() => this.connect(), 6000))
-    this.ws.on('open', () =>
-      this.ws.send(
-        JSON.stringify({
-          hostname: os.hostname(),
-          role: 'node',
-          pid: process.pid,
-          telemetry: { mem: process.memoryUsage(), cpu: process.cpuUsage() },
-          services: []
-        })
-      )
-    )
-    this.ws.on('message', msg => {
-      this.emit(msg.eventName, msg)
-      this.listeners('*').forEach(cb => cb(msg))
-    })
-    this.heartbeat()
-  }
-
-  heartbeat () {
-    setInterval(() => {
-      if (this.pong) {
-        this.pong = false
-        this.ws.ping(0x9)
-      } else {
-        this.ws = null
-        this.connect()
-      }
-    }, 6000)
-  }
-
-  publish ({ eventName, eventMessage }) {
-    this.connect()
-    this.ws.send(JSON.stringify({ eventName, eventMessage }))
-  }
-
-  subscribe (eventName, callback) {
-    this.on(eventName, callback)
-  }
-
-  close () {
-    this.ws.close(4999, 'closing for reload')
-    this.ws = null
-  }
-}
-
 /**
  *
  * @param {*} modelName
