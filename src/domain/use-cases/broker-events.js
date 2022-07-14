@@ -4,12 +4,42 @@
 
 import DistributedCache from '../distributed-cache'
 // import EventBus from '../../services/event-bus'
-import { ServiceMeshAdapter as ServiceMesh } from '../../adapters'
+//import { ServiceMeshServerPlugin as ServiceMesh } from '../../adapters'
 import { BroadcastChannel, isMainThread, workerData } from 'worker_threads'
 import { ThreadPool } from '../thread-pool'
 
+import { WebSocket } from 'ws'
+import { EventEmitter } from 'stream'
+
 /** @type {BroadcastChannel}*/
 let broadcastChannel
+
+class ServiceMeshClient extends EventEmitter {
+  constructor () {
+    super()
+    this.ws = null
+  }
+  connect () {
+    if (this.ws) return
+    this.ws = new WebSocket('wss://aegis.module-federatin.org:443')
+    // this.ws.on('close', connect)
+    this.ws.on('open', () =>
+      this.ws.send({ hostname: 'host1', role: 'node', pid: process.pid })
+    )
+    this.ws.on('message', msg => this.listeners('*').forEach(cb => cb(msg)))
+  }
+  publish ({ eventName, eventMessage }) {
+    this.connect()
+    this.ws.send({ eventName, eventMessage })
+  }
+  subscribe (eventName, callback) {
+    this.on(eventName, callback)
+  }
+  close () {
+    this.ws.close(4999, 'closing for reload')
+    this.ws = null
+  }
+}
 
 /**
  *
@@ -42,13 +72,14 @@ function createBroadcastChannel (modelName, broker) {
  */
 export default function brokerEvents (broker, datasources, models) {
   if (isMainThread) {
+    const serviceMesh = new ServiceMeshClient()
     // forward all events from worker threads to the service mesh
-    broker.on('from_worker', async event => ServiceMesh.publish(event))
+    broker.on('from_worker', async event => serviceMesh.publish(event))
     // forward reload event to mesh
-    broker.on('reload', async event => ServiceMesh.close('reload'))
+    broker.on('reload', async event => serviceMesh.close('reload'))
 
     // forward every event from the service mesh to the workers
-    ServiceMesh.subscribe('*', event => {
+    serviceMesh.subscribe('*', event => {
       console.debug({ fn: 'from mesh', event })
       broker.notify('to_worker', event)
     })
@@ -60,7 +91,7 @@ export default function brokerEvents (broker, datasources, models) {
         .map(spec => spec.modelName)
 
     // connect to mesh and provide fn to list installed services
-    ServiceMesh.connect({ listServices: listLocalModels })
+    serviceMesh.connect({ listServices: listLocalModels })
   } else {
     createBroadcastChannel(workerData.poolName, broker)
     // create listeners that handle events from main

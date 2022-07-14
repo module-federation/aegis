@@ -19,12 +19,6 @@ export function subscribe (service) {
   }
 }
 
-export function attachServer (service) {
-  return async function (server) {
-    service.attachServer(server)
-  }
-}
-
 export function close (service) {
   return function (reason) {
     service.close('reload')

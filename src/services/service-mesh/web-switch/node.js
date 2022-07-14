@@ -103,6 +103,7 @@ function assumeSwitchRole () {
   if (DnsPriority.matches(config)) activateBackup = true
 }
 
+
 /**
  * Use multicast DNS to find the host
  * instance configured as the "switch"
@@ -324,18 +325,21 @@ function send (event) {
 function startHeartbeat () {
   let receivedPong = true
 
-  ws.addListener('pong', function () {
+  ws.on('pong', function () {
     console.assert(!debug, 'received pong')
     receivedPong = true
   })
 
   const intervalId = setInterval(async function () {
     if (receivedPong) {
-      receivedPong = false
-
       try {
-        if (ws) ws.ping(0x9)
-        else clearInterval(intervalId)
+        if (ws) {
+          receivedPong = false
+          ws.ping(0x9)
+        } else {
+          clearInterval(intervalId)
+          ws.removeAllListeners()
+        }
       } catch (error) {
         console.error({ fn: 'interval', error })
       }
@@ -344,6 +348,8 @@ function startHeartbeat () {
 
     try {
       clearInterval(intervalId)
+      if (ws) ws.removeAllListeners()
+      receivedPong = true
       broker.emit(TIMEOUTEVENT, { error: 'server unresponsive' })
       console.error({
         fn: startHeartbeat.name,
@@ -442,9 +448,8 @@ async function connectToServiceMesh (options = {}) {
           code,
           reason: reason.toString()
         })
-
         // terminate on close
-        if (ws) ws.terminate()
+        //if (ws) ws.terminate()
       })
 
       ws.on('message', async function (message) {
@@ -513,7 +518,7 @@ async function reconnect () {
 
       if (ws) {
         console.warn('on retry, terminating existing socket')
-        ws.close(4999, 'close for reconnect')
+        //ws.close(4999, 'close for reconnect')
         stopping = true
         ws = null
       }

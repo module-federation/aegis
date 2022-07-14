@@ -189,7 +189,7 @@ const userController = (fn, ports) => async (req, res) => {
 export function getUserRoutes () {
   try {
     return ModelFactory.getModelSpecs()
-      .filter(spec => spec?.routes)
+      .filter(spec => spec.routes)
       .map(spec =>
         spec.routes
           .filter(route => route)

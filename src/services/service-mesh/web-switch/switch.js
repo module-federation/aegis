@@ -164,14 +164,14 @@ export function attachServer (httpServer, secureCtx = {}) {
 
   function broadcast (data, sender) {
     clients.forEach(function (client) {
-      if (client?.info?.uniqueName !== sender?.info?.uniqueName) {
+      if (client.info?.uniqueName !== sender?.info?.uniqueName) {
         console.assert(!debug, 'sending client', client.info, data.toString())
         sendClient(client, data)
         messagesSent++
       }
     })
 
-    if (server?.uplink && server?.uplink !== sender) {
+    if (server.uplink && server.uplink !== sender) {
       server.uplink.publish(data)
       messagesSent++
     }
@@ -277,18 +277,18 @@ export function attachServer (httpServer, secureCtx = {}) {
     client.info.isBackupSwitch = backupSwitch === client.info.id
   }
 
-  try {
-    // configure uplink
-    if (config.uplink) {
-      const node = require('./node')
-      server.uplink = node
-      node.setUplinkUrl(config.uplink)
-      node.onUplinkMessage(msg => broadcast(msg, node))
-      node.connect()
-    }
-  } catch (e) {
-    console.error('uplink', e)
-  }
+  // try {
+  //   // configure uplink
+  //   if (config.uplink) {
+  //     const node = require('./node')
+  //     server.uplink = node
+  //     node.setUplinkUrl(config.uplink)
+  //     node.onUplinkMessage(msg => broadcast(msg, node))
+  //     node.connect()
+  //   }
+  // } catch (e) {
+  //   console.error('uplink', e)
+  // }
 
   return server
 }
