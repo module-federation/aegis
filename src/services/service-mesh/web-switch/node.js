@@ -103,7 +103,6 @@ function assumeSwitchRole () {
   if (DnsPriority.matches(config)) activateBackup = true
 }
 
-
 /**
  * Use multicast DNS to find the host
  * instance configured as the "switch"
@@ -444,7 +443,7 @@ async function connectToServiceMesh (options = {}) {
 
       ws.on('close', function (code, reason) {
         console.log({
-          msg: 'connection closed, terminating socket',
+          msg: 'wd',
           code,
           reason: reason.toString()
         })
@@ -590,5 +589,76 @@ export function close (reason) {
     ws = null
   } catch (error) {
     console.error({ fn: close.name, error })
+  }
+}
+
+class ServiceMeshClient extends EventEmitter {
+  constructor () {
+    super()
+    this.ws = null
+  }
+
+  resolveUrl () {}
+
+  clearInterval () {
+    this.timerId && clearInterval(this.timerId)
+  }
+
+  setOptions (options) {}
+
+  connect (options = null) {
+    if (this.ws) return
+    this.setOptions(options)
+    this.clearInterval()
+    this.url = this.resolveUrl()
+    this.ws = new WebSocket(this.url)
+    this.ws.on('close', () => setTimeout(() => this.connect(), 6000))
+    this.ws.on('open', () =>
+      this.send({
+        hostname: os.hostname(),
+        role: 'node',
+        pid: process.pid,
+        telemetry: { ...process.memoryUsage(), ...process.cpuUsage() },
+        services: [this.options.listServices()]
+      })
+    )
+    this.ws.on('message', msg => {
+      this.emit(msg.eventName, msg)
+      this.listeners('*').forEach(cb => cb(msg))
+    })
+    this.heartbeat()
+  }
+
+  heartbeat () {
+    if (this.timerId) clearInterval(this.timerId)
+    this.timerId = setInterval(() => {
+      if (this.pong) {
+        this.pong = false
+        this.ws.ping(0x9)
+      } else {
+        this.ws = null
+        this.connect()
+      }
+    }, 6000)
+  }
+
+  format (msg) {}
+
+  send (msg) {
+    if (this.ws.readyState === this.ws.OPEN) this.ws.send(this.format(msg))
+  }
+
+  publish (msg) {
+    this.connect()
+    this.send(msg)
+  }
+
+  subscribe (eventName, callback) {
+    this.on(eventName, callback)
+  }
+
+  close () {
+    this.ws.close(4999, Buffer.from('closing for reload'))
+    this.ws = null
   }
 }

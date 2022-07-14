@@ -5,11 +5,14 @@
 import DistributedCache from '../distributed-cache'
 // import EventBus from '../../services/event-bus'
 //import { ServiceMeshServerPlugin as ServiceMesh } from '../../adapters'
+import * as ServiceMesh from '../../services/service-mesh/web-switch/node'
+
 import { BroadcastChannel, isMainThread, workerData } from 'worker_threads'
 import { ThreadPool } from '../thread-pool'
 
 import { WebSocket } from 'ws'
 import { EventEmitter } from 'stream'
+import os from 'os'
 
 /** @type {BroadcastChannel}*/
 let broadcastChannel
@@ -19,22 +22,51 @@ class ServiceMeshClient extends EventEmitter {
     super()
     this.ws = null
   }
+
   connect () {
     if (this.ws) return
-    this.ws = new WebSocket('wss://aegis.module-federatin.org:443')
-    // this.ws.on('close', connect)
+    this.url = this.resolveURL()
+    this.ws = new WebSocket(this.url)
+    this.ws.on('close', () => setTimeout(() => this.connect(), 6000))
     this.ws.on('open', () =>
-      this.ws.send({ hostname: 'host1', role: 'node', pid: process.pid })
+      this.ws.send(
+        JSON.stringify({
+          hostname: os.hostname(),
+          role: 'node',
+          pid: process.pid,
+          telemetry: { mem: process.memoryUsage(), cpu: process.cpuUsage() },
+          services: []
+        })
+      )
     )
-    this.ws.on('message', msg => this.listeners('*').forEach(cb => cb(msg)))
+    this.ws.on('message', msg => {
+      this.emit(msg.eventName, msg)
+      this.listeners('*').forEach(cb => cb(msg))
+    })
+    this.heartbeat()
   }
+
+  heartbeat () {
+    setInterval(() => {
+      if (this.pong) {
+        this.pong = false
+        this.ws.ping(0x9)
+      } else {
+        this.ws = null
+        this.connect()
+      }
+    }, 6000)
+  }
+
   publish ({ eventName, eventMessage }) {
     this.connect()
-    this.ws.send({ eventName, eventMessage })
+    this.ws.send(JSON.stringify({ eventName, eventMessage }))
   }
+
   subscribe (eventName, callback) {
     this.on(eventName, callback)
   }
+
   close () {
     this.ws.close(4999, 'closing for reload')
     this.ws = null
@@ -72,7 +104,7 @@ function createBroadcastChannel (modelName, broker) {
  */
 export default function brokerEvents (broker, datasources, models) {
   if (isMainThread) {
-    const serviceMesh = new ServiceMeshClient()
+    const serviceMesh = ServiceMesh
     // forward all events from worker threads to the service mesh
     broker.on('from_worker', async event => serviceMesh.publish(event))
     // forward reload event to mesh

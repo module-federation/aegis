@@ -57,7 +57,7 @@ import { ServiceMeshPlugin } from '../services'
  * Bind the adapter.
  * @type {ServiceMeshAdapter}
  */
-export const ServiceMeshServerPlugin = {
+export const ServiceMeshAdapter = {
   ...Object.keys(ServiceMeshServerImpl)
     .map(port => ({
       [port]: ServiceMeshServerImpl[port](ServiceMeshPlugin)
