@@ -1,9 +1,6 @@
 'use strict'
 
-import { readCsrDomains } from 'acme-client/lib/crypto/forge'
-import { Hash } from 'crypto'
-import { Socket } from 'dgram'
-import e from 'express'
+import { IncomingMessage } from 'http'
 import { nanoid } from 'nanoid'
 import { hostname } from 'os'
 import { Server, WebSocket } from 'ws'
@@ -11,6 +8,7 @@ import { Server, WebSocket } from 'ws'
 const SERVICENAME = 'webswitch'
 const CLIENT_MAX_ERRORS = 3
 const CLIENT_MAX_RETRIES = 10
+const MAX_CLIENTS = 10000
 
 const startTime = Date.now()
 const uptime = () => Math.round(Math.abs((Date.now() - startTime) / 1000 / 60))
@@ -18,14 +16,13 @@ const configRoot = require('../../../config').hostConfig
 const config = configRoot.services.serviceMesh.WebSwitch
 const debug = /true/i.test(config.debug)
 const isSwitch = /true/i.test(process.env.IS_SWITCH) || config.isSwitch
+const headers = {
+  host: 'x-webswitch-host',
+  role: 'x-webswitch-role',
+  pid: 'x-webswitch-pid'
+}
 let messagesSent = 0
 let backupSwitch
-const headers = {
-  role: 'X-WebSwitch-Role',
-  pid: 'X-WebSwitch-PID',
-  host: 'X-WebSwitch-Host'
-}
-const headersList = Object.values(headers)
 
 /**
  * Attach {@link ServiceMeshAdapter} to the API listener socket.
@@ -38,6 +35,7 @@ const headersList = Object.values(headers)
  * @returns {import('ws').server}
  */
 export function attachServer (httpServer, secureCtx = {}) {
+  const info = Symbol('webswitch')
   /**
    * list of client connections (federation hosts, browsers, etc)
    * @type {Map<string,WebSocket>}
@@ -55,73 +53,122 @@ export function attachServer (httpServer, secureCtx = {}) {
 
   /**
    * Look for `evidence` of {@link rules} violation and return result
-   * @param {{request:Request, socket:Socket, head}} evidence
+   * @param {IncomingMessage} request
    * @returns {boolean} if true, one or more rules has been broken
    */
-  function protocolRules ({ request, socket }) {
-    const WEBSWITCH_MAX_CLIENTS = 10000
-    const headers = {
-      role: 'X-WebSwitch-Role',
-      pid: 'X-WebSwitch-PID',
-      host: 'X-WebSwitch-Host'
-    }
-    const headerList = Object.values(headers)
+  function breaksRules (request) {
+    console.debug(request.headers)
 
     const rules = {
-      missingHeaders: () =>
-        headerList.filter(h => request.headers.has(h)).length <
-        headerList.length,
-      maxConnections: () => clients.size + 1 > WEBSWITCH_MAX_CLIENTS,
-      unauthorized: () => false
+      protocol: {
+        op: 'or',
+        hasWebSwitchHeader: () =>
+          request.headers['sec-websocket-protocol'] === 'webswitch',
+        hasProtocolHeaders: () =>
+          headerList.filter(header => request.headers[header]).length ===
+          headerList.length
+      },
+      rateLimits: {
+        op: 'and',
+        dataTransferedOK: () => true,
+        connectionRateOK: () => true
+      },
+      capacity: {
+        op: 'and',
+        maxConnectionsOK: () => clients.size + 1 < MAX_CLIENTS
+      }
     }
-    const broken = rule => rules[rule]()
+
+    const breaks = {
+      and: rules => rules.reduce((truth, rule) => rule() && truth),
+      or: rules => rules.reduce((truth, rule) => rule() || truth)
+    }
+
+    const extract = rule =>
+      Object.values(rules[rule]).filter(r => typeof r === 'function')
+
+    const broken = rule => breaks[rules[rule].op](extract(rule))
     return Object.keys(rules).filter(broken)
   }
 
-  function missingHeaders (request) {
-    return (
-      headersList.filter(h => request.headers.has(h)).length <
-      headersList.length
-    )
+  function foundHeaders (request) {
+    const list = Object.values(headers)
+    const node = list.filter(h => request.headers[h]).length === list.length
+    const browser = request.headers['sec-websocket-protocol'] === 'webswitch'
+    return node || browser
+  }
+
+  function withinRateLimits (request) {
+    const client = findClient(request)
+    if (client) return true
+  }
+
+  server.shouldHandle = request => {
+    // const broken = breaksRules(request)
+    // console.info(`protocol violations: ${broken}`)
+    // return !(broken.length > 0)
+    return foundHeaders(request) && withinRateLimits(request)
   }
 
   server.on('upgrade', (request, socket, head) => {
     server.handleUpgrade(request, socket, head, ws => {
-      console.log('**********************************************************')
-      if (missingHeaders(request)) {
-        console.error('missing headers')
-        socket.destroy()
-        return
-      }
       server.emit('connection', ws, request)
     })
   })
 
-  server.on('connection', function (client) {
-    setClientInfo(client, null)
+  function setClientInfo (ws, request) {
+    ws[info] = {}
+    ws[info].id = nanoid()
+    ws[info].pid = request.headers[headers.pid] || Math.floor(Math.random())
+    ws[info].host = request.headers[headers.host] || request.headers.host
+    ws[info].role = request.headers[headers.role] || 'brownser'
+    ws[info].errors = 0
+    ws[info].uniqueName = ws[info].host + ws[info].pid
+  }
+
+  function trackClient (client, request) {
+    console.debug(trackClient.name)
+    setClientInfo(client, request)
+
+    if (clients.has(client[info].uniqueName)) {
+      console.warn('found duplicate name', client[info].uniqueName)
+      const oldClient = clients.get(client[info].uniqueName)
+      if (oldClient) oldClient.close(4000, 'term')
+      process.nextTick(() => oldClient.terminate())
+    }
+
+    client[info].initialized = true
+    console.info('client initialized', client[info])
+    clients.set(client[info].uniqueName, client)
+  }
+
+  server.on('connection', function (client, request) {
+    trackClient(client, request)
 
     client.on('error', function (error) {
-      client.info.errors++
+      client[info].errors++
 
       console.error({
         fn: 'client.on(error)',
-        client: client.info,
+        client: client[info],
         error
       })
 
-      if (client.info.errors > CLIENT_MAX_ERRORS) {
+      if (client[info].errors > CLIENT_MAX_ERRORS) {
         console.warn('terminating client: too many errors')
+        clients.delete(client[info].uniqueName)
         client.close(4888, 'too many errors')
       }
     })
 
-    client.on('ping', () => client.pong(0x9))
+    client.on('ping', () => client.pong())
 
     client.on('message', function (message) {
       try {
+        console.debug(clients)
         const msg = JSON.parse(message.toString())
 
-        if (client.info.initialized) {
+        if (client[info].initialized) {
           if (msg === 'status') {
             sendStatus(client)
             return
@@ -130,23 +177,22 @@ export function attachServer (httpServer, secureCtx = {}) {
           return
         }
 
-        if (checkProtocol(msg)) {
-          trackClient(client, msg)
-          // if a backup switch is needed, is the client eligible?
-          assignBackup(client)
-          // tell client if its a backup switch or not
-          sendClient(client, JSON.stringify(client.info))
-          // tell everyone about new node (ignore browsers)
-          if (client.info.role === 'node') broadcast(statusReport(), client)
-          return
-        }
+        assignBackup(client)
+        // tell client if its now a backup switch or not
+        sendClient(client, JSON.stringify(client[info]))
+        // look for telemetry data in msg
+        updateTelemetry(client, msg)
+        // tell everyone about new node (ignore browsers)
+        if (client[info] && client[info].role === 'node')
+          broadcast(statusReport(), client)
+        return
       } catch (e) {
         console.error(client.on.name, 'on message', e)
       }
 
       // bad protocol
-      client.terminate()
-      console.warn('terminated client', client.info)
+      client.close(4403, 'bad request')
+      console.warn('terminated client', client[info])
     })
 
     client.on('close', function (code, reason) {
@@ -154,18 +200,22 @@ export function attachServer (httpServer, secureCtx = {}) {
         msg: 'client closing',
         code,
         reason: reason.toString(),
-        client: client.info
+        client: client[info]
       })
-      clients.delete(client.info.uniqueName)
+
+      clients.delete(client[info]?.uniqueName)
+      client.close(4988, 'ack')
+      process.nextTick(() => client.terminate())
+
       reassignBackup(client)
-      broadcast(statusReport())
+      broadcast(statusReport(), client)
     })
   })
 
   function broadcast (data, sender) {
     clients.forEach(function (client) {
-      if (client.info?.uniqueName !== sender?.info?.uniqueName) {
-        console.assert(!debug, 'sending client', client.info, data.toString())
+      if (client[info]?.uniqueName !== sender[info]?.uniqueName) {
+        console.assert(!debug, 'sending client', client[info], data.toString())
         sendClient(client, data)
         messagesSent++
       }
@@ -177,12 +227,6 @@ export function attachServer (httpServer, secureCtx = {}) {
     }
   }
 
-  /**
-   * @todo implement rate limit enforcement
-   * @param {WebSocket} client
-   */
-  function setRateLimit (client) {}
-
   function sendClient (client, message, retries = []) {
     if (client.readyState === WebSocket.OPEN) {
       client.send(message)
@@ -192,27 +236,18 @@ export function attachServer (httpServer, secureCtx = {}) {
       setTimeout(sendClient, 1000, client, message, retries.push(1))
   }
 
-  function createUniqueName (client) {
-    return client.info.hostname + client.info.pid
-  }
+  function trackClient (client, request) {
+    setClientInfo(client, request)
 
-  function trackClient (client, msg) {
-    setClientInfo(client, msg)
-    const uniqueName = createUniqueName(client)
-
-    if (clients.has(uniqueName)) {
-      console.warn('found duplicate name', uniqueName)
-      const oldClient = clients.get(uniqueName)
-      if (oldClient) oldClient.terminate()
+    if (clients.has(client[info].uniqueName)) {
+      console.warn('found duplicate name', client[info].uniqueName)
+      const oldClient = clients.get(client[info].uniqueName)
+      if (oldClient) oldClient.close(4000, 'term')
+      process.nextTick(() => oldClient.terminate())
     }
-    client.info.initialized = true
-    client.info.uniqueName = uniqueName
-    console.info('client initialized', client.info)
-    clients.set(uniqueName, client)
-  }
-
-  function checkProtocol (msg) {
-    return msg.proto === SERVICENAME
+    client[info].initialized = true
+    clients.set(client[info].uniqueName, client)
+    console.info('client initialized', client[info])
   }
 
   function assignBackup (client) {
@@ -221,21 +256,25 @@ export function attachServer (httpServer, secureCtx = {}) {
       // is there a backup already?
       !backupSwitch &&
       // can't be a browser
-      client.role === 'node' &&
-      // don't put backup on same host
-      client.hostname !== hostname()
+      client[info] &&
+      client[info].role === 'node' &&
+      client[info].hostname !== hostname()
     ) {
-      backupSwitch = client.info.id
-      console.info('new backup switch: ', client.info)
+      backupSwitch = client[info]?.id
+      console.info('new backup switch: ', client[info])
     }
   }
 
   function reassignBackup (client) {
-    if (client.info?.id === backupSwitch) {
+    if (client[info]?.id === backupSwitch) {
       for (let c of clients) {
-        if (c?.info?.role === 'node' && c.info.id !== backupSwitch) {
-          backupSwitch = c.info.id
-          c.info.isBackupSwitch = true
+        if (
+          c[info]?.role === 'node' &&
+          c[info].hostname !== hostname() &&
+          c[info].id !== backupSwitch
+        ) {
+          backupSwitch = c[info].id
+          c[info].isBackupSwitch = true
           return
         }
       }
@@ -252,7 +291,7 @@ export function attachServer (httpServer, secureCtx = {}) {
       uplink: server.uplink ? server.uplink.info : 'no uplink',
       isPrimarySwitch: isSwitch,
       clients: [...clients.values()].map(v => ({
-        ...v.info,
+        ...v[info],
         state: v.readyState
       }))
     })
@@ -262,19 +301,16 @@ export function attachServer (httpServer, secureCtx = {}) {
    *
    * @param {WebSocket} client
    */
+
   function sendStatus (client) {
     sendClient(client, statusReport())
   }
 
-  function setClientInfo (client, msg) {
-    if (typeof client.info === 'undefined') client.info = {}
-    if (!client.info.id) client.info.id = nanoid()
-    if (msg?.role) client.info.role = msg.role
-    if (msg?.hostname) client.info.hostname = msg.hostname
-    if (msg?.pid) client.info.pid = msg.pid
-    if (msg?.mem && msg?.cpu) client.info.telemetry = { ...msg.mem, ...msg.cpu }
-    if (msg?.apps) client.info.apps = msg.apps
-    client.info.isBackupSwitch = backupSwitch === client.info.id
+  function updateTelemetry (client, msg) {
+    if (!client[info]) return
+    if (msg?.telemetry && client[info]) client[info].telemetry = msg.telemetry
+    if (msg?.services && client[info]) client[info].services = msg.services
+    client[info].isBackupSwitch = backupSwitch === client[info].id
   }
 
   // try {
