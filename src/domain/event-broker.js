@@ -289,6 +289,8 @@ class EventBrokerImpl extends EventBroker {
    */
   off (eventName, fn) {
     let retval = false
+    // if no function provided, delete all of them
+    if (!fn) handlers.delete(eventName)
     const funcs = handlers.get(eventName)
     if (funcs) {
       funcs.forEach((func, index, arr) => {

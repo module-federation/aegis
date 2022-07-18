@@ -5,7 +5,9 @@
 import DistributedCache from '../distributed-cache'
 // import EventBus from '../../services/event-bus'
 //import { ServiceMeshServerPlugin as ServiceMesh } from '../../adapters'
-import * as ServiceMesh from '../../services/service-mesh/web-switch/node'
+//import * as ServiceMesh from '../../services/service-mesh/web-switch/node'
+
+import { ServiceMeshClient } from '../../adapters/service-mesh/node'
 
 import { BroadcastChannel, isMainThread, workerData } from 'worker_threads'
 import { ThreadPool } from '../thread-pool'
@@ -48,26 +50,32 @@ function createBroadcastChannel (modelName, broker) {
  */
 export default function brokerEvents (broker, datasources, models) {
   if (isMainThread) {
-    const serviceMesh = ServiceMesh
-    // forward all events from worker threads to the service mesh
-    broker.on('from_worker', async event => serviceMesh.publish(event))
-    // forward reload event to mesh
-    broker.on('reload', async event => serviceMesh.close('reload'))
+    function initServiceMesh (serviceMesh) {
+      broker.off('reload')
+      broker.off('from_worker')
+      // forward reload event to mesh
+      broker.on('reload', async event =>
+        initServiceMesh(new ServiceMeshClient('ws://localhost:80'))
+      )
+      // forward all events from worker threads to the service mesh
+      broker.on('from_worker', async event => serviceMesh.publish(event))
 
-    // forward every event from the service mesh to the workers
-    serviceMesh.subscribe('*', event => {
-      console.debug({ fn: 'from mesh', event })
-      broker.notify('to_worker', event)
-    })
+      // forward every event from the service mesh to the workers
+      serviceMesh.subscribe('*', event => {
+        console.debug({ fn: 'from mesh', event })
+        broker.notify('to_worker', event)
+      })
 
-    const listLocalModels = () =>
-      models
-        .getModelSpecs()
-        .filter(spec => !spec.isCached)
-        .map(spec => spec.modelName)
+      const listLocalModels = () =>
+        models
+          .getModelSpecs()
+          .filter(spec => !spec.isCached)
+          .map(spec => spec.modelName)
 
-    // connect to mesh and provide fn to list installed services
-    serviceMesh.connect({ listServices: listLocalModels })
+      // connect to mesh and provide fn to list installed services
+      serviceMesh.connect({ listServices: listLocalModels })
+    }
+    initServiceMesh(new ServiceMeshClient('ws://localhost:80'))
   } else {
     createBroadcastChannel(workerData.poolName, broker)
     // create listeners that handle events from main

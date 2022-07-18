@@ -8,7 +8,7 @@ import { dns, whois } from './middleware/network/dns'
 export const DnsService = dns
 export const WhoIsService = whois
 
-import { initCertificateService } from './ca-cert'
+import { initCertificateService } from './cert'
 export const CertificateService = {
   provisionCert: initCertificateService(dns, whois)
 }
