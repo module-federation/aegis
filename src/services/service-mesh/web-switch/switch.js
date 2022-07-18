@@ -51,46 +51,6 @@ export function attachServer (httpServer, secureCtx = {}) {
     server: httpServer
   })
 
-  /**
-   * Look for `evidence` of {@link rules} violation and return result
-   * @param {IncomingMessage} request
-   * @returns {boolean} if true, one or more rules has been broken
-   */
-  function breaksRules (request) {
-    console.debug(request.headers)
-
-    const rules = {
-      protocol: {
-        op: 'or',
-        hasWebSwitchHeader: () =>
-          request.headers['sec-websocket-protocol'] === 'webswitch',
-        hasProtocolHeaders: () =>
-          headerList.filter(header => request.headers[header]).length ===
-          headerList.length
-      },
-      rateLimits: {
-        op: 'and',
-        dataTransferedOK: () => true,
-        connectionRateOK: () => true
-      },
-      capacity: {
-        op: 'and',
-        maxConnectionsOK: () => clients.size + 1 < MAX_CLIENTS
-      }
-    }
-
-    const breaks = {
-      and: rules => rules.reduce((truth, rule) => rule() && truth),
-      or: rules => rules.reduce((truth, rule) => rule() || truth)
-    }
-
-    const extract = rule =>
-      Object.values(rules[rule]).filter(r => typeof r === 'function')
-
-    const broken = rule => breaks[rules[rule].op](extract(rule))
-    return Object.keys(rules).filter(broken)
-  }
-
   function foundHeaders (request) {
     const list = Object.values(headers)
     const node = list.filter(h => request.headers[h]).length === list.length
