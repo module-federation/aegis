@@ -51,12 +51,15 @@ function createBroadcastChannel (modelName, broker) {
 export default function brokerEvents (broker, datasources, models) {
   if (isMainThread) {
     function initServiceMesh (serviceMesh) {
+      //const serviceMesh = new ServiceMeshClient('ws://localhost:80')
       broker.off('reload')
       broker.off('from_worker')
+      broker.off('to_worker')
       // forward reload event to mesh
-      broker.on('reload', async event =>
-        initServiceMesh(new ServiceMeshClient('ws://localhost:80'))
-      )
+      broker.on('reload', async event => {
+        //serviceMesh.close(4777, event.eventName)
+        initServiceMesh(new ServiceMeshClient())
+      })
       // forward all events from worker threads to the service mesh
       broker.on('from_worker', async event => serviceMesh.publish(event))
 
@@ -75,7 +78,8 @@ export default function brokerEvents (broker, datasources, models) {
       // connect to mesh and provide fn to list installed services
       serviceMesh.connect({ listServices: listLocalModels })
     }
-    initServiceMesh(new ServiceMeshClient('ws://localhost:80'))
+
+    initServiceMesh(new ServiceMeshClient())
   } else {
     createBroadcastChannel(workerData.poolName, broker)
     // create listeners that handle events from main

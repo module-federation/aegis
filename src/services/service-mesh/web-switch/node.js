@@ -754,10 +754,9 @@ export class ServiceMeshClient extends EventEmitter {
     console.debug({ connect: this.telemetry() })
     this.ws = new WebSocket(this.url)
     this.ws.on('close', code => {
-      if (code !== 4999) {
-        this.close(4988, 'ack')
-        setTimeout(() => this.connect(), 8000)
-      }
+      if (code === 4999) return
+      this.close(4988, 'ack')
+      setTimeout(() => this.connect(), 8000)
     })
     this.ws.on('open', () => {
       console.debug({ open: this.telemetry() })
@@ -765,9 +764,9 @@ export class ServiceMeshClient extends EventEmitter {
       this.heartbeat()
     })
     this.ws.on('message', msg => {
-      const obj = JSON.parse(msg.toString())
-      this.emit(obj.eventName || 'undef', obj)
-      this.listeners('*').forEach(cb => cb(obj))
+      const event = JSON.parse(msg.toString())
+      this.emit(event.eventName, event)
+      this.listeners('*').forEach(cb => cb(event))
     })
     this.ws.on('pong', () => (this.pong = true))
   }

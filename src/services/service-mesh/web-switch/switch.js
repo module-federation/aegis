@@ -41,6 +41,7 @@ export function attachServer (httpServer, secureCtx = {}) {
    * @type {Map<string,WebSocket>}
    */
   const clients = new Map()
+  const history = new Map()
 
   /**
    * WebSocket {@link server} that may serve as the webswitch.
@@ -51,22 +52,37 @@ export function attachServer (httpServer, secureCtx = {}) {
     server: httpServer
   })
 
+  /**
+   *
+   * @param {IncomingMessage} request
+   * @returns
+   */
   function foundHeaders (request) {
     const list = Object.values(headers)
     const node = list.filter(h => request.headers[h]).length === list.length
     const browser = request.headers['sec-websocket-protocol'] === 'webswitch'
-    return node || browser
+    const accept = node || browser
+    if (!accept)
+      console.log(
+        'reject connection from %s: missing protocol headers',
+        request.socket.remoteAddress
+      )
+    return accept
   }
 
+  // function findClient (request) {
+  //   const host = request.headers[headers.host]
+  //   const pid = request.headers[headers.pid]
+  //   return history.get(host + pid)
+  // }
+
   function withinRateLimits (request) {
-    const client = findClient(request)
-    if (client) return true
+    return true
+    // const client = findClient(request)
+    // if (client) return client.checkRateLimits()
   }
 
   server.shouldHandle = request => {
-    // const broken = breaksRules(request)
-    // console.info(`protocol violations: ${broken}`)
-    // return !(broken.length > 0)
     return foundHeaders(request) && withinRateLimits(request)
   }
 
@@ -76,18 +92,17 @@ export function attachServer (httpServer, secureCtx = {}) {
     })
   })
 
-  function setClientInfo (ws, request) {
-    ws[info] = {}
-    ws[info].id = nanoid()
-    ws[info].pid = request.headers[headers.pid] || Math.floor(Math.random())
-    ws[info].host = request.headers[headers.host] || request.headers.host
-    ws[info].role = request.headers[headers.role] || 'brownser'
-    ws[info].errors = 0
-    ws[info].uniqueName = ws[info].host + ws[info].pid
+  function setClientInfo (client, request) {
+    client[info] = {}
+    client[info].id = nanoid()
+    client[info].pid = request.headers[headers.pid] || Math.floor(Math.random())
+    client[info].host = request.headers[headers.host] || request.headers.host
+    client[info].role = request.headers[headers.role] || 'browser'
+    client[info].errors = 0
+    client[info].uniqueName = client[info].host + client[info].pid
   }
 
   function trackClient (client, request) {
-    console.debug(trackClient.name)
     setClientInfo(client, request)
 
     if (clients.has(client[info].uniqueName)) {
@@ -125,8 +140,8 @@ export function attachServer (httpServer, secureCtx = {}) {
 
     client.on('message', function (message) {
       try {
-        console.debug(clients)
         const msg = JSON.parse(message.toString())
+        console.debug({ fn: 'webswitch server received', msg })
 
         if (client[info].initialized) {
           if (msg === 'status') {
@@ -139,12 +154,11 @@ export function attachServer (httpServer, secureCtx = {}) {
 
         assignBackup(client)
         // tell client if its now a backup switch or not
-        sendClient(client, JSON.stringify(client[info]))
-        // look for telemetry data in msg
         updateTelemetry(client, msg)
+
+        sendClient(client, JSON.stringify(client[info]))
         // tell everyone about new node (ignore browsers)
-        if (client[info] && client[info].role === 'node')
-          broadcast(statusReport(), client)
+        if (client[info].role === 'node') broadcast(statusReport(), client)
         return
       } catch (e) {
         console.error(client.on.name, 'on message', e)
