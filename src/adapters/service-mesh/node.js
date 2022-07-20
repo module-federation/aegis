@@ -47,8 +47,8 @@ const activeHost =
 const protocol = config.isSwitch ? activeProto : config.protocol
 const port = config.isSwitch ? activePort : config.port
 const host = config.isSwitch ? activeHost : config.host
-const isPrimary = /truel/i.test(process.env.IS_SWITCH)
-  || (config.isSwitch && typeof process.env.IS_SWITCH === 'undefined')
+const isPrimary = /true/i.test(process.env.SWITCH) ||
+  (typeof process.env.SWITCH === 'undefined' && config.isSwitch)
 const isBackup = config.isBackupSwitch
 
 const URL = () =>
