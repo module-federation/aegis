@@ -41,7 +41,8 @@
     "regenerator-runtime": "0.13.9",
     "sharedmap": "^1.2.0",
     "webpack": "^5.66.0",
-    "whois": "2.13.9"
+    "whois": "2.13.9",
+    "ws": "^8.8.0"
   },
   "devDependencies": {
     "@babel/cli": "7.18.6",

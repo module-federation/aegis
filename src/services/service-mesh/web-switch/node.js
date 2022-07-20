@@ -110,14 +110,14 @@ function assumeSwitchRole () {
  *
  * @returns {Promise<string>} url
  */
-async function resolveServiceUrl () {
+async function resolveUrl () {
   const dns = Dns()
   let url
 
   return new Promise(function (resolve) {
     console.log('resolving service url')
     dns.on('response', function (response) {
-      debug && console.debug({ fn: resolveServiceUrl.name, response })
+      debug && console.debug({ fn: resolveUrl.name, response })
 
       const fromSwitch = response.answers.find(
         answer =>
@@ -324,18 +324,21 @@ function send (event) {
 function startHeartbeat () {
   let receivedPong = true
 
-  ws.addListener('pong', function () {
+  ws.on('pong', function () {
     console.assert(!debug, 'received pong')
     receivedPong = true
   })
 
   const intervalId = setInterval(async function () {
     if (receivedPong) {
-      receivedPong = false
-
       try {
-        if (ws) ws.ping(0x9)
-        else clearInterval(intervalId)
+        if (ws) {
+          receivedPong = false
+          ws.ping(0x9)
+        } else {
+          clearInterval(intervalId)
+          ws.removeAllListeners()
+        }
       } catch (error) {
         console.error({ fn: 'interval', error })
       }
@@ -344,6 +347,8 @@ function startHeartbeat () {
 
     try {
       clearInterval(intervalId)
+      if (ws) ws.removeAllListeners()
+      receivedPong = true
       broker.emit(TIMEOUTEVENT, { error: 'server unresponsive' })
       console.error({
         fn: startHeartbeat.name,
@@ -418,7 +423,7 @@ function getProtocolHeaders () {
 async function connectToServiceMesh (options = {}) {
   try {
     if (!ws) {
-      if (!serviceUrl) serviceUrl = await resolveServiceUrl()
+      if (!serviceUrl) serviceUrl = await resolveUrl()
       console.info({ fn: connectToServiceMesh.name, serviceUrl })
 
       ws = new WebSocket(serviceUrl, {
@@ -438,13 +443,13 @@ async function connectToServiceMesh (options = {}) {
 
       ws.on('close', function (code, reason) {
         console.log({
-          msg: 'connection closed, terminating socket',
+          msg: 'wd',
           code,
           reason: reason.toString()
         })
-
+        ws.close(4987, 'ack')
         // terminate on close
-        if (ws) ws.terminate()
+        //if (ws) ws.terminate()
       })
 
       ws.on('message', async function (message) {
@@ -513,7 +518,7 @@ async function reconnect () {
 
       if (ws) {
         console.warn('on retry, terminating existing socket')
-        ws.close(4999, 'close for reconnect')
+        //ws.close(4999, 'close for reconnect')
         stopping = true
         ws = null
       }
@@ -576,14 +581,258 @@ export function close (reason) {
 
     console.warn('connection closed, terminating socket')
     ws.close(4960, reason)
-
-    // check after a while if its closed,
-    setTimeout(() => {
-      if (ws?.readyState !== ws?.CLOSED) ws.terminate()
-    }, 2500)
-
     ws = null
   } catch (error) {
     console.error({ fn: close.name, error })
+  }
+}
+
+export class ServiceLocator {
+  constructor (name, hostname, port, protocol, priority) {
+    this.name = name
+    this.hostname = hostname
+    this.port = port
+    this.protocol = protocol
+    this.priority = priority
+  }
+
+  url () {
+    const dns = Dns()
+    let url
+
+    return new Promise(function (resolve) {
+      console.log('resolving service url')
+      dns.on('response', function (response) {
+        debug && console.debug({ fn: resolveUrl.name, response })
+
+        const fromSwitch = response.answers.find(
+          answer =>
+            answer.name === SERVICENAME &&
+            answer.type === 'SRV' &&
+            DnsPriority.matches(answer.data)
+        )
+
+        if (fromSwitch) {
+          url = _url(
+            fromSwitch.data.proto,
+            fromSwitch.data.target,
+            fromSwitch.data.port
+          )
+          console.info({
+            msg: 'found dns service record for',
+            SERVICENAME,
+            url
+          })
+          resolve(url)
+        }
+      })
+
+      /**
+       * Query DNS for the webswitch service.
+       * Recursively retry by incrementing a
+       * counter we pass to ourselves on the
+       * stack.
+       *
+       * @param {number} retries number of query attempts
+       * @returns
+       */
+      function runQuery (retries = 0) {
+        if (retries > maxRetries / 3) {
+          DnsPriority.setMedium()
+          if (retries > maxRetries / 2) {
+            DnsPriority.setLow()
+          }
+          assumeSwitchRole()
+        }
+        // query the service name
+        dns.query({
+          questions: [
+            {
+              name: SERVICENAME,
+              type: 'SRV',
+              data: DnsPriority.getCurrent()
+            }
+          ]
+        })
+        if (url) {
+          resolve(url)
+          return
+        }
+        setTimeout(() => runQuery(++retries), retryInterval)
+      }
+
+      dns.on('query', function (query) {
+        debug && console.debug('got a query packet:', query)
+        const forSwitch = query.questions.filter(
+          question =>
+            question.name === SERVICENAME || question.name === HOSTNAME
+        )
+
+        if (!forSwitch[0]) {
+          console.assert(!debug, {
+            fn: 'dns query',
+            msg: 'no questions',
+            forSwitch
+          })
+          return
+        }
+
+        if (config.isSwitch || (isBackupSwitch && activateBackup)) {
+          const answer = {
+            answers: [
+              {
+                name: SERVICENAME,
+                type: 'SRV',
+                data: {
+                  proto: activeProto,
+                  port: activePort,
+                  target: activeHost,
+                  weight: config.weight,
+                  priority: config.priority
+                }
+              }
+            ]
+          }
+          console.info({
+            fn: dns.on.name + "('query')",
+            isSwitch: config.isSwitch,
+            isBackupSwitch,
+            activateBackup,
+            msg: 'answering query packet',
+            forSwitch,
+            answer
+          })
+          dns.respond(answer)
+        }
+      })
+
+      runQuery()
+    })
+  }
+}
+
+export class ServiceMeshClient extends EventEmitter {
+  constructor (url = null) {
+    super()
+    this.ws = null
+    this.url = url || 'wss://aegis.module-federation.org:443'
+    this.pong = true
+    this.timerId = 0
+  }
+
+  options (options) {
+    if (options) this.opts = options
+  }
+
+  services () {
+    return typeof this.opts?.listServices === 'function'
+      ? this.opts.listServices()
+      : []
+  }
+
+  telemetry () {
+    return {
+      proto: SERVICENAME,
+      hostname: os.hostname(),
+      role: 'node',
+      pid: process.pid,
+      telemetry: { mem: process.memoryUsage(), cpu: process.cpuUsage() },
+      services: this.services(),
+      state: this.ws?.readyState || 'undefined'
+    }
+  }
+
+  async resolve () {
+    const resolver = new ServiceLocator()
+    return resolver.url()
+  }
+
+  async connect (options = null) {
+    if (this.ws) return
+    this.options(options)
+    this.url = this.url || (await this.resolve())
+    console.debug({ connect: this.telemetry() })
+    this.ws = new WebSocket(this.url)
+    this.ws.on('close', code => {
+      if (code === 4999) return
+      this.close(4988, 'ack')
+      setTimeout(() => this.connect(), 8000)
+    })
+    this.ws.on('open', () => {
+      console.debug({ open: this.telemetry() })
+      this.send(this.telemetry())
+      this.heartbeat()
+    })
+    this.ws.on('message', msg => {
+      const event = JSON.parse(msg.toString())
+      this.emit(event.eventName, event)
+      this.listeners('*').forEach(cb => cb(event))
+    })
+    this.ws.on('pong', () => (this.pong = true))
+  }
+
+  heartbeat () {
+    if (this.pong) {
+      this.pong = false
+      this.ws.ping()
+      setTimeout(() => this.heartbeat(), 6000)
+    } else {
+      console.debug('timeout')
+    }
+  }
+
+  // heartbeat () {
+
+  //   if (this.timerId) return
+  //   this.on('pong', data => {
+  //     this.pong = true
+  //     console.debug({ pong: data })
+  //   })
+  //   this.timerId = setInterval(() => {
+  //     if (this.pong) {
+  //       this.pong = false
+  //       this.ws.ping('webswitch', null, error => console.log(error))
+  //     } else {
+  //       console.error({ timeout: this.telemetry() })
+  //       this.close(4977, 'timeout')
+  //       setTimeout(() => this.connect(), 6000)
+  //     }
+  //   }, 6000)
+  // }
+
+  format (msg) {
+    if (msg instanceof ArrayBuffer) {
+      // binary frame
+      const view = new DataView(msg)
+      console.debug('arraybuffer', view.getInt32(0))
+      return msg
+    }
+    if (typeof msg === 'object') return JSON.stringify(msg)
+    return msg
+  }
+
+  send (msg) {
+    this.ws.send(JSON.stringify(msg))
+    // if (this.ws?.readyState === this.ws.OPEN) {
+    //   const breaker = CircuitBreaker('webswitch', this.ws.send)
+    //   breaker.invoke.call(this, this.format(msg))
+    // } else setTimeout(() => send(msg), 4000)
+  }
+
+  publish (msg) {
+    this.connect()
+    this.send(msg)
+  }
+
+  subscribe (eventName, callback) {
+    this.on(eventName, callback)
+  }
+
+  close (code, reason) {
+    if (!ws) return
+    this.ws.close(code, reason)
+    clearInterval(this.timerId)
+    this.timerId = 0
+    this.ws = null
   }
 }

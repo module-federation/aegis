@@ -5,7 +5,8 @@ export * as StorageAdapter from './persistence'
 export { ServerlessAdapter } from './serverless'
 export * as controllers from './controllers'
 export * as webassembly from './webassembly'
-import * as ServiceMeshPluginAdapter from './service-mesh'
+import * as ServiceMeshServerImpl from './service-mesh/server'
+import * as ServiceMeshClientImpl from './service-mesh/client'
 import { ServiceMeshPlugin } from '../services'
 
 /**
@@ -57,9 +58,21 @@ import { ServiceMeshPlugin } from '../services'
  * @type {ServiceMeshAdapter}
  */
 export const ServiceMeshAdapter = {
-  ...Object.keys(ServiceMeshPluginAdapter)
+  ...Object.keys(ServiceMeshServerImpl)
     .map(port => ({
-      [port]: ServiceMeshPluginAdapter[port](ServiceMeshPlugin)
+      [port]: ServiceMeshServerImpl[port](ServiceMeshPlugin)
     }))
     .reduce((a, b) => ({ ...a, ...b }))
 }
+
+/**
+ * Bind the adapter.
+ * @type {ServiceMeshAdapter}
+ */
+//  export const ServiceMeshClientPlugin = {
+//   ...Object.keys(ServiceMeshServerImpl)
+//     .map(port => ({
+//       [port]: ServiceMeshClientImpl[port](ServiceMeshPlugin)
+//     }))
+//     .reduce((a, b) => ({ ...a, ...b }))
+// }
