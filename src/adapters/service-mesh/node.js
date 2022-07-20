@@ -22,6 +22,7 @@ import { sign, verify, constants } from 'crypto'
 import fs from 'fs'
 import path from 'path'
 import { ClientSession } from 'mongodb'
+import { AsyncLocalStorage } from 'async_hooks'
 
 const HOSTNAME = 'webswitch.local'
 const SERVICENAME = 'webswitch'
@@ -54,50 +55,51 @@ const URL = () =>
 
 console.debug(URL())
 
-let sactivateBackup = false
 let uplinkCallback
 
 export class ServiceLocator {
   constructor ({
     name,
-    isPrimary = false,
-    isBackup = false,
+    primary = false,
+    backup = false,
     maxRetries = 20,
     retryInterval = 5000
   } = {}) {
     if (!name) throw new Error('missing service name')
-    this.url
+    this.url = null
     this.name = name
     this.dns = Dns()
-    this.isPrimary = isPrimary
-    this.isBackup = isBackup
+    this.isPrimary = primary
+    this.isBackup = backup
     this.maxRetries = maxRetries
     this.retryInterval = retryInterval
     this.privateKey = fs.readFileSync(
-      path.join(process.cwd(), 'cert/mesh/privateKey.pem')
+      path.join(process.cwd(), 'cert/mesh/privateKey.pem'),
+      'utf-8'
     )
     this.publicKey = fs.readFileSync(
-      path.join(process.cwd(), 'cert/mesh/publicKey.pem')
+      path.join(process.cwd(), 'cert/mesh/publicKey.pem'),
+      'utf-8'
     )
     this.verifiable = 'i am the ocean of lakes'
-    this.signature = this.createSignature()
+    this.signature = this.createSignature(this.privateKey, this.verifiable)
   }
 
-  createSignature () {
-    const signature = sign('sha256', Buffer.from(this.verifiableData), {
-      key: this.privateKey,
-      padding: require('crypto').constants.RSA_PKCS1_PSS_PADDING
+  createSignature (privateKey, data) {
+    const signature = sign('sha256', Buffer.from(data), {
+      key: privateKey,
+      padding: constants.RSA_PKCS1_PSS_PADDING
     })
     console.log(signature.toString('base64'))
     return signature
   }
 
-  verifySignature (signature) {
+  verifySignature (signature, data) {
     return verify(
       'sha256',
-      Buffer.from(this.verifiableData),
+      Buffer.from(data),
       {
-        key: this.publicKey,
+        key: publicKey,
         padding: constants.RSA_PKCS1_PSS_PADDING
       },
       Buffer.from(signature.toString('base64'), 'base64')
@@ -117,12 +119,15 @@ export class ServiceLocator {
     // have we found the url?
     if (this.url) return
 
+    if (retries > this.maxRetries) this.activateBackup = true
+
+    console.debug('looking for srv %s retries: %d', this.name, retries)
     // then query the service name
     this.dns.query({
       questions: [
         {
           name: this.name,
-          type: this.type
+          type: 'SRV'
         }
       ]
     })
@@ -131,37 +136,32 @@ export class ServiceLocator {
     setTimeout(() => this.runQuery(++retries), this.retryInterval)
   }
 
-  assumeServiceRole (retries) {
-    return this.isPrimary || (retries > this.maxRetries && this.isBackup)
+  runAsServer () {
+    return this.isPrimary || (this.isBackup && this.activateBackup)
   }
 
-  url () {
+  resolveUrl () {
     return new Promise(resolve => {
       console.log('resolving service url')
 
-      if (this.isPrimary) resolve(this.url)
-
       this.dns.on('response', response => {
-        debug && console.debug({ fn: resolveUrl.name, response })
+        debug && console.debug({ fn: this.resolveUrl.name, response })
 
-        const fromService = response.answers.find(
-          answer =>
-            answer.name === this.name &&
-            answer.type === 'SRV' &&
-            answer.data?.signature &&
-            this.verifySignature(answer.data.signature)
+        const fromServer = response.answers.find(
+          answer => answer.name === this.name && answer.type === 'SRV' //&&
+          //answer.data?.signature //&&
+          //this.verifySignature(this.publicKey, answer.data.signature)
         )
 
-        if (fromService) {
-          const { proto, target, port } = fromService.data
-          this.url = `${proto}://${target}:${port}`
+        if (fromServer) {
+          const { proto, target, port } = fromServer.data
+          this.url = `ws://${target}:${port}`
 
           console.info({
             msg: 'found dns service record for',
             service: this.name,
             url: this.url
           })
-
           resolve(this.url)
         }
       })
@@ -169,18 +169,18 @@ export class ServiceLocator {
       this.dns.on('query', query => {
         debug && console.debug('got a query packet:', query)
 
-        const fromConsumer = query.questions.filter(
+        const fromClient = query.questions.filter(
           question => question.name === this.name
         )
 
-        if (this.assumeServiceRole()) {
+        if (fromClient && this.runAsServer()) {
           const answer = {
             answers: [
               {
                 name: this.name,
-                type: this.type,
+                type: 'SRV',
                 data: {
-                  proto: activeProto,
+                  proto: 'ws',
                   port: activePort,
                   target: activeHost,
                   weight: config.weight,
@@ -191,12 +191,12 @@ export class ServiceLocator {
             ]
           }
           console.info({
-            fn: dns.on.name + "('query')",
+            fn: this.dns.on.name + "('query')",
             isSwitch: config.isSwitch,
             isBackupSwitch: isBackup,
-            activateBackup,
+            activateBackup: this.activateBackup,
             msg: 'asserting service role',
-            fromConsumer,
+            fromClient,
             answer
           })
           this.dns.respond(answer)
@@ -225,13 +225,9 @@ export class ServiceMeshClient extends EventEmitter {
     }
   }
 
-  options (options) {
-    if (options) this.opts = options || {}
-  }
-
   services () {
-    return typeof this.opts.listServices === 'function'
-      ? this.opts.listServices()
+    return typeof this.options.listServices === 'function'
+      ? this.options.listServices()
       : []
   }
 
@@ -254,13 +250,14 @@ export class ServiceMeshClient extends EventEmitter {
       primary: this.isPrimary,
       backup: this.isBackup
     })
-    return locate.url()
+    return locate.resolveUrl()
   }
 
   async connect (options = null) {
     if (this.ws) return
-    this.options(options)
+    this.options = options || {}
     this.url = this.url || (await this.resolveUrl())
+    if (this.isPrimary) this.resolveUrl()
     this.ws = new WebSocket(this.url, {
       headers: this.headers
     })
@@ -322,13 +319,13 @@ export class ServiceMeshClient extends EventEmitter {
     this.ws.send(JSON.stringify(msg))
     // if (this.ws?.readyState === this.ws.OPEN) {
     //   const breaker = CircuitBreaker('webswitch', this.ws.send)
-    //   breaker.invoke(this.format(msg))
+    //   breaker.invoke.call(this, this.format(msg))
     // } else setTimeout(() => breaker.invoke.call(this, this.format(msg)), 4000)
   }
 
-  publish (msg) {
+  async publish (msg) {
     console.debug({ fn: this.publish.name, msg })
-    this.connect()
+    await this.connect()
     this.send(msg)
   }
 
