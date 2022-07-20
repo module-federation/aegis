@@ -47,7 +47,8 @@ const activeHost =
 const protocol = config.isSwitch ? activeProto : config.protocol
 const port = config.isSwitch ? activePort : config.port
 const host = config.isSwitch ? activeHost : config.host
-const isPrimary = config.isSwitch
+const isPrimary = /truel/i.test(process.env.IS_SWITCH)
+  || (config.isSwitch && typeof process.env.IS_SWITCH === 'undefined')
 const isBackup = config.isBackupSwitch
 
 const URL = () =>
@@ -58,7 +59,7 @@ console.debug(URL())
 let uplinkCallback
 
 export class ServiceLocator {
-  constructor ({
+  constructor({
     name,
     primary = false,
     backup = false,
@@ -85,7 +86,7 @@ export class ServiceLocator {
     this.signature = this.createSignature(this.privateKey, this.verifiable)
   }
 
-  createSignature (privateKey, data) {
+  createSignature(privateKey, data) {
     const signature = sign('sha256', Buffer.from(data), {
       key: privateKey,
       padding: constants.RSA_PKCS1_PSS_PADDING
@@ -94,7 +95,7 @@ export class ServiceLocator {
     return signature
   }
 
-  verifySignature (signature, data) {
+  verifySignature(signature, data) {
     return verify(
       'sha256',
       Buffer.from(data),
@@ -115,7 +116,7 @@ export class ServiceLocator {
    * @param {number} retries number of query attempts
    * @returns
    */
-  runQuery (retries = 0) {
+  runQuery(retries = 0) {
     // have we found the url?
     if (this.url) return
 
@@ -136,11 +137,11 @@ export class ServiceLocator {
     setTimeout(() => this.runQuery(++retries), this.retryInterval)
   }
 
-  runAsServer () {
+  runAsService() {
     return this.isPrimary || (this.isBackup && this.activateBackup)
   }
 
-  resolveUrl () {
+  resolveUrl() {
     return new Promise(resolve => {
       console.log('resolving service url')
 
@@ -173,7 +174,7 @@ export class ServiceLocator {
           question => question.name === this.name
         )
 
-        if (fromClient && this.runAsServer()) {
+        if (fromClient && this.runAsService()) {
           const answer = {
             answers: [
               {
@@ -209,7 +210,7 @@ export class ServiceLocator {
 }
 
 export class ServiceMeshClient extends EventEmitter {
-  constructor (url = null) {
+  constructor(url = null) {
     super()
     this.ws = null
     this.url = URL()
@@ -225,13 +226,13 @@ export class ServiceMeshClient extends EventEmitter {
     }
   }
 
-  services () {
+  services() {
     return typeof this.options.listServices === 'function'
       ? this.options.listServices()
       : []
   }
 
-  telemetry () {
+  telemetry() {
     return {
       proto: this.name,
       hostname: os.hostname(),
@@ -243,7 +244,7 @@ export class ServiceMeshClient extends EventEmitter {
     }
   }
 
-  async resolveUrl () {
+  async resolveUrl() {
     const locate = new ServiceLocator({
       name: this.name,
       url: this.url,
@@ -253,7 +254,7 @@ export class ServiceMeshClient extends EventEmitter {
     return locate.resolveUrl()
   }
 
-  async connect (options = null) {
+  async connect(options = null) {
     if (this.ws) return
     this.options = options || {}
     this.url = this.url || (await this.resolveUrl())
@@ -290,7 +291,7 @@ export class ServiceMeshClient extends EventEmitter {
     this.ws.on('pong', () => (this.pong = true))
   }
 
-  heartbeat () {
+  heartbeat() {
     if (this.pong) {
       this.pong = false
       this.ws.ping()
@@ -304,7 +305,7 @@ export class ServiceMeshClient extends EventEmitter {
     }
   }
 
-  format (msg) {
+  format(msg) {
     if (msg instanceof ArrayBuffer) {
       // binary frame
       const view = new DataView(msg)
@@ -315,25 +316,27 @@ export class ServiceMeshClient extends EventEmitter {
     return msg
   }
 
-  send (msg) {
-    this.ws.send(JSON.stringify(msg))
-    // if (this.ws?.readyState === this.ws.OPEN) {
-    //   const breaker = CircuitBreaker('webswitch', this.ws.send)
-    //   breaker.invoke.call(this, this.format(msg))
-    // } else setTimeout(() => breaker.invoke.call(this, this.format(msg)), 4000)
+  send(msg) {
+    if (this.ws?.readyState === this.ws.OPEN) {
+      this.ws.send(JSON.stringify(msg))
+
+      //   const breaker = CircuitBreaker('webswitch', this.ws.send)
+      //   breaker.invoke.call(this, this.format(msg))
+      // } else setTimeout(() => breaker.invoke.call(this, this.format(msg)), 4000)
+    }
   }
 
-  async publish (msg) {
+  async publish(msg) {
     console.debug({ fn: this.publish.name, msg })
     await this.connect()
     this.send(msg)
   }
 
-  subscribe (eventName, callback) {
+  subscribe(eventName, callback) {
     this.on(eventName, callback)
   }
 
-  close (code, reason) {
+  close(code, reason) {
     if (!this.ws || this.ws.readyState !== this.ws.OPEN) return
     this.ws.removeAllListeners()
     this.ws.close(code, reason)
