@@ -23,6 +23,7 @@ import fs from 'fs'
 import path from 'path'
 import { ClientSession } from 'mongodb'
 import { AsyncLocalStorage } from 'async_hooks'
+import { locale } from 'core-js'
 
 const HOSTNAME = 'webswitch.local'
 const SERVICENAME = 'webswitch'
@@ -47,7 +48,8 @@ const activeHost =
 const protocol = config.isSwitch ? activeProto : config.protocol
 const port = config.isSwitch ? activePort : config.port
 const host = config.isSwitch ? activeHost : config.host
-const isPrimary = /true/i.test(process.env.SWITCH) ||
+const isPrimary =
+  /true/i.test(process.env.SWITCH) ||
   (typeof process.env.SWITCH === 'undefined' && config.isSwitch)
 const isBackup = config.isBackupSwitch
 
@@ -59,7 +61,7 @@ console.debug(URL())
 let uplinkCallback
 
 export class ServiceLocator {
-  constructor({
+  constructor ({
     name,
     primary = false,
     backup = false,
@@ -86,7 +88,7 @@ export class ServiceLocator {
     this.signature = this.createSignature(this.privateKey, this.verifiable)
   }
 
-  createSignature(privateKey, data) {
+  createSignature (privateKey, data) {
     const signature = sign('sha256', Buffer.from(data), {
       key: privateKey,
       padding: constants.RSA_PKCS1_PSS_PADDING
@@ -95,7 +97,7 @@ export class ServiceLocator {
     return signature
   }
 
-  verifySignature(signature, data) {
+  verifySignature (signature, data) {
     return verify(
       'sha256',
       Buffer.from(data),
@@ -116,7 +118,7 @@ export class ServiceLocator {
    * @param {number} retries number of query attempts
    * @returns
    */
-  runQuery(retries = 0) {
+  runQuery (retries = 0) {
     // have we found the url?
     if (this.url) return
 
@@ -137,16 +139,16 @@ export class ServiceLocator {
     setTimeout(() => this.runQuery(++retries), this.retryInterval)
   }
 
-  runAsService() {
+  runAsService () {
     return this.isPrimary || (this.isBackup && this.activateBackup)
   }
 
-  resolveUrl() {
+  consumeService () {
     return new Promise(resolve => {
       console.log('resolving service url')
 
       this.dns.on('response', response => {
-        debug && console.debug({ fn: this.resolveUrl.name, response })
+        debug && console.debug({ fn: this.consumeService.name, response })
 
         const fromServer = response.answers.find(
           answer => answer.name === this.name && answer.type === 'SRV' //&&
@@ -167,50 +169,44 @@ export class ServiceLocator {
         }
       })
 
-      this.dns.on('query', query => {
-        debug && console.debug('got a query packet:', query)
-
-        const fromClient = query.questions.filter(
-          question => question.name === this.name
-        )
-
-        if (fromClient && this.runAsService()) {
-          const answer = {
-            answers: [
-              {
-                name: this.name,
-                type: 'SRV',
-                data: {
-                  proto: 'ws',
-                  port: activePort,
-                  target: activeHost,
-                  weight: config.weight,
-                  priority: config.priority,
-                  signature: this.signature
-                }
-              }
-            ]
-          }
-          console.info({
-            fn: this.dns.on.name + "('query')",
-            isSwitch: config.isSwitch,
-            isBackupSwitch: isBackup,
-            activateBackup: this.activateBackup,
-            msg: 'asserting service role',
-            fromClient,
-            answer
-          })
-          this.dns.respond(answer)
-        }
-      })
-
       this.runQuery()
+    })
+  }
+
+  provideService () {
+    this.dns.on('query', query => {
+      debug && console.debug('got a query packet:', query)
+
+      const fromClient = query.questions.find(
+        question => question.name === this.name
+      )
+
+      if (fromClient && this.runAsService()) {
+        const answer = {
+          answers: [
+            {
+              name: this.name,
+              type: 'SRV',
+              data: {
+                proto: 'ws',
+                port: activePort,
+                target: activeHost,
+                weight: config.weight,
+                priority: config.priority,
+                signature: this.signature
+              }
+            }
+          ]
+        }
+        console.info('assumng service role')
+        this.dns.respond(answer)
+      }
     })
   }
 }
 
 export class ServiceMeshClient extends EventEmitter {
-  constructor(url = null) {
+  constructor (url = null) {
     super()
     this.ws = null
     this.url = URL()
@@ -226,13 +222,13 @@ export class ServiceMeshClient extends EventEmitter {
     }
   }
 
-  services() {
+  services () {
     return typeof this.options.listServices === 'function'
       ? this.options.listServices()
       : []
   }
 
-  telemetry() {
+  telemetry () {
     return {
       proto: this.name,
       hostname: os.hostname(),
@@ -244,28 +240,29 @@ export class ServiceMeshClient extends EventEmitter {
     }
   }
 
-  async resolveUrl() {
+  async resolveUrl () {
     const locate = new ServiceLocator({
       name: this.name,
       url: this.url,
       primary: this.isPrimary,
       backup: this.isBackup
     })
-    return locate.resolveUrl()
+    if (this.isPrimary) {
+      locate.provideService()
+      return URL()
+    }
+    return locate.consumeService()
   }
 
-  async connect(options = null) {
+  async connect (options = null) {
     if (this.ws) return
     this.options = options || {}
-    this.url = this.url || (await this.resolveUrl())
-    if (this.isPrimary) this.resolveUrl()
+    this.url = await this.resolveUrl()
     this.ws = new WebSocket(this.url, {
       headers: this.headers
     })
     this.ws.on('close', (code, reason) => {
       console.log('received close frame', code, reason.toString())
-      this.close(code, reason)
-      setTimeout(() => this.connect(), 8000)
     })
     this.ws.on('open', () => {
       console.log('connection open')
@@ -291,7 +288,7 @@ export class ServiceMeshClient extends EventEmitter {
     this.ws.on('pong', () => (this.pong = true))
   }
 
-  heartbeat() {
+  heartbeat () {
     if (this.pong) {
       this.pong = false
       this.ws.ping()
@@ -305,7 +302,7 @@ export class ServiceMeshClient extends EventEmitter {
     }
   }
 
-  format(msg) {
+  format (msg) {
     if (msg instanceof ArrayBuffer) {
       // binary frame
       const view = new DataView(msg)
@@ -316,7 +313,7 @@ export class ServiceMeshClient extends EventEmitter {
     return msg
   }
 
-  send(msg) {
+  send (msg) {
     if (this.ws?.readyState === this.ws.OPEN) {
       this.ws.send(JSON.stringify(msg))
 
@@ -326,17 +323,17 @@ export class ServiceMeshClient extends EventEmitter {
     }
   }
 
-  async publish(msg) {
+  async publish (msg) {
     console.debug({ fn: this.publish.name, msg })
     await this.connect()
     this.send(msg)
   }
 
-  subscribe(eventName, callback) {
+  subscribe (eventName, callback) {
     this.on(eventName, callback)
   }
 
-  close(code, reason) {
+  close (code, reason) {
     if (!this.ws || this.ws.readyState !== this.ws.OPEN) return
     this.ws.removeAllListeners()
     this.ws.close(code, reason)
