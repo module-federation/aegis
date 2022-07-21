@@ -9,15 +9,14 @@ const SERVICENAME = 'webswitch'
 const CLIENT_MAX_ERRORS = 3
 const CLIENT_MAX_RETRIES = 10
 
-const isPrimary =
-  /true/i.test(process.env.SWITCH) ||
-  (typeof process.env.SWITCH === 'undefined' && config.isSwitch)
-
 const startTime = Date.now()
 const uptime = () => Math.round(Math.abs((Date.now() - startTime) / 1000 / 60))
 const configRoot = require('../../../config').hostConfig
 const config = configRoot.services.serviceMesh.WebSwitch
 const debug = /true/i.test(config.debug) || /true/i.test(process.env.DEBUG)
+const isPrimary =
+  /true/i.test(process.env.SWITCH) ||
+  (typeof process.env.SWITCH === 'undefined' && config.isSwitch)
 
 const headers = {
   host: 'x-webswitch-host',
