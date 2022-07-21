@@ -15,15 +15,13 @@
 
 import os from 'os'
 import WebSocket from 'ws'
-import Dns from 'multicast-dns'
 import EventEmitter from 'events'
-import CircuitBreaker, { logError } from '../../domain/circuit-breaker.js'
-import { sign, verify, constants } from 'crypto'
 import fs from 'fs'
 import path from 'path'
-import { ClientSession } from 'mongodb'
+import CircuitBreaker, { logError } from '../../domain/circuit-breaker.js'
+import { ServiceLocator } from './service-locator.js'
+import { verify, sign, constants } from 'crypto'
 import { AsyncLocalStorage } from 'async_hooks'
-import { locale } from 'core-js'
 
 const HOSTNAME = 'webswitch.local'
 const SERVICENAME = 'webswitch'
@@ -32,6 +30,9 @@ const ERROREVENT = 'webswitchError'
 
 const configRoot = require('../../config').hostConfig
 const config = configRoot.services.serviceMesh.WebSwitch
+const isPrimary =
+  /true/i.test(process.env.SWITCH) ||
+  (typeof process.env.SWITCH === 'undefined' && config.isSwitch)
 const retryInterval = config.retryInterval || 2000
 const maxRetries = config.maxRetries || 99
 const debug = config.debug || /true/i.test(process.env.DEBUG)
@@ -45,47 +46,46 @@ const activeHost =
   process.env.DOMAIN ||
   configRoot.services.cert.domain ||
   configRoot.general.fqdn
-const protocol = config.isSwitch ? activeProto : config.protocol
-const port = config.isSwitch ? activePort : config.port
-const host = config.isSwitch ? activeHost : config.host
-const isPrimary =
-  /true/i.test(process.env.SWITCH) ||
-  (typeof process.env.SWITCH === 'undefined' && config.isSwitch)
+const protocol = isPrimary ? activeProto : config.protocol
+const port = isPrimary ? activePort : config.port
+const host = isPrimary ? activeHost : config.host
 const isBackup = config.isBackupSwitch
 
-const URL = () =>
+const constructUrl = () =>
   protocol && host && port ? `${protocol}://${host}:${port}` : null
 
-console.debug(URL())
+console.debug({ url: constructUrl() })
 
 let uplinkCallback
 
-export class ServiceLocator {
-  constructor ({
-    name,
-    primary = false,
-    backup = false,
-    maxRetries = 20,
-    retryInterval = 5000
-  } = {}) {
-    if (!name) throw new Error('missing service name')
-    this.url = null
-    this.name = name
-    this.dns = Dns()
-    this.isPrimary = primary
-    this.isBackup = backup
-    this.maxRetries = maxRetries
-    this.retryInterval = retryInterval
-    this.privateKey = fs.readFileSync(
-      path.join(process.cwd(), 'cert/mesh/privateKey.pem'),
-      'utf-8'
-    )
-    this.publicKey = fs.readFileSync(
-      path.join(process.cwd(), 'cert/mesh/publicKey.pem'),
-      'utf-8'
-    )
-    this.verifiable = 'i am the ocean of lakes'
-    this.signature = this.createSignature(this.privateKey, this.verifiable)
+export class ServiceMeshClient extends EventEmitter {
+  constructor (url = null) {
+    super()
+    this.ws = null
+    this.url = url || constructUrl()
+    this.name = SERVICENAME
+    this.isPrimary = isPrimary
+    this.isBackup = isBackup
+    this.pong = true
+    this.timerId = 0
+    this.sharedSecret = 'it tolls for thee'
+    // this.privateKey = fs.readFileSync(
+    //   path.join(process.cwd(), 'cert/mesh/privateKey.pem'),
+    //   'utf-8'
+    // )
+    // this.publicKey = fs.readFileSync(
+    //   path.join(process.cwd(), 'cert/mesh/publicKey.pem'),
+    //   'utf-8'
+    // )
+    this.headers = {
+      'x-webswitch-host': os.hostname(),
+      'x-webswitch-role': 'node',
+      'x-webswitch-pid': process.pid
+      // 'x-webswitch-signature': this.createSignature(
+      //   this.publicKey,
+      //   this.sharedSecret
+      // )
+    }
   }
 
   createSignature (privateKey, data) {
@@ -109,123 +109,8 @@ export class ServiceLocator {
     )
   }
 
-  /**
-   * Query DNS for the webswitch service.
-   * Recursively retry by incrementing a
-   * counter we pass to ourselves on the
-   * stack.
-   *
-   * @param {number} retries number of query attempts
-   * @returns
-   */
-  runQuery (retries = 0) {
-    // have we found the url?
-    if (this.url) return
-
-    if (retries > this.maxRetries) this.activateBackup = true
-
-    console.debug('looking for srv %s retries: %d', this.name, retries)
-    // then query the service name
-    this.dns.query({
-      questions: [
-        {
-          name: this.name,
-          type: 'SRV'
-        }
-      ]
-    })
-
-    // keep asking
-    setTimeout(() => this.runQuery(++retries), this.retryInterval)
-  }
-
-  runAsService () {
-    return this.isPrimary || (this.isBackup && this.activateBackup)
-  }
-
-  consumeService () {
-    return new Promise(resolve => {
-      console.log('resolving service url')
-
-      this.dns.on('response', response => {
-        debug && console.debug({ fn: this.consumeService.name, response })
-
-        const fromServer = response.answers.find(
-          answer => answer.name === this.name && answer.type === 'SRV' //&&
-          //answer.data?.signature //&&
-          //this.verifySignature(this.publicKey, answer.data.signature)
-        )
-
-        if (fromServer) {
-          const { proto, target, port } = fromServer.data
-          this.url = `ws://${target}:${port}`
-
-          console.info({
-            msg: 'found dns service record for',
-            service: this.name,
-            url: this.url
-          })
-          resolve(this.url)
-        }
-      })
-
-      this.runQuery()
-    })
-  }
-
-  provideService () {
-    this.dns.on('query', query => {
-      debug && console.debug('got a query packet:', query)
-
-      const fromClient = query.questions.find(
-        question => question.name === this.name
-      )
-
-      if (fromClient && this.runAsService()) {
-        const answer = {
-          answers: [
-            {
-              name: this.name,
-              type: 'SRV',
-              data: {
-                proto: 'ws',
-                port: activePort,
-                target: activeHost,
-                weight: config.weight,
-                priority: config.priority,
-                signature: this.signature
-              }
-            }
-          ]
-        }
-        console.info('assumng service role')
-        this.dns.respond(answer)
-      }
-    })
-  }
-}
-
-export class ServiceMeshClient extends EventEmitter {
-  constructor (url = null) {
-    super()
-    this.ws = null
-    this.url = URL()
-    this.name = SERVICENAME
-    this.isPrimary = isPrimary
-    this.isBackup = isBackup
-    this.pong = true
-    this.timerId = 0
-    this.headers = {
-      'x-webswitch-host': os.hostname(),
-      'x-webswitch-role': 'node',
-      'x-webswitch-pid': process.pid
-    }
-  }
-
   services () {
-    return typeof this.options.listServices === 'function'
-      ? this.options.listServices()
-      : []
+    return this.options.listServices ? this.options.listServices() : []
   }
 
   telemetry () {
@@ -241,17 +126,17 @@ export class ServiceMeshClient extends EventEmitter {
   }
 
   async resolveUrl () {
-    const locate = new ServiceLocator({
+    const locator = new ServiceLocator({
       name: this.name,
-      url: this.url,
+      serviceUrl: constructUrl(),
       primary: this.isPrimary,
       backup: this.isBackup
     })
     if (this.isPrimary) {
-      locate.provideService()
-      return URL()
+      locator.advertiseLocation()
+      return constructUrl()
     }
-    return locate.consumeService()
+    return locator.receiveLocation()
   }
 
   async connect (options = null) {
@@ -263,6 +148,7 @@ export class ServiceMeshClient extends EventEmitter {
     })
     this.ws.on('close', (code, reason) => {
       console.log('received close frame', code, reason.toString())
+      if (code !== 4001) this.close(code, reason)
     })
     this.ws.on('open', () => {
       console.log('connection open')
@@ -315,12 +201,9 @@ export class ServiceMeshClient extends EventEmitter {
 
   send (msg) {
     if (this.ws?.readyState === this.ws.OPEN) {
-      this.ws.send(JSON.stringify(msg))
-
-      //   const breaker = CircuitBreaker('webswitch', this.ws.send)
-      //   breaker.invoke.call(this, this.format(msg))
-      // } else setTimeout(() => breaker.invoke.call(this, this.format(msg)), 4000)
-    }
+      const breaker = CircuitBreaker('webswitch', msg => this.ws.send(msg))
+      breaker.invoke(this.format(msg))
+    } else setTimeout(() => breaker.invoke(this.format(msg)), 4000)
   }
 
   async publish (msg) {
@@ -336,7 +219,7 @@ export class ServiceMeshClient extends EventEmitter {
   close (code, reason) {
     if (!this.ws || this.ws.readyState !== this.ws.OPEN) return
     this.ws.removeAllListeners()
-    this.ws.close(code, reason)
+    this.ws.close(4001, `${code} ${reason}`)
     this.ws.terminate()
     this.ws = null
   }

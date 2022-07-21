@@ -8,14 +8,17 @@ import { Server, WebSocket } from 'ws'
 const SERVICENAME = 'webswitch'
 const CLIENT_MAX_ERRORS = 3
 const CLIENT_MAX_RETRIES = 10
-const MAX_CLIENTS = 10000
+
+const isPrimary =
+  /true/i.test(process.env.SWITCH) ||
+  (typeof process.env.SWITCH === 'undefined' && config.isSwitch)
 
 const startTime = Date.now()
 const uptime = () => Math.round(Math.abs((Date.now() - startTime) / 1000 / 60))
 const configRoot = require('../../../config').hostConfig
 const config = configRoot.services.serviceMesh.WebSwitch
-const debug = /true/i.test(config.debug)
-const isSwitch = /true/i.test(process.env.IS_SWITCH) || config.isSwitch
+const debug = /true/i.test(config.debug) || /true/i.test(process.env.DEBUG)
+
 const headers = {
   host: 'x-webswitch-host',
   role: 'x-webswitch-role',
@@ -108,8 +111,8 @@ export function attachServer (httpServer, secureCtx = {}) {
     if (clients.has(client[info].uniqueName)) {
       console.warn('found duplicate name', client[info].uniqueName)
       const oldClient = clients.get(client[info].uniqueName)
-      if (oldClient) oldClient.close(4000, 'term')
-      process.nextTick(() => oldClient.terminate())
+      oldClient.close(4000, 'duplicate')
+      oldClient.terminate()
     }
 
     client[info].initialized = true
@@ -141,7 +144,7 @@ export function attachServer (httpServer, secureCtx = {}) {
     client.on('message', function (message) {
       try {
         const msg = JSON.parse(message.toString())
-        console.debug({ fn: 'webswitch server received', msg })
+        debug && console.debug({ fn: 'webswitch server received', msg })
 
         if (client[info].initialized) {
           if (msg === 'status') {
@@ -166,6 +169,7 @@ export function attachServer (httpServer, secureCtx = {}) {
 
       // bad protocol
       client.close(4403, 'bad request')
+      client.terminate()
       console.warn('terminated client', client[info])
     })
 
@@ -179,8 +183,7 @@ export function attachServer (httpServer, secureCtx = {}) {
 
       clients.delete(client[info]?.uniqueName)
       client.close(4988, 'ack')
-      process.nextTick(() => client.terminate())
-
+      client.terminate()
       reassignBackup(client)
       broadcast(statusReport(), client)
     })
@@ -216,8 +219,8 @@ export function attachServer (httpServer, secureCtx = {}) {
     if (clients.has(client[info].uniqueName)) {
       console.warn('found duplicate name', client[info].uniqueName)
       const oldClient = clients.get(client[info].uniqueName)
-      if (oldClient) oldClient.close(4000, 'term')
-      process.nextTick(() => oldClient.terminate())
+      oldClient.close(4000, 'duplicate')
+      oldClient.terminate()
     }
     client[info].initialized = true
     clients.set(client[info].uniqueName, client)
@@ -263,7 +266,7 @@ export function attachServer (httpServer, secureCtx = {}) {
       messagesSent,
       clientsConnected: clients.size,
       uplink: server.uplink ? server.uplink.info : 'no uplink',
-      isPrimarySwitch: isSwitch,
+      isPrimarySwitch: isPrimary,
       clients: [...clients.values()].map(v => ({
         ...v[info],
         state: v.readyState
