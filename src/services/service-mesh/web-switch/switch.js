@@ -191,7 +191,7 @@ export function attachServer (httpServer, secureCtx = {}) {
   function broadcast (data, sender) {
     clients.forEach(function (client) {
       if (client[info]?.uniqueName !== sender[info]?.uniqueName) {
-        console.assert(!debug, 'sending client', client[info], data.toString())
+        debug && console.debug('sending client', client[info], data.toString())
         sendClient(client, data)
         messagesSent++
       }
@@ -203,13 +203,13 @@ export function attachServer (httpServer, secureCtx = {}) {
     }
   }
 
-  function sendClient (client, message, retries = []) {
+  function sendClient (client, message, retries = 0) {
     if (client.readyState === WebSocket.OPEN) {
       client.send(message)
       return
     }
     if (retries.length < CLIENT_MAX_RETRIES)
-      setTimeout(sendClient, 1000, client, message, retries.push(1))
+      setTimeout(sendClient, 1000, client, message, ++retries)
   }
 
   function trackClient (client, request) {
@@ -228,7 +228,7 @@ export function attachServer (httpServer, secureCtx = {}) {
 
   function assignBackup (client) {
     if (
-      isSwitch &&
+      isPrimary &&
       // is there a backup already?
       !backupSwitch &&
       // can't be a browser
