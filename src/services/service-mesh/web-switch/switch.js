@@ -14,14 +14,20 @@ const uptime = () => Math.round(Math.abs((Date.now() - startTime) / 1000 / 60))
 const configRoot = require('../../../config').hostConfig
 const config = configRoot.services.serviceMesh.WebSwitch
 const debug = /true/i.test(config.debug) || /true/i.test(process.env.DEBUG)
+const verifiableData = 'it tolls for thee'
 const isPrimary =
   /true/i.test(process.env.SWITCH) ||
   (typeof process.env.SWITCH === 'undefined' && config.isSwitch)
 
+// this.publicKey = fs.readFileSync(
+//   path.join(process.cwd(), 'cert/mesh/publicKey.pem'),
+//   'utf-8'
+// )
 const headers = {
   host: 'x-webswitch-host',
   role: 'x-webswitch-role',
   pid: 'x-webswitch-pid'
+  //  signature: 'x-webswitch-signature'
 }
 let messagesSent = 0
 let backupSwitch
@@ -54,6 +60,25 @@ export function attachServer (httpServer, secureCtx = {}) {
     server: httpServer
   })
 
+  server.binaryType = 'arraybuffer'
+
+  function verifySignature (signature, data) {
+    return verify(
+      'sha256',
+      Buffer.from(data),
+      {
+        key: publicKey,
+        padding: constants.RSA_PKCS1_PSS_PADDING
+      },
+      Buffer.from(signature.toString('base64'), 'base64')
+    )
+  }
+
+  function signatureVerified (request) {
+    return true
+    //return verifySignature(request.headers[headers.signature], verifiableData)
+  }
+
   /**
    *
    * @param {IncomingMessage} request
@@ -85,7 +110,11 @@ export function attachServer (httpServer, secureCtx = {}) {
   }
 
   server.shouldHandle = request => {
-    return foundHeaders(request) && withinRateLimits(request)
+    return (
+      foundHeaders(request) &&
+      signatureVerified(request) &&
+      withinRateLimits(request)
+    )
   }
 
   server.on('upgrade', (request, socket, head) => {
@@ -134,7 +163,7 @@ export function attachServer (httpServer, secureCtx = {}) {
       if (client[info].errors > CLIENT_MAX_ERRORS) {
         console.warn('terminating client: too many errors')
         clients.delete(client[info].uniqueName)
-        client.close(4888, 'too many errors')
+        client.close(4500, 'too many errors')
       }
     })
 
@@ -142,7 +171,7 @@ export function attachServer (httpServer, secureCtx = {}) {
 
     client.on('message', function (message) {
       try {
-        const msg = JSON.parse(message.toString())
+        const msg = decode(message)
         debug && console.debug({ fn: 'webswitch server received', msg })
 
         if (client[info].initialized) {
@@ -158,7 +187,7 @@ export function attachServer (httpServer, secureCtx = {}) {
         // tell client if its now a backup switch or not
         updateTelemetry(client, msg)
 
-        sendClient(client, JSON.stringify(client[info]))
+        sendClient(client, client[info])
         // tell everyone about new node (ignore browsers)
         if (client[info].role === 'node') broadcast(statusReport(), client)
         return
@@ -203,9 +232,36 @@ export function attachServer (httpServer, secureCtx = {}) {
     }
   }
 
+  const primitives = {
+    encode: {
+      object: msg => Buffer.from(JSON.stringify(msg)),
+      string: msg => Buffer.from(msg),
+      number: msg => console.error('unsupported', msg),
+      undefined: msg => console.error('unsupported', msg)
+    },
+    decode: {
+      object: msg => JSON.parse(Buffer.from(msg).toString()),
+      string: msg => Buffer.from(msg).toString(),
+      number: msg => console.error('unsupported', msg),
+      undefined: msg => console.error('unsupported', msg)
+    }
+  }
+
+  function decode (message) {
+    const decoded = primitives.decode[typeof message](message)
+    console.debug({ fn: decode.name, decoded })
+    return decoded
+  }
+
+  function encode (message) {
+    const encoded = primitives.encode[typeof message](message)
+    console.debug({ fn: encode.name, encoded })
+    return encoded
+  }
+
   function sendClient (client, message, retries = 0) {
     if (client.readyState === WebSocket.OPEN) {
-      client.send(message)
+      client.send(encode(message))
       return
     }
     if (retries.length < CLIENT_MAX_RETRIES)
@@ -218,7 +274,7 @@ export function attachServer (httpServer, secureCtx = {}) {
     if (clients.has(client[info].uniqueName)) {
       console.warn('found duplicate name', client[info].uniqueName)
       const oldClient = clients.get(client[info].uniqueName)
-      oldClient.close(4000, 'duplicate')
+      oldClient.close(4040, 'duplicate')
       oldClient.terminate()
     }
     client[info].initialized = true
@@ -258,7 +314,7 @@ export function attachServer (httpServer, secureCtx = {}) {
   }
 
   function statusReport () {
-    return JSON.stringify({
+    return {
       eventName: 'meshStatusReport',
       servicePlugin: SERVICENAME,
       uptimeMinutes: uptime(),
@@ -270,7 +326,7 @@ export function attachServer (httpServer, secureCtx = {}) {
         ...v[info],
         state: v.readyState
       }))
-    })
+    }
   }
 
   /**

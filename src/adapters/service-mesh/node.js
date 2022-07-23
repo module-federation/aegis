@@ -64,28 +64,25 @@ export class ServiceMeshClient extends EventEmitter {
     this.ws = null
     this.url = url || constructUrl()
     this.name = SERVICENAME
+    this.serviceList = []
     this.isPrimary = isPrimary
     this.isBackup = isBackup
     this.pong = true
     this.timerId = 0
-    this.sharedSecret = 'it tolls for thee'
-    // this.privateKey = fs.readFileSync(
-    //   path.join(process.cwd(), 'cert/mesh/privateKey.pem'),
-    //   'utf-8'
-    // )
-    // this.publicKey = fs.readFileSync(
-    //   path.join(process.cwd(), 'cert/mesh/publicKey.pem'),
-    //   'utf-8'
-    // )
+    this.verifiableData = 'it tolls for thee'
     this.headers = {
       'x-webswitch-host': os.hostname(),
       'x-webswitch-role': 'node',
       'x-webswitch-pid': process.pid
       // 'x-webswitch-signature': this.createSignature(
-      //   this.publicKey,
-      //   this.sharedSecret
+      //   this.privateKey,
+      //   this.verifiableData
       // )
     }
+    // this.privateKey = fs.readFileSync(
+    //   path.join(process.cwd(), 'cert/mesh/privateKey.pem'),
+    //   'utf-8'
+    // )
   }
 
   createSignature (privateKey, data) {
@@ -94,23 +91,13 @@ export class ServiceMeshClient extends EventEmitter {
       padding: constants.RSA_PKCS1_PSS_PADDING
     })
     console.log(signature.toString('base64'))
-    return signature
-  }
-
-  verifySignature (signature, data) {
-    return verify(
-      'sha256',
-      Buffer.from(data),
-      {
-        key: publicKey,
-        padding: constants.RSA_PKCS1_PSS_PADDING
-      },
-      Buffer.from(signature.toString('base64'), 'base64')
-    )
+    return signatureq
   }
 
   services () {
-    return this.options.listServices ? this.options.listServices() : []
+    return this.options.listServices
+      ? this.options.listServices()
+      : this.serviceList
   }
 
   telemetry () {
@@ -139,31 +126,34 @@ export class ServiceMeshClient extends EventEmitter {
     return locator.receiveLocation()
   }
 
-  async connect (options = null) {
+  async connect (options = {}) {
     if (this.ws) return
-    this.options = options || {}
+    this.options = options
     this.url = await this.resolveUrl()
     this.ws = new WebSocket(this.url, {
-      headers: this.headers
+      headers: this.headers,
+      protocol: SERVICENAME
     })
+    this.ws.binaryType = 'arraybuffer'
     this.ws.on('close', (code, reason) => {
       console.log('received close frame', code, reason.toString())
-      if (code !== 4001) this.close(code, reason)
+      this.close(code, reason)
     })
     this.ws.on('open', () => {
       console.log('connection open')
       this.send(this.telemetry())
       this.heartbeat()
     })
-    this.ws.on('message', msg => {
+    this.ws.on('message', message => {
       try {
-        const event = JSON.parse(msg.toString())
+        const event = this.decode(message)
         if (!event.eventName) {
-          console.log('no event name', event)
+          debug && console.debug({ missingEventName: event })
+          this.emit('missingEventName', event)
           return
         }
         this.emit(event.eventName, event)
-        this.listeners('*').forEach(cb => cb(event))
+        this.listeners('*').forEach(listener => listener(event))
       } catch (error) {
         console.error({ fn: this.connect.name, error })
       }
@@ -180,34 +170,53 @@ export class ServiceMeshClient extends EventEmitter {
       this.ws.ping()
       this.timerId = setTimeout(() => this.heartbeat(), 10000)
     } else {
-      console.debug('timeout')
-      if (this.ws?.readyState !== this.ws.CLOSED) return
+      console.warn('timeout')
+      this.ws.removeAllListeners()
       this.ws.terminate()
       this.ws = null
       this.connect()
     }
   }
 
-  format (msg) {
-    if (msg instanceof ArrayBuffer) {
-      // binary frame
-      const view = new DataView(msg)
-      console.debug('arraybuffer', view.getInt32(0))
-      return msg
+  primitives = {
+    encode: {
+      object: msg => Buffer.from(JSON.stringify(msg)),
+      string: msg => Buffer.from(msg),
+      number: msg => console.error('unsupported', msg),
+      undefined: msg => console.error('unsupported', msg)
+    },
+    decode: {
+      object: msg => JSON.parse(Buffer.from(msg).toString()),
+      string: msg => Buffer.from(msg).toString(),
+      number: msg => console.error('unsupported', msg),
+      undefined: msg => console.error('unsupported', msg)
     }
-    if (typeof msg === 'object') return JSON.stringify(msg)
-    return msg
+  }
+
+  encode (msg) {
+    const encoded = this.primitives.encode[typeof msg](msg)
+    debug && console.debug({ encoded })
+    return encoded
+  }
+
+  decode (msg) {
+    const decoded = this.primitives.decode[typeof msg](msg)
+    debug && console.debug({ decoded })
+    return decoded
   }
 
   send (msg) {
     if (this.ws?.readyState === this.ws.OPEN) {
-      const breaker = CircuitBreaker('webswitch', msg => this.ws.send(msg))
-      breaker.invoke(this.format(msg))
-    } else setTimeout(() => breaker.invoke(this.format(msg)), 4000)
+      const breaker = CircuitBreaker('webswitch', msg => {
+        console.debug({ fn: this.send.name, msg })
+        this.ws.send(msg)
+      })
+      breaker.invoke(this.encode(msg))
+    } else setTimeout(() => this.send(msg), 4000)
   }
 
   async publish (msg) {
-    console.debug({ fn: this.publish.name, msg })
+    debug && console.debug({ fn: this.publish.name, msg })
     await this.connect()
     this.send(msg)
   }
@@ -218,8 +227,9 @@ export class ServiceMeshClient extends EventEmitter {
 
   close (code, reason) {
     if (!this.ws || this.ws.readyState !== this.ws.OPEN) return
+    clearTimeout(this.timerId)
     this.ws.removeAllListeners()
-    this.ws.close(4001, `${code} ${reason}`)
+    this.ws.close(code, reason)
     this.ws.terminate()
     this.ws = null
   }
