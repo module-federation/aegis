@@ -2,7 +2,6 @@
 [![NPM Downloads][downloads-image]][downloads-url]
 [![Gitpod][gitpod-image]][gitpod-url]
 
-
 # ÆGIS
 
 See the [aegis-host](https://github.com/module-federation/aegis-host) repo for documentation and a working example of a federation server.
