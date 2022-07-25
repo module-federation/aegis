@@ -14,20 +14,14 @@ const uptime = () => Math.round(Math.abs((Date.now() - startTime) / 1000 / 60))
 const configRoot = require('../../../config').hostConfig
 const config = configRoot.services.serviceMesh.WebSwitch
 const debug = /true/i.test(config.debug) || /true/i.test(process.env.DEBUG)
-const verifiableData = 'it tolls for thee'
 const isPrimary =
   /true/i.test(process.env.SWITCH) ||
   (typeof process.env.SWITCH === 'undefined' && config.isSwitch)
 
-// this.publicKey = fs.readFileSync(
-//   path.join(process.cwd(), 'cert/mesh/publicKey.pem'),
-//   'utf-8'
-// )
 const headers = {
   host: 'x-webswitch-host',
   role: 'x-webswitch-role',
   pid: 'x-webswitch-pid'
-  //  signature: 'x-webswitch-signature'
 }
 let messagesSent = 0
 let backupSwitch
@@ -75,8 +69,8 @@ export function attachServer (httpServer, secureCtx = {}) {
   }
 
   function signatureVerified (request) {
+    //verifySignature(header, publicKey)
     return true
-    //return verifySignature(request.headers[headers.signature], verifiableData)
   }
 
   /**
@@ -97,16 +91,8 @@ export function attachServer (httpServer, secureCtx = {}) {
     return accept
   }
 
-  // function findClient (request) {
-  //   const host = request.headers[headers.host]
-  //   const pid = request.headers[headers.pid]
-  //   return history.get(host + pid)
-  // }
-
   function withinRateLimits (request) {
     return true
-    // const client = findClient(request)
-    // if (client) return client.checkRateLimits()
   }
 
   server.shouldHandle = request => {

@@ -22,6 +22,10 @@ export class ServiceLocator {
     this.retryInterval = retryInterval
   }
 
+  runningAsService () {
+    return this.isPrimary || (this.isBackup && this.activateBackup)
+  }
+
   /**
    * Query DNS for the webswitch service.
    * Recursively retry by incrementing a
@@ -31,14 +35,14 @@ export class ServiceLocator {
    * @param {number} retries number of query attempts
    * @returns
    */
-  requestLocation (retries = 0) {
+  askQuestion (retries = 0) {
     // have we found the url?
     if (this.url) return
 
     // if designated as backup, takeover for primary after maxRetries
     if (retries > this.maxRetries && this.isBackup) {
       this.activateBackup = true
-      this.advertiseLocation()
+      this.answerQuestion()
       return
     }
     console.debug('looking for srv %s retries: %d', this.name, retries)
@@ -53,18 +57,42 @@ export class ServiceLocator {
     })
 
     // keep asking
-    setTimeout(() => this.requestLocation(++retries), this.retryInterval)
+    setTimeout(() => this.askQuestion(++retries), this.retryInterval)
   }
 
-  runAsService () {
-    return this.isPrimary || (this.isBackup && this.activateBackup)
+  answerQuestion () {
+    this.dns.on('query', query => {
+      debug && console.debug('got a query packet:', query)
+
+      const fromClient = query.questions.find(
+        question => question.name === this.name
+      )
+
+      if (fromClient && this.runningAsService()) {
+        const url = new URL(this.url)
+        const answer = {
+          answers: [
+            {
+              name: this.name,
+              type: 'SRV',
+              data: {
+                port: url.port,
+                target: url.hostname
+              }
+            }
+          ]
+        }
+        console.info('advertising this location')
+        this.dns.respond(answer)
+      }
+    })
   }
 
-  receiveLocation () {
+  readAnswer () {
     return new Promise(resolve => {
       console.log('resolving service url')
 
-      const receive = response => {
+      const buildUrl = response => {
         debug && console.debug({ answers: response.answers[0].data })
 
         const fromServer = response.answers.find(
@@ -82,41 +110,13 @@ export class ServiceLocator {
             url: this.url
           })
 
-          this.dns.off('response', receive)
+          this.dns.off('response', buildUrl)
           resolve(this.url)
         }
       }
-      
-      this.dns.on('response', receive)
-      this.requestLocation()
-    })
-  }
 
-  advertiseLocation () {
-    this.dns.on('query', query => {
-      debug && console.debug('got a query packet:', query)
-
-      const fromClient = query.questions.find(
-        question => question.name === this.name
-      )
-
-      if (fromClient && this.runAsService()) {
-        const url = new URL(this.url)
-        const answer = {
-          answers: [
-            {
-              name: this.name,
-              type: 'SRV',
-              data: {
-                port: url.port,
-                target: url.hostname
-              }
-            }
-          ]
-        }
-        console.info('advertising this location')
-        this.dns.respond(answer)
-      }
+      this.dns.on('response', buildUrl)
+      this.askQuestion()
     })
   }
 }

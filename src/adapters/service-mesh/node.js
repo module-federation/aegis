@@ -18,17 +18,22 @@ import WebSocket from 'ws'
 import EventEmitter from 'events'
 import CircuitBreaker from '../../domain/circuit-breaker.js'
 import { ServiceLocator } from './service-locator.js'
+import { fstat, readFileSync, writeFileSync } from 'fs'
+import path from 'path'
+import { stat } from 'fs'
 
 const HOSTNAME = 'webswitch.local'
 const SERVICENAME = 'webswitch'
 const TIMEOUTEVENT = 'webswitchTimeout'
 const CONNECTERROR = 'webswitchConnect'
+const WSOCKETERROR = 'webswitchWsocket'
 
 const configRoot = require('../../config').hostConfig
 const config = configRoot.services.serviceMesh.WebSwitch
 const isPrimary =
   /true/i.test(process.env.SWITCH) ||
   (typeof process.env.SWITCH === 'undefined' && config.isSwitch)
+
 const debug = config.debug || /true/i.test(process.env.DEBUG)
 const heartbeatms = config.heartbeat || 10000
 const sslEnabled = /true/i.test(process.env.SSL_ENABLED)
@@ -40,6 +45,7 @@ const activeHost =
   process.env.DOMAIN ||
   configRoot.services.cert.domain ||
   configRoot.general.fqdn
+
 const protocol = isPrimary ? activeProto : config.protocol
 const port = isPrimary ? activePort : config.port
 const host = isPrimary ? activeHost : config.host
@@ -62,6 +68,8 @@ export class ServiceMeshClient extends EventEmitter {
     this.pong = true
     this.timerId = 0
     this.reconnecting = false
+    this.sendQueue = []
+    this.sendQueueLimit = 1000
     this.headers = {
       'x-webswitch-host': os.hostname(),
       'x-webswitch-role': 'node',
@@ -96,10 +104,10 @@ export class ServiceMeshClient extends EventEmitter {
       backup: this.isBackup
     })
     if (this.isPrimary) {
-      locator.advertiseLocation()
+      locator.answerQuestion()
       return constructUrl()
     }
-    return locator.receiveLocation()
+    return locator.readAnswer()
   }
 
   async connect (options = {}) {
@@ -113,6 +121,7 @@ export class ServiceMeshClient extends EventEmitter {
       headers: this.headers,
       protocol: SERVICENAME
     })
+
     this.ws.binaryType = 'arraybuffer'
 
     this.ws.on('close', (code, reason) => {
@@ -123,7 +132,7 @@ export class ServiceMeshClient extends EventEmitter {
         this.reconnecting = true
         clearTimeout(this.timerId)
         this.close(code, reason)
-        setTimeout(() => this.connect(), 3000)
+        setTimeout(() => this.connect(), 8000)
       }
     })
 
@@ -132,6 +141,7 @@ export class ServiceMeshClient extends EventEmitter {
       this.reconnecting = false
       this.send(this.telemetry())
       this.heartbeat()
+      setTimeout(() => this.sendQueuedMsgs(), 1000)
     })
 
     this.ws.on('message', message => {
@@ -150,6 +160,7 @@ export class ServiceMeshClient extends EventEmitter {
     })
 
     this.ws.on('error', error => {
+      this.emit(WSOCKETERROR, error)
       console.error({ fn: this.connect.name, error })
     })
 
@@ -166,8 +177,34 @@ export class ServiceMeshClient extends EventEmitter {
       this.reconnecting = true
       console.warn('timeout')
       this.close(4877, 'timeout')
+      setTimeout(() => this.connect(), 5000)
       this.emit(TIMEOUTEVENT, this.telemetry())
-      setTimeout(() => this.connect(), 8000)
+    }
+  }
+
+  sendQueuedMsgs () {
+    try {
+      while (this.sendQueue.length > 0) this.send(this.sendQueue.pop())
+    } catch (error) {
+      console.error({ fn: this.sendQueuedMsgs.name, error })
+    }
+  }
+
+  async saveSendQueue () {
+    try {
+      const file = path.join(process.cwd(), 'public', 'senderQueue.json')
+      const size = await new Promise(resolve =>
+        fs.stat(file, (err, stats) => resolve(stats.size))
+      )
+      if (size > 999999999) {
+        console.log('queue too large')
+        return
+      }
+      const data = JSON.parse(readFileSync(file, 'utf-8'))
+      const concatonated = data.concat(this.sendQueue)
+      writeFileSync(file, JSON.stringify(concatonated), 'utf-8')
+    } catch (error) {
+      console.error({ fn: this.saveSendQueue.name, error })
     }
   }
 
@@ -199,14 +236,26 @@ export class ServiceMeshClient extends EventEmitter {
   }
 
   send (msg) {
-    if (this.ws?.readyState === this.ws.OPEN) {
+    if (
+      this.ws &&
+      this.ws.readyState === this.ws.OPEN &&
+      this.ws.bufferedAmount < 1
+    ) {
       const breaker = CircuitBreaker('webswitch', msg => {
         debug && console.debug({ fn: this.send.name, msg })
         this.ws.send(this.encode(msg))
       })
-      breaker.detectErrors([TIMEOUTEVENT, CONNECTERROR], this)
+      breaker.detectErrors([TIMEOUTEVENT, CONNECTERROR, WSOCKETERROR], this)
       breaker.invoke(msg)
-    } else setTimeout(() => this.send(msg), 8000)
+    } else if (this.sendQueue.length < this.sendQueueLimit) {
+      this.sendQueue.push(msg)
+    } else {
+      this.sendQueue.push(msg)
+      this.saveSendQueue()
+      this.sendQueue = []
+      console.warn('send queue limit reached!')
+      this.emit(this.sendQueuedMsgs.name, 'sendQueue limit reached')
+    }
   }
 
   async publish (msg) {
