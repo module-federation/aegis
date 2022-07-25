@@ -6,8 +6,8 @@ export { ServerlessAdapter } from './serverless'
 export * as controllers from './controllers'
 export * as webassembly from './webassembly'
 import * as ServiceMeshServerImpl from './service-mesh/server'
-import * as ServiceMeshClientImpl from './service-mesh/client'
 import { ServiceMeshPlugin } from '../services'
+export { ServiceMeshClient } from './service-mesh/node'
 
 /**
  * @callback attachServer

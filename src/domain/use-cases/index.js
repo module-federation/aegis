@@ -16,17 +16,20 @@ import makeListConfig from './list-configs'
 import makeEmitEvent from './emit-event'
 import makeHotReload from './hot-reload'
 import brokerEvents from './broker-events'
+import DistributedCache from '../distributed-cache'
 
 import { isMainThread } from 'worker_threads'
 
-export function registerEvents () {
+export function registerEvents (ServiceMeshClient) {
   // main thread handles event dispatch
-  brokerEvents(
-    EventBrokerFactory.getInstance(),
-    DataSourceFactory,
-    ModelFactory,
-    ThreadPoolFactory
-  )
+  brokerEvents({
+    broker: EventBrokerFactory.getInstance(),
+    datasources: DataSourceFactory,
+    models: ModelFactory,
+    threadpools: ThreadPoolFactory,
+    ObjectCache: DistributedCache,
+    ServiceMesh: ServiceMeshClient
+  })
 }
 
 /**

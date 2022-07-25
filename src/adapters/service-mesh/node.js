@@ -16,12 +16,8 @@
 import os from 'os'
 import WebSocket from 'ws'
 import EventEmitter from 'events'
-import fs from 'fs'
-import path from 'path'
 import CircuitBreaker, { logError } from '../../domain/circuit-breaker.js'
 import { ServiceLocator } from './service-locator.js'
-import { verify, sign, constants } from 'crypto'
-import { AsyncLocalStorage } from 'async_hooks'
 
 const HOSTNAME = 'webswitch.local'
 const SERVICENAME = 'webswitch'
@@ -33,10 +29,9 @@ const config = configRoot.services.serviceMesh.WebSwitch
 const isPrimary =
   /true/i.test(process.env.SWITCH) ||
   (typeof process.env.SWITCH === 'undefined' && config.isSwitch)
-const retryInterval = config.retryInterval || 2000
-const maxRetries = config.maxRetries || 99
+const maxRetries = config.maxRetries || 120
 const debug = config.debug || /true/i.test(process.env.DEBUG)
-const heartbeat = config.heartbeat || 10000
+const heartbeatms = config.heartbeat || 10000
 const sslEnabled = /true/i.test(process.env.SSL_ENABLED)
 const clearPort = process.env.PORT || 80
 const cipherPort = process.env.SSL_PORT || 443
@@ -75,24 +70,7 @@ export class ServiceMeshClient extends EventEmitter {
       'x-webswitch-host': os.hostname(),
       'x-webswitch-role': 'node',
       'x-webswitch-pid': process.pid
-      // 'x-webswitch-signature': this.createSignature(
-      //   this.privateKey,
-      //   this.verifiableData
-      // )
     }
-    // this.privateKey = fs.readFileSync(
-    //   path.join(process.cwd(), 'cert/mesh/privateKey.pem'),
-    //   'utf-8'
-    // )
-  }
-
-  createSignature (privateKey, data) {
-    const signature = sign('sha256', Buffer.from(data), {
-      key: privateKey,
-      padding: constants.RSA_PKCS1_PSS_PADDING
-    })
-    console.log(signature.toString('base64'))
-    return signature
   }
 
   services () {
@@ -119,7 +97,7 @@ export class ServiceMeshClient extends EventEmitter {
       name: this.name,
       serviceUrl: constructUrl(),
       primary: this.isPrimary,
-      backup: this.isBackup
+      backup: this.isBackup,
     })
     if (this.isPrimary) {
       locator.advertiseLocation()
@@ -180,12 +158,13 @@ export class ServiceMeshClient extends EventEmitter {
     if (this.pong) {
       this.pong = false
       this.ws.ping()
-      this.timerId = setTimeout(() => this.heartbeat(), 10000)
+      this.timerId = setTimeout(() => this.heartbeat(), heartbeatms)
     } else {
       if (this.reconnecting) return
       this.reconnecting = true
       console.warn('timeout')
       this.close(4877, 'timeout')
+      this.emit(TIMEOUTEVENT, this.telemetry())
       setTimeout(() => this.connect(), 8000)
     }
   }

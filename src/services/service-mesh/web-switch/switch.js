@@ -207,6 +207,8 @@ export function attachServer (httpServer, secureCtx = {}) {
 
   function handleEvent (client, message) {
     const event = decode(message)
+    debug && console.debug('client received', message, event)
+
     if (event === 'status') {
       sendStatus(client)
       // get services and util stats
@@ -319,6 +321,7 @@ export function attachServer (httpServer, secureCtx = {}) {
    */
 
   function sendStatus (client) {
+    console.debug('sending client status')
     sendClient(client, encode(statusReport()))
   }
 

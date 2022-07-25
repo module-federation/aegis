@@ -2,19 +2,7 @@
 
 /** @module domain/brokerEvents */
 
-import DistributedCache from '../distributed-cache'
-// import EventBus from '../../services/event-bus'
-//import { ServiceMeshServerPlugin as ServiceMesh } from '../../adapters'
-//import * as ServiceMesh from '../../services/service-mesh/web-switch/node'
-
-import { ServiceMeshClient } from '../../adapters/service-mesh/node'
-
 import { BroadcastChannel, isMainThread, workerData } from 'worker_threads'
-import { ThreadPool } from '../thread-pool'
-
-import { WebSocket } from 'ws'
-import { EventEmitter } from 'stream'
-import os from 'os'
 
 /** @type {BroadcastChannel}*/
 let broadcastChannel
@@ -33,7 +21,6 @@ function createBroadcastChannel (modelName, broker) {
     broker.notify(msgEvent.data.eventName, msgEvent.data)
   return broadcastChannel
 }
-/** @typedef {ThreadPool} threadpool*/
 
 /**
  * Broker events between {@link threadpool}s and remote mesh instances.
@@ -43,32 +30,45 @@ function createBroadcastChannel (modelName, broker) {
  * - distributed object cache
  *    - crud lifecycle events
  *    - cache miss search
- * @param {import('../event-broker').EventBroker} broker
- * @param {import('../shared-memory').DataSourceFactory} datasources
- * @param {import("../model-factory").ModelFactory} models
- * @param {import("../thread-pool").ThreadPoolFactory} threadpools
+ * @param {{
+ *  broker:import('../event-broker').EventBroker,
+ *  datasources:import('../shared-memory').DataSourceFactory,
+ *  models:import("../model-factory").ModelFactory,
+ *  ObjectCache:import('../distributed-cache'),
+ *  ServiceMesh:import('../../adapters/service-mesh/node').ServiceMeshClient
+ * }} models
+ *
  */
-export default function brokerEvents (broker, datasources, models) {
+export default function brokerEvents ({
+  broker,
+  datasources,
+  models,
+  ServiceMesh,
+  ObjectCache
+}) {
   if (isMainThread) {
+    /**
+     *
+     * @param {import('../../adapters/service-mesh/node').ServiceMeshClient} serviceMesh
+     */
     function initServiceMesh (serviceMesh) {
-      //const serviceMesh = new ServiceMeshClient('ws://localhost:80')
+      // turn off all listeners for these events
       broker.off('reload')
       broker.off('from_worker')
       broker.off('to_worker')
-      // forward reload event to mesh
+
+      // reinitialize service mesh on reload
       broker.on('reload', async event => {
-        //serviceMesh.close(4777, event.eventName)
-        initServiceMesh(new ServiceMeshClient())
+        initServiceMesh(new ServiceMesh())
       })
+
       // forward all events from worker threads to the service mesh
       broker.on('from_worker', async event => serviceMesh.publish(event))
 
-      // forward every event from the service mesh to the workers
-      serviceMesh.subscribe('*', event => {
-        console.debug({ fn: 'from mesh', event })
-        broker.notify('to_worker', event)
-      })
+      // forward all events from the mesh to worker threads
+      serviceMesh.subscribe('*', event => broker.notify('to_worker', event))
 
+      // generate a list of installed services
       const listLocalModels = () =>
         models
           .getModelSpecs()
@@ -79,14 +79,14 @@ export default function brokerEvents (broker, datasources, models) {
       serviceMesh.connect({ listServices: listLocalModels })
     }
 
-    initServiceMesh(new ServiceMeshClient())
+    initServiceMesh(new ServiceMesh())
   } else {
     createBroadcastChannel(workerData.poolName, broker)
     // create listeners that handle events from main
     require('../domain-events').registerEvents(broker)
 
     // init distributed object cache
-    const cache = DistributedCache({
+    const cache = ObjectCache({
       models,
       broker,
       datasources,

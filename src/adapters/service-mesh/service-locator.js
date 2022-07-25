@@ -11,9 +11,8 @@ export class ServiceLocator {
     primary = false,
     backup = false,
     maxRetries = 20,
-    retryInterval = 5000
+    retryInterval = 8000
   } = {}) {
-    //if (!name || !serviceUrl) throw new Error('missing service name or url')
     this.url = serviceUrl
     this.name = name
     this.dns = Dns()
@@ -54,7 +53,7 @@ export class ServiceLocator {
     })
 
     // keep asking
-    setTimeout(() => this.requestLocation(++retries), 10000)
+    setTimeout(() => this.requestLocation(++retries), this.retryInterval)
   }
 
   runAsService () {
@@ -66,11 +65,7 @@ export class ServiceLocator {
       console.log('resolving service url')
 
       const receive = response => {
-        debug &&
-          console.debug({
-            fn: this.receiveLocation.name,
-            answers: response.answers[0].data
-          })
+        debug && console.debug({ answers: response.answers[0].data })
 
         const fromServer = response.answers.find(
           answer => answer.name === this.name && answer.type === 'SRV'
@@ -78,7 +73,6 @@ export class ServiceLocator {
 
         if (fromServer) {
           const { target, port } = fromServer.data
-          //this.verifySignature(target, this.verifableData)
           const protocol = port === 443 ? 'wss' : 'ws'
           this.url = `${protocol}://${target}:${port}`
 
@@ -90,9 +84,9 @@ export class ServiceLocator {
 
           this.dns.off('response', receive)
           resolve(this.url)
-          return
         }
       }
+      
       this.dns.on('response', receive)
       this.requestLocation()
     })
