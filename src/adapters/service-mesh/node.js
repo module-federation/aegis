@@ -16,20 +16,19 @@
 import os from 'os'
 import WebSocket from 'ws'
 import EventEmitter from 'events'
-import CircuitBreaker, { logError } from '../../domain/circuit-breaker.js'
+import CircuitBreaker from '../../domain/circuit-breaker.js'
 import { ServiceLocator } from './service-locator.js'
 
 const HOSTNAME = 'webswitch.local'
 const SERVICENAME = 'webswitch'
 const TIMEOUTEVENT = 'webswitchTimeout'
-const ERROREVENT = 'webswitchError'
+const CONNECTERROR = 'webswitchConnect'
 
 const configRoot = require('../../config').hostConfig
 const config = configRoot.services.serviceMesh.WebSwitch
 const isPrimary =
   /true/i.test(process.env.SWITCH) ||
   (typeof process.env.SWITCH === 'undefined' && config.isSwitch)
-const maxRetries = config.maxRetries || 120
 const debug = config.debug || /true/i.test(process.env.DEBUG)
 const heartbeatms = config.heartbeat || 10000
 const sslEnabled = /true/i.test(process.env.SSL_ENABLED)
@@ -49,8 +48,6 @@ const isBackup = config.isBackupSwitch
 const constructUrl = () =>
   protocol && host && port ? `${protocol}://${host}:${port}` : null
 
-console.debug({ url: constructUrl() })
-
 let uplinkCallback
 
 export class ServiceMeshClient extends EventEmitter {
@@ -64,7 +61,6 @@ export class ServiceMeshClient extends EventEmitter {
     this.isBackup = isBackup
     this.pong = true
     this.timerId = 0
-    this.verifiableData = 'it tolls for thee'
     this.reconnecting = false
     this.headers = {
       'x-webswitch-host': os.hostname(),
@@ -97,7 +93,7 @@ export class ServiceMeshClient extends EventEmitter {
       name: this.name,
       serviceUrl: constructUrl(),
       primary: this.isPrimary,
-      backup: this.isBackup,
+      backup: this.isBackup
     })
     if (this.isPrimary) {
       locator.advertiseLocation()
@@ -118,8 +114,10 @@ export class ServiceMeshClient extends EventEmitter {
       protocol: SERVICENAME
     })
     this.ws.binaryType = 'arraybuffer'
+
     this.ws.on('close', (code, reason) => {
       console.log('received close frame', code, reason.toString())
+      this.emit(CONNECTERROR, reason)
       if ([1006, 4040].includes(code)) {
         if (this.reconnecting) return
         this.reconnecting = true
@@ -128,12 +126,14 @@ export class ServiceMeshClient extends EventEmitter {
         setTimeout(() => this.connect(), 3000)
       }
     })
+
     this.ws.on('open', () => {
       console.log('connection open')
       this.reconnecting = false
       this.send(this.telemetry())
       this.heartbeat()
     })
+
     this.ws.on('message', message => {
       try {
         const event = this.decode(message)
@@ -148,9 +148,11 @@ export class ServiceMeshClient extends EventEmitter {
         console.error({ fn: this.connect.name, error })
       }
     })
+
     this.ws.on('error', error => {
       console.error({ fn: this.connect.name, error })
     })
+
     this.ws.on('pong', () => (this.pong = true))
   }
 
@@ -173,13 +175,13 @@ export class ServiceMeshClient extends EventEmitter {
     encode: {
       object: msg => Buffer.from(JSON.stringify(msg)),
       string: msg => Buffer.from(msg),
-      number: msg => console.error('unsupported', msg),
+      number: msg => Buffer.from(msg),
       undefined: msg => console.error('unsupported', msg)
     },
     decode: {
       object: msg => JSON.parse(Buffer.from(msg).toString()),
-      string: msg => Buffer.from(msg).toString(),
-      number: msg => console.error('unsupported', msg),
+      string: msg => msg,
+      number: msg => msg,
       undefined: msg => console.error('unsupported', msg)
     }
   }
@@ -202,6 +204,7 @@ export class ServiceMeshClient extends EventEmitter {
         debug && console.debug({ fn: this.send.name, msg })
         this.ws.send(this.encode(msg))
       })
+      breaker.detectErrors([TIMEOUTEVENT, CONNECTERROR], this)
       breaker.invoke(msg)
     } else setTimeout(() => this.send(msg), 8000)
   }

@@ -240,13 +240,13 @@ export function attachServer (httpServer, secureCtx = {}) {
     encode: {
       object: msg => Buffer.from(JSON.stringify(msg)),
       string: msg => Buffer.from(msg),
-      number: msg => console.error('unsupported', msg),
+      number: msg => Buffer.from(msg),
       undefined: msg => console.error('unsupported', msg)
     },
     decode: {
       object: msg => JSON.parse(Buffer.from(msg).toString()),
-      string: msg => Buffer.from(msg).toString(),
-      number: msg => console.error('unsupported', msg),
+      string: msg => msg,
+      number: msg => msg,
       undefined: msg => console.error('unsupported', msg)
     }
   }
