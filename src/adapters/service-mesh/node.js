@@ -70,6 +70,7 @@ export class ServiceMeshClient extends EventEmitter {
     this.pong = true
     this.timerId = 0
     this.verifiableData = 'it tolls for thee'
+    this.reconnecting = false
     this.headers = {
       'x-webswitch-host': os.hostname(),
       'x-webswitch-role': 'node',
@@ -91,17 +92,18 @@ export class ServiceMeshClient extends EventEmitter {
       padding: constants.RSA_PKCS1_PSS_PADDING
     })
     console.log(signature.toString('base64'))
-    return signatureq
+    return signature
   }
 
   services () {
     return this.options.listServices
-      ? this.options.listServices()
+      ? (this.serviceList = this.options.listServices())
       : this.serviceList
   }
 
   telemetry () {
     return {
+      eventName: 'telemetry',
       proto: this.name,
       hostname: os.hostname(),
       role: 'node',
@@ -127,7 +129,10 @@ export class ServiceMeshClient extends EventEmitter {
   }
 
   async connect (options = {}) {
-    if (this.ws) return
+    if (this.ws) {
+      console.info('conn already open')
+      return
+    }
     this.options = options
     this.url = await this.resolveUrl()
     this.ws = new WebSocket(this.url, {
@@ -137,10 +142,17 @@ export class ServiceMeshClient extends EventEmitter {
     this.ws.binaryType = 'arraybuffer'
     this.ws.on('close', (code, reason) => {
       console.log('received close frame', code, reason.toString())
-      this.close(code, reason)
+      if ([1006, 4040].includes(code)) {
+        if (this.reconnecting) return
+        this.reconnecting = true
+        clearTimeout(this.timerId)
+        this.close(code, reason)
+        setTimeout(() => this.connect(), 3000)
+      }
     })
     this.ws.on('open', () => {
       console.log('connection open')
+      this.reconnecting = false
       this.send(this.telemetry())
       this.heartbeat()
     })
@@ -170,11 +182,11 @@ export class ServiceMeshClient extends EventEmitter {
       this.ws.ping()
       this.timerId = setTimeout(() => this.heartbeat(), 10000)
     } else {
+      if (this.reconnecting) return
+      this.reconnecting = true
       console.warn('timeout')
-      this.ws.removeAllListeners()
-      this.ws.terminate()
-      this.ws = null
-      this.connect()
+      this.close(4877, 'timeout')
+      setTimeout(() => this.connect(), 8000)
     }
   }
 
@@ -208,11 +220,11 @@ export class ServiceMeshClient extends EventEmitter {
   send (msg) {
     if (this.ws?.readyState === this.ws.OPEN) {
       const breaker = CircuitBreaker('webswitch', msg => {
-        console.debug({ fn: this.send.name, msg })
-        this.ws.send(msg)
+        debug && console.debug({ fn: this.send.name, msg })
+        this.ws.send(this.encode(msg))
       })
-      breaker.invoke(this.encode(msg))
-    } else setTimeout(() => this.send(msg), 4000)
+      breaker.invoke(msg)
+    } else setTimeout(() => this.send(msg), 8000)
   }
 
   async publish (msg) {
@@ -226,8 +238,7 @@ export class ServiceMeshClient extends EventEmitter {
   }
 
   close (code, reason) {
-    if (!this.ws || this.ws.readyState !== this.ws.OPEN) return
-    clearTimeout(this.timerId)
+    console.debug('closing socket')
     this.ws.removeAllListeners()
     this.ws.close(code, reason)
     this.ws.terminate()

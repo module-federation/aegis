@@ -123,33 +123,8 @@ export function attachServer (httpServer, secureCtx = {}) {
     })
   })
 
-  function setClientInfo (client, request) {
-    client[info] = {}
-    client[info].id = nanoid()
-    client[info].pid = request.headers[headers.pid] || Math.floor(Math.random())
-    client[info].host = request.headers[headers.host] || request.headers.host
-    client[info].role = request.headers[headers.role] || 'browser'
-    client[info].errors = 0
-    client[info].uniqueName = client[info].host + client[info].pid
-  }
-
-  function trackClient (client, request) {
-    setClientInfo(client, request)
-
-    if (clients.has(client[info].uniqueName)) {
-      console.warn('found duplicate name', client[info].uniqueName)
-      const oldClient = clients.get(client[info].uniqueName)
-      oldClient.close(4000, 'duplicate')
-      oldClient.terminate()
-    }
-
-    client[info].initialized = true
-    console.info('client initialized', client[info])
-    clients.set(client[info].uniqueName, client)
-  }
-
   server.on('connection', function (client, request) {
-    trackClient(client, request)
+    initClient(client, request)
 
     client.on('error', function (error) {
       client[info].errors++
@@ -170,31 +145,15 @@ export function attachServer (httpServer, secureCtx = {}) {
     client.on('ping', () => client.pong())
 
     client.on('message', function (message) {
+      debug && console.debug('switch received', { message })
       try {
-        const msg = decode(message)
-        debug && console.debug({ fn: 'webswitch server received', msg })
-
         if (client[info].initialized) {
-          if (msg === 'status') {
-            sendStatus(client)
-            return
-          }
-          broadcast(message, client)
+          handleEvent(client, message)
           return
         }
-
-        assignBackup(client)
-        // tell client if its now a backup switch or not
-        updateTelemetry(client, msg)
-
-        sendClient(client, client[info])
-        // tell everyone about new node (ignore browsers)
-        if (client[info].role === 'node') broadcast(statusReport(), client)
-        return
       } catch (e) {
         console.error(client.on.name, 'on message', e)
       }
-
       // bad protocol
       client.close(4403, 'bad request')
       client.terminate()
@@ -208,19 +167,62 @@ export function attachServer (httpServer, secureCtx = {}) {
         reason: reason.toString(),
         client: client[info]
       })
-
       clients.delete(client[info]?.uniqueName)
-      client.close(4988, 'ack')
-      client.terminate()
       reassignBackup(client)
-      broadcast(statusReport(), client)
+      broadcast(encode(statusReport()), client)
     })
   })
+
+  function setClientInfo (client, request) {
+    client[info] = {}
+    client[info].id = nanoid()
+    client[info].pid = request.headers[headers.pid] || Math.floor(Math.random())
+    client[info].host = request.headers[headers.host] || request.headers.host
+    client[info].role = request.headers[headers.role] || 'browser'
+    client[info].errors = 0
+    client[info].uniqueName = client[info].host + client[info].pid
+  }
+
+  function initClient (client, request) {
+    setClientInfo(client, request)
+
+    if (clients.has(client[info].uniqueName)) {
+      console.warn('found duplicate name', client[info].uniqueName)
+      const oldClient = clients.get(client[info].uniqueName)
+      oldClient.close(4040, 'duplicate')
+      oldClient.terminate()
+    }
+    client[info].initialized = true
+    clients.set(client[info].uniqueName, client)
+    console.info('client initialized', client[info])
+
+    // make switch backup?
+    assignBackup(client)
+
+    // tell client if its now a backup switch or not
+    sendClient(client, encode(client[info]))
+    // tell everyone about new node (ignore browsers)
+    if (client[info].role === 'node') broadcast(encode(statusReport()), client)
+  }
+
+  function handleEvent (client, message) {
+    const event = decode(message)
+    if (event === 'status') {
+      sendStatus(client)
+      // get services and util stats
+      return
+    }
+    if (event.eventName === 'telemetry') {
+      updateTelemetry(client, event)
+      return
+    }
+    broadcast(message, client)
+  }
 
   function broadcast (data, sender) {
     clients.forEach(function (client) {
       if (client[info]?.uniqueName !== sender[info]?.uniqueName) {
-        debug && console.debug('sending client', client[info], data.toString())
+        debug && console.debug('sending client', client[info], decode(data))
         sendClient(client, data)
         messagesSent++
       }
@@ -248,38 +250,20 @@ export function attachServer (httpServer, secureCtx = {}) {
   }
 
   function decode (message) {
-    const decoded = primitives.decode[typeof message](message)
-    console.debug({ fn: decode.name, decoded })
-    return decoded
+    return primitives.decode[typeof message](message)
   }
 
   function encode (message) {
-    const encoded = primitives.encode[typeof message](message)
-    console.debug({ fn: encode.name, encoded })
-    return encoded
+    return primitives.encode[typeof message](message)
   }
 
   function sendClient (client, message, retries = 0) {
     if (client.readyState === WebSocket.OPEN) {
-      client.send(encode(message))
+      client.send(message)
       return
     }
     if (retries.length < CLIENT_MAX_RETRIES)
-      setTimeout(sendClient, 1000, client, message, ++retries)
-  }
-
-  function trackClient (client, request) {
-    setClientInfo(client, request)
-
-    if (clients.has(client[info].uniqueName)) {
-      console.warn('found duplicate name', client[info].uniqueName)
-      const oldClient = clients.get(client[info].uniqueName)
-      oldClient.close(4040, 'duplicate')
-      oldClient.terminate()
-    }
-    client[info].initialized = true
-    clients.set(client[info].uniqueName, client)
-    console.info('client initialized', client[info])
+      setTimeout(sendClient, 2000, client, message, ++retries)
   }
 
   function assignBackup (client) {
@@ -335,7 +319,7 @@ export function attachServer (httpServer, secureCtx = {}) {
    */
 
   function sendStatus (client) {
-    sendClient(client, statusReport())
+    sendClient(client, encode(statusReport()))
   }
 
   function updateTelemetry (client, msg) {
@@ -343,6 +327,7 @@ export function attachServer (httpServer, secureCtx = {}) {
     if (msg?.telemetry && client[info]) client[info].telemetry = msg.telemetry
     if (msg?.services && client[info]) client[info].services = msg.services
     client[info].isBackupSwitch = backupSwitch === client[info].id
+    console.log('updating telemetry', client[info])
   }
 
   // try {

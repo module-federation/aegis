@@ -54,7 +54,7 @@ export class ServiceLocator {
     })
 
     // keep asking
-    setTimeout(() => this.requestLocation(++retries), this.retryInterval)
+    setTimeout(() => this.requestLocation(++retries), 10000)
   }
 
   runAsService () {
@@ -65,7 +65,7 @@ export class ServiceLocator {
     return new Promise(resolve => {
       console.log('resolving service url')
 
-      this.dns.on('response', response => {
+      const receive = response => {
         debug &&
           console.debug({
             fn: this.receiveLocation.name,
@@ -88,10 +88,12 @@ export class ServiceLocator {
             url: this.url
           })
 
+          this.dns.off('response', receive)
           resolve(this.url)
+          return
         }
-      })
-
+      }
+      this.dns.on('response', receive)
       this.requestLocation()
     })
   }
