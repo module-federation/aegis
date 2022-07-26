@@ -43,7 +43,6 @@ export function attachServer (httpServer, secureCtx = {}) {
    * @type {Map<string,WebSocket>}
    */
   const clients = new Map()
-  const history = new Map()
 
   /**
    * WebSocket {@link server} that may serve as the webswitch.

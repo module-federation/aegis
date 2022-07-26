@@ -35,14 +35,14 @@ export class ServiceLocator {
    * @param {number} retries number of query attempts
    * @returns
    */
-  askQuestion (retries = 0) {
+  ask (retries = 0) {
     // have we found the url?
     if (this.url) return
 
     // if designated as backup, takeover for primary after maxRetries
     if (retries > this.maxRetries && this.isBackup) {
       this.activateBackup = true
-      this.answerQuestion()
+      this.answer()
       return
     }
     console.debug('looking for srv %s retries: %d', this.name, retries)
@@ -57,10 +57,10 @@ export class ServiceLocator {
     })
 
     // keep asking
-    setTimeout(() => this.askQuestion(++retries), this.retryInterval)
+    setTimeout(() => this.ask(++retries), this.retryInterval)
   }
 
-  answerQuestion () {
+  answer () {
     this.dns.on('query', query => {
       debug && console.debug('got a query packet:', query)
 
@@ -88,7 +88,7 @@ export class ServiceLocator {
     })
   }
 
-  readAnswer () {
+  listen () {
     return new Promise(resolve => {
       console.log('resolving service url')
 
@@ -116,7 +116,7 @@ export class ServiceLocator {
       }
 
       this.dns.on('response', buildUrl)
-      this.askQuestion()
+      this.ask()
     })
   }
 }

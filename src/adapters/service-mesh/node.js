@@ -18,7 +18,7 @@ import WebSocket from 'ws'
 import EventEmitter from 'events'
 import CircuitBreaker from '../../domain/circuit-breaker.js'
 import { ServiceLocator } from './service-locator.js'
-import { fstat, readFileSync, writeFileSync } from 'fs'
+import { readFileSync, writeFileSync } from 'fs'
 import path from 'path'
 import { stat } from 'fs'
 
@@ -69,7 +69,7 @@ export class ServiceMeshClient extends EventEmitter {
     this.timerId = 0
     this.reconnecting = false
     this.sendQueue = []
-    this.sendQueueLimit = 1000
+    this.sendQueueLimit = 20
     this.headers = {
       'x-webswitch-host': os.hostname(),
       'x-webswitch-role': 'node',
@@ -104,10 +104,10 @@ export class ServiceMeshClient extends EventEmitter {
       backup: this.isBackup
     })
     if (this.isPrimary) {
-      locator.answerQuestion()
+      locator.answer()
       return constructUrl()
     }
-    return locator.readAnswer()
+    return locator.listen()
   }
 
   async connect (options = {}) {
@@ -190,36 +190,20 @@ export class ServiceMeshClient extends EventEmitter {
     }
   }
 
-  async saveSendQueue () {
-    try {
-      const file = path.join(process.cwd(), 'public', 'senderQueue.json')
-      const size = await new Promise(resolve =>
-        fs.stat(file, (err, stats) => resolve(stats.size))
-      )
-      if (size > 999999999) {
-        console.log('queue too large')
-        return
-      }
-      const data = JSON.parse(readFileSync(file, 'utf-8'))
-      const concatonated = data.concat(this.sendQueue)
-      writeFileSync(file, JSON.stringify(concatonated), 'utf-8')
-    } catch (error) {
-      console.error({ fn: this.saveSendQueue.name, error })
-    }
-  }
-
   primitives = {
     encode: {
       object: msg => Buffer.from(JSON.stringify(msg)),
-      string: msg => Buffer.from(msg),
-      number: msg => Buffer.from(msg),
-      undefined: msg => console.error('unsupported', msg)
+      string: msg => Buffer.from(JSON.stringify(msg)),
+      number: msg => Buffer.from(JSON.stringify(msg)),
+      symbol: msg => console.log('unsupported', msg),
+      undefined: msg => console.log('undefined', msg)
     },
     decode: {
       object: msg => JSON.parse(Buffer.from(msg).toString()),
       string: msg => msg,
       number: msg => msg,
-      undefined: msg => console.error('unsupported', msg)
+      symbol: msg => msg,
+      undefined: msg => console.error('undefined', msg)
     }
   }
 
@@ -247,14 +231,52 @@ export class ServiceMeshClient extends EventEmitter {
       })
       breaker.detectErrors([TIMEOUTEVENT, CONNECTERROR, WSOCKETERROR], this)
       breaker.invoke(msg)
+      return true
     } else if (this.sendQueue.length < this.sendQueueLimit) {
       this.sendQueue.push(msg)
     } else {
-      this.sendQueue.push(msg)
-      this.saveSendQueue()
-      this.sendQueue = []
-      console.warn('send queue limit reached!')
-      this.emit(this.sendQueuedMsgs.name, 'sendQueue limit reached')
+      this.manageSendQueue(msg)
+    }
+    return false
+  }
+
+  manageSendQueue (msg) {
+    this.sendQueue.push(msg)
+    this.saveSendQueue(queue => {
+      return new Promise(resolve => {
+        setTimeout(() => {
+          let sent = true
+          while (queue.length > 0 && sent) {
+            sent = this.send(queue.pop())
+          }
+          return resolve(queue)
+        }, 3000)
+      })
+    })
+  }
+
+  async saveSendQueue (sender) {
+    try {
+      if (this.sendQueue.length < 1.5 * this.sendQueueLimit) {
+        await sender(this.sendQueue)
+        return
+      }
+      const file = path.join(process.cwd(), 'public', 'senderQueue.json')
+      const size = await new Promise(resolve =>
+        stat(file, (err, stats) => resolve(stats.size))
+      )
+      if (size > 99999999) {
+        console.log('queue backing store too large')
+        return
+      }
+      const storedQueue = JSON.parse(
+        Buffer.from(readFileSync(file, 'binary')).toString()
+      )
+      const concatQueue = storedQueue.concat(this.sendQueue)
+      const unsentQueue = await sender(concatQueue)
+      writeFileSync(file, Buffer.from(JSON.stringify(unsentQueue)), 'binary')
+    } catch (error) {
+      console.error({ fn: this.saveSendQueue.name, error })
     }
   }
 
