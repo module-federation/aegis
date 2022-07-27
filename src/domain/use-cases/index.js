@@ -17,8 +17,9 @@ import makeEmitEvent from './emit-event'
 import makeHotReload from './hot-reload'
 import brokerEvents from './broker-events'
 import DistributedCache from '../distributed-cache'
-
+import makeInvokePort from './invoke-port'
 import { isMainThread } from 'worker_threads'
+import { escape } from 'core-js/es6/regexp'
 
 export function registerEvents (ServiceMeshClient) {
   // main thread handles event dispatch
@@ -137,6 +138,7 @@ const removeModels = () => make(makeRemoveModel)
 const loadModels = () => make(makeLoadModels)
 const emitEvents = () => make(makeEmitEvent)
 const deployModels = () => make(makeDeployModel)
+const invokePorts = () => make(makeInvokePort)
 const hotReload = () => [
   {
     endpoint: 'reload',
@@ -226,7 +228,8 @@ export const UseCases = {
   hotReload,
   registerEvents,
   emitEvents,
-  deployModels
+  deployModels,
+  invokePorts
 }
 
 /**
@@ -249,6 +252,7 @@ export function UseCaseService (modelName = null) {
       loadModels: makeOne(modelNameUpper, makeLoadModels),
       emitEvent: makeOne(modelNameUpper, makeEmitEvent),
       deployModel: makeOne(modelNameUpper, makeDeployModel),
+      invokePort: makeOne(modelNameUpper, makeInvokePort),
       listConfigs: listConfigs()
     }
   }
@@ -262,6 +266,7 @@ export function UseCaseService (modelName = null) {
     deployModel: deployModels(),
     hotReload: hotReload(),
     emitEvent: emitEvents(),
+    invokePort: invokePorts(),
     listConfigs: listConfigs()
   }
 }

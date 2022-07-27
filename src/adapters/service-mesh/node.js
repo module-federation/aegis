@@ -244,13 +244,8 @@ export class ServiceMeshClient extends EventEmitter {
     this.sendQueue.push(msg)
     this.saveSendQueue(queue => {
       return new Promise(resolve => {
-        setTimeout(() => {
-          let sent = true
-          while (queue.length > 0 && sent) {
-            sent = this.send(queue.pop())
-          }
-          return resolve(queue)
-        }, 3000)
+        this.sendQueuedMsgs(queue)
+        resolve(queue)
       })
     })
   }
