@@ -25,23 +25,22 @@ export default function makeInvokePort ({ repository, threadpool } = {}) {
    */
   async function invokePort (input) {
     if (isMainThread) {
-      const { id, args, port } = input
-      const model = await repository.find(id)
-      if (!model) {
-        throw new Error('no such id')
-      }
-      const updated = await threadpool.run(invokePort.name, {
-        model,
-        port,
-        args
-      })
+      const updated = await threadpool.run(invokePort.name, input)
       if (updated.hasError) throw new Error(updated.message)
       return updated
     } else {
       try {
-        const { model, port, args } = input
-        console.log({ port })
-        return await model[port](...args)
+        const { id, port, args } = input
+        const model = await repository.find(id)
+
+        if (!model) {
+          return AppError('no such id')
+        }
+
+        console.log({ model, port })
+
+        const result = await model[port](...args)
+        return result || model
       } catch (e) {
         console.error(invokePort.name, e)
         return AppError(e)
