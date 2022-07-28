@@ -27,7 +27,7 @@ _without loosing_
 - or component independence (i.e. components remain decoupled)
 
 ## Or distribute your components
-(across a self-forming sevice mesh)
+(across a self-forming service mesh)
 
 - dynamically and adaptively
 - outside the datacenter and beyond the edge
