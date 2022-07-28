@@ -191,10 +191,13 @@ import {
   importRemoteModels,
   importRemoteServices,
   importRemoteAdapters,
+  importRemotePorts,
+  importRemoteWorkers,
   importModelCache,
   importAdapterCache,
   importServiceCache,
-  importRemoteWorkers
+  importWorkerCache,
+  importPortCache,
 } from './import-remotes'
 
 /**
@@ -300,9 +303,10 @@ let localOverrides = {}
 export async function importRemotes (remoteEntries, overrides = {}) {
   const services = await importRemoteServices(remoteEntries)
   const adapters = await importRemoteAdapters(remoteEntries)
+  const ports = await importRemotePorts(remoteEntries)
   const workers = await importRemoteWorkers(remoteEntries)
 
-  console.info({ services, adapters, overrides, workers })
+  console.info({ services, adapters, overrides, workers: wrkrThd })
 
   await importModels(
     remoteEntries,
@@ -314,7 +318,7 @@ export async function importRemotes (remoteEntries, overrides = {}) {
       ...adapters,
       ...overrides
     },
-    workers
+    wrkrThd
   )
 
   remotesConfig = remoteEntries

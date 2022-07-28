@@ -41,6 +41,11 @@ export async function importRemoteAdapters (remoteEntries) {
   return parse(modules).toObject()
 }
 
+export async function importRemotePorts (remoteEntries) {
+  const modules = await importFederatedModules(remoteEntries, 'port')
+  return parse(modules).toObject()
+}
+
 export async function importModelCache (remoteEntries) {
   const result = await importFederatedModules(remoteEntries, 'model-cache')
   return parse(result).toArray('models')
@@ -56,7 +61,12 @@ export async function importAdapterCache (remoteEntries) {
   return parse(result).toObject()
 }
 
-export async function importRemoteWorkers (remoteEntries) {
-  const result = await importFederatedModules(remoteEntries, 'worker')
+export async function importWorkerCache (remoteEntries) {
+  const result = await importFederatedModules(remoteEntries, 'worker-cache')
   return parse(result).toArray()
+}
+
+export async function importPortCache (remoteEntries) {
+  const modules = await importFederatedModules(remoteEntries, 'port-cache')
+  return parse(modules).toObject()
 }
