@@ -20,6 +20,7 @@ export default function bindAdapters (ports, adapters, services = {}) {
     .map(port => {
       try {
         if (adapters[port] && !ports[port].disabled) {
+          console.debug(port, services[ports[port].service])
           return {
             [port]: adapters[port](services[ports[port].service])
           }
