@@ -46,6 +46,11 @@ export async function importRemotePorts (remoteEntries) {
   return parse(modules).toObject()
 }
 
+export async function importRemoteWorkers (remoteEntries) {
+  const modules = await importFederatedModules(remoteEntries, 'worker')
+  return parse(modules).toObject()
+}
+
 export async function importModelCache (remoteEntries) {
   const result = await importFederatedModules(remoteEntries, 'model-cache')
   return parse(result).toArray('models')
