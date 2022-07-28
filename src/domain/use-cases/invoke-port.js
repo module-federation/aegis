@@ -27,6 +27,7 @@ export default function makeInvokePort ({ repository, threadpool } = {}) {
     if (isMainThread) {
       const updated = await threadpool.run(invokePort.name, input)
       if (updated.hasError) throw new Error(updated.message)
+
       return updated
     } else {
       try {
@@ -37,12 +38,7 @@ export default function makeInvokePort ({ repository, threadpool } = {}) {
           return AppError('no such id')
         }
 
-        console.log({ model, port })
-
-        console.log({ fn: model[port].toString() })
-        const result = await model[port](...args)
-        console.log({ result })
-        return result || model
+        return (await model[port](...args)) || model
       } catch (e) {
         console.error(invokePort.name, e)
         return AppError(e)
