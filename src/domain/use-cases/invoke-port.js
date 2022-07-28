@@ -40,6 +40,7 @@ export default function makeInvokePort ({ repository, threadpool } = {}) {
     } else {
       try {
         const { model, port, args } = input
+        console.log({ port })
         return await model[port](...args)
       } catch (e) {
         console.error(invokePort.name, e)
