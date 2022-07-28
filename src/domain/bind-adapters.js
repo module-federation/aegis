@@ -11,22 +11,30 @@
  * @param {{[x:string]:function(*):function(*):any}} adapters - service adapters
  * @param {*} [services] - (micro-)services
  */
-export default function bindAdapters (ports, adapters, services = {}) {
-  if (!ports || !adapters) {
+export default function bindAdapters ({
+  portConf,
+  adapters,
+  services,
+  ports
+} = {}) {
+  if (!portConf || !adapters) {
     return
   }
 
-  return Object.keys(ports)
+  return Object.keys(portConf)
     .map(port => {
       try {
-        if (adapters[port] && !ports[port].disabled) {
+        const iface = adapters[port] || ports[port]
+        const service = services[portConf[port].service]
+        if (iface) {
           console.debug({
             port,
             adapter: adapters[port],
-            service: services[ports[port].service]
+            portFns: ports[port],
+            service
           })
           return {
-            [port]: adapters[port](services[ports[port].service])
+            [port]: iface(service)
           }
         }
       } catch (e) {

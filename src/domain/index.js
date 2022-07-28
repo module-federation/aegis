@@ -197,7 +197,7 @@ import {
   importAdapterCache,
   importServiceCache,
   importWorkerCache,
-  importPortCache,
+  importPortCache
 } from './import-remotes'
 
 /**
@@ -236,14 +236,26 @@ const onloadEvent = model => ({
  * @param {{[x: string]:Function}} adapters
  * @param {boolean} isCached
  */
-function register (model, services, adapters, workers, isCached = false) {
+function register ({
+  model,
+  ports,
+  services,
+  adapters,
+  workers,
+  isCached = false
+} = {}) {
   const modelName = model.modelName.toUpperCase()
 
-  const serviceAdapters = bindAdapters(model.ports, adapters, services)
+  const bindings = bindAdapters({
+    portConf: model.ports,
+    adapters,
+    services,
+    ports
+  })
 
   const dependencies = {
     ...model.dependencies,
-    ...serviceAdapters
+    ...bindings
   }
 
   ModelFactory.registerModel({
@@ -287,9 +299,17 @@ function register (model, services, adapters, workers, isCached = false) {
  * @param {*} services - services on which the model depends
  * @param {*} adapters - adapters for talking to the services
  */
-async function importModels (remoteEntries, services, adapters, workers) {
+async function importModels ({
+  remoteEntries,
+  services,
+  adapters,
+  workers,
+  ports
+} = {}) {
   const models = await importRemoteModels(remoteEntries)
-  models.forEach(model => register(model, services, adapters, workers))
+  models.forEach(model =>
+    register({ model, services, adapters, ports, workers })
+  )
 }
 
 let remotesConfig
@@ -303,23 +323,27 @@ let localOverrides = {}
 export async function importRemotes (remoteEntries, overrides = {}) {
   const services = await importRemoteServices(remoteEntries)
   const adapters = await importRemoteAdapters(remoteEntries)
-  const ports = await importRemotePorts(remoteEntries)
   const workers = await importRemoteWorkers(remoteEntries)
+  const ports = await importRemotePorts(remoteEntries)
 
-  console.info({ services, adapters, overrides, workers: wrkrThd })
+  console.info({ services, adapters, ports, overrides, workers })
 
-  await importModels(
+  await importModels({
     remoteEntries,
-    {
+    services: {
       ...services,
       ...overrides
     },
-    {
+    adapters: {
       ...adapters,
       ...overrides
     },
-    wrkrThd
-  )
+    ports: {
+      ...ports,
+      ...overrides
+    },
+    workers
+  })
 
   remotesConfig = remoteEntries
   localOverrides = overrides
