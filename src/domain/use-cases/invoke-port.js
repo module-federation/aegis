@@ -39,7 +39,9 @@ export default function makeInvokePort ({ repository, threadpool } = {}) {
 
         console.log({ model, port })
 
+        console.log({ fn: model[port].toString() })
         const result = await model[port](...args)
+        console.log({ result })
         return result || model
       } catch (e) {
         console.error(invokePort.name, e)
