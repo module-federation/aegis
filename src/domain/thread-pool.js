@@ -10,9 +10,9 @@ import os from 'os'
 
 const { poolOpen, poolClose, poolDrain, poolAbort } = domainEvents
 const broker = EventBrokerFactory.getInstance()
+const NOJOBS = 'noJobsRunning'
 const MAINCHANNEL = 'mainChannel'
 const EVENTCHANNEL = 'eventChannel'
-const NOJOBSRUNNING = 'noJobsRunning'
 const DEFAULT_THREADPOOL_MIN = 1
 const DEFAULT_THREADPOOL_MAX = 2
 const DEFAULT_JOBQUEUE_MAX = 25
@@ -67,7 +67,7 @@ async function kill (thread, reason) {
         resolve(thread.id)
       }, TIMEOUT)
 
-      thread.mainChannel.once('exit', () => {
+      thread.eventChannel.once('exit', () => {
         clearTimeout(timerId)
         thread.eventChannel.close()
         // the timeout will cause this to run if executed first
@@ -76,7 +76,7 @@ async function kill (thread, reason) {
         resolve(thread.id)
       })
 
-      thread.eventChannel.postMessage({ name: 'shutdown', data: 0 })
+      thread.eventChannel.postMessage({ name: 'exit', data: 0 })
     })
   } catch (error) {
     return console.error({ fn: kill.name, error })
@@ -92,12 +92,19 @@ async function kill (thread, reason) {
  */
 function connectEventChannel (worker, channel) {
   const { port1, port2 } = channel
+
   // transfer this port for the worker to use
   worker.postMessage({ eventPort: port2 }, [port2])
+
   // fire this event to forward to workers
-  broker.on('to_worker', async event => port1.postMessage(event))
+  broker.on('to_worker', async event => {
+    console.log({ fn: 'to worker', data: event })
+    port1.postMessage(event)
+  })
+
+  // register to handle events from workers
   port1.onmessage = async event => {
-    console.log({ fn: 'main: port1.onmessage', data: event.data })
+    console.log({ fn: 'from worker', data: event.data })
     if (event.data.eventName) await broker.notify('from_worker', event.data)
   }
 }
@@ -161,9 +168,7 @@ function reallocate (pool, freeThread) {
   if (pool.waitingJobs.length > 0) {
     // call `postJob`: the caller has provided a callback to run
     // when the job is done so just catch any errors and move on
-    pool.waitingJobs
-      .shift()(freeThread)
-      .catch(error => console.error({ fn: reallocate.name, error }))
+    pool.waitingJobs.shift()(freeThread)
   } else {
     pool.freeThreads.push(freeThread)
   }
@@ -208,7 +213,7 @@ function postJob ({
 
       // Was this the only job running?
       if (pool.noJobsRunning()) {
-        pool.emit(NOJOBSRUNNING)
+        pool.emit(NOJOBS)
       }
       resolve(res(result))
     })
@@ -557,12 +562,15 @@ export class ThreadPool extends EventEmitter {
       this.broadcastEvent({ eventName: 'abort' })
       console.warn('pool is aborting', this.name)
       this.notify(poolAbort)
-      this.freeThreads.splice(0, this.freeThreads.length)
-      while (this.threads.length > 0) await this.threads.pop().stop(reason)
+      for (thread of this.threads) {
+        await thread.stop(reason)
+      }
+      this.threads = []
+      this.freeThreads = []
     } catch (error) {
       console.error({ fn: this.abort.name, error })
     } finally {
-      setTimeout(() => (this.aborting = false), 10000)
+      setTimeout(() => (this.aborting = false), 10000).unref()
       this.closed = false
     }
   }
@@ -599,7 +607,7 @@ export class ThreadPool extends EventEmitter {
       } else {
         const timerId = setTimeout(reject, 4000)
 
-        this.once(NOJOBSRUNNING, () => {
+        this.once(NOJOBS, () => {
           clearTimeout(timerId)
           resolve(this)
         })
@@ -887,6 +895,8 @@ const ThreadPoolFactory = (() => {
    */
   function monitorPools () {
     monitorIntervalId = setInterval(() => {
+      monitorIntervalId.unref()
+
       threadPools.forEach(pool => {
         if (pool.aborting) return
 

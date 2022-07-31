@@ -21,6 +21,6 @@ export function subscribe (service) {
 
 export function close (service) {
   return function (reason) {
-    service.close('reload')
+    service.close(reason)
   }
 }

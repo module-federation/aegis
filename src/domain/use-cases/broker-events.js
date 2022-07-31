@@ -35,7 +35,7 @@ function createBroadcastChannel (modelName, broker) {
  *  datasources:import('../shared-memory').DataSourceFactory,
  *  models:import("../model-factory").ModelFactory,
  *  ObjectCache:import('../distributed-cache'),
- *  ServiceMesh:import('../../adapters/service-mesh/node').ServiceMeshClient
+ *  ServiceMesh:import(import('../../adapters/service-mesh').ServiceMeshPlugin}
  * }} models
  *
  */
@@ -49,9 +49,8 @@ export default function brokerEvents ({
   if (isMainThread) {
     /**
      *
-     * @param {import('../../adapters/service-mesh/node').ServiceMeshClient} serviceMesh
      */
-    function initServiceMesh (serviceMesh) {
+    function initServiceMesh () {
       // turn off all listeners for these events
       broker.off('reload')
       broker.off('from_worker')
@@ -59,14 +58,15 @@ export default function brokerEvents ({
 
       // reinitialize service mesh on reload
       broker.on('reload', async event => {
-        initServiceMesh(new ServiceMesh())
+        ServiceMesh.close(4999, 'reload')
+        setTimeout(() => initServiceMesh(), 3000)
       })
 
       // forward all events from worker threads to the service mesh
-      broker.on('from_worker', async event => serviceMesh.publish(event))
+      broker.on('from_worker', async event => ServiceMesh.publish(event))
 
       // forward all events from the mesh to worker threads
-      serviceMesh.subscribe('*', event => broker.notify('to_worker', event))
+      ServiceMesh.subscribe('*', event => broker.notify('to_worker', event))
 
       // generate a list of installed services
       const listLocalModels = () =>
@@ -76,10 +76,10 @@ export default function brokerEvents ({
           .map(spec => spec.modelName)
 
       // connect to mesh and provide fn to list installed services
-      serviceMesh.connect({ listServices: listLocalModels })
+      ServiceMesh.connect({ listServices: listLocalModels })
     }
 
-    initServiceMesh(new ServiceMesh())
+    initServiceMesh()
   } else {
     createBroadcastChannel(workerData.poolName, broker)
     // create listeners that handle events from main

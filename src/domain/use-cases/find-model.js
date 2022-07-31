@@ -1,4 +1,4 @@
-                                                                                                                          'use strict'
+'use strict'
 
 import { isMainThread } from 'worker_threads'
 import executeCommand from './execute-command'
@@ -55,7 +55,7 @@ export default function makeFindModel ({
           model.getId
             ? model // already unmarshalled
             : models.loadModel(broker, repository, model, modelName)
-            
+
         // unmarshall the model so we can use it
         const hydratedModel = hydrateModel(model)
 
@@ -69,12 +69,13 @@ export default function makeFindModel ({
         }
 
         if (query.command) {
-          const result = await async(
-            executeCommand(hydratedModel, query.command, 'read')
+          const commands = query.command.split(',')
+          const results = await Promise.all(
+            commands.map(async cmd =>
+              executeCommand(hydratedModel, cmd, 'read')
+            )
           )
-          if (result.ok) {
-            return result.data
-          }
+          if (results.length > 0) return results
         }
 
         // gracefully degrade

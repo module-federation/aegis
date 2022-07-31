@@ -19,8 +19,6 @@ import brokerEvents from './broker-events'
 import DistributedCache from '../distributed-cache'
 import makeInvokePort from './invoke-port'
 import { isMainThread } from 'worker_threads'
-import { escape } from 'core-js/es6/regexp'
-
 export function registerEvents (ServiceMeshClient) {
   // main thread handles event dispatch
   brokerEvents({

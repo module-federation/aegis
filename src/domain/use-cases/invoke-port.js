@@ -17,7 +17,24 @@ import AppError from '../util/app-error'
  * @param {ModelParam} param0
  * @returns {function():Promise<import("../domain/model").Model>}
  */
-export default function makeInvokePort ({ repository, threadpool } = {}) {
+export default function makeInvokePort ({
+  repository,
+  threadpool,
+  models,
+  broker,
+  modelName
+} = {}) {
+  async function getModelInstance (input) {
+    if (input.id) {
+      const model = repository.find(input.id)
+      if (!model) throw new Error('no such id')
+      return model
+    }
+
+    const model = await models.createModel(broker, repository, modelName, input)
+    return repository.save(model.getId(), model)
+  }
+
   /**
    *
    * @param {{id:string,model:import('..').Model,args:string[],port:string}} input
@@ -27,21 +44,15 @@ export default function makeInvokePort ({ repository, threadpool } = {}) {
     if (isMainThread) {
       const updated = await threadpool.run(invokePort.name, input)
       if (updated.hasError) throw new Error(updated.message)
-
       return updated
     } else {
       try {
-        const { id, port, args } = input
-        const model = await repository.find(id)
-
-        if (!model) {
-          return AppError('no such id')
-        }
-
+        const { port, args } = input
+        const model = await getModelInstance(input)
         return (await model[port](...args)) || model
-      } catch (e) {
-        console.error(invokePort.name, e)
-        return AppError(e)
+      } catch (error) {
+        console.error({ fn: invokePort.name, error })
+        return AppError(error)
       }
     }
   }

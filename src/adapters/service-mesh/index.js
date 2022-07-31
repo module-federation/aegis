@@ -1,11 +1,10 @@
-'use strict'
-
-const ServerInterface = require('./server-interface')
+import * as ClientInterface from './client-interface'
 
 import * as plugins from './plugins'
 
 const config = require('../../config').hostConfig
 const selectedPlugin = config.services.activeServiceMesh
+
 /**
  * Which mesh service implementations are enabled?
  */
@@ -25,9 +24,9 @@ const configuredPlugin = enabledPlugins.includes(selectedPlugin)
  * @type {ServiceMeshAdapter}
  */
 export const ServiceMeshPlugin = {
-  ...Object.keys(ServerInterface)
+  ...Object.keys(ClientInterface)
     .map(port => ({
-      [port]: ServerInterface[port](plugins[configuredPlugin])
+      [port]: ClientInterface[port](plugins[configuredPlugin])
     }))
     .reduce((a, b) => ({ ...a, ...b }))
 }
