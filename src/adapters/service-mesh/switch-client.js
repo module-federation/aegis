@@ -50,8 +50,6 @@ const protocol = isPrimary ? activeProto : config.protocol
 const port = isPrimary ? activePort : config.port
 const host = isPrimary ? activeHost : config.host
 const isBackup = config.isBackupSwitch
-const apiProto = sslEnabled ? 'https' : 'http'
-const apiUrl = `${apiProto}://${activeHost}:${activePort}`
 
 const constructUrl = () =>
   protocol && host && port ? `${protocol}://${host}:${port}` : null
@@ -89,8 +87,6 @@ class ServiceMeshClient extends EventEmitter {
     return {
       eventName: 'telemetry',
       proto: this.name,
-      apiUrl,
-      heartbeatMs,
       hostname: os.hostname(),
       role: 'node',
       pid: process.pid,
@@ -131,6 +127,13 @@ class ServiceMeshClient extends EventEmitter {
     this.ws.on('close', (code, reason) => {
       console.log('received close frame', code, reason.toString())
       this.emit(CONNECTERROR, reason)
+      // if ([1006, 4040].includes(code)) {
+      //   if (this.RECONNECTING) return
+      //   this.RECONNECTING = true
+      //   clearTimeout(this.timerId)
+      //   this.close(code, reason)
+      //   setTimeout(() => this.connect(), 8000).unref()
+      // }
     })
 
     this.ws.on('open', () => {
@@ -322,6 +325,10 @@ function getClient () {
   return client
 }
 
+function dispose () {
+  client = null
+}
+
 export function connect (options) {
   getClient().connect(options)
 }
@@ -336,5 +343,5 @@ export function subscribe (evt, cb) {
 
 export function close (code, reason) {
   getClient().close(code, reason)
-  client = null
+  dispose()
 }
