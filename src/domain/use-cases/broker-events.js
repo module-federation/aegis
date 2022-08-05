@@ -3,8 +3,6 @@
 /** @module domain/brokerEvents */
 
 import { BroadcastChannel, isMainThread, workerData } from 'worker_threads'
-import { ServiceMeshPlugin } from '../../adapters/service-mesh'
-import { ServiceMeshClient } from '../../adapters/service-mesh/switch-client'
 
 /** @type {BroadcastChannel}*/
 let broadcastChannel
@@ -44,26 +42,31 @@ function createBroadcastChannel (modelName, broker) {
 export default function brokerEvents ({
   broker,
   datasources,
-  repository,
   models,
   ServiceMesh,
   ObjectCache
 }) {
   if (isMainThread) {
-    // turn off all listeners for these events
-    broker.off('reload')
-    broker.off('from_worker')
-    broker.off('to_worker')
     /**
      *
      */
-    async function initServiceMesh () {
-      const serviceMesh = await models.createModel(
-        broker,
-        repository,
-        'appFabricClient',
-        {}
-      )
+    function initServiceMesh () {
+      // turn off all listeners for these events
+      broker.off('reload')
+      broker.off('from_worker')
+      broker.off('to_worker')
+
+      // reinitialize service mesh on reload
+      broker.on('reload', async event => {
+        ServiceMesh.close(4999, 'reload')
+        setTimeout(() => initServiceMesh(), 3000)
+      })
+
+      // forward all events from worker threads to the service mesh
+      broker.on('from_worker', async event => ServiceMesh.publish(event))
+
+      // forward all events from the mesh to worker threads
+      ServiceMesh.subscribe('*', event => broker.notify('to_worker', event))
 
       // generate a list of installed services
       const listLocalModels = () =>
@@ -73,20 +76,9 @@ export default function brokerEvents ({
           .map(spec => spec.modelName)
 
       // connect to mesh and provide fn to list installed services
-      await serviceMesh.connect({ listServices: listLocalModels })
-
-      // reinitialize service mesh on reload
-      broker.on('reload', async event => {
-        await serviceMesh.close(4999, 'reload')
-        initServiceMesh()
-      })
-
-      // forward all events from worker threads to the service mesh
-      broker.on('from_worker', async event => serviceMesh.publish(event))
-
-      // forward all events from the mesh to worker threads
-      serviceMesh.subscribe('*', event => broker.notify('to_worker', event))
+      ServiceMesh.connect({ listServices: listLocalModels })
     }
+
     initServiceMesh()
   } else {
     createBroadcastChannel(workerData.poolName, broker)

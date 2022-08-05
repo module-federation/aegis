@@ -191,13 +191,13 @@ import {
   importRemoteModels,
   importRemoteServices,
   importRemoteAdapters,
-  // importRemotePorts,
+  importRemotePorts,
   importRemoteWorkers,
   importModelCache,
   importAdapterCache,
-  importServiceCache
-  // importWorkerCache,
-  // importPortCache
+  importServiceCache,
+  importWorkerCache,
+  importPortCache
 } from './import-remotes'
 
 /**
@@ -238,18 +238,19 @@ const onloadEvent = model => ({
  */
 function register ({
   model,
+  ports,
   services,
   adapters,
   workers,
   isCached = false
 } = {}) {
   const modelName = model.modelName.toUpperCase()
-  console.debug({ model, services, adapters, workers })
 
   const bindings = bindAdapters({
     portConf: model.ports,
     adapters,
-    services
+    services,
+    ports
   })
 
   const dependencies = {
@@ -302,19 +303,13 @@ async function importModels ({
   remoteEntries,
   services,
   adapters,
-  workers
+  workers,
+  ports
 } = {}) {
-  console.debug({ fn: importModels.name })
   const models = await importRemoteModels(remoteEntries)
-  models.forEach(model => {
-    console.debug({
-      model,
-      services,
-      adapters,
-      workers
-    })
-    register({ model, services, adapters, workers })
-  })
+  models.forEach(model =>
+    register({ model, services, adapters, ports, workers })
+  )
 }
 
 let remotesConfig
@@ -329,7 +324,9 @@ export async function importRemotes (remoteEntries, overrides = {}) {
   const services = await importRemoteServices(remoteEntries)
   const adapters = await importRemoteAdapters(remoteEntries)
   const workers = await importRemoteWorkers(remoteEntries)
-  //const ports = await importRemotePorts(remoteEntries)
+  const ports = await importRemotePorts(remoteEntries)
+
+  console.info({ services, adapters, ports, overrides, workers })
 
   await importModels({
     remoteEntries,
@@ -339,6 +336,10 @@ export async function importRemotes (remoteEntries, overrides = {}) {
     },
     adapters: {
       ...adapters,
+      ...overrides
+    },
+    ports: {
+      ...ports,
       ...overrides
     },
     workers

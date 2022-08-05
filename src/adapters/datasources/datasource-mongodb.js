@@ -9,7 +9,6 @@ const configRoot = require('../../config').hostConfig
 const dsOptions = configRoot.adapters.datasources.DataSourceMongoDb.options || {
   runOffline: true
 }
-const debug = /true/i.test(process.env.DEBUG)
 const cacheSize = configRoot.adapters.cacheSize || 3000
 
 /**
@@ -36,7 +35,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
     this.runOffline = dsOptions.runOffline
     this.url = url
     this.className = DataSourceMongoDb.name
-    debug && console.debug(this)
+    console.log(this)
   }
 
   async connection () {

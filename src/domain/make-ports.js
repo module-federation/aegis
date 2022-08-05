@@ -7,7 +7,6 @@ import portHandler from './port-handler'
 import async from './util/async-error'
 import CircuitBreaker from './circuit-breaker'
 import domainEvents from './domain-events'
-import { isModuleNamespaceObject } from 'util/types'
 
 const { portRetryFailed, portRetryWorked, portTimeout } = domainEvents
 const TIMEOUTSECONDS = 10
@@ -15,7 +14,7 @@ const MAXRETRY = 5
 
 function getTimerArgs (args) {
   const timerArg = { calledByTimer: new Date().toUTCString() }
-  if (args && args.length > 0) return [...args, timerArg]
+  if (args) return [...args, timerArg]
   return [timerArg]
 }
 
@@ -26,7 +25,7 @@ function getTimerArgs (args) {
  */
 function getRetries (args) {
   const timerArgs = getTimerArgs(args)
-  const retries = timerArgs.filter(arg => arg?.calledByTimer)
+  const retries = timerArgs.filter(arg => arg.calledByTimer)
   return {
     count: retries.length,
     nextArg: timerArgs
@@ -136,23 +135,19 @@ function addPortListener (portName, portConf, broker, disabled) {
   return false
 }
 
-function isModel (value, model) {
-  return value.getName && value.getName() === model.getName()
-}
-
 /**
  * Push new port on stack and update model, immutably.
- * @param {import(".").Model} result
+ * @param {import(".").Model} model
  * @param {*} port
  * @param {*} remember
  * @returns {Promise<import(".").Model>}
  */
-async function updatePortFlow (result, model, port, remember) {
-  if (!remember || !isModel(result, model)) return model
+async function updatePortFlow (model, port, remember) {
+  if (!remember) return model
 
-  return result.update(
+  return model.update(
     {
-      [result.getKey('portFlow')]: [...result.getPortFlow(), port]
+      [model.getKey('portFlow')]: [...model.getPortFlow(), port]
     },
     false
   )
@@ -223,20 +218,20 @@ export default function makePorts (ports, adapters, broker) {
 
         try {
           // Call the adapter and wait
-          const result = await adapters[port]({ model: this, port, args })
+          const model = await adapters[port]({ model: this, port, args })
 
           // Stop the timer
           timer.stopTimer()
 
           // Remember what ports we called in case of restart or undo
-          const model = await updatePortFlow(result, this, port, rememberPort)
+          const saved = await updatePortFlow(model, port, rememberPort)
 
           // Signal the next port to run.
           if (rememberPort) {
-            await model.emit(portConf.producesEvent, portName)
+            await saved.emit(portConf.producesEvent, portName)
           }
 
-          return result
+          return saved
         } catch (error) {
           console.error({ func: port, args, error })
 

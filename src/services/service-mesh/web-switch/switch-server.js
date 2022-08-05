@@ -150,16 +150,14 @@ export function attachServer (httpServer, secureCtx = {}) {
 
     client.on('close', function (code, reason) {
       console.info({
-        msg: 'server received close frame',
+        msg: 'client closing',
         code,
         reason: reason.toString(),
         client: client[info]
       })
-      clients.delete(client[info].uniqueName)
-      client._socket.destroy()
+      clients.delete(client[info]?.uniqueName)
       reassignBackup(client)
       broadcast(encode(statusReport()), client)
-      client = null
     })
   })
 
@@ -171,7 +169,6 @@ export function attachServer (httpServer, secureCtx = {}) {
     client[info].role = request.headers[headers.role] || 'browser'
     client[info].errors = 0
     client[info].uniqueName = client[info].host + client[info].pid
-    client[info].lastPing = Date.now()
   }
 
   function initClient (client, request) {
@@ -181,6 +178,7 @@ export function attachServer (httpServer, secureCtx = {}) {
       console.warn('found duplicate name', client[info].uniqueName)
       const oldClient = clients.get(client[info].uniqueName)
       oldClient.close(4040, 'duplicate')
+      oldClient.terminate()
     }
     client[info].initialized = true
     clients.set(client[info].uniqueName, client)
@@ -201,14 +199,12 @@ export function attachServer (httpServer, secureCtx = {}) {
 
     if (event === 'status') {
       sendStatus(client)
+      // get services and util stats
       return
     }
     if (event.eventName === 'telemetry') {
       updateTelemetry(client, event)
       return
-    }
-    if (event.eventName === 'monitorClients') {
-      monitor[event.eventAction]()
     }
     broadcast(message, client)
   }
@@ -231,17 +227,15 @@ export function attachServer (httpServer, secureCtx = {}) {
   const primitives = {
     encode: {
       object: msg => Buffer.from(JSON.stringify(msg)),
-      string: msg => Buffer.from(JSON.stringify(msg)),
-      number: msg => Buffer.from(JSON.stringify(msg)),
-      Symbol: msg => console.error('unsupported', msg),
-      undefined: msg => console.error('undefined', msg)
+      string: msg => Buffer.from(msg),
+      number: msg => Buffer.from(msg),
+      undefined: msg => console.error('unsupported', msg)
     },
     decode: {
       object: msg => JSON.parse(Buffer.from(msg).toString()),
-      string: msg => JSON.parse(Buffer.from(msg).toString()),
-      number: msg => JSON.parse(Buffer.from(msg).toString()),
-      Symbol: msg => console.error('unsupported', msg),
-      undefined: msg => console.error('undefined', msg)
+      string: msg => msg,
+      number: msg => msg,
+      undefined: msg => console.error('unsupported', msg)
     }
   }
 
@@ -315,101 +309,55 @@ export function attachServer (httpServer, secureCtx = {}) {
    */
 
   function sendStatus (client) {
+    console.debug('sending client status')
     sendClient(client, encode(statusReport()))
   }
 
   function updateTelemetry (client, msg) {
-    if (!client[info] || !msg) return
-    if (msg.telemetry) client[info].telemetry = msg.telemetry
-    if (msg.services) client[info].services = msg.services
-    if (msg.apiUrl) client[info].apiUrl = msg.apiUrl
-    if (msg.heartbeatMs) client[info].heartbeatMs = msg.heartbeatMs
+    if (!client[info]) return
+    if (msg?.telemetry && client[info]) client[info].telemetry = msg.telemetry
+    if (msg?.services && client[info]) client[info].services = msg.services
     client[info].isBackupSwitch = backupSwitch === client[info].id
     console.log('updating telemetry', client[info])
   }
 
-  function httpGet (url) {
-    try {
-      const _url = new URL(url)
-      require(_url.protocol.replace(':', '')).get(url, res => {
-        const buf = []
-        res.on('data', data => buf.push(data))
-        res.on('done', () => console.info(buf.join('')))
-      })
-    } catch (error) {
-      console.error({ fn: httpGet.name, error })
-    }
+  function sendClientSwitch (client, msg) {
+    const ws = new WebSocket(client[info].url, {
+      [headers.host]: hostname(),
+      [headers.role]: 'switch',
+      [headers.pid]: process.id,
+      'idempotency-key': nanoid()
+    })
+
+    ws.on('open', () => {
+      ws.send(encode(msg))
+      ws.close()
+    })
   }
 
   function reloadInactiveClient (client) {
-    httpGet(client[info].apiUrl + '/reload')
+    sendClientSwitch(client, {
+      eventName: reloadInactiveClient.name,
+      client: client[info]
+    })
   }
-
-  function monitorInterval () {
-    return [...clients]
-      .filter(client => client[info]?.heartbeatMs)
-      .reduce((client, minHeartbeat) =>
-        minHeartbeat < client[info].heartbeatMs
-          ? minHeartbeat
-          : client[info].heartbeatMs
-      )
-  }
-
-  function shouldReload (client) {
-    try {
-      return (
-        client[info]?.role === 'node' &&
-        new URL(client[info].apiUrl) &&
-        Date.now() - client[info].lastPing > client[info].heartbeatMs - 500
-      )
-    } catch (error) {
-      return false
-    }
-  }
-
-  let monitorId
 
   function monitorClientPings () {
-    monitorId = setInterval(() => {
+    setInterval(() => {
       clients.forEach(
-        client => !shouldReload(client) || reloadInactiveClient(client)
+        client =>
+          Date.now() - client[info].lastPing < 12000 ||
+          reloadInactiveClient(client)
       )
-      monitorId.unref()
-    }, monitorInterval())
+    }, 6000)
   }
 
-  const monitor = {
-    start () {
-      if (!monitorId) monitorClientPings()
-    },
+  //monitorClientPings()
 
-    stop () {
-      clearInterval(monitorId)
-    }
-  }
-
-  if (process.env.MONITOR_CLIENTS) monitor.start()
-
-  // function sendClientSwitch (client, msg) {
-  //   const ws = new WebSocket(client[info].localSwitchUrl, {
-  //     headers: {
-  //       [headers.host]: hostname(),
-  //       [headers.role]: 'switch',
-  //       [headers.pid]: process.id,
-  //       'idempotency-key': nanoid()
-  //     },
-  //     protocol: SERVICENAME
-  //   })
-
-  //   ws.on('open', () => {
-  //     ws.send(encode(msg))
-  //     ws.close()
-  //   })
-  // }
   // try {
   //   // configure uplink
   //   if (config.uplink) {
-  //     const node = re  quire('./node')
+  //     const node = require('./node')
   //     server.uplink = node
   //     node.setUplinkUrl(config.uplink)
   //     node.onUplinkMessage(msg => broadcast(msg, node))
