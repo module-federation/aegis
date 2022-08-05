@@ -38,12 +38,12 @@ export const deleteModels = () => make(removeModels, deleteModelFactory)
 export const liveUpdate = () => make(hotReload, makeLiveUpdate)
 export const getConfig = () => getConfigFactory(listConfigs())
 export const getRoutes = () => getUserRoutes()
-import { ServiceMeshPlugin } from '../service-mesh'
+import { ServiceMeshClient } from '..'
 
 export const initCache = () => {
   const label = '\ntime to load cache'
   const specs = loadModels()
-  registerEvents(ServiceMeshPlugin)
+  registerEvents(ServiceMeshClient)
 
   async function loadModelInstances () {
     console.time(label)

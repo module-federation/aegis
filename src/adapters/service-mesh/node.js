@@ -20,7 +20,7 @@ import CircuitBreaker from '../../domain/circuit-breaker.js'
 import { ServiceLocator } from './service-locator.js'
 import { readFileSync, writeFileSync } from 'fs'
 import path from 'path'
-import { nanoid } from 'nanoid'
+import { stat } from 'fs'
 
 const HOSTNAME = 'webswitch.local'
 const SERVICENAME = 'webswitch'
@@ -35,7 +35,7 @@ const isPrimary =
   (typeof process.env.SWITCH === 'undefined' && config.isSwitch)
 
 const debug = config.debug || /true/i.test(process.env.DEBUG)
-const heartbeatMs = config.heartbeat || 10000
+const heartbeatms = config.heartbeat || 10000
 const sslEnabled = /true/i.test(process.env.SSL_ENABLED)
 const clearPort = process.env.PORT || 80
 const cipherPort = process.env.SSL_PORT || 443
@@ -56,7 +56,7 @@ const constructUrl = () =>
 
 let uplinkCallback
 
-class ServiceMeshClient extends EventEmitter {
+export class ServiceMeshClient extends EventEmitter {
   constructor (url = null) {
     super()
     this.ws = null
@@ -67,7 +67,7 @@ class ServiceMeshClient extends EventEmitter {
     this.isBackup = isBackup
     this.pong = true
     this.timerId = 0
-    this.RECONNECTING = false
+    this.reconnecting = false
     this.sendQueue = []
     this.sendQueueLimit = 20
     this.headers = {
@@ -127,22 +127,21 @@ class ServiceMeshClient extends EventEmitter {
     this.ws.on('close', (code, reason) => {
       console.log('received close frame', code, reason.toString())
       this.emit(CONNECTERROR, reason)
-      // if ([1006, 4040].includes(code)) {
-      //   if (this.RECONNECTING) return
-      //   this.RECONNECTING = true
-      //   clearTimeout(this.timerId)
-      //   this.close(code, reason)
-      //   setTimeout(() => this.connect(), 8000).unref()
-      // }
+      if ([1006, 4040].includes(code)) {
+        if (this.reconnecting) return
+        this.reconnecting = true
+        clearTimeout(this.timerId)
+        this.close(code, reason)
+        setTimeout(() => this.connect(), 8000)
+      }
     })
 
     this.ws.on('open', () => {
       console.log('connection open')
+      this.reconnecting = false
       this.send(this.telemetry())
-      this.once('timeout', this.timeout)
       this.heartbeat()
-      this.RECONNECTING = false
-      setTimeout(() => this.sendQueuedMsgs(), 1000).unref()
+      setTimeout(() => this.sendQueuedMsgs(), 1000)
     })
 
     this.ws.on('message', message => {
@@ -168,24 +167,26 @@ class ServiceMeshClient extends EventEmitter {
     this.ws.on('pong', () => (this.pong = true))
   }
 
-  timeout () {
-    if (this.RECONNECTING) return
-    this.RECONNECTING = true
-    console.warn('timeout')
-    this.close(4911, 'timeout')
-    setTimeout(() => this.connect(), 5000).unref()
-    this.emit(TIMEOUTEVENT, this.telemetry())
-  }
-
   heartbeat () {
     if (this.pong) {
       this.pong = false
       this.ws.ping()
-      this.timerId = setTimeout(() => this.heartbeat(), heartbeatMs)
-      this.timerId.unref()
+      this.timerId = setTimeout(() => this.heartbeat(), heartbeatms)
     } else {
-      clearTimeout(this.timerId)
-      this.emit('timeout')
+      if (this.reconnecting) return
+      this.reconnecting = true
+      console.warn('timeout')
+      this.close(4877, 'timeout')
+      setTimeout(() => this.connect(), 5000)
+      this.emit(TIMEOUTEVENT, this.telemetry())
+    }
+  }
+
+  sendQueuedMsgs () {
+    try {
+      while (this.sendQueue.length > 0) this.send(this.sendQueue.pop())
+    } catch (error) {
+      console.error({ fn: this.sendQueuedMsgs.name, error })
     }
   }
 
@@ -199,9 +200,9 @@ class ServiceMeshClient extends EventEmitter {
     },
     decode: {
       object: msg => JSON.parse(Buffer.from(msg).toString()),
-      string: msg => JSON.parse(Buffer.from(msg).toString()),
-      number: msg => JSON.parse(Buffer.from(msg).toString()),
-      symbol: msg => console.log('unsupported', msg),
+      string: msg => msg,
+      number: msg => msg,
+      symbol: msg => msg,
       undefined: msg => console.error('undefined', msg)
     }
   }
@@ -226,12 +227,7 @@ class ServiceMeshClient extends EventEmitter {
     ) {
       const breaker = CircuitBreaker('webswitch', msg => {
         debug && console.debug({ fn: this.send.name, msg })
-        this.ws.send(this.encode(msg), {
-          headers: {
-            ...this.headers,
-            'idempotency-key': nanoid()
-          }
-        })
+        this.ws.send(this.encode(msg))
       })
       breaker.detectErrors([TIMEOUTEVENT, CONNECTERROR, WSOCKETERROR], this)
       breaker.invoke(msg)
@@ -244,59 +240,43 @@ class ServiceMeshClient extends EventEmitter {
     return false
   }
 
-  sendQueuedMsgs () {
-    try {
-      let sent = true
-      while (this.sendQueue.length > 0 && sent)
-        sent = this.send(this.sendQueue.pop())
-    } catch (error) {
-      console.error({ fn: this.sendQueuedMsgs.name, error })
-    }
-  }
-
   manageSendQueue (msg) {
     this.sendQueue.push(msg)
     this.saveSendQueue(queue => {
       return new Promise(resolve => {
-        setTimeout(() => {
-          this.sendQueuedMsgs(queue)
-          resolve(queue)
-        }, 3000).unref()
+        this.sendQueuedMsgs(queue)
+        resolve(queue)
       })
     })
   }
 
-  readFileQueue (filePath) {
-    try {
-      return JSON.parse(readFileSync(filePath))
-    } catch (error) {
-      console.error({ fn: readFileSync.name, error })
-      return []
-    }
-  }
-
-  writeFileQueue (filePath, queue) {
-    try {
-      writeFileSync(filePath, JSON.stringify(queue))
-    } catch (error) {
-      this.emit(`${this.writeFileSync.name}_${error.name}`, error)
-      console.error({ fn: writeFileSync.name, error })
-    }
-  }
-
   async saveSendQueue (sender) {
     try {
-      const filePath = path.join(process.cwd(), 'public', 'senderQueue.json')
-      const storedQueue = this.readFileQueue(filePath)
+      if (this.sendQueue.length < 1.5 * this.sendQueueLimit) {
+        await sender(this.sendQueue)
+        return
+      }
+      const file = path.join(process.cwd(), 'public', 'senderQueue.json')
+      const size = await new Promise(resolve =>
+        stat(file, (err, stats) => resolve(stats.size))
+      )
+      if (size > 99999999) {
+        console.log('queue backing store too large')
+        return
+      }
+      const storedQueue = JSON.parse(
+        Buffer.from(readFileSync(file, 'binary')).toString()
+      )
       const concatQueue = storedQueue.concat(this.sendQueue)
       const unsentQueue = await sender(concatQueue)
-      this.writeFileQueue(filePath, unsentQueue)
+      writeFileSync(file, Buffer.from(JSON.stringify(unsentQueue)), 'binary')
     } catch (error) {
       console.error({ fn: this.saveSendQueue.name, error })
     }
   }
 
   async publish (msg) {
+    debug && console.debug({ fn: this.publish.name, msg })
     await this.connect()
     this.send(msg)
   }
@@ -306,42 +286,10 @@ class ServiceMeshClient extends EventEmitter {
   }
 
   close (code, reason) {
-    this.off('timeout', this.timeout)
-    clearTimeout(this.timerId)
-    if (!this.ws) return
     console.debug('closing socket')
     this.ws.removeAllListeners()
     this.ws.close(code, reason)
     this.ws.terminate()
     this.ws = null
   }
-}
-
-let client
-
-function getClient () {
-  if (client) return client
-  client = new ServiceMeshClient()
-  return client
-}
-
-function dispose () {
-  client = null
-}
-
-export function connect (options) {
-  getClient().connect(options)
-}
-
-export function publish (event) {
-  getClient().publish(event)
-}
-
-export function subscribe (evt, cb) {
-  getClient().subscribe(evt, cb)
-}
-
-export function close (code, reason) {
-  getClient().close(code, reason)
-  dispose()
 }

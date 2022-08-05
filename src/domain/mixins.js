@@ -37,20 +37,20 @@ export const withTimestamp = (propName, fnTimestamp = time) => {
 }
 
 /**
- * Convert keys from (e.g. from symbols to strings)
- * when the object is serialized so the properties
- * can be included in JSON output.
+ * Convert keys from symbols to strings when
+ * the object is serialized so the properties
+ * can be seen in JSON output.
  * @param {{key: string, value: Symbol}} keyMap
  */
-export const fromKey = keyMap => o => {
-  const toMapValues = () =>
+export const fromSymbol = keyMap => o => {
+  const stringifySymbols = () =>
     Object.keys(keyMap)
       .map(k => ({ [k]: o[keyMap[k]] }))
       .reduce((p, c) => ({ ...p, ...c }))
 
   return {
     ...o,
-    ...toMapValues()
+    ...stringifySymbols()
   }
 }
 
@@ -59,15 +59,15 @@ export const fromKey = keyMap => o => {
  * the object is deserialized.
  * @param {{key: string, value: Symbol}} keyMap
  */
-export const toKey = keyMap => o => {
-  function fromMapValues () {
+export const toSymbol = keyMap => o => {
+  function parseSymbols () {
     return Object.keys(keyMap)
       .map(k => (o[k] ? { [keyMap[k]]: o[k] } : {}))
       .reduce((p, c) => ({ ...p, ...c }))
   }
   return {
     ...o,
-    ...fromMapValues()
+    ...parseSymbols()
   }
 }
 

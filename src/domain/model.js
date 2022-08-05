@@ -50,8 +50,8 @@ import {
   withSerializers,
   withDeserializers,
   fromTimestamp,
-  fromKey,
-  toKey
+  fromSymbol,
+  toSymbol
 } from './mixins'
 import makePorts from './make-ports'
 import makeRelations from './make-relations'
@@ -457,10 +457,10 @@ const Model = (() => {
     Model,
     withTimestamp(CREATETIME),
     withSerializers(
-      fromKey(keyMap),
+      fromSymbol(keyMap),
       fromTimestamp(['createTime', 'updateTime'])
     ),
-    withDeserializers(toKey(keyMap)),
+    withDeserializers(toSymbol(keyMap)),
     validate(eventMask.create),
     Object.freeze
   )
@@ -471,10 +471,10 @@ const Model = (() => {
   const loadModel = pipe(
     make,
     withSerializers(
-      fromKey(keyMap),
+      fromSymbol(keyMap),
       fromTimestamp(['createTime', 'updateTime'])
     ),
-    withDeserializers(toKey(keyMap)),
+    withDeserializers(toSymbol(keyMap)),
     validate(eventMask.onload),
     Object.freeze
   )

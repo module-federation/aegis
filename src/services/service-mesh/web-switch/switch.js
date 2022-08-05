@@ -127,10 +127,7 @@ export function attachServer (httpServer, secureCtx = {}) {
       }
     })
 
-    client.on('ping', () => {
-      client.pong()
-      client[info].lastPing = Date.now()
-    })
+    client.on('ping', () => client.pong())
 
     client.on('message', function (message) {
       debug && console.debug('switch received', { message })
@@ -272,7 +269,7 @@ export function attachServer (httpServer, secureCtx = {}) {
   }
 
   function reassignBackup (client) {
-    if (client[info].id === backupSwitch) {
+    if (client[info]?.id === backupSwitch) {
       for (let c of clients) {
         if (
           c[info]?.role === 'node' &&
@@ -320,39 +317,6 @@ export function attachServer (httpServer, secureCtx = {}) {
     client[info].isBackupSwitch = backupSwitch === client[info].id
     console.log('updating telemetry', client[info])
   }
-
-  function sendClientSwitch (client, msg) {
-    const ws = new WebSocket(client[info].url, {
-      [headers.host]: hostname(),
-      [headers.role]: 'switch',
-      [headers.pid]: process.id,
-      'idempotency-key': nanoid()
-    })
-
-    ws.on('open', () => {
-      ws.send(encode(msg))
-      ws.close()
-    })
-  }
-
-  function reloadInactiveClient (client) {
-    sendClientSwitch(client, {
-      eventName: reloadInactiveClient.name,
-      client: client[info]
-    })
-  }
-
-  function monitorClientPings () {
-    setInterval(() => {
-      clients.forEach(
-        client =>
-          Date.now() - client[info].lastPing < 12000 ||
-          reloadInactiveClient(client)
-      )
-    }, 6000)
-  }
-
-  //monitorClientPings()
 
   // try {
   //   // configure uplink

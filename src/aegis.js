@@ -133,7 +133,7 @@ async function handle (path, method, req, res) {
     return
   }
 
-  const requestInfo = Object.assign(req, { params: routeInfo.params || {} })
+  const requestInfo = Object.assign(req, { params: routeInfo.params })
 
   try {
     return await controller(requestInfo, res)
