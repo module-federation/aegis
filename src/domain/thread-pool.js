@@ -562,7 +562,7 @@ export class ThreadPool extends EventEmitter {
       this.broadcastEvent({ eventName: 'abort' })
       console.warn('pool is aborting', this.name)
       this.notify(poolAbort)
-      for (thread of this.threads) {
+      for (let thread of this.threads) {
         await thread.stop(reason)
       }
       this.threads = []
@@ -888,7 +888,10 @@ const ThreadPoolFactory = (() => {
   let monitorIntervalId
 
   const poolMaxAbortTime = () =>
-    Math.max(...[...threadPools].map(pool => pool[1].jobAbortTtl))
+    [...threadPools].reduce(
+      (pool, max) => (max > pool[1].jobAbortTtl ? max : pool[1].jobAbortTtl),
+      3000
+    )
 
   /**
    * Monitor pools for stuck threads and restart them
@@ -930,10 +933,10 @@ const ThreadPoolFactory = (() => {
                 if (thread) postJob(thread)
               }
             }
-          }, pool.jobAbortTtl)
+          }, pool.jobAbortTtl || 6000)
         }
       })
-    }, poolMaxAbortTime() * 1.5)
+    }, poolMaxAbortTime() + 500)
   }
 
   function pauseMonitoring () {

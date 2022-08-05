@@ -288,6 +288,10 @@ const Model = (() => {
         return final
       },
 
+      async save () {
+        datasource.save(this[ID], this)
+      },
+
       /**
        * Synchronous version of {@link Model.update}.
        * Only updates cache. External storage is

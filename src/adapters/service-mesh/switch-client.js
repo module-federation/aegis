@@ -21,6 +21,7 @@ import { ServiceLocator } from './service-locator.js'
 import { readFileSync, writeFileSync } from 'fs'
 import path from 'path'
 import { nanoid } from 'nanoid'
+import { dependencies } from 'webpack'
 
 const HOSTNAME = 'webswitch.local'
 const SERVICENAME = 'webswitch'
@@ -44,7 +45,8 @@ const activeProto = sslEnabled ? 'wss' : 'ws'
 const activeHost =
   process.env.DOMAIN ||
   configRoot.services.cert.domain ||
-  configRoot.general.fqdn
+  configRoot.general.fqdn ||
+  os.hostname()
 
 const protocol = isPrimary ? activeProto : config.protocol
 const port = isPrimary ? activePort : config.port
@@ -58,11 +60,12 @@ const constructUrl = () =>
 
 let uplinkCallback
 
-class ServiceMeshClient extends EventEmitter {
-  constructor (url = null) {
+export class ServiceMeshClient extends EventEmitter {
+  constructor (dependencies) {
     super()
+    this.dependencies = dependencies
     this.ws = null
-    this.url = url || constructUrl()
+    this.url = constructUrl()
     this.name = SERVICENAME
     this.serviceList = []
     this.isPrimary = isPrimary
@@ -101,36 +104,38 @@ class ServiceMeshClient extends EventEmitter {
   }
 
   async resolveUrl () {
-    const locator = new ServiceLocator({
+    this.dependencies.serviceLocatorInit({
       name: this.name,
       serviceUrl: constructUrl(),
       primary: this.isPrimary,
       backup: this.isBackup
     })
     if (this.isPrimary) {
-      locator.answer()
+      this.dependencies.serviceLocatorAnswer()
       return constructUrl()
     }
-    return locator.listen()
+    return this.dependencies.serviceLocatorListen()
   }
 
   async connect (options = {}) {
     if (this.ws) {
-      console.info('conn already open')
+      console.info('conn already open', this.ws.readyState)
       return
     }
     this.options = options
     this.url = await this.resolveUrl()
-    this.ws = new WebSocket(this.url, {
+    this.ws = this.dependencies.websocketConnect(this.url, {
+      agent: false,
       headers: this.headers,
       protocol: SERVICENAME
     })
 
-    this.ws.binaryType = 'arraybuffer'
-
     this.ws.on('close', (code, reason) => {
       console.log('received close frame', code, reason.toString())
-      this.emit(CONNECTERROR, reason)
+      this.ws.removeAllListeners()
+      clearTimeout(this.timerId)
+      this.ws = null
+      setTimeout(() => this.connect(), 3000)
     })
 
     this.ws.on('open', () => {
@@ -138,8 +143,7 @@ class ServiceMeshClient extends EventEmitter {
       this.send(this.telemetry())
       this.once('timeout', this.timeout)
       this.heartbeat()
-      this.RECONNECTING = false
-      setTimeout(() => this.sendQueuedMsgs(), 1000).unref()
+      setTimeout(() => this.sendQueuedMsgs(), 3000).unref()
     })
 
     this.ws.on('message', message => {
@@ -166,15 +170,13 @@ class ServiceMeshClient extends EventEmitter {
   }
 
   timeout () {
-    if (this.RECONNECTING) return
-    this.RECONNECTING = true
     console.warn('timeout')
-    this.close(4911, 'timeout')
-    setTimeout(() => this.connect(), 5000).unref()
     this.emit(TIMEOUTEVENT, this.telemetry())
+    this.close(4911, 'timeout')
   }
 
   heartbeat () {
+    if (!this.ws) return
     if (this.pong) {
       this.pong = false
       this.ws.ping()
@@ -221,15 +223,14 @@ class ServiceMeshClient extends EventEmitter {
       this.ws.readyState === this.ws.OPEN &&
       this.ws.bufferedAmount < 1
     ) {
-      const breaker = CircuitBreaker('webswitch', msg => {
-        debug && console.debug({ fn: this.send.name, msg })
-        this.ws.send(this.encode(msg), {
-          headers: {
-            ...this.headers,
-            'idempotency-key': nanoid()
-          }
-        })
+      this.dependencies.websocketSend(this.encode(msg), {
+        binary: true,
+        headers: {
+          ...this.headers,
+          'idempotency-key': nanoid()
+        }
       })
+
       breaker.detectErrors([TIMEOUTEVENT, CONNECTERROR, WSOCKETERROR], this)
       breaker.invoke(msg)
       return true
@@ -304,37 +305,29 @@ class ServiceMeshClient extends EventEmitter {
 
   close (code, reason) {
     this.off('timeout', this.timeout)
-    clearTimeout(this.timerId)
-    if (!this.ws) return
     console.debug('closing socket')
-    this.ws.removeAllListeners()
     this.ws.close(code, reason)
-    this.ws.terminate()
-    this.ws = null
   }
 }
 
-let client
-
-function getClient () {
-  if (client) return client
-  client = new ServiceMeshClient()
-  return client
-}
-
-export function connect (options) {
-  getClient().connect(options)
-}
-
-export function publish (event) {
-  getClient().publish(event)
-}
-
-export function subscribe (evt, cb) {
-  getClient().subscribe(evt, cb)
-}
-
-export function close (code, reason) {
-  getClient().close(code, reason)
-  client = null
+export function makeClient (config) {
+  return async function ({ eventName, eventAction }) {
+    return {
+      eventName,
+      eventAction,
+      eventTime: Date.now(),
+      config,
+      client,
+      connect () {
+        this.client = ServiceMeshClient(this)
+        this.client.connect()
+      },
+      publish (event) {
+        this.client.publish(event)
+      },
+      subscribe (eventName, handler) {
+        this.client.subscribe(eventName, handler)
+      }
+    }
+  }
 }
