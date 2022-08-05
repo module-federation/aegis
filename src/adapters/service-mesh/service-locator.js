@@ -45,7 +45,7 @@ export class ServiceLocator {
       this.answer()
       return
     }
-    console.debug('looking for srv %s retries: %d', this.name, retries)
+    debug && console.debug('looking for srv %s retries: %d', this.name, retries)
     // then query the service name
     this.dns.query({
       questions: [
