@@ -17,10 +17,13 @@ import makeEmitEvent from './emit-event'
 import makeHotReload from './hot-reload'
 import brokerEvents from './broker-events'
 import DistributedCache from '../distributed-cache'
+import makeServiceMesh from './create-service-mesh.js'
 
 import { isMainThread } from 'worker_threads'
 
-export function registerEvents (ServiceMeshClient) {
+const serviceMeshPlugin = process.env.SERVICE_MESH_PLUGIN || 'webswitch'
+
+export function registerEvents () {
   // main thread handles event dispatch
   brokerEvents({
     broker: EventBrokerFactory.getInstance(),
@@ -28,7 +31,7 @@ export function registerEvents (ServiceMeshClient) {
     models: ModelFactory,
     threadpools: ThreadPoolFactory,
     ObjectCache: DistributedCache,
-    ServiceMesh: ServiceMeshClient
+    createServiceMesh: makeOne(serviceMeshPlugin, makeServiceMesh)
   })
 }
 
@@ -177,7 +180,7 @@ const userController = (fn, ports) => async (req, res) => {
     return await fn(req, res, ports)
   } catch (error) {
     console.error({ fn: userController.name, error })
-    res.status(500).send({ msg: 'error occurred', error })
+    res.status(500).json({ msg: 'error occurred', error })
   }
 }
 
@@ -185,7 +188,7 @@ const userController = (fn, ports) => async (req, res) => {
  * Extract user-defined endpoints from the modelSpec and
  * decorate the user's callback such that it includes a
  * third argument, which is a set of inbound port functions
- * the user to call.
+ * for he user to call.
  *
  * @returns {import('../index').endpoint}
  */
