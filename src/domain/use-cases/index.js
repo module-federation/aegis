@@ -65,6 +65,20 @@ function findLocalRelatedDatasources (modelName) {
   }))
 }
 
+function getDataSource (spec, isMain) {
+  if (spec.internal && !isMain) return null
+  return DataSourceFactory.getSharedDataSource(spec.modelName)
+}
+
+function getThreadPool (spec, ds) {
+  if (spec.internal) return null
+  return ThreadPoolFactory.getThreadPool(spec.modelName, {
+    preload: false,
+    sharedMap: ds.dsMap,
+    dsRelated: findLocalRelatedDatasources(spec.modelName)
+  })
+}
+
 /**
  *
  * @param {import('..').ModelSpecification} model
@@ -78,7 +92,7 @@ function buildOptions (model) {
   }
 
   if (isMainThread) {
-    const ds = DataSourceFactory.getSharedDataSource(model.modelName)
+    const ds = getDataSource(model, true)
 
     return {
       ...options,
@@ -86,11 +100,7 @@ function buildOptions (model) {
       repository: ds,
 
       // only main thread knows about thread pools (no nesting)
-      threadpool: ThreadPoolFactory.getThreadPool(model.modelName, {
-        preload: false,
-        sharedMap: ds.dsMap,
-        dsRelated: findLocalRelatedDatasources(model.modelName)
-      }),
+      threadpool: getThreadPool(model, ds),
 
       // if caller provides id, use it as key for idempotency
       async idempotent (input) {
@@ -102,7 +112,7 @@ function buildOptions (model) {
     return {
       ...options,
       // only worker threads can write to persistent storage
-      repository: DataSourceFactory.getSharedDataSource(model.modelName)
+      repository: getDataSource(model, false)
     }
   }
 }
@@ -117,6 +127,7 @@ function make (factory) {
   const specs = ModelFactory.getModelSpecs()
   return specs.map(spec => ({
     endpoint: spec.endpoint,
+    internal: spec.internal,
     fn: factory(buildOptions(spec))
   }))
 }

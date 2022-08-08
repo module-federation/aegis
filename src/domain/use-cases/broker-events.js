@@ -3,7 +3,6 @@
 /** @module domain/brokerEvents */
 
 import { BroadcastChannel, isMainThread, workerData } from 'worker_threads'
-import makeAddModel from './add-model'
 
 /** @type {BroadcastChannel}*/
 let broadcastChannel
@@ -61,7 +60,7 @@ export default function brokerEvents ({
       // reinitialize service mesh on reload
       broker.on('reload', async event => {
         serviceMesh.close(4999, 'reload')
-        initServiceMesh()
+        setTimeout(initServiceMesh, 6000)
       })
 
       // generate a list of installed services
