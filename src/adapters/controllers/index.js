@@ -11,8 +11,7 @@ const {
   listModels,
   removeModels,
   hotReload,
-  registerEvents,
-  buildModels
+  registerEvents
 } = UseCases
 
 import postModelFactory from './post-model'
