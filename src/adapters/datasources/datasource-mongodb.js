@@ -89,9 +89,9 @@ export class DataSourceMongoDb extends DataSourceMemory {
 
   async findDb (id) {
     try {
-      const model = (await this.collection()).findOne({ _id: id })
+      const model = await (await this.collection()).findOne({ _id: id })
       // save it to the cache
-      return super.saveSync(id, model)
+      return super.saveSync(id, model) || model // saveSync fails on fresh start      
     } catch (error) {
       console.error({ fn: this.findDb.name, error })
     }
@@ -104,8 +104,10 @@ export class DataSourceMongoDb extends DataSourceMemory {
    */
   async find (id) {
     try {
-      const cached = super.findSync(id)
-      if (!cached) return this.findDb(id)
+      const cached = super.findSync(id)      
+      if (cached === null || cached === undefined || Object.keys(cached).length == 0)// cached can be empty object
+      return this.findDb(id)
+
       return cached
     } catch (error) {
       console.error({ fn: this.find.name, error })
