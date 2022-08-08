@@ -47,8 +47,8 @@ export default function listConfigsFactory ({
         modelName && isMainThread
           ? threadpools.getThreadPool(modelName).run(listConfigs.name, query)
           : modelName
-          ? models.getModelSpecs()
-          : models.getModelSpecs(),
+          ? models.getModelSpecs().filter(spec => !spec.internal)
+          : models.getModelSpecs().filter(spec => !spec.internal),
 
       threads: () => (isMainThread ? threadpools.status() : null),
 

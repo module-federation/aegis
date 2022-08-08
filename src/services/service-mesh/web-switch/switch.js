@@ -174,7 +174,7 @@ export function attachServer (httpServer, secureCtx = {}) {
     if (clients.has(client[info].uniqueName)) {
       console.warn('found duplicate name', client[info].uniqueName)
       const oldClient = clients.get(client[info].uniqueName)
-      oldClient.close(4040, 'duplicate')
+      oldClient.close(4040, client[info].asyncId)
       oldClient.terminate()
     }
     client[info].initialized = true
@@ -314,6 +314,7 @@ export function attachServer (httpServer, secureCtx = {}) {
     if (!client[info]) return
     if (msg?.telemetry && client[info]) client[info].telemetry = msg.telemetry
     if (msg?.services && client[info]) client[info].services = msg.services
+    if (msg?.asyncId && client[info]) client[info].asyncId = msg.asyncId
     client[info].isBackupSwitch = backupSwitch === client[info].id
     console.log('updating telemetry', client[info])
   }

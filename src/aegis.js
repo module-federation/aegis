@@ -72,9 +72,11 @@ const routes = new RouteMap()
 
 const router = {
   autoRoutes (path, method, controllers, adapter) {
-    controllers().forEach(ctlr =>
-      routes.set(path(ctlr.endpoint), { [method]: adapter(ctlr.fn) })
-    )
+    controllers()
+      .filter(ctrl => !ctrl.internal)
+      .forEach(ctlr =>
+        routes.set(path(ctlr.endpoint), { [method]: adapter(ctlr.fn) })
+      )
   },
 
   userRoutes (controllers) {
@@ -133,7 +135,7 @@ async function handle (path, method, req, res) {
     return
   }
 
-  const requestInfo = Object.assign(req, { params: routeInfo.params })
+  const requestInfo = Object.assign(req, { params: routeInfo.params || {} })
 
   try {
     return await controller(requestInfo, res)

@@ -17,11 +17,14 @@ import makeEmitEvent from './emit-event'
 import makeHotReload from './hot-reload'
 import brokerEvents from './broker-events'
 import DistributedCache from '../distributed-cache'
-import makeInvokePort from './invoke-port'
+import makeServiceMesh from './create-service-mesh.js'
+
 import { isMainThread } from 'worker_threads'
 import { escape } from 'core-js/es6/regexp'
 
-export function registerEvents (ServiceMeshClient) {
+const serviceMeshPlugin = process.env.SERVICE_MESH_PLUGIN || 'webswitch'
+
+export function registerEvents () {
   // main thread handles event dispatch
   brokerEvents({
     broker: EventBrokerFactory.getInstance(),
@@ -29,7 +32,7 @@ export function registerEvents (ServiceMeshClient) {
     models: ModelFactory,
     threadpools: ThreadPoolFactory,
     ObjectCache: DistributedCache,
-    ServiceMesh: ServiceMeshClient
+    createServiceMesh: makeOne(serviceMeshPlugin, makeServiceMesh)
   })
 }
 
@@ -63,6 +66,20 @@ function findLocalRelatedDatasources (modelName) {
   }))
 }
 
+function getDataSource (spec, isMain) {
+  if (spec.internal && !isMain) return null
+  return DataSourceFactory.getSharedDataSource(spec.modelName)
+}
+
+function getThreadPool (spec, ds) {
+  if (spec.internal) return null
+  return ThreadPoolFactory.getThreadPool(spec.modelName, {
+    preload: false,
+    sharedMap: ds.dsMap,
+    dsRelated: findLocalRelatedDatasources(spec.modelName)
+  })
+}
+
 /**
  *
  * @param {import('..').ModelSpecification} model
@@ -76,7 +93,7 @@ function buildOptions (model) {
   }
 
   if (isMainThread) {
-    const ds = DataSourceFactory.getSharedDataSource(model.modelName)
+    const ds = getDataSource(model, true)
 
     return {
       ...options,
@@ -84,11 +101,7 @@ function buildOptions (model) {
       repository: ds,
 
       // only main thread knows about thread pools (no nesting)
-      threadpool: ThreadPoolFactory.getThreadPool(model.modelName, {
-        preload: false,
-        sharedMap: ds.dsMap,
-        dsRelated: findLocalRelatedDatasources(model.modelName)
-      }),
+      threadpool: getThreadPool(model, ds),
 
       // if caller provides id, use it as key for idempotency
       async idempotent (input) {
@@ -100,7 +113,7 @@ function buildOptions (model) {
     return {
       ...options,
       // only worker threads can write to persistent storage
-      repository: DataSourceFactory.getSharedDataSource(model.modelName)
+      repository: getDataSource(model, false)
     }
   }
 }
@@ -115,6 +128,7 @@ function make (factory) {
   const specs = ModelFactory.getModelSpecs()
   return specs.map(spec => ({
     endpoint: spec.endpoint,
+    internal: spec.internal,
     fn: factory(buildOptions(spec))
   }))
 }
@@ -179,7 +193,7 @@ const userController = (fn, ports) => async (req, res) => {
     return await fn(req, res, ports)
   } catch (error) {
     console.error({ fn: userController.name, error })
-    res.status(500).send({ msg: 'error occurred', error })
+    res.status(500).json({ msg: 'error occurred', error })
   }
 }
 
@@ -187,7 +201,7 @@ const userController = (fn, ports) => async (req, res) => {
  * Extract user-defined endpoints from the modelSpec and
  * decorate the user's callback such that it includes a
  * third argument, which is a set of inbound port functions
- * the user to call.
+ * for he user to call.
  *
  * @returns {import('../index').endpoint}
  */

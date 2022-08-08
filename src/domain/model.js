@@ -324,6 +324,10 @@ const Model = (() => {
         return rehydrate(merge, model)
       },
 
+      async save () {
+        return datasource.save(this[ID], this)
+      },
+
       /**
        * Search existing model instances (synchronously).
        * Only searches the cache. Does not search persistent storage.
