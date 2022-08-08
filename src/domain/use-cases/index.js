@@ -20,6 +20,7 @@ import DistributedCache from '../distributed-cache'
 import makeServiceMesh from './create-service-mesh.js'
 
 import { isMainThread } from 'worker_threads'
+import { escape } from 'core-js/es6/regexp'
 
 const serviceMeshPlugin = process.env.SERVICE_MESH_PLUGIN || 'webswitch'
 
@@ -151,6 +152,7 @@ const removeModels = () => make(makeRemoveModel)
 const loadModels = () => make(makeLoadModels)
 const emitEvents = () => make(makeEmitEvent)
 const deployModels = () => make(makeDeployModel)
+const invokePorts = () => make(makeInvokePort)
 const hotReload = () => [
   {
     endpoint: 'reload',
@@ -240,7 +242,8 @@ export const UseCases = {
   hotReload,
   registerEvents,
   emitEvents,
-  deployModels
+  deployModels,
+  invokePorts
 }
 
 /**
@@ -263,6 +266,7 @@ export function UseCaseService (modelName = null) {
       loadModels: makeOne(modelNameUpper, makeLoadModels),
       emitEvent: makeOne(modelNameUpper, makeEmitEvent),
       deployModel: makeOne(modelNameUpper, makeDeployModel),
+      invokePort: makeOne(modelNameUpper, makeInvokePort),
       listConfigs: listConfigs()
     }
   }
@@ -276,6 +280,7 @@ export function UseCaseService (modelName = null) {
     deployModel: deployModels(),
     hotReload: hotReload(),
     emitEvent: emitEvents(),
+    invokePort: invokePorts(),
     listConfigs: listConfigs()
   }
 }
