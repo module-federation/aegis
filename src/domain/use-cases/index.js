@@ -14,13 +14,13 @@ import makeLoadModels from './load-models'
 import makeDeployModel from './deploy-model'
 import makeListConfig from './list-configs'
 import makeEmitEvent from './emit-event'
+import makeInvokePort from './invoke-port'
 import makeHotReload from './hot-reload'
 import brokerEvents from './broker-events'
 import DistributedCache from '../distributed-cache'
 import makeServiceMesh from './create-service-mesh.js'
 
 import { isMainThread } from 'worker_threads'
-import { escape } from 'core-js/es6/regexp'
 
 const serviceMeshPlugin = process.env.SERVICE_MESH_PLUGIN || 'webswitch'
 
