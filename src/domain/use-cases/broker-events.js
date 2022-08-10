@@ -58,16 +58,15 @@ export default function brokerEvents ({
       broker.off('to_worker')
 
       // reinitialize service mesh on reload
-      broker.on('reload', async event => {
+      broker.on('reload', async () => {
         serviceMesh.close(4999, 'reload')
-        setTimeout(initServiceMesh, 6000)
       })
 
       // generate a list of installed services
       const listLocalModels = () =>
         models
           .getModelSpecs()
-          .filter(spec => !spec.isCached)
+          .filter(spec => !spec.isCached && !spec.internal)
           .map(spec => spec.modelName)
 
       const serviceMesh = await createServiceMesh({

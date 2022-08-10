@@ -67,7 +67,7 @@ function findLocalRelatedDatasources (modelName) {
 }
 
 function getDataSource (spec, isMain) {
-  if (spec.internal && !isMain) return null
+  if (spec.internal && !isMain) return
   return DataSourceFactory.getSharedDataSource(spec.modelName)
 }
 
@@ -93,7 +93,7 @@ function buildOptions (model) {
   }
 
   if (isMainThread) {
-    const ds = getDataSource(model, true)
+    const ds = getDataSource(model, isMainThread)
 
     return {
       ...options,

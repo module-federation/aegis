@@ -22,7 +22,8 @@ export default function makeInvokePort ({
   repository,
   threadpool,
   modelName,
-  models
+  models,
+  authorize = async x => await x()
 } = {}) {
   /**
    *
@@ -37,19 +38,20 @@ export default function makeInvokePort ({
       return result
     } else {
       try {
-        const { id = null, port, args } = input
+        const { id, port, args } = input
         const model = id
           ? await repository.find(id)
-          : models.createModel(broker, repository, modelName, args)
+          : await models.createModel(broker, repository, modelName, args)
 
-        if (!model) {
-          return AppError('no such id')
-        }
+        if (!model) return AppError('no such id')
 
-        return (await model[port](...args)) || model
-      } catch (e) {
-        console.error(invokePort.name, e)
-        return AppError(e)
+        if (typeof model[port] !== 'function')
+          AppError(`${modelName}.${port} is not a function`)
+
+        return authorize(async () => await model[port](...args))
+      } catch (error) {
+        console.error(invokePort.name, error)
+        return AppError(error)
       }
     }
   }
