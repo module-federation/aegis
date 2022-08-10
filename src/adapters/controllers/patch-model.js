@@ -8,11 +8,11 @@ export default function patchModelFactory (editModel) {
     try {
       httpRequest.log(patchModel.name)
 
-      const id = httpRequest.params.id
-      const command = httpRequest.params.command
-      const changes = httpRequest.body
-
-      const model = await editModel({ id, changes, command })
+      const model = await editModel({
+        id: httpRequest.params.id,
+        changes: httpRequest.body,
+        command: httpRequest.params.command
+      })
 
       return {
         headers: {

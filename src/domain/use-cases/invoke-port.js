@@ -17,7 +17,14 @@ import AppError from '../util/app-error'
  * @param {ModelParam} param0
  * @returns {function():Promise<import("../domain/model").Model>}
  */
-export default function makeInvokePort ({ repository, threadpool } = {}) {
+export default function makeInvokePort ({
+  broker,
+  repository,
+  threadpool,
+  modelName,
+  models,
+  authorize = async x => await x()
+} = {}) {
   /**
    *
    * @param {{id:string,model:import('..').Model,args:string[],port:string}} input
@@ -25,23 +32,26 @@ export default function makeInvokePort ({ repository, threadpool } = {}) {
    */
   async function invokePort (input) {
     if (isMainThread) {
-      const updated = await threadpool.run(invokePort.name, input)
-      if (updated.hasError) throw new Error(updated.message)
+      const result = await threadpool.run(invokePort.name, input)
+      if (result.hasError) throw new Error(result.message)
 
-      return updated
+      return result
     } else {
       try {
         const { id, port, args } = input
-        const model = await repository.find(id)
+        const model = id
+          ? await repository.find(id)
+          : await models.createModel(broker, repository, modelName, args)
 
-        if (!model) {
-          return AppError('no such id')
-        }
+        if (!model) return AppError('no such id')
 
-        return (await model[port](...args)) || model
-      } catch (e) {
-        console.error(invokePort.name, e)
-        return AppError(e)
+        if (typeof model[port] !== 'function')
+          AppError(`${modelName}.${port} is not a function`)
+
+        return authorize(async () => await model[port](...args))
+      } catch (error) {
+        console.error(invokePort.name, error)
+        return AppError(error)
       }
     }
   }
