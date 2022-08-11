@@ -4,7 +4,6 @@ import executeCommand from './execute-command'
 import async from '../util/async-error'
 import domainEvents from '../domain-events'
 import { isMainThread } from 'worker_threads'
-import AppError from '../util/app-error'
 
 /**
  * @typedef {Object} ModelParam
@@ -48,47 +47,37 @@ export default function makeEditModel ({
         throw new Error('no such id')
       }
 
-      const updated = await threadpool.run(editModel.name, input)
-
-      if (updated.hasError) throw new Error(updated.message)
-      return updated
+      return threadpool.run(editModel.name, input)
     } else {
+      // model has been found by main thread
+      const { id, changes, command } = input
+
+      // get model
+      const model = await repository.find(id)
+
+      // only the worker does the update
+      const updated = models.updateModel(model, changes)
+      await repository.save(id, updated)
+
+      const event = models.createEvent(eventType, modelName, {
+        updated,
+        changes
+      })
+
       try {
-        // model has been found by main thread
-        const { id, changes, command } = input
+        await broker.notify(eventName, event)
 
-        // get model
-        const model = await repository.find(id)
+        if (command) {
+          const result = await async(executeCommand(updated, command, 'write'))
 
-        // only the worker does the update
-        const updated = models.updateModel(model, changes)
-        await repository.save(id, updated)
-
-        const event = models.createEvent(eventType, modelName, {
-          updated,
-          changes
-        })
-
-        try {
-          await broker.notify(eventName, event)
-
-          if (command) {
-            const result = await async(
-              executeCommand(updated, command, 'write')
-            )
-
-            if (result.ok) {
-              return result.data
-            }
+          if (result.ok) {
+            return result.data
           }
-          return await repository.find(id)
-        } catch (e) {
-          console.error(editModel.name, e)
-          await repository.save(id, model)
         }
-      } catch (e) {
-        console.error(editModel.name, e)
-        return AppError(e)
+        return await repository.find(id)
+      } catch (error) {
+        console.error(editModel.name, error)
+        await repository.save(id, model)
       }
     }
   }

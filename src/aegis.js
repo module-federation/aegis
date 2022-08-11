@@ -22,14 +22,17 @@ const {
   initCache,
   patchModels,
   postModels,
-  liveUpdate
+  liveUpdate,
+  postInvokePorts
 } = adapters.controllers
 
 const apiRoot = process.env.API_ROOT || '/aegis/api'
-const modelPath = `${apiRoot}/models`
+const modelPath = process.env.MODEL_PATH || `${apiRoot}/models`
 const endpoint = e => `${modelPath}/${e}`
 const endpointId = e => `${modelPath}/${e}/:id`
 const endpointCmd = e => `${modelPath}/${e}/:id/:command`
+const endpointPort = e => `${modelPath}/${e}/ports/:port`
+const endpointPortId = e => `${modelPath}/${e}/:id/ports/:port`
 
 /**
  * Store routes and their controllers for direct invocation
@@ -75,7 +78,9 @@ const router = {
     controllers()
       .filter(ctrl => !ctrl.internal)
       .forEach(ctlr =>
-        routes.set(path(ctlr.endpoint), { [method]: adapter(ctlr.fn) })
+        routes.set(ctlr.path || path(ctlr.endpoint), {
+          [method]: adapter(ctlr.fn)
+        })
       )
   },
 
@@ -102,6 +107,8 @@ function makeRoutes () {
   router.autoRoutes(endpointId, 'patch', patchModels, http)
   router.autoRoutes(endpointId, 'delete', deleteModels, http)
   router.autoRoutes(endpointCmd, 'patch', patchModels, http)
+  router.autoRoutes(endpointPort, 'post', postInvokePorts, http)
+  router.autoRoutes(endpointPortId, 'post', postInvokePorts, http)
   router.adminRoute(getConfig, http)
   router.userRoutes(getRoutes)
   console.log(routes)

@@ -32,7 +32,11 @@ export default function makeEmitEvent ({
   return async function emitEvent (input) {
     try {
       if (isMainThread) {
-        await threadpool.run(input.eventName, input)
+        try {
+          await threadpool.run(input.eventName, input)
+        } catch (error) {
+          throw error
+        }
       } else {
         console.debug({ pool: workerData.poolName, fn: emitEvent.name, input })
         await broker.notify(input.eventName, input)

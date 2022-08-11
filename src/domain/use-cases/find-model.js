@@ -45,10 +45,11 @@ export default function makeFindModel ({
       // Only send to app thread if data must be enriched
       if (!query.relation && !query.command) return model
 
-      const result = await threadpool.run(findModel.name, { id, query, model })
-
-      if (result.hasError) throw new Error(result.message)
-      return result
+      try {
+        return await threadpool.run(findModel.name, { id, query, model })
+      } catch (error) {
+        throw error
+      }
     } else {
       try {
         const hydrateModel = model =>

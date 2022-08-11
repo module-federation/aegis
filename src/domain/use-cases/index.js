@@ -19,10 +19,13 @@ import makeHotReload from './hot-reload'
 import brokerEvents from './broker-events'
 import DistributedCache from '../distributed-cache'
 import makeServiceMesh from './create-service-mesh.js'
-
 import { isMainThread } from 'worker_threads'
+import { hostConfig } from '../../config'
 
-const serviceMeshPlugin = process.env.SERVICE_MESH_PLUGIN || 'webswitch'
+const serviceMeshPlugin =
+  hostConfig.services.activeServiceMesh ||
+  process.env.SERVICE_MESH_PLUGIN ||
+  'webswitch'
 
 export function registerEvents () {
   // main thread handles event dispatch
@@ -32,7 +35,9 @@ export function registerEvents () {
     models: ModelFactory,
     threadpools: ThreadPoolFactory,
     ObjectCache: DistributedCache,
-    createServiceMesh: makeOne(serviceMeshPlugin, makeServiceMesh)
+    createServiceMesh: makeOne(serviceMeshPlugin, makeServiceMesh, {
+      internal: true
+    })
   })
 }
 
@@ -66,9 +71,12 @@ function findLocalRelatedDatasources (modelName) {
   }))
 }
 
-function getDataSource (spec, isMain) {
-  if (spec.internal && !isMain) return
-  return DataSourceFactory.getSharedDataSource(spec.modelName)
+function getDataSource (spec, { shared = true }) {
+  return shared
+    ? DataSourceFactory.getSharedDataSource(spec.modelName)
+    : isMainThread
+    ? DataSourceFactory.getDataSource(spec.modelName)
+    : null
 }
 
 function getThreadPool (spec, ds) {
@@ -84,7 +92,7 @@ function getThreadPool (spec, ds) {
  *
  * @param {import('..').ModelSpecification} model
  */
-function buildOptions (model) {
+function buildOptions (model, opts = {}) {
   const options = {
     modelName: model.modelName,
     models: ModelFactory,
@@ -93,7 +101,7 @@ function buildOptions (model) {
   }
 
   if (isMainThread) {
-    const ds = getDataSource(model, isMainThread)
+    const ds = getDataSource(model, opts)
 
     return {
       ...options,
@@ -113,7 +121,7 @@ function buildOptions (model) {
     return {
       ...options,
       // only worker threads can write to persistent storage
-      repository: getDataSource(model, false)
+      repository: getDataSource(model, opts)
     }
   }
 }
@@ -128,7 +136,7 @@ function make (factory) {
   const specs = ModelFactory.getModelSpecs()
   return specs.map(spec => ({
     endpoint: spec.endpoint,
-    internal: spec.internal,
+    path: spec.path,
     fn: factory(buildOptions(spec))
   }))
 }
@@ -139,9 +147,9 @@ function make (factory) {
  * @param {function({}):function():Promise<Model>} factory
  * @returns
  */
-function makeOne (modelName, factory) {
-  const spec = ModelFactory.getModelSpec(modelName.toUpperCase())
-  return factory(buildOptions(spec))
+function makeOne (modelName, factory, options = {}) {
+  const spec = ModelFactory.getModelSpec(modelName.toUpperCase(), options)
+  return factory(buildOptions(spec, options))
 }
 
 const addModels = () => make(makeAddModel)
