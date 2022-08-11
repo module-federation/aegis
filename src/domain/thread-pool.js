@@ -161,24 +161,6 @@ const DEFAULT_TIME_TO_LIVE = 180000
 //   }
 // }
 
-/**
- * Connect event subchannel to {@link EventBroker}
- * @param {Worker} worker worker thread
- * @param {MessageChannel} channel event channel
- * {@link MessagePort} port1 main uses to send to and recv from worker
- * {@link MessagePort} port2 worker uses to send to and recv from main
- */
-function connectEventChannel (worker, channel) {
-  const { port1, port2 } = channel
-  // transfer this port for the worker to use
-  worker.postMessage({ eventPort: port2 }, [port2])
-  // fire 'to_worker' to forward event to worker threads
-  broker.on('to_worker', async event => port1.postMessage(event))
-  // on receipt of event from worker thread fire 'from_worker'
-  port1.onmessage = async event =>
-    event.data.eventName && (await broker.notify('from_worker', event.data))
-}
-
 class Job extends AsyncResource {
   constructor (options) {
     super('Job')
@@ -248,6 +230,24 @@ class Job extends AsyncResource {
 
     thread[channel].postMessage({ name: jobName, data: jobData }, transfer)
   }
+}
+
+/**
+ * Connect event subchannel to {@link EventBroker}
+ * @param {Worker} worker worker thread
+ * @param {MessageChannel} channel event channel
+ * {@link MessagePort} port1 main uses to send to and recv from worker
+ * {@link MessagePort} port2 worker uses to send to and recv from main
+ */
+function connectEventChannel (worker, channel) {
+  const { port1, port2 } = channel
+  // transfer this port for the worker to use
+  worker.postMessage({ eventPort: port2 }, [port2])
+  // fire 'to_worker' to forward event to worker threads
+  broker.on('to_worker', async event => port1.postMessage(event))
+  // on receipt of event from worker thread fire 'from_worker'
+  port1.onmessage = async event =>
+    event.data.eventName && (await broker.notify('from_worker', event.data))
 }
 
 /**
