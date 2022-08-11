@@ -47,120 +47,6 @@ const DEFAULT_TIME_TO_LIVE = 180000
 /** @typedef {import('./model').Model} Model} */
 /** @typedef {import('./event-broker').EventBroker} EventBroker */
 
-// const kTaskInfo = Symbol('kTaskInfo')
-// const kWorkerFreedEvent = Symbol('kWorkerFreedEvent')
-
-// class WorkerPoolTaskInfo extends AsyncResource {
-//   constructor (callback) {
-//     super('WorkerPoolTaskInfo')
-//     this.callback = callback
-//   }
-
-//   done (err, result) {
-//     this.runInAsyncScope(this.callback, null, err, result)
-//     this.emitDestroy() // `TaskInfo`s are used only once.
-//   }
-// }
-
-// export class WorkerPool extends EventEmitter {
-//   constructor (numThreads) {
-//     super()
-//     this.numThreads = numThreads
-//     this.workers = []
-//     this.freeWorkers = []
-//     this.tasks = []
-
-//     for (let i = 0; i < numThreads; i++) this.addNewWorker()
-
-//     // Any time the kWorkerFreedEvent is emitted, dispatch
-//     // the next task pending in the queue, if any.
-//     this.on(kWorkerFreedEvent, () => {
-//       if (this.tasks.length > 0) {
-//         const { task, callback } = this.tasks.shift()
-//         this.runTask(task, callback)
-//       }
-//     })
-//   }
-
-//   addNewWorker () {
-//     const worker = new Worker(new URL('task_processer.js', import.meta.url))
-//     worker.on('message', result => {
-//       // In case of success: Call the callback that was passed to `runTask`,
-//       // remove the `TaskInfo` associated with the Worker, and mark it as free
-//       // again.
-//       worker[kTaskInfo].done(null, result)
-//       worker[kTaskInfo] = null
-//       this.freeWorkers.push(worker)
-//       this.emit(kWorkerFreedEvent)
-//     })
-//     worker.on('error', err => {
-//       // In case of an uncaught exception: Call the callback that was passed to
-//       // `runTask` with the error.
-//       if (worker[kTaskInfo]) worker[kTaskInfo].done(err, null)
-//       else this.emit('error', err)
-//       // Remove the worker from the list and start a new Worker to replace the
-//       // current one.
-//       this.workers.splice(this.workers.indexOf(worker), 1)
-//       this.addNewWorker()
-//     })
-//     this.workers.push(worker)
-//     this.freeWorkers.push(worker)
-//     this.emit(kWorkerFreedEvent)
-//   }
-
-//   runTask (task, callback) {
-//     if (this.freeWorkers.length === 0) {
-//       // No free threads, wait until a worker thread becomes free.
-//       this.tasks.push({ task, callback })
-//       return
-//     }
-
-//     const worker = this.freeWorkers.pop()
-//     worker[kTaskInfo] = new WorkerPoolTaskInfo(callback)
-//     worker.postMessage(task)
-//   }
-
-//   close () {
-//     for (const worker of this.workers) worker.terminate()
-//   }
-// }
-
-/**
- *
- * @param {Thread} thread
- * @returns {Promise<number>}
- */
-// function kill (thread, reason, callback) {
-//   try {
-//     console.info({ msg: 'killing thread', id: thread.id, reason })
-//     const TIMEOUT = 8000
-//     const start = perf.now()
-
-//     const timerId = setTimeout(async () => {
-//       await thread.mainChannel.terminate()
-//       console.warn({
-//         msg: 'forcefully terminated thread',
-//         id: thread.id,
-//         reason
-//       })
-//       callback(thread.id)
-//     }, TIMEOUT)
-
-//     thread.mainChannel.once('exit', () => {
-//       clearTimeout(timerId)
-//       thread.eventChannel.close()
-//       // the timeout will cause this to run if executed first
-//       if (perf.now() - start < TIMEOUT)
-//         console.info('clean exit of thread', thread.id, reason)
-//       callback(thread.id)
-//     })
-
-//     thread.eventChannel.postMessage({ name: 'shutdown', data: 0 })
-//   } catch (error) {
-//     return console.error({ fn: kill.name, error })
-//   }
-// }
-
 class Job extends AsyncResource {
   constructor (options) {
     super('Job')
@@ -190,14 +76,7 @@ class Job extends AsyncResource {
   /**
    * Run a job in the provided worker thread.
    *
-   * @param {{
-   *  pool:ThreadPool,
-   *  jobName:string,
-   *  jobData:any
-   *  thread:Thread,
-   *  channel?:"mainChannel"|"eventChannel",
-   *  callback?:(p) => p
-   * }}
+   * @param {Thread} thread
    */
   runJob (thread) {
     const {
@@ -210,16 +89,20 @@ class Job extends AsyncResource {
 
     const startTime = perf.now()
 
-    thread[channel].once('message', result => {
-      pool.jobTime(perf.now() - startTime)
-      // Was this the only job running?
-      if (pool.noJobsRunning()) {
-        pool.emit(NOJOBS)
-      }
-      this.callback(null, result)
-      // reallocate thread
-      this.reallocate(pool, thread)
-    })
+    thread[channel].once(
+      'message',
+      this.bind(result => {
+        pool.jobTime(perf.now() - startTime)
+        // Was this the only job running?
+        if (pool.noJobsRunning()) {
+          pool.emit(NOJOBS)
+        }
+        // invoke callback to return result
+        this.callback(null, result)
+        // reallocate thread
+        this.reallocate(pool, thread)
+      })
+    )
 
     thread[channel].once('error', error => {
       console.error({ fn: this.runJob.name, error })
@@ -947,7 +830,7 @@ const ThreadPoolFactory = (() => {
               if (pool.waitingJobs.length > 1) {
                 try {
                   const postJob = pool.waitingJobs.shift()
-                  const thread = await pool.allocate()
+                  const thread = pool.allocate()
                   if (thread) postJob(thread)
                 } catch (error) {
                   console.error({ fn: monitorPools.name, error })

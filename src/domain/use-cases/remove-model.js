@@ -45,7 +45,8 @@ export default function removeModelFactory ({
       return threadpool.run(removeModel.name, id)
     } else {
       const model = await repository.find(id)
-      const event = models.createEvent(eventType, modelName, model)
+      const deleted = models.deleteModel(model)
+      const event = models.createEvent(eventType, modelName, deleted)
 
       const [brokerResult, repoResult] = await Promise.allSettled([
         broker.notify(eventName, event),
@@ -54,12 +55,13 @@ export default function removeModelFactory ({
 
       if (brokerResult.status === 'rejected') {
         if (repoResult.status === 'fulfilled') {
+          // event failed, put it back
           await repository.save(input.id, model)
         }
-        throw new Error('model not deleted', obsResult.reason)
+        throw new Error('model not deleted ' + obsResult.reason)
       }
 
-      return model
+      return deleted
     }
   }
 }
