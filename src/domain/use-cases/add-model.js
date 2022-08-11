@@ -1,8 +1,8 @@
 'use strict'
 
+import { async } from 'regenerator-runtime'
 import { isMainThread } from 'worker_threads'
 import domainEvents from '../domain-events'
-import AppError from '../util/app-error'
 
 /** @todo abstract away thread library */
 
@@ -41,38 +41,30 @@ export default function makeAddModel ({
   /** @type {addModel} */
   async function addModel (input) {
     if (isMainThread) {
-      //
       const existingRecord = await idempotent(input)
       if (existingRecord) return existingRecord
 
-      const model = await threadpool.run(addModel.name, input)
-      if (model.hasError) throw new Error(model.message)
-
-      return model
+      return threadpool.run(addModel.name, input)
     } else {
+      const model = await models.createModel(
+        broker,
+        repository,
+        modelName,
+        input
+      )
+      await repository.save(model.getId(), model)
+
       try {
-        const model = await models.createModel(
-          broker,
-          repository,
-          modelName,
-          input
-        )
-        await repository.save(model.getId(), model)
-
-        try {
-          const event = models.createEvent(eventType, modelName, model)
-          await broker.notify(eventName, event)
-        } catch (error) {
-          // remote the object if not processed
-          await repository.delete(model.getId())
-          return AppError(error)
-        }
-
-        // Return the latest changes
-        return repository.find(model.getId())
+        const event = models.createEvent(eventType, modelName, model)
+        await broker.notify(eventName, event)
       } catch (error) {
-        return AppError(error)
+        // remote the object if not processed
+        await repository.delete(model.getId())
+        throw error
       }
+
+      // Return the latest changes
+      return repository.find(model.getId())
     }
   }
 

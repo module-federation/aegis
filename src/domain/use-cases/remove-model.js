@@ -34,46 +34,32 @@ export default function removeModelFactory ({
   const eventName = models.getEventName(eventType, modelName)
   handlers.forEach(handler => broker.on(eventName, handler))
 
-  return async function removeModel (input) {
+  return async function removeModel (id) {
     if (isMainThread) {
-      const model = await repository.find(input.id)
+      const model = await repository.find(id)
+
       if (!model) {
         throw new Error('no such id')
       }
-      const result = await threadpool.run(removeModel.name, {
-        id: input.id,
-        model
-      })
-      if (result.hasError) throw new Error(result.message)
-      return result
+
+      return threadpool.run(removeModel.name, id)
     } else {
-      const hydratedModel = models.loadModel(
-        broker,
-        repository,
-        input.model,
-        modelName
-      )
+      const model = await repository.find(id)
+      const event = models.createEvent(eventType, modelName, model)
 
-      try {
-        const deleted = models.deleteModel(hydratedModel)
-        const event = models.createEvent(eventType, modelName, deleted)
+      const [brokerResult, repoResult] = await Promise.allSettled([
+        broker.notify(eventName, event),
+        repository.delete(id)
+      ])
 
-        const [obsResult, repoResult] = await Promise.allSettled([
-          broker.notify(eventName, event),
-          repository.delete(input.id)
-        ])
-
-        if (obsResult.status === 'rejected') {
-          if (repoResult.status === 'fulfilled') {
-            await repository.save(input.id, hydratedModel)
-          }
-          return new AppError('model not deleted', obsResult.reason)
+      if (brokerResult.status === 'rejected') {
+        if (repoResult.status === 'fulfilled') {
+          await repository.save(input.id, model)
         }
-
-        return hydratedModel
-      } catch (error) {
-        return AppError(error)
+        throw new Error('model not deleted', obsResult.reason)
       }
+
+      return model
     }
   }
 }

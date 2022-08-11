@@ -201,16 +201,23 @@ const ModelFactory = {
    * Get federated models imported from remote server
    * @returns
    */
-  getModelSpecs: () => [...modelFactories.values()],
+  getModelSpecs: () =>
+    [...modelFactories.values()].filter(spec => !spec.internal),
 
   /**
    * Get the model's specification
    * @param {Model|string} model
    */
-  getModelSpec: model => {
+  getModelSpec: (model, options) => {
     if (!model) return
     const name = typeof model === 'object' ? Model.getName(model) : model
-    return modelFactories.get(checkModelName(name))
+    const spec = modelFactories.get(checkModelName(name))
+    if (spec) {
+      if (spec.internal) {
+        return spec.internal && options?.internal ? spec : null
+      }
+      return spec
+    }
   },
 
   getEvents: () =>

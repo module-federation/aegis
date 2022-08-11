@@ -7,7 +7,7 @@ export default function deleteModelFactory (removeModel) {
   return async function deleteModel (httpRequest) {
     httpRequest.log(deleteModel.name)
     try {
-      const model = await removeModel({ id: httpRequest.params.id })
+      const model = await removeModel(httpRequest.params.id)
 
       return {
         headers: {
