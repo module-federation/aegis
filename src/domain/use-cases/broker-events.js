@@ -39,7 +39,7 @@ function createBroadcastChannel (modelName, broker) {
  * }} models
  *
  */
-export default function brokerEvents ({
+export default async function brokerEvents ({
   broker,
   datasources,
   models,
@@ -47,40 +47,29 @@ export default function brokerEvents ({
   createServiceMesh
 }) {
   if (isMainThread) {
-    /**
-     *
-     * @param {import('../../adapters/service-mesh/node').ServiceMeshClient} serviceMesh
-     */
-    async function initServiceMesh () {
-      // turn off all listeners for these events
-      broker.off('reload')
-      broker.off('from_worker')
-      broker.off('to_worker')
+    // generate a list of installed services
+    const listLocalModels = () =>
+      models
+        .getModelSpecs()
+        .filter(spec => !spec.isCached && !spec.internal)
+        .map(spec => spec.modelName)
 
-      // reinitialize service mesh on reload
-      broker.on('reload', async () => {
-        serviceMesh.close(4999, 'reload')
-      })
+    const serviceMesh = await createServiceMesh({
+      listServices: listLocalModels
+    })
 
-      // generate a list of installed services
-      const listLocalModels = () =>
-        models
-          .getModelSpecs()
-          .filter(spec => !spec.isCached && !spec.internal)
-          .map(spec => spec.modelName)
+    serviceMesh.connect()
 
-      const serviceMesh = await createServiceMesh({
-        listServices: listLocalModels
-      })
+    // reinitialize service mesh on reload
+    broker.on('reload', async () => {
+      serviceMesh.close(4999, 'reload')
+    })
 
-      serviceMesh.connect()
+    // forward all events from worker threads to service mesh
+    broker.on('from_worker', event => serviceMesh.publish(event))
 
-      // forward all events from worker threads to the service mesh
-      broker.on('from_worker', async event => serviceMesh.publish(event))
-
-      serviceMesh.subscribe('*', event => broker.notify('to_worker', event))
-    }
-    initServiceMesh()
+    // forward all events from service mesh to worker threads
+    serviceMesh.subscribe('*', event => broker.notify('to_worker', event))
   } else {
     createBroadcastChannel(workerData.poolName, broker)
     // create listeners that handle events from main
