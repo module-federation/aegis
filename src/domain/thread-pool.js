@@ -528,14 +528,9 @@ export class ThreadPool extends EventEmitter {
    */
   async stopThreads (reason) {
     try {
-      const kill = this.freeThreads.splice(0, this.freeThreads.length)
+      const threads = this.freeThreads.splice(0, this.freeThreads.length)
       this.threads.splice(0, this.threads.length)
-
-      setTimeout(
-        async () => await Promise.all(kill.map(thread => thread.stop(reason))),
-        1000
-      )
-
+      threads.forEach(thread => thread.stop(reason))
       return this
     } catch (error) {
       console.error({ fn: this.stopThreads.name, error })
