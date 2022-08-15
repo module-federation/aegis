@@ -1,6 +1,11 @@
 'use strict'
 
 import { Writable } from 'stream'
+import { changeDataCapture } from './util/change-data-capture'
+
+/** change data capture */
+let CDC = {}
+const cdcEnabled = false // /true/i.test('CHANGE_DATA_CAPTURE')
 
 function roughSizeOfObject (...objects) {
   let bytes = 0
@@ -45,6 +50,38 @@ export default class DataSource {
   }
 
   /**
+   *
+   * @param {*} id
+   * @param {*} data
+   * @returns
+   */
+  changeDataCapture (id, data) {
+    const cdc = (CDC[this.name] && CDC[this.name][id]) || null
+    const deserialized = JSON.parse(JSON.stringify(data))
+    if (cdc) {
+      const indeces = []
+      indeces[0] = cdc.changes.length
+      Object.keys(data).forEach(key => (cdc.proxy[key] = deserialized[key]))
+      cdc.indeces[1] = cdc.changes.length
+      cdc.metadata.push({ time: Date.now(), indeces, user: null })
+      return cdc.changes.slice(cdc.indeces[0], cdc.indeces[1] - cdc.indeces[0])
+    }
+    let changes
+    const writeEvent = { time: Date.now(), indeces: [], user: null }
+    CDC[this.name] = {}
+    CDC[this.name][id] = {}
+    CDC[this.name][id].changes = changes = []
+    writeEvent.indeces[0] = 0
+    CDC[this.name][id].proxy = changeDataCapture(deserialized, changes)
+    Object.keys(data).forEach(
+      key => (CDC[this.name][id].proxy[key] = data[key])
+    )
+    writeEvent.indeces[1] = changes.length
+    CDC[this.name][id].metadata = []
+    CDC[this.name][id].metadata.push(writeEvent)
+  }
+
+  /**
    * Upsert model instance asynchronomously
    * to handle I/0 latency and concurrency
    * @param {*} id
@@ -64,6 +101,7 @@ export default class DataSource {
    * @returns
    */
   saveSync (id, data) {
+    if (cdcEnabled) this.changeDataCapture(id, data)
     return this.mapSet(id, data)
   }
 
@@ -194,8 +232,8 @@ export default class DataSource {
   }
 
   /**
-   * 
-   * @returns 
+   *
+   * @returns
    */
   countSync () {
     return this.mapCount()
