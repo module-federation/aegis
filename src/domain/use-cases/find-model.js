@@ -1,4 +1,4 @@
-                                                                                                                          'use strict'
+'use strict'
 
 import { isMainThread } from 'worker_threads'
 import executeCommand from './execute-command'
@@ -45,18 +45,16 @@ export default function makeFindModel ({
       // Only send to app thread if data must be enriched
       if (!query.relation && !query.command) return model
 
-      try {
-        return await threadpool.run(findModel.name, { id, query, model })
-      } catch (error) {
-        throw error
-      }
+      const result = await threadpool.run(findModel.name, { id, query, model })
+      if (result instanceof AppError) throw result
+      return result
     } else {
       try {
         const hydrateModel = model =>
           model.getId
             ? model // already unmarshalled
             : models.loadModel(broker, repository, model, modelName)
-            
+
         // unmarshall the model so we can use it
         const hydratedModel = hydrateModel(model)
 

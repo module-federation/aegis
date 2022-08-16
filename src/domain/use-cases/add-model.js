@@ -3,6 +3,7 @@
 import { async } from 'regenerator-runtime'
 import { isMainThread } from 'worker_threads'
 import domainEvents from '../domain-events'
+import AppError from '../util/app-error'
 
 /** @todo abstract away thread library */
 
@@ -44,27 +45,33 @@ export default function makeAddModel ({
       const existingRecord = await idempotent(input)
       if (existingRecord) return existingRecord
 
-      return threadpool.run(addModel.name, input)
+      const result = await threadpool.run(addModel.name, input)
+      if (result instanceof AppError) throw result
+      return result
     } else {
-      const model = await models.createModel(
-        broker,
-        repository,
-        modelName,
-        input
-      )
-      await repository.save(model.getId(), model)
-
       try {
-        const event = models.createEvent(eventType, modelName, model)
-        await broker.notify(eventName, event)
-      } catch (error) {
-        // remote the object if not processed
-        await repository.delete(model.getId())
-        throw error
-      }
+        const model = await models.createModel(
+          broker,
+          repository,
+          modelName,
+          input
+        )
+        await repository.save(model.getId(), model)
 
-      // Return the latest changes
-      return repository.find(model.getId())
+        try {
+          const event = models.createEvent(eventType, modelName, model)
+          await broker.notify(eventName, event)
+        } catch (error) {
+          // remote the object if not processed
+          await repository.delete(model.getId())
+          throw error
+        }
+
+        // Return the latest changes
+        return repository.find(model.getId())
+      } catch (error) {
+        return new AppError(error)
+      }
     }
   }
 
