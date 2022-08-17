@@ -23,7 +23,7 @@ const {
   patchModels,
   postModels,
   liveUpdate,
-  postInvokePorts
+  anyInvokePorts
 } = adapters.controllers
 
 const apiRoot = process.env.API_ROOT || '/aegis/api'
@@ -107,8 +107,14 @@ function makeRoutes () {
   router.autoRoutes(endpointId, 'patch', patchModels, http)
   router.autoRoutes(endpointId, 'delete', deleteModels, http)
   router.autoRoutes(endpointCmd, 'patch', patchModels, http)
-  router.autoRoutes(endpointPort, 'post', postInvokePorts, http)
-  router.autoRoutes(endpointPortId, 'post', postInvokePorts, http)
+  router.autoRoutes(endpointPort, 'post', anyInvokePorts, http)
+  router.autoRoutes(endpointPort, 'patch', anyInvokePorts, http)
+  router.autoRoutes(endpointPort, 'delete', anyInvokePorts, http)
+  router.autoRoutes(endpointPort, 'get', anyInvokePorts, http)
+  router.autoRoutes(endpointPortId, 'post', anyInvokePorts, http)
+  router.autoRoutes(endpointPortId, 'patch', anyInvokePorts, http)
+  router.autoRoutes(endpointPortId, 'delete', anyInvokePorts, http)
+  router.autoRoutes(endpointPortId, 'get', anyInvokePorts, http)
   router.adminRoute(getConfig, http)
   router.userRoutes(getRoutes)
   console.log(routes)

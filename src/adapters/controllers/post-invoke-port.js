@@ -6,10 +6,10 @@
  * @param {function():string} hash
  * @returns {import("./http-adapter").httpController}
  */
-export default function postInvokePortFactory (invokePort) {
-  return async function postInvokePort (httpRequest) {
+export default function anyInvokePortFactory (invokePort) {
+  return async function anyInvokePort (httpRequest) {
     try {
-      httpRequest.log(postInvokePort.name)
+      httpRequest.log(anyInvokePort.name)
 
       const result = await invokePort({
         port: httpRequest.params.port,
@@ -25,7 +25,7 @@ export default function postInvokePortFactory (invokePort) {
           'Last-Modified': new Date().toUTCString()
         },
         statusCode: 201,
-        body: { modelId: result }
+        body: { ...result }
       }
     } catch (e) {
       console.error(e)

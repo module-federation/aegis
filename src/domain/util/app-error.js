@@ -20,8 +20,9 @@
 // }
 
 export default class AppError extends Error {
-  constructor (message) {
-    super(message)
-    this.name = 'AppError'
+  constructor (error) {
+    super(error.message || message)
+    this.message = error.message || message
+    this.stack = error.stack
   }
 }
