@@ -78,7 +78,7 @@ class Job extends AsyncResource {
    *
    * @param {Thread} thread
    */
-  runJob (thread) {
+  run (thread) {
     const {
       pool,
       jobName,
@@ -86,7 +86,6 @@ class Job extends AsyncResource {
       channel = MAINCHANNEL,
       transfer = []
     } = this.options
-
     const startTime = perf.now()
 
     thread[channel].once(
@@ -104,12 +103,15 @@ class Job extends AsyncResource {
       })
     )
 
-    thread[channel].once('error', error => {
-      console.error({ fn: this.runJob.name, error })
-      pool.threads.splice(pool.threads.indexOf(thread), 1)
-      pool.emit('unhandledThreadError', error)
-      this.callback(error, null)
-    })
+    thread[channel].once(
+      'error',
+      this.bind(error => {
+        console.error({ fn: this.run.name, error })
+        pool.threads.splice(pool.threads.indexOf(thread), 1)
+        pool.emit('unhandledThreadError', error)
+        this.callback(error, null)
+      })
+    )
 
     thread[channel].postMessage({ name: jobName, data: jobData }, transfer)
   }
@@ -154,13 +156,17 @@ function newThread ({ pool, file, workerData }) {
     mainChannel: worker,
     eventChannel: eventChannel.port1,
 
+    once (event, callback) {
+      worker.on(event, callback)
+    },
+
     stop (reason) {
       pool.emit('threadTermination', reason)
       worker.terminate()
     },
 
     run (job) {
-      job.runJob(this)
+      job.run(this)
     }
   }
 
@@ -246,16 +252,22 @@ export class ThreadPool extends EventEmitter {
    *  cb:function(Thread)
    * }}
    */
-  async startThreads () {
+  startThreads () {
     for (let i = 0; i < this.minPoolSize(); i++) {
       this.freeThreads.push(this.startThread())
     }
     return this
   }
 
-  async stopThread (thread, reason) {
-    await thread.stop(reason)
+  stopThread (thread, reason) {
+    thread.stop(reason)
     this.freeThreads.splice(this.freeThreads.indexOf(thread), 1)
+    this.threads.splice(this.threads.indexOf(thread), 1)
+    return this
+  }
+
+  stopThreads (reason) {
+    this.threads.forEach(thread => this.stopThread(thread, reason))
     return this
   }
 
@@ -267,7 +279,7 @@ export class ThreadPool extends EventEmitter {
    * @param {*} jobData anything that can be cloned
    * @returns {Promise<*>} anything that can be cloned
    */
-  run (jobName, jobData, options = {}) {
+  runJob (jobName, jobData, options = {}) {
     return new Promise((resolve, reject) => {
       this.jobsRequested++
 
@@ -299,7 +311,7 @@ export class ThreadPool extends EventEmitter {
         return
       }
 
-      console.debug('no threads: queue job', jobName)
+      console.warn('no threads: queue job', jobName)
       this.waitingJobs.push(thread => thread.run(job))
       this.jobsQueued++
     })
@@ -483,7 +495,7 @@ export class ThreadPool extends EventEmitter {
   }
 
   async fireEvent (event) {
-    return this.run(event.eventName, event, { channel: EVENTCHANNEL })
+    return this.runJob(event.eventName, event, { channel: EVENTCHANNEL })
   }
 
   /**
@@ -515,26 +527,6 @@ export class ThreadPool extends EventEmitter {
         })
       }
     })
-  }
-
-  /**
-   * Stop all threads. If existing threads are stopped immediately
-   * before new threads are started, it can result in a segmentation
-   * fault or bus abort, at least on Apple silicon. It seems there
-   * is shared memory between threads (or v8 isolates) that is being
-   * incorrectly freed.
-   *
-   * @returns {ThreadPool}
-   */
-  async stopThreads (reason) {
-    try {
-      const threads = this.freeThreads.splice(0, this.freeThreads.length)
-      this.threads.splice(0, this.threads.length)
-      threads.forEach(thread => thread.stop(reason))
-      return this
-    } catch (error) {
-      console.error({ fn: this.stopThreads.name, error })
-    }
   }
 
   /**
@@ -654,14 +646,14 @@ const ThreadPoolFactory = (() => {
     }
 
     const facade = {
-      async run (jobName, jobData) {
-        return getPool(poolName, options).run(jobName, jobData)
+      async runJob (jobName, jobData) {
+        return getPool(poolName, options).runJob(jobName, jobData)
       },
       status () {
         return getPool(poolName, options).status()
       },
       async fireEvent (event) {
-        return getPool(poolName, options).run(event.name, event.data, {
+        return getPool(poolName, options).runJob(event.name, event.data, {
           channel: EVENTCHANNEL
         })
       },
@@ -707,15 +699,22 @@ const ThreadPoolFactory = (() => {
         .close()
         .notify(poolClose)
         .drain()
-        .then(() => pool.stopThreads(reload.name))
-        .then(() => pool.startThreads())
-        .then(() =>
-          pool
-            .open()
-            .bumpDeployCount()
-            .notify(poolOpen)
-        )
-        .then(resolve)
+        .then(pool => {
+          this.threads.forEach(thread =>
+            thread.once('exit', () => {
+              console.log('thread exit')
+              if (this.threads.length < 1)
+                return resolve(
+                  pool
+                    .startThreads()
+                    .open()
+                    .bumpDeployCount()
+                    .notify(poolOpen)
+                )
+            })
+          )
+          pool.stopThreads('reload')
+        })
         .catch(error => reject(new ReloadError(error)))
     })
   }
@@ -751,8 +750,8 @@ const ThreadPoolFactory = (() => {
         .close()
         .notify(poolClose)
         .drain()
-        .then(() => pool.stopThreads(destroy.name))
-        .then(() => resolve(threadPools.delete(pool)))
+        .then(pool => pool.stopThreads('destroy'))
+        .then(pool => resolve(threadPools.delete(pool)))
         .catch(reject)
     })
   }

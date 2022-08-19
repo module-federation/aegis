@@ -48,7 +48,7 @@ export default function makeEditModel ({
         throw new Error('no such id')
       }
 
-      const result = await threadpool.run(editModel.name, input)
+      const result = await threadpool.runJob(editModel.name, input)
       if (result instanceof AppError) throw result
       return result
     } else {

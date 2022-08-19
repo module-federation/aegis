@@ -45,7 +45,7 @@ export default function makeFindModel ({
       // Only send to app thread if data must be enriched
       if (!query.relation && !query.command) return model
 
-      const result = await threadpool.run(findModel.name, { id, query, model })
+      const result = await threadpool.runJob(findModel.name, { id, query, model })
       if (result instanceof AppError) throw result
       return result
     } else {

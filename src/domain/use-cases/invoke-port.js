@@ -32,7 +32,7 @@ export default function makeInvokePort ({
    */
   return async function invokePort (input) {
     if (isMainThread) {
-      const result = await threadpool.run(invokePort.name, input)
+      const result = await threadpool.runJob(invokePort.name, input)
       if (result instanceof AppError) throw result
       return result
     } else {

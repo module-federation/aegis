@@ -42,7 +42,7 @@ export default function removeModelFactory ({
         throw new Error('no such id')
       }
 
-      const result = await threadpool.run(removeModel.name, id)
+      const result = await threadpool.runJob(removeModel.name, id)
       if (result instanceof AppError) throw result
       return result
     } else {

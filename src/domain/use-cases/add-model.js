@@ -45,7 +45,7 @@ export default function makeAddModel ({
       const existingRecord = await idempotent(input)
       if (existingRecord) return existingRecord
 
-      const result = await threadpool.run(addModel.name, input)
+      const result = await threadpool.runJob(addModel.name, input)
       if (result instanceof AppError) throw result
       return result
     } else {

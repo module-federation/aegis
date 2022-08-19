@@ -33,7 +33,7 @@ export default function makeEmitEvent ({
     try {
       if (isMainThread) {
         try {
-          await threadpool.run(input.eventName, input)
+          await threadpool.runJob(input.eventName, input)
         } catch (error) {
           throw error
         }

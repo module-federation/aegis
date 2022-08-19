@@ -58,23 +58,23 @@ export default function makeHotReload ({ models, broker } = {}) {
     }
     inProgress = true
 
-    return new Promise(async resolve => {
-      try {
-        if (modelName && modelName !== '*') {
-          // compile()
-          await ThreadPoolFactory.reload(modelName)
-          return resolve(ThreadPoolFactory.status(modelName))
-        } else {
-          // compile()
-          await ThreadPoolFactory.reloadPools()
-          return resolve(ThreadPoolFactory.status())
-        }
-      } catch (error) {
-        return resolve({ fn: hotReload.name, error })
-      } finally {
-        inProgress = false
+    try {
+      if (modelName && modelName !== '*') {
+        // compile()
+        console.log('reloading pool', modelName)
+        await ThreadPoolFactory.reload(modelName)
+        return ThreadPoolFactory.status(modelName)
+      } else {
+        // compile()
+        console.log('reloading all pools')
+        await ThreadPoolFactory.reloadPools()
+        return ThreadPoolFactory.status()
       }
-    })
+    } catch (error) {
+      console.log({ fn: hotReload.name, error })
+    } finally {
+      inProgress = false
+    }
   }
 
   return hotReload

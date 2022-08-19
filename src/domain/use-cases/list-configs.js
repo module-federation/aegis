@@ -25,7 +25,7 @@ export default function listConfigsFactory ({
     const configTypes = {
       data: () =>
         modelName && isMainThread
-          ? threadpools.getThreadPool(modelName).run(listConfigs.name, query)
+          ? threadpools.getThreadPool(modelName).runJob(listConfigs.name, query)
           : modelName && poolName
           ? datasources.getSharedDataSource(poolName).listSync()
           : modelName
@@ -37,7 +37,7 @@ export default function listConfigsFactory ({
 
       events: () =>
         modelName && isMainThread
-          ? threadpools.getThreadPool(modelName).run(listConfigs.name, query)
+          ? threadpools.getThreadPool(modelName).runJob(listConfigs.name, query)
           : [...broker.getEvents()].map(([k, v]) => ({
               eventName: k,
               handlers: v.length
@@ -45,7 +45,7 @@ export default function listConfigsFactory ({
 
       models: () =>
         modelName && isMainThread
-          ? threadpools.getThreadPool(modelName).run(listConfigs.name, query)
+          ? threadpools.getThreadPool(modelName).runJob(listConfigs.name, query)
           : modelName
           ? models.getModelSpecs().filter(spec => !spec.internal)
           : models.getModelSpecs().filter(spec => !spec.internal),
@@ -54,7 +54,7 @@ export default function listConfigsFactory ({
 
       relations: () =>
         modelName && isMainThread
-          ? threadpools.getThreadPool(modelName).run(listConfigs.name, query)
+          ? threadpools.getThreadPool(modelName).runJob(listConfigs.name, query)
           : modelName
           ? models.getModelSpec(modelName).relations
           : models.getModelSpecs().map(spec => ({
@@ -64,7 +64,7 @@ export default function listConfigsFactory ({
 
       commands: () =>
         modelName && isMainThread
-          ? threadpools.getThreadPool(modelName).run(listConfigs.name, query)
+          ? threadpools.getThreadPool(modelName).runJob(listConfigs.name, query)
           : modelName
           ? models.getModelSpec(modelName).commands
           : models.getModelSpecs().map(spec => ({
@@ -74,7 +74,7 @@ export default function listConfigsFactory ({
 
       ports: () =>
         modelName && isMainThread
-          ? threadpools.getThreadPool(modelName).run(listConfigs.name, query)
+          ? threadpools.getThreadPool(modelName).runJob(listConfigs.name, query)
           : modelName
           ? models.getModelSpec(modelName).ports
           : models.getModelSpecs().map(spec => ({
