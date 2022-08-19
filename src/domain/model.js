@@ -427,6 +427,10 @@ const Model = (() => {
        */
       getKey (key) {
         return keyMap[key]
+      },
+
+      equals (model) {
+        model && model.getId && model.getId() === this[ID]
       }
     }
   }

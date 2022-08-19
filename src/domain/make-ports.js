@@ -143,11 +143,12 @@ function addPortListener (portName, portConf, broker, disabled) {
  * @returns {Promise<import(".").Model>}
  */
 async function updatePortFlow (model, port, remember) {
-  if (!remember) return model
+  if (!remember) return this
 
-  return model.update(
+  const updateModel = this.equals(model) ? model : this
+  return updateModel.update(
     {
-      [model.getKey('portFlow')]: [...model.getPortFlow(), port]
+      [updateModel.getKey('portFlow')]: [...updateModel.getPortFlow(), port]
     },
     false
   )
@@ -164,18 +165,14 @@ async function updatePortFlow (model, port, remember) {
  * the output event of one port as the input or triggering event
  * of another.
  *
- * N.B.: Creational ports are mainly handled by the
- * {@link ModelFactory}, but inbound ports can be implemented
- * by binding domain code in place of the adapter (see below).
- *
  * See the {@link ModelSpecification} for port configuration options.
  *
  * @param {import('./index').ports} ports - object containing domain interfaces
- * @param {object} dependencies - dependencies object containing adapters and ports
+ * @param {object} adapters - dependencies object containing adapters and ports
  * @param {import('./event-broker').EventBroker} broker
  */
-export default function makePorts (ports, dependencies, broker) {
-  if (!ports || !dependencies) {
+export default function makePorts (ports, adapters, broker) {
+  if (!ports || !adapters) {
     return
   }
 
@@ -183,7 +180,7 @@ export default function makePorts (ports, dependencies, broker) {
     .map(function (port) {
       const portName = port
       const portConf = ports[port]
-      const disabled = portConf.disabled || !dependencies[port]
+      const disabled = portConf.disabled || !adapters[port]
 
       // Listen for event that will invoke this port
       const rememberPort = addPortListener(portName, portConf, broker, disabled)
@@ -217,22 +214,27 @@ export default function makePorts (ports, dependencies, broker) {
         }
 
         try {
-          // either we're being invoked by an inbound adapter
-          // or we are invoking an outbound adapter
-          const model = await dependencies[port]({ model: this, port, args })
+          // call the inbound or oubound adapter and wait
+          const result = await adapters[port]({ model: this, port, args })
 
           // Stop the timer
           timer.stopTimer()
 
           // Remember what ports we called in case of restart or undo
-          const saved = await updatePortFlow(model, port, rememberPort)
+          const model = await updatePortFlow.call(
+            this,
+            result,
+            port,
+            rememberPort
+          )
 
           // Signal the next port to run.
           if (rememberPort) {
-            await saved.emit(portConf.producesEvent, portName)
+            await model.emit(portConf.producesEvent, portName)
           }
 
-          return saved
+          // the result can be something other than a model
+          return model.equals(result) ? model : result
         } catch (error) {
           console.error({ func: port, args, error })
 

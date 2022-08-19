@@ -28,17 +28,12 @@ export default function bindAdapters ({
   }
 
   const bindings = {
-    outbound: (portName, port, outboundAdapter, service) => {
-      return {
-        [portName]: outboundAdapter(service)
-      }
-    },
-    inbound: (portName, port, adapter, service) => {
-      const inboundAdapter = adapter || DefaultInboundAdapter
-      return {
-        [portName]: inboundAdapter(port)
-      }
-    }
+    outbound: (portName, port, adapter, service) => ({
+      [portName]: adapter(service)
+    }),
+    inbound: (portName, port, adapter = DefaultInboundAdapter, service) => ({
+      [portName]: adapter(port)
+    })
   }
 
   return Object.keys(portSpec)
