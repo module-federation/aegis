@@ -171,11 +171,11 @@ async function updatePortFlow (model, port, remember) {
  * See the {@link ModelSpecification} for port configuration options.
  *
  * @param {import('./index').ports} ports - object containing domain interfaces
- * @param {object} adapters - object containing application adapters
+ * @param {object} dependencies - dependencies object containing adapters and ports
  * @param {import('./event-broker').EventBroker} broker
  */
-export default function makePorts (ports, adapters, broker) {
-  if (!ports || !adapters) {
+export default function makePorts (ports, dependencies, broker) {
+  if (!ports || !dependencies) {
     return
   }
 
@@ -183,7 +183,7 @@ export default function makePorts (ports, adapters, broker) {
     .map(function (port) {
       const portName = port
       const portConf = ports[port]
-      const disabled = portConf.disabled || !adapters[port]
+      const disabled = portConf.disabled || !dependencies[port]
 
       // Listen for event that will invoke this port
       const rememberPort = addPortListener(portName, portConf, broker, disabled)
@@ -217,8 +217,9 @@ export default function makePorts (ports, adapters, broker) {
         }
 
         try {
-          // Call the adapter and wait
-          const model = await adapters[port]({ model: this, port, args })
+          // either we're being invoked by an inbound adapter
+          // or we are invoking an outbound adapter
+          const model = await dependencies[port]({ model: this, port, args })
 
           // Stop the timer
           timer.stopTimer()

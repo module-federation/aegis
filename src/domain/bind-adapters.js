@@ -1,5 +1,11 @@
 'use strict'
 
+function DefaultInboundAdapter (port) {
+  return async function ({ model, args: [input] }) {
+    return port.apply(model, input)
+  }
+}
+
 /**
  * In a hex arch, ports and adapters control I/O between
  * the application core (domain) and the outside world.
@@ -7,38 +13,53 @@
  * any service dependencies. Using module federation,
  * adapters and services are overridden at runtime to rewire
  * ports to their actual service entry points.
- * @param {port} ports - domain interfaces
+ * @param {import('.').ports} ports - domain interfaces
  * @param {{[x:string]:function(*):function(*):any}} adapters - service adapters
  * @param {*} [services] - (micro-)services
  */
 export default function bindAdapters ({
-  portConf,
+  ports,
   adapters,
   services,
-  ports
+  portSpec
 } = {}) {
-  if (!portConf || !adapters) {
+  if (!portSpec || !adapters) {
     return
   }
 
-  return Object.keys(portConf)
-    .map(port => {
+  const bindings = {
+    outbound: (portName, port, outboundAdapter, service) => {
+      return {
+        [portName]: outboundAdapter(service)
+      }
+    },
+    inbound: (portName, port, adapter, service) => {
+      const inboundAdapter = adapter || DefaultInboundAdapter
+      return {
+        [portName]: inboundAdapter(port)
+      }
+    }
+  }
+
+  return Object.keys(portSpec)
+    .map(portName => {
       try {
-        const iface = adapters[port] || ports[port]
-        const service = services[portConf[port].service]
-        if (iface) {
-          console.debug({
-            port,
-            adapter: adapters[port],
-            portFns: ports[port],
-            service
-          })
-          return {
-            [port]: iface(service)
-          }
-        }
-      } catch (e) {
-        console.warn(e.message)
+        const adapter = adapters[portName]
+        const service = services[portSpec[portName].service]
+        const port = ports[portName]
+
+        return bindings[portSpec[portName].type](
+          portName,
+          port,
+          adapter,
+          service
+        )
+      } catch (error) {
+        console.warn({
+          fn: bindAdapters.name,
+          error,
+          spec: portSpec[portName]
+        })
       }
     })
     .reduce((p, c) => ({ ...p, ...c }))

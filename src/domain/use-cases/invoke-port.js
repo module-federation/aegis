@@ -44,10 +44,7 @@ export default function makeInvokePort ({
 
         if (!model) throw new Error('no such id')
 
-        if (typeof model[port] !== 'function')
-          throw new Error(`${modelName}.${port} is not a function`)
-
-        return authorize(async () => await model[port](args))
+        return await model[port](input)
       } catch (error) {
         return new AppError(error)
       }

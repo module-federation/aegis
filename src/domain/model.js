@@ -358,6 +358,10 @@ const Model = (() => {
         return modelInfo.args ? modelInfo.args : []
       },
 
+      getDependencies () {
+        return dependencies
+      },
+
       /**
        * Identify events types.
        * @returns {eventMask}

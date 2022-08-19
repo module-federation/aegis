@@ -247,7 +247,7 @@ function register ({
   const modelName = model.modelName.toUpperCase()
 
   const bindings = bindAdapters({
-    portConf: model.ports,
+    portSpec: model.ports,
     adapters,
     services,
     ports
