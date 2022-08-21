@@ -4,7 +4,6 @@ import executeCommand from './execute-command'
 import async from '../util/async-error'
 import domainEvents from '../domain-events'
 import { isMainThread } from 'worker_threads'
-import AppError from '../util/app-error'
 
 /**
  * @typedef {Object} ModelParam
@@ -49,7 +48,7 @@ export default function makeEditModel ({
       }
 
       const result = await threadpool.runJob(editModel.name, input)
-      if (result instanceof AppError) throw result
+      if (result instanceof Error) throw result
       return result
     } else {
       try {
@@ -86,7 +85,7 @@ export default function makeEditModel ({
           await repository.save(id, model)
         }
       } catch (error) {
-        return new AppError(error)
+        return new Error(error)
       }
     }
   }

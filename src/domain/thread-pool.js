@@ -519,11 +519,6 @@ export class ThreadPool extends EventEmitter {
     }
 
     return new Promise((resolve, reject) => {
-      console.debug({
-        noJobsRunning: this.noJobsRunning(),
-        totalThreads: this.threads.length,
-        freeThreads: this.freeThreads.length
-      })
       if (this.noJobsRunning()) {
         resolve(this)
       } else {
@@ -755,14 +750,9 @@ const ThreadPoolFactory = (() => {
         .close()
         .notify(poolClose)
         .drain()
-        .then(pool => {
-          pool.stopThreads('destroy')
-          threadPools.delete(poolName)
-        })
-        .catch(error => {
-          console.error(error)
-          reject(error)
-        })
+        .then(pool => pool.stopThreads('destroy'))
+        .then(() => threadPools.delete(poolName))
+        .catch(error => reject(error))
     })
   }
 

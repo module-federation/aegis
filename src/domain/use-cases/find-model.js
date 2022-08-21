@@ -4,7 +4,6 @@ import { isMainThread } from 'worker_threads'
 import executeCommand from './execute-command'
 import fetchRelatedModels from './find-related-models'
 import async from '../util/async-error'
-import AppError from '../util/app-error'
 
 /**
  * @typedef {Object} ModelParam
@@ -45,8 +44,12 @@ export default function makeFindModel ({
       // Only send to app thread if data must be enriched
       if (!query.relation && !query.command) return model
 
-      const result = await threadpool.runJob(findModel.name, { id, query, model })
-      if (result instanceof AppError) throw result
+      const result = await threadpool.runJob(findModel.name, {
+        id,
+        query,
+        model
+      })
+      if (result instanceof Error) throw result
       return result
     } else {
       try {
@@ -79,7 +82,7 @@ export default function makeFindModel ({
         // gracefully degrade
         return hydratedModel
       } catch (error) {
-        return new AppError(error)
+        return new Error(error)
       }
     }
   }

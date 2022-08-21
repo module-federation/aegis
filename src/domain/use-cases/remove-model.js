@@ -1,7 +1,6 @@
 'use strict'
 
 import { isMainThread } from 'worker_threads'
-import AppError from '../util/app-error'
 
 /**
  * @typedef {Object} ModelParam
@@ -43,7 +42,7 @@ export default function removeModelFactory ({
       }
 
       const result = await threadpool.runJob(removeModel.name, id)
-      if (result instanceof AppError) throw result
+      if (result instanceof Error) throw result
       return result
     } else {
       try {
@@ -67,7 +66,7 @@ export default function removeModelFactory ({
 
         return deleted
       } catch (error) {
-        return new AppError(error)
+        return new Error(error)
       }
     }
   }

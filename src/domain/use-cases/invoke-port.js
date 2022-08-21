@@ -1,7 +1,6 @@
 'use strict'
 
 import { isMainThread } from 'worker_threads'
-import AppError from '../util/app-error'
 
 /**
  * @typedef {Object} ModelParam
@@ -33,7 +32,7 @@ export default function makeInvokePort ({
   return async function invokePort (input) {
     if (isMainThread) {
       const result = await threadpool.runJob(invokePort.name, input)
-      if (result instanceof AppError) throw result
+      if (result instanceof Error) throw result
       return result
     } else {
       try {
@@ -46,7 +45,7 @@ export default function makeInvokePort ({
 
         return await model[port](input)
       } catch (error) {
-        return new AppError(error)
+        return new Error(error)
       }
     }
   }

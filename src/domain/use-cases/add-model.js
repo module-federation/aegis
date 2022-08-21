@@ -3,7 +3,6 @@
 import { async } from 'regenerator-runtime'
 import { isMainThread } from 'worker_threads'
 import domainEvents from '../domain-events'
-import AppError from '../util/app-error'
 
 /** @todo abstract away thread library */
 
@@ -46,7 +45,7 @@ export default function makeAddModel ({
       if (existingRecord) return existingRecord
 
       const result = await threadpool.runJob(addModel.name, input)
-      if (result instanceof AppError) throw result
+      if (result instanceof Error) throw result
       return result
     } else {
       try {
