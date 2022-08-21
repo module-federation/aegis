@@ -43,6 +43,10 @@ export default function bindAdapters ({
         const service = services[portSpec[portName].service]
         const port = ports[portName]
 
+        if (!adapter && portSpec[portName].type === 'outbound') {
+          console.warn('no adapter for port', port, portSpec[portName])
+          return
+        }
         return bindings[portSpec[portName].type](
           portName,
           port,

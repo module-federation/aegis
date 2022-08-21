@@ -136,7 +136,7 @@ async function handle (path, method, req, res) {
 
   if (!routeInfo) {
     console.warn('no controller for', path)
-    res.status(404).send('not found')
+    res.status(404).json('not found')
     return
   }
 
@@ -144,17 +144,17 @@ async function handle (path, method, req, res) {
 
   if (typeof controller !== 'function') {
     console.warn('no controller for', path, method)
-    res.status(404).send('not found')
+    res.status(404).json('not found')
     return
   }
 
-  const requestInfo = Object.assign(req, { params: routeInfo.params || {} })
+  const requestInfo = Object.assign(req, { params: routeInfo.params })
 
   try {
     return await controller(requestInfo, res)
   } catch (error) {
     console.error({ fn: handle.name, error })
-    res.status(500).send(error.message)
+    res.status(500).json('uknown error')
   }
 }
 
@@ -183,6 +183,6 @@ exports.init = async function (remotes) {
   makeRoutes()
   // load from storage
   await cache.load()
-  // hand controllers
+  // controllers
   return handle
 }

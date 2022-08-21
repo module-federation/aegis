@@ -252,7 +252,6 @@ function register ({
     services,
     ports
   })
-
   const dependencies = {
     ...model.dependencies,
     ...bindings
