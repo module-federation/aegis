@@ -69,7 +69,7 @@ export default function makeAddModel ({
         // Return the latest changes
         return repository.find(model.getId())
       } catch (error) {
-        return new AppError(error)
+        return new Error(error)
       }
     }
   }
