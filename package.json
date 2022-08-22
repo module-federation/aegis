@@ -21,7 +21,7 @@
   },
   "dependencies": {
     "@assemblyscript/loader": "0.21.1",
-    "@octokit/core": "3.6.0",
+    "@octokit/core": "4.0.5",
     "@octokit/rest": "19.0.4",
     "acme-client": "^5.0.0",
     "as-bind": "0.8.2",
