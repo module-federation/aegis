@@ -145,7 +145,7 @@ export default class DataSource {
    * @param {boolean} [cached] - list cached items, default is true
    * @returns {Promise<any[]>}
    */
-  async list (query = null) {
+  async list (writable = null, query = null, cached = false) {
     return this.listSync(query)
   }
 
@@ -154,7 +154,7 @@ export default class DataSource {
    * @param {object} query
    * @returns
    */
-  listSync (query) {
+  listSync (query = null) {
     const list = this.generateList()
     return query ? this.filterList(query, list) : list
   }

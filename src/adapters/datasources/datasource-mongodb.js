@@ -34,7 +34,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
     // keep running even if db is down
     this.runOffline = dsOptions.runOffline
     this.url = url
-    this.className = DataSourceMongoDb.name
+    this.className = this.constructor.name
     //console.log(this)
   }
 
@@ -91,7 +91,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
     try {
       const model = await (await this.collection()).findOne({ _id: id })
       // save it to the cache
-      return super.saveSync(id, model) || model // saveSync fails on fresh start      
+      return super.saveSync(id, model) || model // saveSync fails on fresh start
     } catch (error) {
       console.error({ fn: this.findDb.name, error })
     }
@@ -104,9 +104,14 @@ export class DataSourceMongoDb extends DataSourceMemory {
    */
   async find (id) {
     try {
-      const cached = super.findSync(id)      
-      if (cached === null || cached === undefined || Object.keys(cached).length == 0)// cached can be empty object
-      return this.findDb(id)
+      const cached = super.findSync(id)
+      if (
+        cached === null ||
+        cached === undefined ||
+        Object.keys(cached).length == 0
+      )
+        // cached can be empty object
+        return this.findDb(id)
 
       return cached
     } catch (error) {
@@ -179,9 +184,9 @@ export class DataSourceMongoDb extends DataSourceMemory {
    * @param {{key1:string, keyN:string}} filter - e.g. from http query
    * @param {boolean} cached - use cache if true, otherwise go to db.
    */
-  async list (writable, filter = null, cached = false) {
+  async list (writable = null, filter = null, cached = false) {
     try {
-      if (cached) return super.listSync(null, filter, cached)
+      if (cached) return super.listSync(filter)
 
       let first = true
       const serialize = new Transform({
@@ -223,6 +228,10 @@ export class DataSourceMongoDb extends DataSourceMemory {
     }
   }
 
+  /**
+   * @override
+   * @returns
+   */
   async count () {
     return await (await this.collection()).countDocuments()
   }
@@ -245,6 +254,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
 
   /**
    * Flush the cache to disk.
+   * @override
    */
   flush () {
     try {

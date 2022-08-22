@@ -346,7 +346,7 @@ const Model = (() => {
        * @param {{key1, keyN}} filter
        * @returns {Model[]}
        */
-      async list (filter, cache = true) {
+      async list (writable = null, filter = null, cache = true) {
         return datasource.list(filter, cache)
       },
 
