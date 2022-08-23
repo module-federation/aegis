@@ -2,7 +2,6 @@
 
 function DefaultInboundAdapter (port) {
   return async function ({ model, args }) {
-    console.log('received args', args)
     return port.apply(model, args)
   }
 }
@@ -13,12 +12,12 @@ function DefaultInboundAdapter (port) {
  * Either a port invokes an outbound adapter or it is invoked
  * by an inbound one. This function calls adapter factory
  * functions to inject each adapter with its port or service
- * dependency. It can be called at any time to support live
- * production updates. It returns an object containing the
- * set of port functions defined for the domain model in the
- * model spec. These functions are inoked by a universal port
- * function that handles error recovery, instrumentation,
- * authorization, flow control and other port features.
+ * dependency. 
+ * 
+ * It returns an object containing the set of port functions 
+ * defined for the domain model in the model spec. These functions 
+ * are invoked by a universal function that handles error recovery, 
+ * instrumentation, authorization, flow control and other port features.
  *
  * @param {import('.').ports} ports - domain interfaces
  * @param {{[x:string]:function(*):function(*):any}} adapters - service adapters

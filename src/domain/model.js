@@ -324,8 +324,21 @@ const Model = (() => {
         return rehydrate(merge, model)
       },
 
-      async save () {
+      /**
+       * If `id` and `data` are null, saves the current
+       * object, otherwise saves the specified object and data
+       * @param {*} id
+       * @param {*} data
+       * @returns
+       */
+      async save (id = null, data = null) {
+        if (id && data) return datasource.save(id, data)
         return datasource.save(this[ID], this)
+      },
+
+      async find (id) {
+        if (!id) throw new Error('missing id')
+        return datasource.find(id)
       },
 
       /**
@@ -336,7 +349,7 @@ const Model = (() => {
        * @returns {Model[]}
        */
       listSync (filter) {
-        return this.filter(query, [...this.dsMap.values()])
+        return datasource.listSync(filter)
       },
 
       /**
@@ -346,8 +359,8 @@ const Model = (() => {
        * @param {{key1, keyN}} filter
        * @returns {Model[]}
        */
-      async list (writable = null, filter = null, cache = true) {
-        return datasource.list(filter, cache)
+      async list (writable = null, filter = null, cache = false) {
+        return datasource.list(writable, filter, cache)
       },
 
       /**
