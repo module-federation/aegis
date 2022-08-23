@@ -43,7 +43,8 @@ export default function makeInvokePort ({
 
         if (!model) throw new Error('no such id')
 
-        return await model[port](input)
+        const callback = model.getPorts()[port].callback || (x => x)
+        return await model[port](input, callback)
       } catch (error) {
         return new Error(error)
       }
