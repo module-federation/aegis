@@ -1,8 +1,10 @@
 'use strict'
 
+import { Chunk } from 'webpack'
+
 const MongoClient = require('mongodb').MongoClient
 const DataSourceMemory = require('./datasource-memory').DataSourceMemory
-const { Transform } = require('stream')
+const { Transform, Writable, Readable } = require('stream')
 
 const url = process.env.MONGODB_URL || 'mongodb://localhost:27017'
 const configRoot = require('../../config').hostConfig
@@ -172,24 +174,70 @@ export class DataSourceMongoDb extends DataSourceMemory {
     }
   }
 
+  createWriteStream (filter, highWaterMark = 24) {
+    let objects = []
+    const ctx = this
+
+    async function upsert () {
+      //console.debug(objects)
+      const operations = objects.map(str => {
+        const obj = JSON.parse(str)
+        console.debug(obj)
+        return {
+          replaceOne: {
+            filter: { ...filter, _id: obj.id },
+            replacement: obj,
+            upsert: true
+          }
+        }
+      })
+      const col = await ctx.collection()
+      col.bulkWrite(operations)
+      objects = []
+    }
+
+    return new Writable({
+      objectMode: true,
+      write: async (chunk, _encoding, next) => {
+        objects.push(chunk)
+        if (objects.length < highWaterMark) upsert()
+        next()
+      }
+    })
+  }
+
   /**
-   * If `cached` is `false`, pipe filtered db object stream
-   * to tranform. Add opening array bracket, serialize each record,
-   * and finally add closing array bracket at end of stream. With
-   * streams, we can support queries of very large tables, with
-   * minimal memory overhead on the node server.
+   * Returns the set of objects satisfying the `filter` if specified;
+   * otherwise streams all objects. Streams can be filtered as well.
+   * If `cached` is `false`, pipes object stream to `writable` stream.
+   * By default, stream is serialized to JSON. A custom transform can
+   * be specified instead or the serializer. With streams, we can
+   * support queries of very large tables, with minimal memory overhead
+   * on the node server.
    *
    * @override
-   * @param {WritableStream} writable - writable stream
-   * @param {{key1:string, keyN:string}} filter - e.g. from http query
-   * @param {boolean} cached - use cache if true, otherwise go to db.
+   * @param {{key1:string, keyN:string}} filter - e.g. http query
+   * @param {{
+   *  writable: WritableStream,
+   *  cached: boolean,
+   *  serialize: boolean,
+   *  transform: Transform
+   * }} options
+   *    - details
+   *    - `serialize` seriailize input to writable
+   *    - `cached` list cache only
+   *    - `transform` transform stream before writing
+   *    - `writable` writable stream for output
    */
-  async list (writable = null, filter = null, cached = false) {
+  async list (
+    filter = null,
+    { writable = null, cached = false, serialize = true, transform = null } = {}
+  ) {
     try {
       if (cached) return super.listSync(filter)
 
       let first = true
-      const serialize = new Transform({
+      const serializer = new Transform({
         writableObjectMode: true,
 
         // start of array
@@ -218,10 +266,19 @@ export class DataSourceMongoDb extends DataSourceMemory {
 
       return new Promise(async (resolve, reject) => {
         const readable = (await this.collection()).find(filter).stream()
+
         readable.on('error', reject)
         readable.on('end', resolve)
-        // transform db stream then pipe to output
-        readable.pipe(serialize).pipe(writable)
+
+        // optionally transform db stream then pipe to output
+        if (serialize && transform)
+          readable
+            .pipe(transform)
+            .pipe(serializer)
+            .pipe(writable)
+        else if (serialize) readable.pipe(serializer).pipe(writable)
+        else if (transform) readable.pipe(transform).pipe(writable)
+        else readable.pipe(writable)
       })
     } catch (error) {
       console.error({ fn: this.list.name, error })

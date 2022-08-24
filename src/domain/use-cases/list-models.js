@@ -30,13 +30,12 @@ async function parseQuery (writable, query, repository) {
 
   // should we only search cached data?
   //const cached = query.cached || query.cacheOnly || false
-  const cached = true
 
   if (query?.count) {
     const dateFunc = DateFunctions[query.count]
 
     if (dateFunc) {
-      const list = await repository.list(writable, null, cached)
+      const list = await repository.list(null, { cached: true })
       return {
         count: dateFunc(list)
       }
@@ -46,7 +45,7 @@ async function parseQuery (writable, query, repository) {
 
     if (searchTerms.length > 1) {
       const filter = { [searchTerms[0]]: searchTerms[1] }
-      const filteredList = await repository.list(writable, null, cached)
+      const filteredList = await repository.list(filter, { cached: true })
 
       const result = {
         ...filter,
@@ -57,7 +56,7 @@ async function parseQuery (writable, query, repository) {
     }
 
     if (!Number.isNaN(parseInt(query.count))) {
-      return repository.list(writable, null, cached)
+      return repository.list(query, { cached: true })
     }
 
     return {
@@ -66,7 +65,7 @@ async function parseQuery (writable, query, repository) {
       bytes: repository.getCacheSizeBytes()
     }
   }
-  return repository.list(writable, query)
+  return repository.list(query, { writable })
 }
 
 /**

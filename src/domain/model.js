@@ -341,6 +341,10 @@ const Model = (() => {
         return datasource.find(id)
       },
 
+      createWriteStream () {
+        return datasource.createWriteStream()
+      },
+
       /**
        * Search existing model instances (synchronously).
        * Only searches the cache. Does not search persistent storage.

@@ -56,7 +56,7 @@ export default class DataSource {
    * @returns
    */
   changeDataCapture (id, data) {
-    const cdc = (CDC[this.name] && CDC[this.name][id]) || null
+    const cdc = CDC[this.name] && CDC[this.name][id] ? CDC[this.name][id] : null
     const deserialized = JSON.parse(JSON.stringify(data))
     if (cdc) {
       const indeces = []
@@ -140,12 +140,24 @@ export default class DataSource {
 
   /**
    * list model instances
-   * @param {Writable} [writable] - writable stream
-   * @param {object} [query] - filter for properties of query
-   * @param {boolean} [cached] - list cached items, default is true
+   * @param {{key1:string, keyN:string}} filter - e.g. http query
+   * @param {{
+   *  writable: WritableStream,
+   *  cached: boolean,
+   *  serialize: boolean,
+   *  transform: Transform
+   * }} options
+   *    - details
+   *    - `serialize` seriailize input to writable
+   *    - `cached` list cache only
+   *    - `transform` transform stream before writing
+   *    - `writable` writable stream for output
    * @returns {Promise<any[]>}
    */
-  async list (writable = null, query = null, cached = false) {
+  async list (
+    query = null,
+    { cached = false, writable = null, transform = null, serialize = true } = {}
+  ) {
     return this.listSync(query)
   }
 
@@ -187,7 +199,7 @@ export default class DataSource {
 
       if (keys.length > 0) {
         return list.filter(v =>
-          keys.every(k => (v[k] ? query[k] === v[k] : false))
+          keys.every(k => (v[k] ? new RegExp(query[k]).test(v[k]) : false))
         )
       }
     }
