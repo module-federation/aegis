@@ -256,12 +256,12 @@ export class DataSourceMongoDb extends DataSourceMemory {
 
   /**
    * Returns the set of objects satisfying the `filter` if specified;
-   * otherwise streams all objects. Streams can be filtered as well.
-   * If `cached` is `false`, pipes object stream to `writable` stream.
-   * By default, stream is serialized to JSON. A custom transform can
-   * be specified instead or the serializer. With streams, we can
-   * support queries of very large tables, with minimal memory overhead
-   * on the node server.
+   * otherwise returns all objects. If `writable` is provided and cached
+   * is false, the list is streamed. Otherwise the list is returned in
+   * an array. A custom transform can be specified to modify the streamed
+   * results. Using {@link createWriteStream} updates can be streamed back
+   * to the db. With streams, we can support queries of very large tables,
+   * with minimal memory overhead on the node server.
    *
    * @override
    * @param {{key1:string, keyN:string}} filter - e.g. http query
