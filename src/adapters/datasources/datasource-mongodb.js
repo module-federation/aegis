@@ -192,7 +192,8 @@ export class DataSourceMongoDb extends DataSourceMemory {
         }
       })
       const col = await ctx.collection()
-      col.bulkWrite(operations)
+      const result = await col.bulkWrite(operations)
+      console.log(result.getRawResponse())
       objects = []
     }
 
@@ -203,6 +204,53 @@ export class DataSourceMongoDb extends DataSourceMemory {
         if (objects.length < highWaterMark) upsert()
         next()
       }
+    })
+  }
+
+  streamList ({ filter, writable, serialize = true, transform }) {
+    let first = true
+    const serializer = new Transform({
+      writableObjectMode: true,
+
+      // start of array
+      construct (callback) {
+        this.push('[')
+        callback()
+      },
+
+      // each chunk is a record
+      transform (chunk, encoding, callback) {
+        // comma-separate
+        if (first) first = false
+        else this.push(',')
+
+        // serialize record
+        this.push(JSON.stringify(chunk))
+        callback()
+      },
+
+      // end of array
+      flush (callback) {
+        this.push(']')
+        callback()
+      }
+    })
+
+    return new Promise(async (resolve, reject) => {
+      const readable = (await this.collection()).find(filter).stream()
+
+      readable.on('error', reject)
+      readable.on('end', resolve)
+
+      // optionally transform db stream then pipe to output
+      if (serialize && transform)
+        readable
+          .pipe(transform)
+          .pipe(serializer)
+          .pipe(writable)
+      else if (serialize) readable.pipe(serializer).pipe(writable)
+      else if (transform) readable.pipe(transform).pipe(writable)
+      else readable.pipe(writable)
     })
   }
 
@@ -230,56 +278,16 @@ export class DataSourceMongoDb extends DataSourceMemory {
    *    - `writable` writable stream for output
    */
   async list (
-    filter = null,
+    filter = {},
     { writable = null, cached = false, serialize = true, transform = null } = {}
   ) {
     try {
       if (cached) return super.listSync(filter)
 
-      let first = true
-      const serializer = new Transform({
-        writableObjectMode: true,
+      if (writable)
+        return this.streamList({ writable, filter, serialize, transform })
 
-        // start of array
-        construct (callback) {
-          this.push('[')
-          callback()
-        },
-
-        // each chunk is a record
-        transform (chunk, encoding, callback) {
-          // comma-separate
-          if (first) first = false
-          else this.push(',')
-
-          // serialize record
-          this.push(JSON.stringify(chunk))
-          callback()
-        },
-
-        // end of array
-        flush (callback) {
-          this.push(']')
-          callback()
-        }
-      })
-
-      return new Promise(async (resolve, reject) => {
-        const readable = (await this.collection()).find(filter).stream()
-
-        readable.on('error', reject)
-        readable.on('end', resolve)
-
-        // optionally transform db stream then pipe to output
-        if (serialize && transform)
-          readable
-            .pipe(transform)
-            .pipe(serializer)
-            .pipe(writable)
-        else if (serialize) readable.pipe(serializer).pipe(writable)
-        else if (transform) readable.pipe(transform).pipe(writable)
-        else readable.pipe(writable)
-      })
+      return await (await this.collection()).find(filter).toArray()
     } catch (error) {
       console.error({ fn: this.list.name, error })
     }
