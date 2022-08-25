@@ -201,7 +201,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
       objectMode: true,
       write: async (chunk, _encoding, next) => {
         objects.push(chunk)
-        if (objects.length < highWaterMark) upsert()
+        if (objects.length >= highWaterMark) await upsert()
         next()
       }
     })
