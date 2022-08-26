@@ -4,19 +4,20 @@ const HIGHWATERMARK = 52
 
 const MongoClient = require('mongodb').MongoClient
 const DataSourceMemory = require('./datasource-memory').DataSourceMemory
-const { Transform, Writable, Readable } = require('stream')
+const { Transform, Writable } = require('stream')
 
 const url = process.env.MONGODB_URL || 'mongodb://localhost:27017'
 const configRoot = require('../../config').hostConfig
 const dsOptions = configRoot.adapters.datasources.DataSourceMongoDb.options || {
-  runOffline: true
+  runOffline: true,
+  numConns: 2
 }
 const cacheSize = configRoot.adapters.cacheSize || 3000
 
 /**
  * @type {Map<string,MongoClient>}
  */
-const connections = new Map()
+const connections = []
 
 const mongoOpts = {
   //useNewUrlParserd: true,
@@ -42,14 +43,17 @@ export class DataSourceMongoDb extends DataSourceMemory {
 
   async connection () {
     try {
-      if (!connections.has(this.url)) {
+      while (connections.length < (dsOptions.numConns || 1)) {
         const client = new MongoClient(this.url, this.mongoOpts)
         await client.connect()
-        connections.set(this.url, client)
-        client.on('connectionReady', () => console.log('mongo conn ready'))
-        client.on('connectionClosed', () => connections.delete(this.url))
+        connections.push(client)
+        client.on('connectionClosed', () =>
+          connections.splice(connections.indexOf(client), 1)
+        )
       }
-      return connections.get(this.url)
+      const client = connections.shift()
+      connections.push(client)
+      return client
     } catch (error) {
       console.error({ fn: this.connection.name, error })
     }
@@ -83,7 +87,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
   async loadModels () {
     try {
       const cursor = (await this.collection()).find().limit(this.cacheSize)
-      cursor.forEach(model => super.save(model.id, model))
+      cursor.forEach(model => super.saveSync(model.id, model))
     } catch (error) {
       console.error({ fn: this.loadModels.name, error })
     }
@@ -208,7 +212,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
 
       async write (chunk, _encoding, next) {
         objects.push(chunk)
-        // time to flush buffer and write to db
+        // if true time to flush buffer and write to db
         if (objects.length >= highWaterMark) await upsert()
         next()
       },
