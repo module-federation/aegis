@@ -1,6 +1,6 @@
 {
   "name": "@module-federation/aegis",
-  "version": "1.2.8-beta",
+  "version": "1.2.9-beta",
   "module": "lib/index.js",
   "main": "lib/index.js",
   "repository": "git@github.com:module-federation/aegis.git",
