@@ -231,6 +231,16 @@ export class DataSourceMongoDb extends DataSourceMemory {
     return writable
   }
 
+
+  async mongoFind(filter = {}, { sort, limit, aggregate } = {}){
+    const result = (await this.collection()).find(filter);
+    if(sort) result.sort(sort);
+    if(limit) result.limit(limit);
+    if(aggregate) result.aggregate(aggregate);
+
+    return result;
+  }
+
   /**
    * Pipes to writable and streams list. List can be filtered. Stream
    * is serialized by default. Stream can be modified by transform.
@@ -243,7 +253,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
    * }} param0
    * @returns
    */
-  streamList ({ filter = {}, writable, serialize = true, transform = null }) {
+  streamList ({ filter = {}, sort, limit, aggregate, writable, serialize = true, transform = null }) {
     let first = true
     const serializer = new Transform({
       writableObjectMode: true,
@@ -273,7 +283,8 @@ export class DataSourceMongoDb extends DataSourceMemory {
     })
 
     return new Promise(async (resolve, reject) => {
-      const readable = (await this.collection()).find(filter).stream()
+      const readable = await this.mongoFind(filter, { sort, limit, aggregate });
+      readable.stream()
 
       readable.on('error', reject)
       readable.on('end', resolve)
@@ -315,8 +326,9 @@ export class DataSourceMongoDb extends DataSourceMemory {
    */
   async list (
     filter = {},
-    { writable = null, cached = false, serialize = true, transform = null } = {}
+    { writable = null, cached = false, serialize = true, transform = null, sort, limit, aggregate } = {}
   ) {
+    let result = null;
     try {
       if (cached) return super.listSync(filter)
 
@@ -333,7 +345,8 @@ export class DataSourceMongoDb extends DataSourceMemory {
         })
       }
 
-      return await (await this.collection()).find(query).toArray()
+      result = await this.mongoFind(filter, { sort, limit, aggregate });
+      return await result.toArray();
     } catch (error) {
       console.error({ fn: this.list.name, error })
     }
