@@ -1,6 +1,6 @@
 'use strict'
 
-import { Chunk } from 'webpack'
+const HIGHWATERMARK = 52
 
 const MongoClient = require('mongodb').MongoClient
 const DataSourceMemory = require('./datasource-memory').DataSourceMemory
@@ -174,19 +174,25 @@ export class DataSourceMongoDb extends DataSourceMemory {
     }
   }
 
-  createWriteStream (filter, highWaterMark = 24) {
+  /**
+   * Provides streaming upsert to db. Buffers and writes `highWaterMark`
+   * number of records to db each time.
+   *
+   * @param {*} filter
+   * @param {number} highWaterMark num of docs per batch write
+   * @returns
+   */
+  createWriteStream (filter = {}, highWaterMark = HIGHWATERMARK) {
     let objects = []
     const ctx = this
 
     async function upsert () {
-      //console.debug(objects)
       const operations = objects.map(str => {
         const obj = JSON.parse(str)
-        console.debug(obj)
         return {
           replaceOne: {
             filter: { ...filter, _id: obj.id },
-            replacement: obj,
+            replacement: { ...obj, _id: obj.id },
             upsert: true
           }
         }
@@ -199,15 +205,37 @@ export class DataSourceMongoDb extends DataSourceMemory {
 
     return new Writable({
       objectMode: true,
-      write: async (chunk, _encoding, next) => {
+
+      async write (chunk, _encoding, next) {
         objects.push(chunk)
+        // time to flush buffer and write to db
         if (objects.length >= highWaterMark) await upsert()
         next()
+      },
+
+      // handle last batch of objects and scenario
+      // in which # of objects under highwater mark
+      async end (chunk, _, done) {
+        objects.push(chunk)
+        await upsert()
+        done()
       }
     })
   }
 
-  streamList ({ filter, writable, serialize = true, transform }) {
+  /**
+   * Pipes to writable and streams list. List can be filtered. Stream
+   * is serialized by default. Stream can be modified by transform.
+   *
+   * @param  {{
+   *  filter:*
+   *  writable:Writable
+   *  transform:Transform
+   *  serialize:boolean
+   * }} param0
+   * @returns
+   */
+  streamList ({ filter = {}, writable, serialize = true, transform = null }) {
     let first = true
     const serializer = new Transform({
       writableObjectMode: true,
@@ -219,7 +247,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
       },
 
       // each chunk is a record
-      transform (chunk, encoding, callback) {
+      transform (chunk, _encoding, callback) {
         // comma-separate
         if (first) first = false
         else this.push(',')
@@ -256,7 +284,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
 
   /**
    * Returns the set of objects satisfying the `filter` if specified;
-   * otherwise returns all objects. If `writable` is provided and cached
+   * otherwise returns all objects. If a `writable`stream is provided and `cached`
    * is false, the list is streamed. Otherwise the list is returned in
    * an array. A custom transform can be specified to modify the streamed
    * results. Using {@link createWriteStream} updates can be streamed back
@@ -284,8 +312,14 @@ export class DataSourceMongoDb extends DataSourceMemory {
     try {
       if (cached) return super.listSync(filter)
 
-      if (writable)
-        return this.streamList({ writable, filter, serialize, transform })
+      if (writable) {
+        return this.streamList({
+          writable,
+          filter,
+          serialize,
+          transform
+        })
+      }
 
       return await (await this.collection()).find(filter).toArray()
     } catch (error) {
