@@ -1,6 +1,6 @@
 'use strict'
 
-const HIGHWATERMARK = 52
+const HIGHWATERMARK = 24
 
 const MongoClient = require('mongodb').MongoClient
 const DataSourceMemory = require('./datasource-memory').DataSourceMemory
@@ -201,13 +201,16 @@ export class DataSourceMongoDb extends DataSourceMemory {
           }
         }
       })
-      const col = await ctx.collection()
-      const result = await col.bulkWrite(operations)
-      console.log(result.getRawResponse())
-      objects = []
+
+      if (operations.length > 0) {
+        const col = await ctx.collection()
+        const result = await col.bulkWrite(operations)
+        console.log(result.getRawResponse())
+        objects = []
+      }
     }
 
-    return new Writable({
+    const writable = new Writable({
       objectMode: true,
 
       async write (chunk, _encoding, next) {
@@ -217,14 +220,15 @@ export class DataSourceMongoDb extends DataSourceMemory {
         next()
       },
 
-      // handle last batch of objects and scenario
-      // in which # of objects under highwater mark
-      async end (chunk, _, done) {
+      end (chunk, _, done) {
         objects.push(chunk)
-        await upsert()
         done()
       }
     })
+
+    writable.on('finish', async () => await upsert())
+
+    return writable
   }
 
   /**
@@ -316,16 +320,20 @@ export class DataSourceMongoDb extends DataSourceMemory {
     try {
       if (cached) return super.listSync(filter)
 
+      const query = filter
+        ? Object.values(filter).reduce((a, b) => ({ ...a, ...b }))
+        : {}
+
       if (writable) {
         return this.streamList({
           writable,
-          filter,
+          filter: query,
           serialize,
           transform
         })
       }
 
-      return await (await this.collection()).find(filter).toArray()
+      return await (await this.collection()).find(query).toArray()
     } catch (error) {
       console.error({ fn: this.list.name, error })
     }

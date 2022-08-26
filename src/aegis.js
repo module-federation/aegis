@@ -31,8 +31,8 @@ const modelPath = process.env.MODEL_PATH || `${apiRoot}/models`
 const endpoint = e => `${modelPath}/${e}`
 const endpointId = e => `${modelPath}/${e}/:id`
 const endpointCmd = e => `${modelPath}/${e}/:id/:command`
-const endpointPort = e => `${modelPath}/${e}/ports/:port`
-const endpointPortId = e => `${modelPath}/${e}/:id/ports/:port`
+const endpointPort = e => `${modelPath}/${e}/service/ports/:port`
+const endpointPortId = e => `${modelPath}/${e}/:id/service/ports/:port`
 
 /**
  * Store routes and their controllers for direct invocation

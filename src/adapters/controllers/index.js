@@ -27,6 +27,7 @@ import makeLiveUpdate from './live-update'
 function make (useCases, controllerFactory) {
   return useCases().map(uc => ({
     endpoint: uc.endpoint,
+    path: uc.path,
     fn: controllerFactory(uc.fn)
   }))
 }
