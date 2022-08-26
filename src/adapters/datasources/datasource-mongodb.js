@@ -232,6 +232,16 @@ export class DataSourceMongoDb extends DataSourceMemory {
   }
 
 
+  /**
+   * 
+   * @param {Object} filter Supposed to be a valid Mongo Filter
+   * @param {Object} options Options to sort limit aggregate etc...
+   * @param {Object} options.sort a valid Mongo sort object
+   * @param {Number} options.limit a valid Mongo limit
+   * @param {Object} options.aggregate a valid Mongo aggregate object
+   *  
+   * @returns 
+   */
   async mongoFind(filter = {}, { sort, limit, aggregate } = {}){
     const result = (await this.collection()).find(filter);
     if(sort) result.sort(sort);
