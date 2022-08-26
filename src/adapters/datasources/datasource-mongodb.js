@@ -1,6 +1,6 @@
 'use strict'
 
-const HIGHWATERMARK = 24
+const HIGHWATERMARK = 50
 
 const MongoClient = require('mongodb').MongoClient
 const DataSourceMemory = require('./datasource-memory').DataSourceMemory
@@ -321,7 +321,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
       if (cached) return super.listSync(filter)
 
       const query = filter
-        ? Object.values(filter).reduce((a, b) => ({ ...a, ...b }))
+        ? Object.values(filter).reduce((a, b) => ({ ...a, ...b }), {})
         : {}
 
       if (writable) {
