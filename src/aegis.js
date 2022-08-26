@@ -73,12 +73,18 @@ class RouteMap extends Map {
 
 const routes = new RouteMap()
 
+function buildPath (ctrl, path) {
+  return ctrl.path && path && ctrl.path[path.name]
+    ? ctrl.path[path.name]
+    : path(ctrl.endpoint)
+}
+
 const router = {
   autoRoutes (path, method, controllers, adapter) {
     controllers()
       .filter(ctrl => !ctrl.internal)
       .forEach(ctlr =>
-        routes.set(ctlr.path || path(ctlr.endpoint), {
+        routes.set(buildPath(ctrl, path), {
           [method]: adapter(ctlr.fn)
         })
       )
