@@ -55,126 +55,6 @@ class Job extends AsyncResource {
     this.callback = (error, result) =>
       this.runInAsyncScope(options.callback, this, error, result)
   }
-
-  /**
-   * Reallocate a newly freed thread. If a job
-   * is waiting, run it. Otherwise, return the
-   * thread to {@link ThreadPool.freeThreads}.
-   *
-   * @param {ThreadPool} pool
-   * @param {Thread} thread
-   */
-  reallocate (pool, thread) {
-    if (pool.waitingJobs.length > 0) {
-      // call `postJob`: the caller has provided
-      // a callback to run when the job is done
-      pool.waitingJobs.shift()(thread)
-    } else {
-      pool.freeThreads.push(thread)
-    }
-  }
-
-  /**
-   * Run a job in the provided worker thread.
-   *
-   * @param {Thread} thread
-   */
-  run (thread) {
-    const {
-      pool,
-      jobName,
-      jobData,
-      channel = MAINCHANNEL,
-      transfer = []
-    } = this.options
-    const startTime = perf.now()
-
-    thread[channel].once(
-      'message',
-      this.bind(result => {
-        pool.jobTime(perf.now() - startTime)
-        // Was this the only job running?
-        if (pool.noJobsRunning()) pool.emit(NOJOBS)
-        // invoke callback to return result
-        this.callback(null, result)
-        // reallocate thread
-        this.reallocate(pool, thread)
-      })
-    )
-
-    thread[channel].once(
-      'error',
-      this.bind(error => {
-        console.error({ fn: this.run.name, error })
-        pool.threads.splice(pool.threads.indexOf(thread), 1)
-        pool.emit('unhandledThreadError', error)
-        this.callback(error, null)
-      })
-    )
-
-    thread[channel].postMessage({ name: jobName, data: jobData }, transfer)
-  }
-}
-
-/**
- * Connect event subchannel to {@link EventBroker}
- * @param {Worker} worker worker thread
- * @param {MessageChannel} channel event channel
- * {@link MessagePort} port1 main uses to send to and recv from worker
- * {@link MessagePort} port2 worker uses to send to and recv from main
- */
-function connectEventChannel (worker, channel) {
-  const { port1, port2 } = channel
-  // transfer this port for the worker to use
-  worker.postMessage({ eventPort: port2 }, [port2])
-  // fire 'to_worker' to forward event to worker threads
-  broker.on('to_worker', async event => port1.postMessage(event))
-  // on receipt of event from worker thread fire 'from_worker'
-  port1.onmessage = async event =>
-    event.data.eventName && (await broker.notify('from_worker', event.data))
-}
-
-/**
- * creates a new thread
- * @param {{
- *  pool:ThreadPool
- *  file:string
- *  workerData:WorkerOptions.workerData
- * }} param0
- * @returns {Promise<Thread>}
- */
-function newThread ({ pool, file, workerData }) {
-  const eventChannel = new MessageChannel()
-  const worker = new Worker(file, { workerData })
-
-  const thread = {
-    file,
-    pool,
-    id: worker.threadId,
-    createdAt: Date.now(),
-    mainChannel: worker,
-    eventChannel: eventChannel.port1,
-
-    once (event, callback) {
-      worker.on(event, callback)
-    },
-
-    async stop (reason) {
-      pool.emit('threadTermination', { thread: this, reason })
-      const exitCode = await worker.terminate()
-      return exitCode
-    },
-
-    run (job) {
-      job.run(this)
-    }
-  }
-
-  connectEventChannel(worker, eventChannel)
-  pool.threads.push(thread)
-
-  pool.emit('threadCreation', { thread: this })
-  return thread
 }
 
 /**
@@ -232,14 +112,112 @@ export class ThreadPool extends EventEmitter {
   }
 
   /**
+   * Connect event subchannel to {@link EventBroker}
+   * @param {Worker} worker worker thread
+   * @param {MessageChannel} channel event channel
+   * {@link MessagePort} port1 main uses to send to and recv from worker
+   * {@link MessagePort} port2 worker uses to send to and recv from main
+   */
+  connectEventChannel (worker, channel) {
+    const { port1, port2 } = channel
+    // transfer this port for the worker to use
+    worker.postMessage({ eventPort: port2 }, [port2])
+    // fire 'to_worker' to forward event to worker threads
+    broker.on('to_worker', async event => port1.postMessage(event))
+    // on receipt of event from worker thread fire 'from_worker'
+    port1.onmessage = async event =>
+      event.data.eventName && (await broker.notify('from_worker', event.data))
+  }
+
+  /**
+   * creates a new thread
+   * @param {{
+   *  pool:ThreadPool
+   *  file:string
+   *  workerData:WorkerOptions.workerData
+   * }} param0
+   * @returns {Promise<Thread>}
+   */
+  newThread ({ pool = this, file, workerData }) {
+    const eventChannel = new MessageChannel()
+    const worker = new Worker(file, { workerData })
+
+    const thread = {
+      file,
+      pool,
+      id: worker.threadId,
+      createdAt: Date.now(),
+      mainChannel: worker,
+      eventChannel: eventChannel.port1,
+
+      once (event, callback) {
+        worker.on(event, callback)
+      },
+
+      async stop (reason) {
+        pool.emit('threadTermination', { thread: this, reason })
+        const exitCode = await worker.terminate()
+        return exitCode
+      },
+
+      /**
+       * Run a job in the provided worker thread.
+       *
+       * @param {Thread} thread
+       */
+      run (job) {
+        const {
+          pool,
+          jobName,
+          jobData,
+          channel = MAINCHANNEL,
+          transfer = []
+        } = job.options
+        const startTime = perf.now()
+        const thread = this
+
+        thread[channel].once(
+          'message',
+          AsyncResource.bind(result => {
+            pool.jobTime(perf.now() - startTime)
+            // Was this the only job running?
+            if (pool.noJobsRunning()) pool.emit(NOJOBS)
+            // invoke callback to return result
+            job.callback(null, result)
+            // reallocate thread
+            pool.reallocate(thread)
+          })
+        )
+
+        thread[channel].once(
+          'error',
+          AsyncResource.bind(error => {
+            console.error({ fn: this.run.name, error })
+            pool.threads.splice(pool.threads.indexOf(thread), 1)
+            pool.emit('unhandledThreadError', error)
+            job.callback(error, null)
+          })
+        )
+
+        thread[channel].postMessage({ name: jobName, data: jobData }, transfer)
+      }
+    }
+
+    pool.connectEventChannel(worker, eventChannel)
+    pool.threads.push(thread)
+
+    pool.emit('threadCreation', { thread: this })
+    return thread
+  }
+
+  /**
    *
    * @param {string} file
    * @param {*} workerData
    * @returns {Promise<Thread>}
    */
   startThread () {
-    return newThread({
-      pool: this,
+    return this.newThread({
       file: this.file,
       workerData: this.workerData
     })
@@ -321,6 +299,24 @@ export class ThreadPool extends EventEmitter {
       this.waitingJobs.push(thread => thread.run(job))
       this.jobsQueued++
     })
+  }
+
+  /**
+   * Reallocate a newly freed thread. If a job
+   * is waiting, run it. Otherwise, return the
+   * thread to {@link ThreadPool.freeThreads}.
+   *
+   * @param {ThreadPool} pool
+   * @param {Thread} thread
+   */
+  reallocate (thread) {
+    if (this.waitingJobs.length > 0) {
+      // call `postJob`: the caller has provided
+      // a callback to run when the job is done
+      this.waitingJobs.shift()(thread)
+    } else {
+      this.freeThreads.push(thread)
+    }
   }
 
   /**
