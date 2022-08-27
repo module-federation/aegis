@@ -84,7 +84,7 @@ const router = {
     controllers()
       .filter(ctrl => !ctrl.internal)
       .forEach(ctlr =>
-        routes.set(buildPath(ctrl, path), {
+        routes.set(buildPath(ctlr, path), {
           [method]: adapter(ctlr.fn)
         })
       )
