@@ -231,24 +231,23 @@ export class DataSourceMongoDb extends DataSourceMemory {
     return writable
   }
 
-
   /**
-   * 
+   *
    * @param {Object} filter Supposed to be a valid Mongo Filter
    * @param {Object} options Options to sort limit aggregate etc...
    * @param {Object} options.sort a valid Mongo sort object
    * @param {Number} options.limit a valid Mongo limit
    * @param {Object} options.aggregate a valid Mongo aggregate object
-   *  
-   * @returns 
+   *
+   * @returns
    */
-  async mongoFind(filter = {}, { sort, limit, aggregate } = {}){
-    const result = (await this.collection()).find(filter);
-    if(sort) result.sort(sort);
-    if(limit) result.limit(limit);
-    if(aggregate) result.aggregate(aggregate);
+  async mongoFind (filter = {}, { sort, limit, aggregate } = {}) {
+    let cursor = (await this.collection()).find(filter)
+    if (sort) cursor = cursor.sort(sort)
+    if (limit) cursor = cursor.limit(limit)
+    if (aggregate) cursor = cursor.aggregate(aggregate)
 
-    return result;
+    return cursor
   }
 
   /**
@@ -263,7 +262,15 @@ export class DataSourceMongoDb extends DataSourceMemory {
    * }} param0
    * @returns
    */
-  streamList ({ filter = {}, sort, limit, aggregate, writable, serialize = true, transform = null }) {
+  streamList ({
+    filter = {},
+    writable,
+    serialize = true,
+    transform = null,
+    sort = null,
+    limit = null,
+    aggregate = null
+  }) {
     let first = true
     const serializer = new Transform({
       writableObjectMode: true,
@@ -293,8 +300,11 @@ export class DataSourceMongoDb extends DataSourceMemory {
     })
 
     return new Promise(async (resolve, reject) => {
-      const readable = await this.mongoFind(filter, { sort, limit, aggregate });
-      readable.stream()
+      const readable = await this.mongoFind(filter, {
+        sort,
+        limit,
+        aggregate
+      }).stream()
 
       readable.on('error', reject)
       readable.on('end', resolve)
@@ -336,9 +346,17 @@ export class DataSourceMongoDb extends DataSourceMemory {
    */
   async list (
     filter = {},
-    { writable = null, cached = false, serialize = true, transform = null, sort, limit, aggregate } = {}
+    {
+      writable = null,
+      cached = false,
+      serialize = true,
+      transform = null,
+      sort,
+      limit,
+      aggregate
+    } = {}
   ) {
-    let result = null;
+    let result = null
     try {
       if (cached) return super.listSync(filter)
 
@@ -355,8 +373,8 @@ export class DataSourceMongoDb extends DataSourceMemory {
         })
       }
 
-      result = await this.mongoFind(filter, { sort, limit, aggregate });
-      return await result.toArray();
+      result = await this.mongoFind(filter, { sort, limit, aggregate })
+      return await result.toArray()
     } catch (error) {
       console.error({ fn: this.list.name, error })
     }
