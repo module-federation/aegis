@@ -9,6 +9,10 @@ const {
 
 const maxwait = process.env.REMOTE_OBJECT_MAXWAIT || 6000
 
+function hydrate (x) {
+  return x
+}
+
 export const relationType = {
   /**
    *
@@ -17,7 +21,9 @@ export const relationType = {
    * @param {import("./index").relations[relation]} rel
    */
   oneToMany: async (model, ds, rel) => {
-    return ds.list({ [rel.foreignKey]: model.getId()})
+    const mem = ds.listSync({ [rel.foreignKey]: model.getId() })
+    const dsk = hydrate(await ds.oneToMany(rel.foreignKey, model.getId()))
+    return mem.concat(dsk)
   },
 
   /**
@@ -37,7 +43,13 @@ export const relationType = {
    * @param {import("./datasource").default} ds
    * @param {import("./index").relations[relation]} config
    */
-  manyToOne: async (model, ds, rel) => await ds.find(model[rel.foreignKey]),
+  manyToOne: async (model, ds, rel) => {
+    const mem = ds.findSync(model[rel.foreignKey])
+    if (mem) return mem
+    return hydrate(
+      await ds.manyToOne({ [rel.foreignKey]: model[rel.foreignKey] })
+    )
+  },
 
   containsMany: async (model, ds, rel) =>
     await Promise.all(

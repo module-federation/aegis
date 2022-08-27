@@ -241,12 +241,11 @@ export class DataSourceMongoDb extends DataSourceMemory {
    *
    * @returns
    */
-  async mongoFind (filter = {}, { sort, limit, aggregate } = {}) {
+  async mongoFind ({ filter, sort, limit, aggregate } = {}) {
     let cursor = (await this.collection()).find(filter)
     if (sort) cursor = cursor.sort(sort)
     if (limit) cursor = cursor.limit(limit)
     if (aggregate) cursor = cursor.aggregate(aggregate)
-
     return cursor
   }
 
@@ -263,13 +262,13 @@ export class DataSourceMongoDb extends DataSourceMemory {
    * @returns
    */
   streamList ({
-    filter = {},
+    filter,
     writable,
-    serialize = true,
-    transform = null,
-    sort = null,
-    limit = null,
-    aggregate = null
+    serialize,
+    transform,
+    sort,
+    limit,
+    aggregate
   }) {
     let first = true
     const serializer = new Transform({
@@ -300,7 +299,14 @@ export class DataSourceMongoDb extends DataSourceMemory {
     })
 
     return new Promise(async (resolve, reject) => {
-      const readable = (await this.collection()).find(filter).stream()
+      const readable = (
+        await this.mongoFind({
+          filter,
+          sort,
+          limit,
+          aggregate
+        })
+      ).stream()
 
       readable.on('error', reject)
       readable.on('end', resolve)
@@ -341,12 +347,12 @@ export class DataSourceMongoDb extends DataSourceMemory {
    *    - `writable` writable stream for output
    */
   async list (
-    filter = {},
+    filter,
     {
-      writable = null,
+      writable,
       cached = false,
       serialize = true,
-      transform = null,
+      transform,
       sort,
       limit,
       aggregate
@@ -364,11 +370,21 @@ export class DataSourceMongoDb extends DataSourceMemory {
           writable,
           filter: query,
           serialize,
-          transform
+          transform,
+          sort,
+          limit,
+          aggregate
         })
       }
 
-      return await (await this.collection()).find(query).toArray()
+      return (
+        await this.mongoFind({
+          filter: query,
+          sort,
+          limit,
+          aggregate
+        })
+      ).toArray()
     } catch (error) {
       console.error({ fn: this.list.name, error })
     }
@@ -396,6 +412,14 @@ export class DataSourceMongoDb extends DataSourceMemory {
     } catch (error) {
       console.error(error)
     }
+  }
+
+  async manyToOne (pkValue) {
+    return await (await this.collection()).findOne(pkValue)
+  }
+
+  async oneToMany (fkName, pkValue) {
+    return await (await this.collection()).find({ [fkName]: pkValue }).toArray()
   }
 
   /**

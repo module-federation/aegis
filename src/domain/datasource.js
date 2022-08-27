@@ -279,4 +279,8 @@ export default class DataSource {
   getClassName () {
     return this.className
   }
+
+  async manyToOne (pk) {}
+
+  async oneToMany (fkname, pkvalue) {}
 }
