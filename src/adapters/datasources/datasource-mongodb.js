@@ -293,8 +293,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
     })
 
     return new Promise(async (resolve, reject) => {
-      const readable = await this.mongoFind(filter, { sort, limit, aggregate });
-      readable.stream()
+      const readable = (await this.mongoFind(filter, { sort, limit, aggregate })).stream();
 
       readable.on('error', reject)
       readable.on('end', resolve)
