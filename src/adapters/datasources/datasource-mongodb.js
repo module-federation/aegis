@@ -242,6 +242,25 @@ export class DataSourceMongoDb extends DataSourceMemory {
    * @returns
    */
   async mongoFind (filter = {}, { sort, limit, aggregate } = {}) {
+    const result = (await this.collection()).find(filter)
+    if (sort) result.sort(sort)
+    if (limit) result.limit(limit)
+    if (aggregate) result.aggregate(aggregate)
+
+    return result
+  }
+
+  /**
+   *
+   * @param {Object} filter Supposed to be a valid Mongo Filter
+   * @param {Object} options Options to sort limit aggregate etc...
+   * @param {Object} options.sort a valid Mongo sort object
+   * @param {Number} options.limit a valid Mongo limit
+   * @param {Object} options.aggregate a valid Mongo aggregate object
+   *
+   * @returns
+   */
+  async mongoFind (filter = {}, { sort, limit, aggregate } = {}) {
     let cursor = (await this.collection()).find(filter)
     if (sort) cursor = cursor.sort(sort)
     if (limit) cursor = cursor.limit(limit)
@@ -300,11 +319,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
     })
 
     return new Promise(async (resolve, reject) => {
-      const readable = await this.mongoFind(filter, {
-        sort,
-        limit,
-        aggregate
-      }).stream()
+      const readable = (await this.collection()).find(filter).stream()
 
       readable.on('error', reject)
       readable.on('end', resolve)
@@ -356,7 +371,6 @@ export class DataSourceMongoDb extends DataSourceMemory {
       aggregate
     } = {}
   ) {
-    let result = null
     try {
       if (cached) return super.listSync(filter)
 
@@ -373,8 +387,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
         })
       }
 
-      result = await this.mongoFind(filter, { sort, limit, aggregate })
-      return await result.toArray()
+      return await (await this.collection()).find(query).toArray()
     } catch (error) {
       console.error({ fn: this.list.name, error })
     }
