@@ -23,17 +23,19 @@ export default function listConfigsFactory ({
       typeof query.poolName === 'string' ? query.poolName.toUpperCase() : null
 
     const configTypes = {
-      data: () =>
+      data: async () =>
         modelName && isMainThread
           ? threadpools.getThreadPool(modelName).runJob(listConfigs.name, query)
           : modelName && poolName
-          ? datasources.getSharedDataSource(poolName).listSync()
+          ? await datasources.getSharedDataSource(poolName).list()
           : modelName
-          ? datasources.getSharedDataSource(modelName).listSync()
-          : datasources.listDataSources().map(k => ({
-              dsname: k,
-              objects: datasources.getSharedDataSource(k).countSync()
-            })),
+          ? await datasources.getSharedDataSource(modelName).list()
+          : await Promise.all(
+              datasources.listDataSources().map(async k => ({
+                dsname: k,
+                objects: await datasources.getSharedDataSource(k).count()
+              }))
+            ),
 
       events: () =>
         modelName && isMainThread

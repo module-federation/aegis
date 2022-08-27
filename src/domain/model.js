@@ -364,7 +364,7 @@ const Model = (() => {
        * @returns {Model[]}
        */
       async list (
-        filter,
+        filter = {},
         { writable = null, transform = null, cache = false, serialize = true }
       ) {
         return datasource.list(filter, {

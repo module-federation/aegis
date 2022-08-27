@@ -83,9 +83,9 @@ const router = {
   autoRoutes (path, method, controllers, adapter) {
     controllers()
       .filter(ctrl => !ctrl.internal)
-      .forEach(ctlr =>
-        routes.set(buildPath(ctlr, path), {
-          [method]: adapter(ctlr.fn)
+      .forEach(ctrl =>
+        routes.set(buildPath(ctrl, path), {
+          [method]: adapter(ctrl.fn)
         })
       )
   },
