@@ -367,7 +367,8 @@ const Model = (() => {
         filter = {},
         { writable = null, transform = null, cache = false, serialize = true }
       ) {
-        return datasource.list(filter, {
+        return datasource.list({
+          filter,
           writable,
           transform,
           cache,

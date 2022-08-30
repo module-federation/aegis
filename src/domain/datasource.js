@@ -154,10 +154,16 @@ export default class DataSource {
    *    - `writable` writable stream for output
    * @returns {Promise<any[]>}
    */
-  async list (
-    query = null,
-    { cached = false, writable = null, transform = null, serialize = true } = {}
-  ) {
+  async list ({
+    filter,
+    cached = false,
+    writable = null,
+    transform = null,
+    serialize = true,
+    sort,
+    limit,
+    aggregate
+  } = {}) {
     return this.listSync(query)
   }
 
@@ -272,6 +278,21 @@ export default class DataSource {
   }
 
   /**
+   * Called by framework to return primary key
+   * @param {*} pkprop key and value of primary
+   * @returns {Promise<import('.').datasource>}
+   */
+  async manyToOne (pkvalue) {}
+
+  /**
+   * Called by framework to return multiple records linked to primary.
+   * @param {*} fkname foreign key name
+   * @param {*} pkvalue primary key value
+   * @returns {Promise<import('.').datasource[]>}
+   */
+  async oneToMany (fkname, pkvalue) {}
+
+  /**
    *
    */
   close () {}
@@ -279,8 +300,4 @@ export default class DataSource {
   getClassName () {
     return this.className
   }
-
-  async manyToOne (pk) {}
-
-  async oneToMany (fkname, pkvalue) {}
 }

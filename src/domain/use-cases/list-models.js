@@ -25,17 +25,19 @@ const DateFunctions = {
  * @param {import("../datasource").default} repository
  * @returns
  */
-async function parseQuery (writable, query, repository) {
-  //return Array.from(repository.dsMap.keys())
-
-  // should we only search cached data?
-  //const cached = query.cached || query.cacheOnly || false
-
+async function parseQuery ({
+  writable,
+  query,
+  sort,
+  aggregate,
+  limit,
+  repository
+}) {
   if (query?.count) {
     const dateFunc = DateFunctions[query.count]
 
     if (dateFunc) {
-      const list = await repository.list(null, { cached: true })
+      const list = repository.listSync()
       return {
         count: dateFunc(list)
       }
@@ -45,7 +47,7 @@ async function parseQuery (writable, query, repository) {
 
     if (searchTerms.length > 1) {
       const filter = { [searchTerms[0]]: searchTerms[1] }
-      const filteredList = await repository.list(filter, { cached: true })
+      const filteredList = repository.listSync(filter)
 
       const result = {
         ...filter,
@@ -56,7 +58,7 @@ async function parseQuery (writable, query, repository) {
     }
 
     if (!Number.isNaN(parseInt(query.count))) {
-      return repository.list(query, { cached: true })
+      return repository.listSync(query)
     }
 
     return {
@@ -65,7 +67,7 @@ async function parseQuery (writable, query, repository) {
       bytes: repository.getCacheSizeBytes()
     }
   }
-  return repository.list(query, { writable })
+  return repository.list({ filter: query, writable, sort, limit, aggregate })
 }
 
 /**
@@ -77,7 +79,7 @@ async function parseQuery (writable, query, repository) {
  * @returns {listModels}
  */
 export default function makeListModels ({ repository } = {}) {
-  return async function listModels ({ writable, query }) {
-    return parseQuery(writable, query, repository)
+  return async function listModels (options) {
+    return parseQuery({ ...options, repository })
   }
 }

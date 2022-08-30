@@ -9,21 +9,37 @@ const {
 
 const maxwait = process.env.REMOTE_OBJECT_MAXWAIT || 6000
 
-function hydrate (x) {
-  return x
-}
-
 export const relationType = {
   /**
-   *
+   * Search memory and external storage
    * @param {import("./model").Model} model
    * @param {import("./datasource").default} ds
    * @param {import("./index").relations[relation]} rel
+   * @returns {Promise<import('./index').datasource[]>}
    */
   oneToMany: async (model, ds, rel) => {
-    const mem = ds.listSync({ [rel.foreignKey]: model.getId() })
-    const dsk = hydrate(await ds.oneToMany(rel.foreignKey, model.getId()))
-    return mem.concat(dsk)
+    // retrieve from memory
+    const memory = ds.listSync({ [rel.foreignKey]: model.getId() })
+    // call datasource interface to fetch from external storage
+    const external = await ds.oneToMany(rel.foreignKey, model.getId())
+    // return all
+    return memory.concat(external)
+  },
+
+  /**
+   * Search memory first, then external storage if not found.
+   * @param {import(".").Model} model
+   * @param {import("./datasource").default} ds
+   * @param {import("./index").relations[relation]} config
+   * @returns {Promise<import('./index').datasource>}
+   */
+  manyToOne: async (model, ds, rel) => {
+    // search memory first
+    const memory = ds.findSync(model[rel.foreignKey])
+    // return if found
+    if (memory) return memory
+    // if not, call ds interface to search external storage
+    return ds.manyToOne(model[rel.foreignKey])
   },
 
   /**
@@ -35,20 +51,6 @@ export const relationType = {
    */
   oneToOne (model, ds, rel) {
     return this.manyToOne(model, ds, rel)
-  },
-
-  /**
-   *
-   * @param {import(".").Model} model
-   * @param {import("./datasource").default} ds
-   * @param {import("./index").relations[relation]} config
-   */
-  manyToOne: async (model, ds, rel) => {
-    const mem = ds.findSync(model[rel.foreignKey])
-    if (mem) return mem
-    return hydrate(
-      await ds.manyToOne({ [rel.foreignKey]: model[rel.foreignKey] })
-    )
   },
 
   containsMany: async (model, ds, rel) =>
@@ -171,7 +173,6 @@ export default function makeRelations (relations, datasource, broker) {
     .map(function (relation) {
       const rel = relations[relation]
       const modelName = rel.modelName.toUpperCase()
-
       try {
         // relation type unknown
         if (!relationType[rel.type]) {

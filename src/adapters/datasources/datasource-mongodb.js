@@ -346,29 +346,23 @@ export class DataSourceMongoDb extends DataSourceMemory {
    *    - `transform` transform stream before writing
    *    - `writable` writable stream for output
    */
-  async list (
+  async list ({
     filter,
-    {
-      writable,
-      cached = false,
-      serialize = true,
-      transform,
-      sort,
-      limit,
-      aggregate
-    } = {}
-  ) {
+    writable = null,
+    cached = false,
+    serialize = true,
+    transform,
+    sort,
+    limit,
+    aggregate
+  } = {}) {
     try {
       if (cached) return super.listSync(filter)
-
-      const query = filter
-        ? Object.values(filter).reduce((a, b) => ({ ...a, ...b }), {})
-        : {}
 
       if (writable) {
         return this.streamList({
           writable,
-          filter: query,
+          filter,
           serialize,
           transform,
           sort,
@@ -379,7 +373,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
 
       return (
         await this.mongoFind({
-          filter: query,
+          filter,
           sort,
           limit,
           aggregate
@@ -414,12 +408,23 @@ export class DataSourceMongoDb extends DataSourceMemory {
     }
   }
 
-  async manyToOne (pkValue) {
-    return await (await this.collection()).findOne(pkValue)
+  /**
+   * @override
+   * @param {*} pkvalue primary key value
+   * @returns
+   */
+  async manyToOne (pkvalue) {
+    return (await this.collection()).findOne({ id: pkvalue })
   }
 
-  async oneToMany (fkName, pkValue) {
-    return await (await this.collection()).find({ [fkName]: pkValue }).toArray()
+  /**
+   * @override
+   * @param {*} fkname name of foreign key
+   * @param {*} pkvalue value of primary key
+   * @returns
+   */
+  async oneToMany (fkname, pkvalue) {
+    return (await this.collection()).find({ [fkname]: pkvalue }).toArray()
   }
 
   /**
