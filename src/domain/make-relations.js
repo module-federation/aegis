@@ -57,6 +57,9 @@ export const relationType = {
     await Promise.all(
       model[rel.arrayKey].map(arrayItem => ds.find(arrayItem[rel.foreignKey]))
     ),
+
+  custom: async (model, ds, rel) => ds[rel.name](model, ds, rel),
+
   findById: async (model, ds, rel) => ds.find(id)
 }
 
@@ -173,6 +176,7 @@ export default function makeRelations (relations, datasource, broker) {
     .map(function (relation) {
       const rel = relations[relation]
       const modelName = rel.modelName.toUpperCase()
+      rel.name = relation
       try {
         // relation type unknown
         if (!relationType[rel.type]) {

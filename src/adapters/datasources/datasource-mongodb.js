@@ -187,48 +187,52 @@ export class DataSourceMongoDb extends DataSourceMemory {
    * @returns
    */
   createWriteStream (filter = {}, highWaterMark = HIGHWATERMARK) {
-    let objects = []
-    const ctx = this
+    try {
+      let objects = []
+      const ctx = this
 
-    async function upsert () {
-      const operations = objects.map(str => {
-        const obj = JSON.parse(str)
-        return {
-          replaceOne: {
-            filter: { ...filter, _id: obj.id },
-            replacement: { ...obj, _id: obj.id },
-            upsert: true
+      async function upsert () {
+        const operations = objects.map(str => {
+          const obj = JSON.parse(str)
+          return {
+            replaceOne: {
+              filter: { ...filter, _id: obj.id },
+              replacement: { ...obj, _id: obj.id },
+              upsert: true
+            }
           }
+        })
+
+        if (operations.length > 0) {
+          try {
+            const col = await ctx.collection()
+            const result = await col.bulkWrite(operations)
+            console.log(result.getRawResponse())
+            objects = []
+          } catch (error) {}
+        }
+      }
+
+      const writable = new Writable({
+        objectMode: true,
+
+        async write (chunk, _encoding, next) {
+          objects.push(chunk)
+          // if true time to flush buffer and write to db
+          if (objects.length >= highWaterMark) await upsert()
+          next()
+        },
+
+        end (chunk, _, done) {
+          objects.push(chunk)
+          done()
         }
       })
 
-      if (operations.length > 0) {
-        const col = await ctx.collection()
-        const result = await col.bulkWrite(operations)
-        console.log(result.getRawResponse())
-        objects = []
-      }
-    }
+      writable.on('finish', async () => await upsert())
 
-    const writable = new Writable({
-      objectMode: true,
-
-      async write (chunk, _encoding, next) {
-        objects.push(chunk)
-        // if true time to flush buffer and write to db
-        if (objects.length >= highWaterMark) await upsert()
-        next()
-      },
-
-      end (chunk, _, done) {
-        objects.push(chunk)
-        done()
-      }
-    })
-
-    writable.on('finish', async () => await upsert())
-
-    return writable
+      return writable
+    } catch (error) {}
   }
 
   /**
@@ -242,10 +246,11 @@ export class DataSourceMongoDb extends DataSourceMemory {
    * @returns
    */
   async mongoFind ({ filter, sort, limit, aggregate } = {}) {
+    console.log({ filter })
     let cursor = (await this.collection()).find(filter)
     if (sort) cursor = cursor.sort(sort)
-    if (limit) cursor = cursor.limit(limit)
-    if (aggregate) cursor = cursor.aggregate(aggregate)
+    if (limit) cursor = cursor.limit(parseInt(limit))
+    if (aggregate) cursor = cursor.limit(aggregate)
     return cursor
   }
 
@@ -270,57 +275,59 @@ export class DataSourceMongoDb extends DataSourceMemory {
     limit,
     aggregate
   }) {
-    let first = true
-    const serializer = new Transform({
-      writableObjectMode: true,
+    try {
+      let first = true
+      const serializer = new Transform({
+        writableObjectMode: true,
 
-      // start of array
-      construct (callback) {
-        this.push('[')
-        callback()
-      },
+        // start of array
+        construct (callback) {
+          this.push('[')
+          callback()
+        },
 
-      // each chunk is a record
-      transform (chunk, _encoding, callback) {
-        // comma-separate
-        if (first) first = false
-        else this.push(',')
+        // each chunk is a record
+        transform (chunk, _encoding, callback) {
+          // comma-separate
+          if (first) first = false
+          else this.push(',')
 
-        // serialize record
-        this.push(JSON.stringify(chunk))
-        callback()
-      },
+          // serialize record
+          this.push(JSON.stringify(chunk))
+          callback()
+        },
 
-      // end of array
-      flush (callback) {
-        this.push(']')
-        callback()
-      }
-    })
+        // end of array
+        flush (callback) {
+          this.push(']')
+          callback()
+        }
+      })
 
-    return new Promise(async (resolve, reject) => {
-      const readable = (
-        await this.mongoFind({
-          filter,
-          sort,
-          limit,
-          aggregate
-        })
-      ).stream()
+      return new Promise(async (resolve, reject) => {
+        const readable = (
+          await this.mongoFind({
+            filter,
+            sort,
+            limit,
+            aggregate
+          })
+        ).stream()
 
-      readable.on('error', reject)
-      readable.on('end', resolve)
+        readable.on('error', reject)
+        readable.on('end', resolve)
 
-      // optionally transform db stream then pipe to output
-      if (serialize && transform)
-        readable
-          .pipe(transform)
-          .pipe(serializer)
-          .pipe(writable)
-      else if (serialize) readable.pipe(serializer).pipe(writable)
-      else if (transform) readable.pipe(transform).pipe(writable)
-      else readable.pipe(writable)
-    })
+        // optionally transform db stream then pipe to output
+        if (serialize && transform)
+          readable
+            .pipe(transform)
+            .pipe(serializer)
+            .pipe(writable)
+        else if (serialize) readable.pipe(serializer).pipe(writable)
+        else if (transform) readable.pipe(transform).pipe(writable)
+        else readable.pipe(writable)
+      })
+    } catch (error) {}
   }
 
   /**
@@ -447,3 +454,15 @@ export class DataSourceMongoDb extends DataSourceMemory {
     this.flush()
   }
 }
+
+process.on('uncaughtException', err => {
+  if (err.name === 'MongoInvalidArgumentError') {
+    console.log(
+      'f u, mongo! u dont get to bring down my server for this bs',
+      err.name,
+      err.message
+    )
+  } else {
+    process.exit(1)
+  }
+})

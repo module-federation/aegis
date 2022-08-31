@@ -13,7 +13,7 @@ export default function getModelsFactory (listModels) {
 
       const writable = httpRequest.res
       const query = httpRequest.query
-      const models = await listModels({ writable, query })
+      const models = await listModels({ query, writable })
 
       if (!models) {
         httpRequest.stream = true

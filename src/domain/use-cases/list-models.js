@@ -25,14 +25,8 @@ const DateFunctions = {
  * @param {import("../datasource").default} repository
  * @returns
  */
-async function parseQuery ({
-  writable,
-  query,
-  sort,
-  aggregate,
-  limit,
-  repository
-}) {
+async function parseQuery ({ writable, query, repository }) {
+  console.debug(query)
   if (query?.count) {
     const dateFunc = DateFunctions[query.count]
 
@@ -67,7 +61,13 @@ async function parseQuery ({
       bytes: repository.getCacheSizeBytes()
     }
   }
-  return repository.list({ filter: query, writable, sort, limit, aggregate })
+  return repository.list({
+    writable,
+    filter: query?.filter,
+    sort: query?.sort,
+    limit: query?.limit,
+    aggregate: query?.aggregate
+  })
 }
 
 /**
@@ -78,8 +78,8 @@ async function parseQuery ({
  * @param {{repository:import('../datasource').default}}
  * @returns {listModels}
  */
-export default function makeListModels ({ repository } = {}) {
-  return async function listModels (options) {
-    return parseQuery({ ...options, repository })
+export default function makeListModels ({ repository }) {
+  return async function listModels ({ query, writable }) {
+    return parseQuery({ writable, query, repository })
   }
 }
