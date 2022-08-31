@@ -28,14 +28,14 @@ export default async function compensate (model) {
     const ports = model.getPorts()
     const undoAttempts = portFlow
       .map(port => ({ [port]: 0 }))
-      .reduce((a, b) => ({ ...a, ...b }))
+      .reduce((a, b) => ({ ...a, ...b }), {})
 
     await model.emit(undoStarted(model.getName()), 'undo starting')
 
     const undoModel = await Promise.resolve(
       portFlow.reduceRight(async function (model, port, index, arr) {
         if (ports[port].undo) {
-          console.info('calling undo on port: ', port)
+          cons
           undoAttempts[port]++
 
           try {
