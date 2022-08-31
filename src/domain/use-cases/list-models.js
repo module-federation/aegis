@@ -18,14 +18,7 @@ const DateFunctions = {
     ).length
 }
 
-/**
- *
- * @param {Writable} writable
- * @param {*} query
- * @param {import("../datasource").default} repository
- * @returns
- */
-async function parseQuery ({ writable, query, repository }) {
+function dates (query, repository) {
   console.debug(query)
   if (query?.count) {
     const dateFunc = DateFunctions[query.count]
@@ -36,38 +29,57 @@ async function parseQuery ({ writable, query, repository }) {
         count: dateFunc(list)
       }
     }
-
-    const searchTerms = query.count.split(':')
-
-    if (searchTerms.length > 1) {
-      const filter = { [searchTerms[0]]: searchTerms[1] }
-      const filteredList = repository.listSync(filter)
-
-      const result = {
-        ...filter,
-        count: filteredList.length
-      }
-
-      return result
-    }
-
-    if (!Number.isNaN(parseInt(query.count))) {
-      return repository.listSync(query)
-    }
-
-    return {
-      total: await repository.count(),
-      cached: repository.countSync(),
-      bytes: repository.getCacheSizeBytes()
-    }
   }
-  return repository.list({
-    writable,
-    filter: query?.filter,
-    sort: query?.sort,
-    limit: query?.limit,
-    aggregate: query?.aggregate
-  })
+}
+
+function search (query, repository) {
+  const searchTerms = query.count.split(':')
+
+  if (searchTerms.length > 1) {
+    const filter = { [searchTerms[0]]: searchTerms[1] }
+    const filteredList = repository.listSync(filter)
+
+    const result = {
+      ...filter,
+      count: filteredList.length
+    }
+
+    return result
+  }
+}
+
+/**
+ *
+ * @param {Writable} writable
+ * @param {*} query
+ * @param {import("../datasource").default} repository
+ * @returns
+ */
+async function parseQuery ({ writable, query, repository }) {
+  if (writable)
+    return repository.list({
+      writable,
+      filter: query?.filter,
+      sort: query?.sort,
+      limit: query?.limit,
+      aggregate: query?.aggregate
+    })
+
+  const dateResult = dates(query, repository)
+  if (dateResult) return dateResult
+
+  const searchResults = search(query, repository)
+  if (searchResults) return searchResults
+
+  if (!Number.isNaN(parseInt(query.count))) {
+    return repository.listSync(query)
+  }
+
+  return {
+    total: await repository.count(),
+    cached: repository.countSync(),
+    bytes: repository.getCacheSizeBytes()
+  }
 }
 
 /**

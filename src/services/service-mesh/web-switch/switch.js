@@ -161,7 +161,8 @@ export function attachServer (httpServer, secureCtx = {}) {
   function setClientInfo (client, request) {
     client[info] = {}
     client[info].id = nanoid()
-    client[info].pid = request.headers[headers.pid] || Math.floor(Math.random())
+    client[info].pid =
+      request.headers[headers.pid] || Math.floor(Math.random() * 9999)
     client[info].host = request.headers[headers.host] || request.headers.host
     client[info].role = request.headers[headers.role] || 'browser'
     client[info].errors = 0
@@ -174,7 +175,7 @@ export function attachServer (httpServer, secureCtx = {}) {
     if (clients.has(client[info].uniqueName)) {
       console.warn('found duplicate name', client[info].uniqueName)
       const oldClient = clients.get(client[info].uniqueName)
-      oldClient.close(4040, client[info].asyncId)
+      oldClient.close(4040, client._socket.remotePort)
       oldClient.terminate()
     }
     client[info].initialized = true
@@ -221,27 +222,12 @@ export function attachServer (httpServer, secureCtx = {}) {
     }
   }
 
-  const primitives = {
-    encode: {
-      object: msg => Buffer.from(JSON.stringify(msg)),
-      string: msg => Buffer.from(msg),
-      number: msg => Buffer.from(msg),
-      undefined: msg => console.error('unsupported', msg)
-    },
-    decode: {
-      object: msg => JSON.parse(Buffer.from(msg).toString()),
-      string: msg => msg,
-      number: msg => msg,
-      undefined: msg => console.error('unsupported', msg)
-    }
+  function encode (message) {
+    return Buffer.from(JSON.stringify(message))
   }
 
   function decode (message) {
-    return primitives.decode[typeof message](message)
-  }
-
-  function encode (message) {
-    return primitives.encode[typeof message](message)
+    return JSON.parse(Buffer.from(message).toString())
   }
 
   function sendClient (client, message, retries = 0) {
@@ -314,7 +300,6 @@ export function attachServer (httpServer, secureCtx = {}) {
     if (!client[info]) return
     if (msg?.telemetry && client[info]) client[info].telemetry = msg.telemetry
     if (msg?.services && client[info]) client[info].services = msg.services
-    if (msg?.asyncId && client[info]) client[info].asyncId = msg.asyncId
     client[info].isBackupSwitch = backupSwitch === client[info].id
     console.log('updating telemetry', client[info])
   }

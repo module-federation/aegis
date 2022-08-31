@@ -1,15 +1,10 @@
 'use strict'
 
 const domain = require('./domain')
-const services = require('./services')
 const adapters = require('./adapters')
 const { EventBrokerFactory, DomainEvents, importRemotes } = domain
 const { badUserRoute, reload } = DomainEvents
-const { StorageService } = services
-const { StorageAdapter } = adapters
 const { pathToRegexp, match } = require('path-to-regexp')
-const { find, save } = StorageAdapter
-const overrides = { find, save, ...StorageService }
 const broker = EventBrokerFactory.getInstance()
 
 const {
@@ -74,7 +69,7 @@ class RouteMap extends Map {
 const routes = new RouteMap()
 
 function buildPath (ctrl, path) {
-  return ctrl.path && path && ctrl.path[path.name]
+  return ctrl.path && ctrl.path[path.name]
     ? ctrl.path[path.name]
     : path(ctrl.endpoint)
 }
@@ -83,11 +78,15 @@ const router = {
   autoRoutes (path, method, controllers, adapter) {
     controllers()
       .filter(ctrl => !ctrl.internal)
-      .forEach(ctrl =>
+      .forEach(ctrl => {
+        if (ctrl.ports)
+          Object.values(ctrl.ports).forEach(port => {
+            if (port.path) routes.set(port.path)
+          })
         routes.set(buildPath(ctrl, path), {
           [method]: adapter(ctrl.fn)
         })
-      )
+      })
   },
 
   userRoutes (controllers) {
@@ -183,7 +182,7 @@ exports.dispose = async function () {
  */
 exports.init = async function (remotes) {
   // stream federated components
-  await importRemotes(remotes, overrides)
+  await importRemotes(remotes)
   const cache = initCache()
   // create endpoints
   makeRoutes()

@@ -34,7 +34,7 @@ export function registerEvents () {
     datasources: DataSourceFactory,
     models: ModelFactory,
     threadpools: ThreadPoolFactory,
-    ObjectCache: DistributedCache,
+    DistributedCache,
     createServiceMesh: makeOne(serviceMeshPlugin, makeServiceMesh, {
       internal: true
     })
@@ -137,6 +137,7 @@ function make (factory) {
   return specs.map(spec => ({
     endpoint: spec.endpoint,
     path: spec.path,
+    ports: spec.ports,
     fn: factory(buildOptions(spec))
   }))
 }

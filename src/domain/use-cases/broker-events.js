@@ -43,7 +43,7 @@ export default async function brokerEvents ({
   broker,
   datasources,
   models,
-  ObjectCache,
+  DistributedCache,
   createServiceMesh
 }) {
   if (isMainThread) {
@@ -76,7 +76,7 @@ export default async function brokerEvents ({
     require('../domain-events').registerEvents(broker)
 
     // init distributed object cache
-    const cache = ObjectCache({
+    const cache = DistributedCache({
       models,
       broker,
       datasources,
