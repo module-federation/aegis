@@ -26,7 +26,7 @@ export default async function compensate (model) {
   try {
     const portFlow = model.getPortFlow()
     const ports = model.getPorts()
-    const undoAttempts = portFlow
+    let undoAttempts = portFlow
       .map(port => ({ [port]: 0 }))
       .reduce((a, b) => ({ ...a, ...b }), {})
 
@@ -35,7 +35,7 @@ export default async function compensate (model) {
     const undoModel = await Promise.resolve(
       portFlow.reduceRight(async function (model, port, index, arr) {
         if (ports[port].undo) {
-          const undoAttempts[port]++
+          undoAttempts[port]++
 
           try {
             return model.then(async function (model) {

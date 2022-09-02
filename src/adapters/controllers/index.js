@@ -50,7 +50,7 @@ export const initCache = () => {
 
   async function loadModelInstances () {
     console.time(label)
-    await Promise.allSettled(specs.map(async m => m.fn()))
+    await Promise.allSettled(specs.map(async m => m && m.fn ? m.fn() : false))
     console.timeEnd(label)
   }
 
