@@ -35,7 +35,7 @@ export default async function compensate (model) {
     const undoModel = await Promise.resolve(
       portFlow.reduceRight(async function (model, port, index, arr) {
         if (ports[port].undo) {
-          const undoAttempts[port]++
+          undoAttempts[port]++
 
           try {
             return model.then(async function (model) {
