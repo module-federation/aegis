@@ -66,7 +66,7 @@ export default function removeModelFactory ({
 
         return deleted
       } catch (error) {
-        return new Error(error)
+        return error
       }
     }
   }

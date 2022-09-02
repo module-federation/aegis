@@ -156,8 +156,7 @@ export class ThreadPool extends EventEmitter {
 
       async stop (reason) {
         pool.emit('threadTermination', { thread: this, reason })
-        const exitCode = await worker.terminate()
-        return exitCode
+        return worker.terminate()
       },
 
       /**
@@ -176,37 +175,29 @@ export class ThreadPool extends EventEmitter {
         const startTime = perf.now()
         const thread = this
 
-        thread[channel].once(
-          'message',
-          AsyncResource.bind(result => {
-            pool.jobTime(perf.now() - startTime)
-            // Was this the only job running?
-            if (pool.noJobsRunning()) pool.emit(NOJOBS)
-            // invoke callback to return result
-            job.callback(null, result)
-            // reallocate thread
-            pool.reallocate(thread)
-          })
-        )
+        thread[channel].once('message', result => {
+          pool.jobTime(perf.now() - startTime)
+          // Was this the only job running?
+          if (pool.noJobsRunning()) pool.emit(NOJOBS)
+          // invoke callback to return result
+          job.callback(null, result)
+          // reallocate thread
+          pool.reallocate(thread)
+        })
 
-        thread[channel].once(
-          'error',
-          AsyncResource.bind(error => {
-            console.error({ fn: this.run.name, error })
-            pool.threads.splice(pool.threads.indexOf(thread), 1)
-            pool.emit('unhandledThreadError', error)
-            job.callback(error, null)
-          })
-        )
+        thread[channel].once('error', error => {
+          console.error({ fn: this.run.name, error })
+          pool.threads.splice(pool.threads.indexOf(thread), 1)
+          pool.emit('unhandledThreadError', error)
+          job.callback(error, null)
+        })
 
         thread[channel].postMessage({ name: jobName, data: jobData }, transfer)
       }
     }
-
     pool.connectEventChannel(worker, eventChannel)
     pool.threads.push(thread)
-
-    pool.emit('threadCreation', { thread: this })
+    pool.emit('threadCreation', { thread })
     return thread
   }
 

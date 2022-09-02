@@ -48,7 +48,7 @@ export default function makeEditModel ({
       }
 
       const result = await threadpool.runJob(editModel.name, input)
-      if (result instanceof Error) throw result
+      if (result instanceof Error) throw new Error(result)
       return result
     } else {
       try {
@@ -81,11 +81,11 @@ export default function makeEditModel ({
           }
           return await repository.find(id)
         } catch (error) {
-          console.error(editModel.name, error)
           await repository.save(id, model)
+          throw error
         }
       } catch (error) {
-        return new Error(error)
+        return error
       }
     }
   }

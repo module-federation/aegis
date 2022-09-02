@@ -46,6 +46,7 @@ export default function makeAddModel ({
 
       const result = await threadpool.runJob(addModel.name, input)
       if (result instanceof Error) throw result
+      if (Object.is(result, {})) throw new Error('no value returned')
       return result
     } else {
       try {
@@ -69,7 +70,7 @@ export default function makeAddModel ({
         // Return the latest changes
         return repository.find(model.getId())
       } catch (error) {
-        return new Error(error)
+        throw new Error(error)
       }
     }
   }

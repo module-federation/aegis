@@ -1,10 +1,15 @@
 'use strict'
 
 const domain = require('./domain')
+const services = require('./services')
 const adapters = require('./adapters')
 const { EventBrokerFactory, DomainEvents, importRemotes } = domain
 const { badUserRoute, reload } = DomainEvents
+const { StorageService } = services
+const { StorageAdapter } = adapters
 const { pathToRegexp, match } = require('path-to-regexp')
+const { find, save } = StorageAdapter
+const overrides = { find, save, ...StorageService }
 const broker = EventBrokerFactory.getInstance()
 
 const {
@@ -182,7 +187,7 @@ exports.dispose = async function () {
  */
 exports.init = async function (remotes) {
   // stream federated components
-  await importRemotes(remotes)
+  await importRemotes(remotes, overrides)
   const cache = initCache()
   // create endpoints
   makeRoutes()
