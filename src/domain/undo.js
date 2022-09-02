@@ -26,7 +26,7 @@ export default async function compensate (model) {
   try {
     const portFlow = model.getPortFlow()
     const ports = model.getPorts()
-    const undoAttempts = portFlow
+    let undoAttempts = portFlow
       .map(port => ({ [port]: 0 }))
       .reduce((a, b) => ({ ...a, ...b }), {})
 
