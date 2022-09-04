@@ -407,6 +407,6 @@ export { default as ThreadPoolFactory } from './thread-pool'
 
 export { default as DomainEvents } from './domain-events'
 
-export { AppError } from './util/app-error'
+export { AppError } from '../domain/util/app-error'
 
 export default ModelFactory

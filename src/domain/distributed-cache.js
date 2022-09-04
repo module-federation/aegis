@@ -366,6 +366,7 @@ export default function DistributedCache ({
       publish({ ...event, eventName: externalCrudEvent(eventName) })
     )
 
+  function handlecrudeEvent (modelSpecs) {}
   /**
    * Subcribe to external CRUD events for related models.
    * Also listen for request and response events for locally

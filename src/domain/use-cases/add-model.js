@@ -1,6 +1,5 @@
 'use strict'
 
-import { async } from 'regenerator-runtime'
 import { isMainThread } from 'worker_threads'
 import domainEvents from '../domain-events'
 
@@ -45,33 +44,29 @@ export default function makeAddModel ({
       if (existingRecord) return existingRecord
 
       const result = await threadpool.runJob(addModel.name, input)
-      if (result instanceof Error) throw result
-      if (Object.is(result, {})) throw new Error('no value returned')
+      if (result.hasError) throw new Error(result)
+
       return result
     } else {
+      const model = await models.createModel(
+        broker,
+        repository,
+        modelName,
+        input
+      )
+      await repository.save(model.getId(), model)
+
       try {
-        const model = await models.createModel(
-          broker,
-          repository,
-          modelName,
-          input
-        )
-        await repository.save(model.getId(), model)
-
-        try {
-          const event = models.createEvent(eventType, modelName, model)
-          await broker.notify(eventName, event)
-        } catch (error) {
-          // remote the object if not processed
-          await repository.delete(model.getId())
-          throw error
-        }
-
-        // Return the latest changes
-        return repository.find(model.getId())
+        const event = models.createEvent(eventType, modelName, model)
+        await broker.notify(eventName, event)
       } catch (error) {
-        throw new Error(error)
+        // remote the object if not processed
+        await repository.delete(model.getId())
+        throw error
       }
+
+      // Return the latest changes
+      return repository.find(model.getId())
     }
   }
 

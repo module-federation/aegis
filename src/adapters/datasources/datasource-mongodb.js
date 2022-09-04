@@ -64,6 +64,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
       return (await this.connection()).db(this.name).collection(this.name)
     } catch (error) {
       console.error({ fn: this.collection.name, error })
+      throw error
     }
   }
 
@@ -250,7 +251,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
     let cursor = (await this.collection()).find(filter)
     if (sort) cursor = cursor.sort(sort)
     if (limit) cursor = cursor.limit(parseInt(limit))
-    if (aggregate) cursor = cursor.limit(aggregate)
+    if (aggregate) cursor = cursor.aggregate(aggregate)
     return cursor
   }
 
@@ -260,7 +261,6 @@ export class DataSourceMongoDb extends DataSourceMemory {
    *
    * @param  {{
    *  filter:*
-   *  writable:Writable
    *  transform:Transform
    *  serialize:boolean
    * }} param0

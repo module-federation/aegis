@@ -48,44 +48,38 @@ export default function makeEditModel ({
       }
 
       const result = await threadpool.runJob(editModel.name, input)
-      if (result instanceof Error) throw new Error(result)
+      if (result.hasError) throw new Error(result)
       return result
     } else {
+      // model has been found by main thread
+      const { id, changes, command } = input
+
+      // get model
+      const model = await repository.find(id)
+
+      // only the worker does the update
+      const updated = models.updateModel(model, changes)
+      await repository.save(id, updated)
+
+      const event = models.createEvent(eventType, modelName, {
+        updated,
+        changes
+      })
+
       try {
-        // model has been found by main thread
-        const { id, changes, command } = input
+        broker.notify(eventName, event)
 
-        // get model
-        const model = await repository.find(id)
+        if (command) {
+          const result = await async(executeCommand(updated, command, 'write'))
 
-        // only the worker does the update
-        const updated = models.updateModel(model, changes)
-        await repository.save(id, updated)
-
-        const event = models.createEvent(eventType, modelName, {
-          updated,
-          changes
-        })
-
-        try {
-          await broker.notify(eventName, event)
-
-          if (command) {
-            const result = await async(
-              executeCommand(updated, command, 'write')
-            )
-
-            if (result.ok) {
-              return result.data
-            }
+          if (result.ok) {
+            return result.data
           }
-          return await repository.find(id)
-        } catch (error) {
-          await repository.save(id, model)
-          throw error
         }
+        return await repository.find(id)
       } catch (error) {
-        return error
+        await repository.save(id, model)
+        throw error
       }
     }
   }

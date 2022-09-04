@@ -126,7 +126,7 @@ export class ThreadPool extends EventEmitter {
     broker.on('to_worker', async event => port1.postMessage(event))
     // on receipt of event from worker thread fire 'from_worker'
     port1.onmessage = async event =>
-      event.data.eventName && (await broker.notify('from_worker', event.data))
+      event.data.eventName && (broker.notify('from_worker', event.data))
   }
 
   /**

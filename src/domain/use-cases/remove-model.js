@@ -42,32 +42,29 @@ export default function removeModelFactory ({
       }
 
       const result = await threadpool.runJob(removeModel.name, id)
-      if (result instanceof Error) throw result
+      if (result.hasError) throw new Error(result)
+
       return result
     } else {
-      try {
-        const model = await models.loadModel()
+      const model = await models.loadModel()
 
-        const deleted = models.deleteModel(model)
-        const event = models.createEvent(eventType, modelName, deleted)
+      const deleted = models.deleteModel(model)
+      const event = models.createEvent(eventType, modelName, deleted)
 
-        const [brokerResult, repoResult] = await Promise.allSettled([
-          broker.notify(eventName, event),
-          repository.delete(id)
-        ])
+      const [brokerResult, repoResult] = await Promise.allSettled([
+        broker.notify(eventName, event),
+        repository.delete(id)
+      ])
 
-        if (brokerResult.status === 'rejected') {
-          if (repoResult.status === 'fulfilled') {
-            // event failed, put it back
-            await repository.save(input.id, model)
-          }
-          throw new Error('model not deleted ' + brokerResult.reason)
+      if (brokerResult.status === 'rejected') {
+        if (repoResult.status === 'fulfilled') {
+          // event failed, put it back
+          await repository.save(input.id, model)
         }
-
-        return deleted
-      } catch (error) {
-        return error
+        throw new Error('model not deleted ' + brokerResult.reason)
       }
+
+      return deleted
     }
   }
 }

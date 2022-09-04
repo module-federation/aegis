@@ -64,7 +64,7 @@ export class EventBroker {
    * @param {Event} eventData - the import of the event
    * @param {{forward:boolean}} options - forward this event externally
    */
-  async notify (eventName, eventData, options) {
+  notify (eventName, eventData, options) {
     throw new Error('unimplemented abstract method')
   }
 
@@ -93,7 +93,7 @@ const handleError = error => {
  * @param {eventHandler} handle
  * @param {boolean} forward
  */
-async function runHandler (eventName, eventData = {}, handle) {
+function runHandler (eventName, eventData = {}, handle) {
   const abort = eventData ? false : true
 
   if (abort) {
@@ -111,7 +111,7 @@ async function runHandler (eventName, eventData = {}, handle) {
   /**
    * @type {eventHandler}
    */
-  await handle(eventData)
+  handle(eventData)
 }
 
 /**
@@ -121,7 +121,7 @@ async function runHandler (eventName, eventData = {}, handle) {
  * @param {brokerOptions} options
  * @fires eventName
  */
-async function notify (eventName, eventData = {}, options = {}) {
+function notify (eventName, eventData = {}, options = {}) {
   const run = runHandler.bind(this)
   const data =
     typeof eventData === 'object'
@@ -134,20 +134,21 @@ async function notify (eventName, eventData = {}, options = {}) {
   try {
     if (handlers.has(eventName)) {
       match = true
-      await Promise.allSettled(
-        handlers.get(eventName).map(async fn => {
-          await run(eventName, formattedEvent, fn)
-        })
-      )
+      // await Promise.allSettled(
+      //   handlers.get(eventName).map(async fn => {
+      //     await run(eventName, formattedEvent, fn)
+      //   })
+      // )
+      handlers.get(eventName).forEach(fn => run(eventName, formattedEvent, fn))
     }
 
     if (options.regexOff && match) return
 
-    await Promise.allSettled(
-      [...handlers]
-        .filter(([k]) => k instanceof RegExp && k.test(eventName))
-        .map(([, v]) => v.map(fn => run(eventName, formattedEvent, fn)))
-    )
+    //await Promise.allSettled(
+    ;[...handlers]
+      .filter(([k]) => k instanceof RegExp && k.test(eventName))
+      .forEach(([, v]) => v.f(fn => run(eventName, formattedEvent, fn)))
+    //)
   } catch (error) {
     handleError(notify.name, error)
   }

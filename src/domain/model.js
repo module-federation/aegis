@@ -240,7 +240,7 @@ const Model = (() => {
        * defaults to `false`
        */
       async emit (eventName, eventData, options) {
-        await broker.notify(
+        broker.notify(
           eventName,
           {
             eventName,
