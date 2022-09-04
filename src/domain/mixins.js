@@ -129,7 +129,7 @@ export const withDeserializers = (...funcs) => o => {
 export const withbroker = broker => o => {
   return {
     ...o,
-    async emit (eventName, eventData) {
+    emit (eventName, eventData) {
       broker.notify(eventName, eventData)
     },
     subscribe (eventName, callback) {

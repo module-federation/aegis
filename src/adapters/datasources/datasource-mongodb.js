@@ -60,19 +60,14 @@ export class DataSourceMongoDb extends DataSourceMemory {
   }
 
   async collection () {
-    try {
-      return (await this.connection()).db(this.name).collection(this.name)
-    } catch (error) {
-      console.error({ fn: this.collection.name, error })
-      throw error
-    }
+    return (await this.connection()).db(this.name).collection(this.name)
   }
 
   /**
    * @override
    * @param {{
    *  hydrate:function(Map<string,import("../../domain").Model>),
-   *  serializer:import("../../lib/serializer").Serializer
+   *  seriali zer:import("../../lib/serializer").Serializer
    * }} options
    */
   load ({ hydrate, serializer }) {

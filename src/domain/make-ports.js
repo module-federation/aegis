@@ -61,7 +61,7 @@ function setPortTimeout (options) {
   // Retry the port on timeout
   const timerId = setTimeout(async () => {
     // Notify interested parties
-    await model.emit(portTimeout(model.getName(), portName), timerArgs)
+    model.emit(portTimeout(model.getName(), portName), timerArgs)
     // Invoke optional custom handler
     if (handler) handler(options)
     // Count retries by passing `timerArgs` to ourselves on the stack
@@ -230,7 +230,7 @@ export default function makePorts (ports, adapters, broker) {
 
           // Signal the next port to run.
           if (rememberPort) {
-            await model.emit(portConf.producesEvent, portName)
+            model.emit(portConf.producesEvent, portName)
           }
 
           // the result can be something other than a model

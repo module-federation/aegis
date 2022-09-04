@@ -6,9 +6,9 @@ const { undoStarted, undoWorked, undoFailed } = domainEvents
 const MAXRETRY = process.env.MAXUNDORETRY || 3
 const UNDOTIMEOUT = process.env.UNDOTIMEOUT || 60000
 
-async function reportStatus (status, eventFn, model) {
+function reportStatus (status, eventFn, model) {
   const result = { compensateResult: status }
-  await model.emit(eventFn(model.getName()), result)
+  model.emit(eventFn(model.getName()), result)
   return model.update(result)
 }
 
@@ -30,7 +30,7 @@ export default async function compensate (model) {
       .map(port => ({ [port]: 0 }))
       .reduce((a, b) => ({ ...a, ...b }), {})
 
-    await model.emit(undoStarted(model.getName()), 'undo starting')
+    model.emit(undoStarted(model.getName()), 'undo starting')
 
     const undoModel = await Promise.resolve(
       portFlow.reduceRight(async function (model, port, index, arr) {
@@ -71,14 +71,14 @@ export default async function compensate (model) {
     )
 
     if (undoModel.getPortFlow().length > 0) {
-      await reportStatus('INCOMPLETE', undoFailed, undoModel)
+      reportStatus('INCOMPLETE', undoFailed, undoModel)
       return
     }
 
-    await reportStatus('COMPLETE', undoWorked, undoModel)
+    reportStatus('COMPLETE', undoWorked, undoModel)
     return undoModel
   } catch (error) {
-    await model.emit(undoFailed(model.getName()), error.message)
+    model.emit(undoFailed(model.getName()), error.message)
     console.error(compensate.name, error.message)
   }
 }

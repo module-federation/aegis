@@ -44,7 +44,7 @@ export default function makeAddModel ({
       if (existingRecord) return existingRecord
 
       const result = await threadpool.runJob(addModel.name, input)
-      if (result.hasError) throw new Error(result)
+      if (result.hasError) throw result
 
       return result
     } else {

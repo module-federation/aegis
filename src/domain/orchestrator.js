@@ -35,7 +35,7 @@ export async function runWorkflow ({ wfName }) {
     DataSourceFactory.getSharedDataSource(wfName),
     wfName
   )
-  await model.emit(wfName)
+  model.emit(wfName)
   console.info(wfName, 'workflow started')
 }
 
@@ -45,23 +45,21 @@ export async function runWorkflow ({ wfName }) {
  *
  * @param {Array<import(".").Model>} list
  */
-export async function resumeWorkflow (list) {
+export function resumeWorkflow (list) {
   if (list?.length > 0) {
-    await Promise.all(
-      list.map(async function (model) {
-        const history = model.getPortFlow()
-        const ports = model.getSpec().ports
+    list.forEach(function (model) {
+      const history = model.getPortFlow()
+      const ports = model.getSpec().ports
 
-        if (history?.length > 0 && !model.compensate) {
-          const lastPort = history.length - 1
-          const nextPort = ports[history[lastPort]].producesEvent
+      if (history?.length > 0 && !model.compensate) {
+        const lastPort = history.length - 1
+        const nextPort = ports[history[lastPort]].producesEvent
 
-          if (nextPort && history[lastPort] !== 'workflowComplete') {
-            await async(model.emit(nextPort, resumeWorkflow.name))
-          }
+        if (nextPort && history[lastPort] !== 'workflowComplete') {
+          model.emit(nextPort, resumeWorkflow.name)
         }
-      })
-    ).catch(error => console.error(error))
+      }
+    })
   }
 }
 

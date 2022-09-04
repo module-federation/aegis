@@ -1,5 +1,7 @@
 'use strict'
 
+const debug = /true/i.test(process.env.DEBUG)
+
 function DefaultInboundAdapter (port) {
   return async function ({ model, args }) {
     return port.apply(model, args)
@@ -8,20 +10,26 @@ function DefaultInboundAdapter (port) {
 
 /**
  * In a hex arch, ports and adapters control I/O between
- * the application core (domain) and the outside world.
- * Either a port invokes an outbound adapter or it is invoked
- * by an inbound one. This function calls adapter factory
- * functions to inject each adapter with its port or service
- * dependency. 
- * 
- * It returns an object containing the set of port functions 
- * defined for the domain model in the model spec. These functions 
- * are invoked by a universal function that handles error recovery, 
+ * the application core and the outside world. Inbound
+ * adapters invoke ports and ports invoke outbound adapters.
+ * Optionally, outbound adapters invoke services.
+ *
+ * To set the above each adapter's factory function
+ * to inject its port or service dependency--I.e. to bind
+ * it to a port or service.
+ *
+ * It returns an object containing the set of port functions
+ * defined in the model spec for the domain model. These functions
+ * are invoked by a  port function, which handles error recovery,
  * instrumentation, authorization, flow control and other port features.
  *
- * @param {import('.').ports} ports - domain interfaces
- * @param {{[x:string]:function(*):function(*):any}} adapters - service adapters
- * @param {*} [services] - (micro-)services
+ * @param {{
+ *  portSpec:import('.').ports
+ *  ports:{[x:string]:function()}
+ *  adapters:{[x:string]:function()}
+ *  services:{[x:string]:function()}
+ * }}
+ *
  */
 export default function bindAdapters ({
   ports,
@@ -29,7 +37,8 @@ export default function bindAdapters ({
   services,
   portSpec
 } = {}) {
-  if (!portSpec || !adapters) {
+  if (!portSpec || !adapters || !ports) {
+    debug && console.debug('missing params')
     return
   }
 
@@ -44,26 +53,18 @@ export default function bindAdapters ({
 
   return Object.keys(portSpec)
     .map(portName => {
-      try {
-        const spec = portSpec[portName]
-        const type = spec.type
-        const port = ports[portName]
-        const adapter = adapters[portName]
-        const service = services[spec.service]
+      const spec = portSpec[portName]
+      const type = spec?.type ? spec.type : null
+      const port = ports[portName]
+      const adapter = adapters[portName]
+      const service = services && spec.service ? services[spec.service] : null
 
-        if (!adapter && type === 'outbound') {
-          console.warn('no adapter for port', portName, spec)
-          return
-        }
-
-        return bindings[type](portName, port, adapter, service)
-      } catch (error) {
-        console.warn({
-          fn: bindAdapters.name,
-          error,
-          spec: portSpec[portName]
-        })
+      if (!spec || !type || !port || !adapter) {
+        debug && console.debug('bad port configuration', portName, spec)
+        return
       }
+
+      return bindings[type](portName, port, adapter, service)
     })
     .reduce((p, c) => ({ ...p, ...c }))
 }

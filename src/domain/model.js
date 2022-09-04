@@ -14,7 +14,7 @@
  * @property {function()} toJSON - de/serialization logic
  * @property {function(eventName,function(eventName,Model):void)} addListener listen
  * for domain events
- * @property {function(eventName,Model):Promise<void>} emit emit a domain event
+ * @property {function(eventName,Model):void} emit emit a domain event
  * @property {function()} [mixinMethod] - when the user
  * specifies a mixin, it is applied to the model on creation - adding methods is
  * a common result.
@@ -239,7 +239,7 @@ const Model = (() => {
        * @param {boolean} [forward] - forward event to service mesh,
        * defaults to `false`
        */
-      async emit (eventName, eventData, options) {
+      emit (eventName, eventData, options) {
         broker.notify(
           eventName,
           {

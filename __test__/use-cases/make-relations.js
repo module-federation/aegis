@@ -36,7 +36,8 @@ function requireRemoteObject (model, relation, broker, ...args) {
   })
 }
 
-const broker = new EventEmitter()
+const broker = new EventEmitter({ captureRejections: true })
+broker.on('error', err => console.log(err))
 
 const model = {
   getName: () => 'model1',
