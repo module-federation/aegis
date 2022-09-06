@@ -8,6 +8,8 @@ const { badUserRoute, reload } = DomainEvents
 const { StorageService } = services
 const { StorageAdapter } = adapters
 const { pathToRegexp, match } = require('path-to-regexp')
+const { nanoid } = require('nanoid')
+const { AsyncLocalStorage } = require('async_hooks')
 const { find, save } = StorageAdapter
 const overrides = { find, save, ...StorageService }
 const broker = EventBrokerFactory.getInstance()
@@ -168,12 +170,19 @@ async function handle (path, method, req, res) {
   }
 }
 
+const newStore = () => nanoid()
+
+const asyncLocalStorage = new AsyncLocalStorage()
+
+const handler = (path, method, req, res) =>
+  asyncLocalStorage.run(newStore(), handle, path, method, req, res)
+
 /**
  * Tell components to clean up any system resources
  */
 exports.dispose = async function () {
   console.log('system hot-reloading')
-  await broker.notify(reload, 'system reload')
+  broker.notify(reload, 'system reload')
 }
 
 /**
@@ -194,5 +203,5 @@ exports.init = async function (remotes) {
   // load from storage
   await cache.load()
   // controllers
-  return handle
+  return handler
 }

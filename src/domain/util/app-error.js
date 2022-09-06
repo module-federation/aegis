@@ -1,10 +1,15 @@
 'use strict'
 
-class AppError {
+class AppError extends Error {
   constructor (error) {
-    this.message = error?.message
-    this.stack = error?.stack
-    this.name = error?.name
-    this.hasError = true
+    super(error.message)
+    this.name = error.name
+    this.stack = error.stack
+    this.cause = error.cause || 'unknown'
+    this.time = date.now()
+  }
+
+  toJSON () {
+    return { ...this, time: new Date(this.time).toUTCString() }
   }
 }

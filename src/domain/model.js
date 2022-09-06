@@ -341,6 +341,13 @@ const Model = (() => {
         return datasource.find(id)
       },
 
+      /**
+       * Returns writable stream for upserting the datasource.
+       * Use in combination with {@link Model}.list(), which will pipe
+       * its output to it.
+       *
+       * @returns {WritableStream}
+       */
       createWriteStream () {
         return datasource.createWriteStream()
       },
@@ -357,32 +364,19 @@ const Model = (() => {
       },
 
       /**
-       * Search existing model instances (asynchronously).
        * Searches cache first, then persistent storage if not found.
        *
-       * @param {{key1, keyN}} filter
+       * @param {{
+       *  writable:WritableStream,
+       *  transform:import('stream').Transform,
+       *  filter:{k:'v'},
+       *  sort:'asc'|'dsc'|*,
+       *  limit:number
+       * }} options
        * @returns {Model[]}
        */
-      async list ({
-        filter,
-        writable = null,
-        transform = null,
-        cache = false,
-        serialize = true,
-        sort,
-        limit,
-        aggregate
-      }) {
-        return datasource.list({
-          filter,
-          writable,
-          transform,
-          cache,
-          serialize,
-          sort,
-          limit,
-          aggregate
-        })
+      async list (options) {
+        return datasource.list(options)
       },
 
       /**
@@ -483,24 +477,31 @@ const Model = (() => {
    *  spec: import('./index').ModelSpecification
    * }} modelInfo Contains model specification and user input to build a model instance
    */
-  const Model = async modelInfo =>
-    Promise.resolve(
-      // Call factory with data from request payload
-      modelInfo.spec.factory(...modelInfo.args)
-    ).then(model =>
-      make({
-        model,
-        args: modelInfo.args,
-        spec: modelInfo.spec
-      })
-    )
+  // const Model = async modelInfo =>
+  //   Promise.resolve(
+  //     // Call factory with data from request payload
+  //     modelInfo.spec.factory(...modelInfo.args)
+  //   ).then(model =>
+  //     make({
+  //       model,
+  //       args: modelInfo.args,
+  //       spec: modelInfo.spec
+  //     })
+  //   )
+
+  const Model = modelInfo =>
+    make({
+      model: modelInfo.spec.factory(...modelInfo.args),
+      args: modelInfo.args,
+      spec: modelInfo.spec
+    })
 
   const validate = event => model => model[VALIDATE]({}, event)
 
   /**
    * Create model instance
    */
-  const makeModel = asyncPipe(
+  const makeModel = pipe(
     Model,
     withTimestamp(CREATETIME),
     withSerializers(
@@ -535,7 +536,8 @@ const Model = (() => {
      * }} modelInfo
      * @returns {Promise<Readonly<Model>>}
      */
-    create: async modelInfo => makeModel(modelInfo),
+    // create: async modelInfo => makeModel(modelInfo),
+    create: modelInfo => makeModel(modelInfo),
 
     /**
      * Load a saved model
