@@ -48,25 +48,26 @@ export default function makeAddModel ({
 
       return result
     } else {
-      const model = await models.createModel(
-        broker,
-        repository,
-        modelName,
-        input
-      )
-      await repository.save(model.getId(), model)
-
       try {
-        const event = models.createEvent(eventType, modelName, model)
-        await broker.notify(eventName, event)
-      } catch (error) {
-        // remote the object if not processed
-        await repository.delete(model.getId())
-        throw error
-      }
+        // const model = await models.createModel(
+        const model = models.createModel(broker, repository, modelName, input)
+        await repository.save(model.getId(), model)
 
-      // Return the latest changes
-      return repository.find(model.getId())
+        try {
+          const event = models.createEvent(eventType, modelName, model)
+          broker.notify(eventName, event)
+        } catch (error) {
+          // remote the object if not processed
+          await repository.delete(model.getId())
+          broker.emitError(error)
+        }
+
+        // Return the latest changes
+        return repository.find(model.getId())
+      } catch (error) {
+        console.log({ fn: addModel.name, error })
+        broker.notify('error', error)
+      }
     }
   }
 

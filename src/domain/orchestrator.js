@@ -29,8 +29,10 @@ export async function generateWorkflow (options) {
   ModelFactory.registerModel(workflow)
 }
 
-export async function runWorkflow ({ wfName }) {
-  const model = await ModelFactory.createModel(
+export function runWorkflow ({ wfName }) {
+  // export async function runWorkflow ({ wfName }) {
+  // const model = await ModelFactory.createModel(
+  const model = ModelFactory.createModel(
     EventBrokerFactory.getInstance(),
     DataSourceFactory.getSharedDataSource(wfName),
     wfName

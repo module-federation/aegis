@@ -6,11 +6,12 @@ import { Worker, BroadcastChannel } from 'worker_threads'
 import domainEvents from './domain-events'
 import ModelFactory from '.'
 import { performance as perf } from 'perf_hooks'
-import { AsyncResource } from 'async_hooks'
+import { AsyncResource, AsyncLocalStorage } from 'async_hooks'
 import os from 'os'
 
 const { poolOpen, poolClose, poolDrain, poolAbort } = domainEvents
 const broker = EventBrokerFactory.getInstance()
+const asyncLocalStorage = new AsyncLocalStorage()
 const NOJOBS = 'noJobsRunning'
 const MAINCHANNEL = 'mainChannel'
 const EVENTCHANNEL = 'eventChannel'
@@ -54,7 +55,6 @@ class Job extends AsyncResource {
     this.options = options
     this.callback = (error, result) =>
       this.runInAsyncScope(options.callback, this, error, result)
-    //options.callback(error, result)
   }
 }
 
@@ -177,6 +177,7 @@ export class ThreadPool extends EventEmitter {
           transfer = []
         } = job.options
         const startTime = perf.now()
+        console.log({ kAsyncStore: asyncLocalStorage.getStore() })
 
         this[channel].once('message', result => {
           pool.jobTime(perf.now() - startTime)
@@ -264,6 +265,7 @@ export class ThreadPool extends EventEmitter {
    * @returns {Promise<*>} anything that can be cloned
    */
   runJob (jobName, jobData, options = {}) {
+    console.log({ asyncLocalStorage: asyncLocalStorage.getStore() })
     return new Promise((resolve, reject) => {
       this.jobsRequested++
 
@@ -276,6 +278,7 @@ export class ThreadPool extends EventEmitter {
         jobName,
         jobData,
         ...options,
+        asyncStore: asyncLocalStorage.getStore(),
         callback: (error, result) => {
           if (error) return reject(error)
           if (result) return resolve(result)
