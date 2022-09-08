@@ -37,14 +37,15 @@ export default function makeInvokePort ({
     } else {
       try {
         const { id = null, port, args } = input
-        const model = typeof(id) === undefined
-          ? await repository.find(id)
-          : await models.createModel(broker, repository, modelName, args)
+        const model =
+          typeof id === undefined
+            ? await repository.find(id)
+            : models.createModel(broker, repository, modelName, args)
 
         if (!model) throw new Error('no such id')
 
         const callback = model.getPorts()[port].callback || (x => x)
-        return await model[port](input,callback)
+        return await model[port](input, callback)
       } catch (error) {
         return new Error(error)
       }

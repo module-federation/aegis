@@ -142,9 +142,7 @@ function notify (eventName, eventData = {}, options = {}) {
       handlers.get(eventName).forEach(fn => run(eventName, formattedEvent, fn))
     }
 
-    if (options.regexOff && match) return
-
-    //await Promise.allSettled(
+    if (options.regexOff && match) return //await Promise.allSettled(
     ;[...handlers]
       .filter(([k]) => k instanceof RegExp && k.test(eventName))
       .forEach(([, v]) => v.f(fn => run(eventName, formattedEvent, fn)))
@@ -201,6 +199,7 @@ class EventBrokerImpl extends EventBroker {
       })
       return null
     }
+
     const filterKeys = Object.keys(filter)
     const subscription = Event.create({ eventName })
     disabledEvents.concat(disabled)
@@ -271,12 +270,14 @@ class EventBrokerImpl extends EventBroker {
     }
 
     const funcs = handlers.get(eventName)
+
     if (funcs) {
       if (singleton) return
       funcs.push(eventCallbackWrapper)
       this.subscriptionCb(eventName)
       return sub
     }
+
     handlers.set(eventName, [eventCallbackWrapper])
     this.subscriptionCb(eventName)
     return sub

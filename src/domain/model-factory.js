@@ -129,7 +129,7 @@ const ModelFactory = {
    * @param {import('./datasource').default} datasource - persistence/cache
    * @returns {Promise<Readonly<Model>>} the model instance
    */
-  createModel: async function (broker, datasource, modelName, ...args) {
+  createModel: function (broker, datasource, modelName, ...args) {
     const name = checkModelName(modelName)
     const spec = modelFactories.get(name)
 

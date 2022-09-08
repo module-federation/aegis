@@ -4,6 +4,8 @@ import executeCommand from './execute-command'
 import async from '../util/async-error'
 import domainEvents from '../domain-events'
 import { isMainThread } from 'worker_threads'
+import e from 'express'
+import { AsyncResource } from 'async_hooks'
 
 /**
  * @typedef {Object} ModelParam
@@ -47,9 +49,14 @@ export default function makeEditModel ({
         throw new Error('no such id')
       }
 
-      const result = await threadpool.runJob(editModel.name, input)
-      if (result.hasError) throw new Error(result)
-      return result
+      return new Promise((resolve, reject) =>
+        threadpool.runJob({
+          jobName: editModel.name,
+          jobData: input,
+          resolve: AsyncResource.bind(resolve),
+          reject: AsyncResource.bind(reject)
+        })
+      )
     } else {
       // model has been found by main thread
       const { id, changes, command } = input

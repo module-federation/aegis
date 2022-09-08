@@ -199,6 +199,7 @@ import {
   importWorkerCache,
   importPortCache
 } from './import-remotes'
+import { EventEmitter } from 'stream'
 
 /**
  *
@@ -231,10 +232,12 @@ const onloadEvent = model => ({
 /**
  * Register the {@link ModelSpecification}: inject dependencies,
  * bind adapters, register events
- * @param {ModelSpecification} model
- * @param {{[x:string]:{[x:string]:Function}}} services
- * @param {{[x: string]:Function}} adapters
- * @param {boolean} isCached
+ * @param {{model:ModelSpecification,
+ * adapters:{[x:string]:Function},
+ * services:{[x: string]:Function},
+ * ports:{[x: string]:Function},
+ * workers:{[x: string]:Function},
+ * isCached:boolean}}
  */
 function register ({
   model,
@@ -252,6 +255,7 @@ function register ({
     services,
     ports
   })
+
   const dependencies = {
     ...model.dependencies,
     ...bindings

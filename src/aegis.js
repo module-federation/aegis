@@ -8,6 +8,10 @@ const { badUserRoute, reload } = DomainEvents
 const { StorageService } = services
 const { StorageAdapter } = adapters
 const { pathToRegexp, match } = require('path-to-regexp')
+const { AsyncLocalStorage } = require('async_hooks')
+const { nanoid } = require('nanoid')
+const { EventEmitter } = require('stream')
+const { sync } = require('rimraf')
 const { find, save } = StorageAdapter
 const overrides = { find, save, ...StorageService }
 const broker = EventBrokerFactory.getInstance()
@@ -141,12 +145,12 @@ function makeRoutes () {
  * @param {Response} res
  * @returns
  */
-async function handle (path, method, req, res) {
+function handle (path, method, req, res) {
   const routeInfo = routes.get(path)
 
   if (!routeInfo) {
     console.warn('no controller for', path)
-    res.status(404).json('not found')
+    res.sendStatus(404)
     return
   }
 
@@ -154,18 +158,25 @@ async function handle (path, method, req, res) {
 
   if (typeof controller !== 'function') {
     console.warn('no controller for', path, method)
-    res.status(404).json('not found')
+    res.sendStatus(404)
     return
   }
 
   const requestInfo = Object.assign(req, { params: routeInfo.params })
 
   try {
-    return await controller(requestInfo, res)
+    return controller(requestInfo, res)
   } catch (error) {
     console.error({ fn: handle.name, error })
-    res.status(500).json('uknown error')
+    res.sendStatus(500)
   }
+}
+
+const context = new AsyncLocalStorage()
+
+function handleWithContext () {
+  return (path, method, req, res) =>
+    context.run(new Map([['id', nanoid()]]), handle, path, method, req, res)
 }
 
 /**
@@ -173,7 +184,7 @@ async function handle (path, method, req, res) {
  */
 exports.dispose = async function () {
   console.log('system hot-reloading')
-  await broker.notify(reload, 'system reload')
+  broker.notify(reload, 'system reload')
 }
 
 /**
@@ -194,5 +205,12 @@ exports.init = async function (remotes) {
   // load from storage
   await cache.load()
   // controllers
-  return handle
+  return handleWithContext()
 }
+
+EventEmitter.captureRejections = true
+
+process.on('uncaughtException', error => {
+  console.error('uncaughtException, shutting down', error)
+  process.exit(1)
+})

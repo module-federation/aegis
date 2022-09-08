@@ -483,24 +483,20 @@ const Model = (() => {
    *  spec: import('./index').ModelSpecification
    * }} modelInfo Contains model specification and user input to build a model instance
    */
-  const Model = async modelInfo =>
-    Promise.resolve(
+  const Model = modelInfo =>
+    make({
       // Call factory with data from request payload
-      modelInfo.spec.factory(...modelInfo.args)
-    ).then(model =>
-      make({
-        model,
-        args: modelInfo.args,
-        spec: modelInfo.spec
-      })
-    )
+      model: modelInfo.spec.factory(...modelInfo.args),
+      args: modelInfo.args,
+      spec: modelInfo.spec
+    })
 
   const validate = event => model => model[VALIDATE]({}, event)
 
   /**
    * Create model instance
    */
-  const makeModel = asyncPipe(
+  const makeModel = pipe(
     Model,
     withTimestamp(CREATETIME),
     withSerializers(
@@ -535,7 +531,7 @@ const Model = (() => {
      * }} modelInfo
      * @returns {Promise<Readonly<Model>>}
      */
-    create: async modelInfo => makeModel(modelInfo),
+    create: modelInfo => makeModel(modelInfo),
 
     /**
      * Load a saved model

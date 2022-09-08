@@ -349,11 +349,11 @@ export class DataSourceMongoDb extends DataSourceMemory {
    *    - `writable` writable stream for output
    */
   async list ({
-    filter,
     writable = null,
-    cached = false,
-    serialize = true,
     transform,
+    serialize = true,
+    cached = false,
+    filter,
     sort,
     limit,
     aggregate
@@ -364,9 +364,9 @@ export class DataSourceMongoDb extends DataSourceMemory {
       if (writable) {
         return this.streamList({
           writable,
-          filter,
-          serialize,
           transform,
+          serialize,
+          filter,
           sort,
           limit,
           aggregate
@@ -449,15 +449,3 @@ export class DataSourceMongoDb extends DataSourceMemory {
     this.flush()
   }
 }
-
-process.on('uncaughtException', err => {
-  if (err.name === 'MongoInvalidArgumentError') {
-    console.log(
-      'f u, mongo! u dont get to bring down my server for this bs',
-      err.name,
-      err.message
-    )
-  } else {
-    process.exit(1)
-  }
-})
