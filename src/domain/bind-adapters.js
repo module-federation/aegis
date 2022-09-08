@@ -14,14 +14,14 @@ function DefaultInboundAdapter (port) {
  * adapters invoke ports and ports invoke outbound adapters.
  * Optionally, outbound adapters invoke services.
  *
- * To set the above each adapter's factory function
- * to inject its port or service dependency--I.e. to bind
- * it to a port or service.
+ * Inject each adapter with its port or service dependency--
+ * i.e. bind it to a port or service, as indicated in the
+ * model spec.
  *
- * It returns an object containing the set of port functions
- * defined in the model spec for the domain model. These functions
- * are invoked by a  port function, which handles error recovery,
- * instrumentation, authorization, flow control and other port features.
+ * Return an object containing the set of port functions for
+ * each model. These bound functions are called by common logic
+ * that handles error recovery, instrumentation, authorization,
+ * flow control and other port services.
  *
  * @param {{
  *  portSpec:import('.').ports
@@ -46,6 +46,7 @@ export default function bindAdapters ({
     outbound: (portName, port, adapter, service) => ({
       [portName]: adapter(service)
     }),
+
     inbound: (portName, port, adapter = DefaultInboundAdapter, service) => ({
       [portName]: adapter(port)
     })
@@ -59,8 +60,8 @@ export default function bindAdapters ({
       const adapter = adapters[portName]
       const service = services && spec.service ? services[spec.service] : null
 
-      if (!spec || !type || !port || !adapter) {
-        debug && console.debug('bad port configuration', portName, spec)
+      if (!spec || !type || !port || (!adapter && type === 'outbound')) {
+        console.debug('bad port configuration', portName, spec)
         return
       }
 
