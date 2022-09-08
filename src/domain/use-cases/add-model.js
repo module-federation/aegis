@@ -44,14 +44,7 @@ export default function makeAddModel ({
       const existingRecord = await idempotent(input)
       if (existingRecord) return Promise.resolve(existingRecord)
 
-      return new Promise((resolve, reject) =>
-        threadpool.runJob({
-          jobName: addModel.name,
-          jobData: input,
-          resolve: AsyncResource.bind(resolve),
-          reject: AsyncResource.bind(reject)
-        })
-      )
+      return threadpool.runJob(addModel.name, input)
     } else {
       const model = models.createModel(broker, repository, modelName, input)
       await repository.save(model.getId(), model)

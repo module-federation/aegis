@@ -18,6 +18,7 @@ const { EventEmitter } = require('stream')
 const { find, save } = StorageAdapter
 const overrides = { find, save, ...StorageService }
 const broker = EventBrokerFactory.getInstance()
+const masterLog = []
 
 const {
   deleteModels,
@@ -148,7 +149,7 @@ function makeRoutes () {
  * @param {Response} res
  * @returns
  */
-function handle (path, method, req, res) {
+async function handle (path, method, req, res) {
   const routeInfo = routes.get(path)
 
   if (!routeInfo) {
@@ -168,7 +169,29 @@ function handle (path, method, req, res) {
   const requestInfo = Object.assign(req, { params: routeInfo.params })
 
   try {
-    return controller(requestInfo, res)
+    // const result = controller(requestInfo, res)
+    // const ctx = requestContext.getStore()
+    // ctx.set('end', Date.now())
+    // ctx.set('duration', ctx.get('begin') - ctx.get('end'))
+    // console.log({ requestContext: ctx })
+    // return result
+    requestContext.enterWith(new Map([['id', nanoid()]]))
+    requestContext.getStore().set('begin', Date.now())
+
+    const result = await controller(requestInfo, res)
+    requestContext.getStore().set('end', Date.now())
+
+    console.log({
+      ...Object.fromEntries(requestContext.getStore()),
+      duration:
+        requestContext.getStore().get('end') -
+        requestContext.getStore().get('begin'),
+      result
+    })
+
+    requestContext.exit(() => void 0)
+
+    return result
   } catch (error) {
     console.error({ fn: handle.name, error })
     res.sendStatus(500)
@@ -177,6 +200,7 @@ function handle (path, method, req, res) {
 
 function handleWithContext () {
   return (path, method, req, res) =>
+    //const result = requestContext.run(
     requestContext.run(
       new Map([
         ['id', nanoid()],
@@ -189,6 +213,12 @@ function handleWithContext () {
       req,
       res
     )
+  // const store = requestContext.getStore()
+  // store.set('end', Date.now())
+  // store.set('duration', store.get('begin') - store.get('end'))
+  // broker.notify('')
+  // return result
+  // }
 }
 
 /**
@@ -217,12 +247,18 @@ exports.init = async function (remotes) {
   // load from storage
   await cache.load()
   // controllers
-  return handleWithContext()
+  //return handleWithContext()
+  return handle
 }
 
 EventEmitter.captureRejections = true
 
 process.on('uncaughtException', error => {
-  console.error('uncaughtException, shutting down', error)
-  process.exit(1)
+  const store = requestContext.getStore()
+  store
+    .get('req')
+    .status(400)
+    .send(error)
+  console.error('uncaughtException', error)
+  broker.notify('uncaughtException', error)
 })

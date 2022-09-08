@@ -200,9 +200,9 @@ export class ThreadPool extends EventEmitter {
           // Was this the only job running?
           if (pool.noJobsRunning()) pool.emit(NOJOBS)
           // invoke callback to return result
-          console.debug(result)
-          // fulfill promise
-          job.resolve(result)
+          console.debug({ fn: this.run.name, result })
+          if (result.hasError) job.reject(result)
+          else job.resolve(result)
           // reallocate thread
           pool.reallocate(this)
         })
@@ -287,36 +287,38 @@ export class ThreadPool extends EventEmitter {
    * @param {*} jobData anything that can be cloned
    * @returns {Promise<*>} anything that can be cloned
    */
-  runJob ({ jobName, jobData, resolve, reject, options = {} }) {
-    this.jobsRequested++
+  runJob (jobName, jobData, options = {}) {
+    return new Promise((resolve, reject) => {
+      this.jobsRequested++
 
-    if (this.closed) {
-      console.warn('pool is closed')
-      return reject('pool is closed')
-    }
+      if (this.closed) {
+        console.warn('pool is closed')
+        return reject('pool is closed')
+      }
 
-    const job = {
-      ...options,
-      jobName,
-      jobData,
-      resolve,
-      reject
-    }
+      const job = {
+        ...options,
+        jobName,
+        jobData,
+        resolve,
+        reject
+      }
 
-    let thread = this.freeThreads.shift()
+      let thread = this.freeThreads.shift()
 
-    if (!thread) {
-      thread = this.allocate()
-    }
+      if (!thread) {
+        thread = this.allocate()
+      }
 
-    if (thread) {
-      thread.run(job)
-      return
-    }
+      if (thread) {
+        thread.run(job)
+        return
+      }
 
-    console.warn('no threads: queue job', jobName)
-    this.waitingJobs.push(thread => thread.run(job))
-    this.jobsQueued++
+      console.warn('no threads: queue job', jobName)
+      this.waitingJobs.push(thread => thread.run(job))
+      this.jobsQueued++
+    })
   }
 
   /**

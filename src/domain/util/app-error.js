@@ -1,16 +1,9 @@
-'use strict'
-
-export class AppError extends Error {
-  constructor (error) {
-    super(error.message)
-    this.stack = error.stack
-    this.name = error.name
-    this.cause = error.cause
-    this.hasError = true
-    this.time = Date.now()
-  }
-
-  toJSON () {
-    return { ...this, time: new Date(this.time).toUTCString() }
+export function AppError (error) {
+  return {
+    name: error.name,
+    message: error.message,
+    stack: error.stack,
+    cause: error.cause,
+    hasError: true
   }
 }

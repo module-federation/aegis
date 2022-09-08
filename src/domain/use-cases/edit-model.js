@@ -6,6 +6,7 @@ import domainEvents from '../domain-events'
 import { isMainThread } from 'worker_threads'
 import e from 'express'
 import { AsyncResource } from 'async_hooks'
+import { AppError } from '../util/app-error'
 
 /**
  * @typedef {Object} ModelParam
@@ -49,44 +50,40 @@ export default function makeEditModel ({
         throw new Error('no such id')
       }
 
-      return new Promise((resolve, reject) =>
-        threadpool.runJob({
-          jobName: editModel.name,
-          jobData: input,
-          resolve: AsyncResource.bind(resolve),
-          reject: AsyncResource.bind(reject)
-        })
-      )
+      return threadpool.runJob(editModel.name, input)
     } else {
-      // model has been found by main thread
-      const { id, changes, command } = input
-
-      // get model
-      const model = await repository.find(id)
-
-      // only the worker does the update
-      const updated = models.updateModel(model, changes)
-      await repository.save(id, updated)
-
-      const event = models.createEvent(eventType, modelName, {
-        updated,
-        changes
-      })
-
       try {
-        broker.notify(eventName, event)
+        // model has been found by main thread
+        const { id, changes, command } = input
 
-        if (command) {
-          const result = await async(executeCommand(updated, command, 'write'))
+        // get model
+        const model = await repository.find(id)
 
-          if (result.ok) {
-            return result.data
+        // only the worker does the update
+        const updated = models.updateModel(model, changes)
+        await repository.save(id, updated)
+
+        const event = models.createEvent(eventType, modelName, {
+          updated,
+          changes
+        })
+
+        try {
+          broker.notify(eventName, event)
+
+          if (command) {
+            const result = await async(
+              executeCommand(updated, command, 'write')
+            )
+            if (result.ok) return result.data
           }
+          return await repository.find(id)
+        } catch (error) {
+          await repository.save(id, model)
+          return AppError(error)
         }
-        return await repository.find(id)
       } catch (error) {
-        await repository.save(id, model)
-        throw error
+        return AppError(error)
       }
     }
   }
