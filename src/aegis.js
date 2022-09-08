@@ -178,7 +178,11 @@ function handle (path, method, req, res) {
 function handleWithContext () {
   return (path, method, req, res) =>
     requestContext.run(
-      new Map([['id', nanoid()]]),
+      new Map([
+        ['id', nanoid()],
+        ['req', req],
+        ['begin', Date.now()]
+      ]),
       handle,
       path,
       method,
