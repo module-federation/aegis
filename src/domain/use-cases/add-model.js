@@ -42,7 +42,7 @@ export default function makeAddModel ({
   async function addModel (input) {
     if (isMainThread) {
       const existingRecord = await idempotent(input)
-      if (existingRecord) return Promise.resolve(existingRecord)
+      if (existingRecord) return existingRecord
 
       return threadpool.runJob(addModel.name, input)
     } else {
