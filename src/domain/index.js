@@ -413,4 +413,6 @@ export { default as DomainEvents } from './domain-events'
 
 export { AppError } from '../domain/util/app-error'
 
+export { requestContext } from '../domain/util/async-context'
+
 export default ModelFactory

@@ -3,15 +3,18 @@
 const domain = require('./domain')
 const services = require('./services')
 const adapters = require('./adapters')
-const { EventBrokerFactory, DomainEvents, importRemotes } = domain
+const {
+  EventBrokerFactory,
+  DomainEvents,
+  importRemotes,
+  requestContext
+} = domain
 const { badUserRoute, reload } = DomainEvents
 const { StorageService } = services
 const { StorageAdapter } = adapters
 const { pathToRegexp, match } = require('path-to-regexp')
-const { AsyncLocalStorage } = require('async_hooks')
 const { nanoid } = require('nanoid')
 const { EventEmitter } = require('stream')
-const { sync } = require('rimraf')
 const { find, save } = StorageAdapter
 const overrides = { find, save, ...StorageService }
 const broker = EventBrokerFactory.getInstance()
@@ -172,11 +175,16 @@ function handle (path, method, req, res) {
   }
 }
 
-const context = new AsyncLocalStorage()
-
 function handleWithContext () {
   return (path, method, req, res) =>
-    context.run(new Map([['id', nanoid()]]), handle, path, method, req, res)
+    requestContext.run(
+      new Map([['id', nanoid()]]),
+      handle,
+      path,
+      method,
+      req,
+      res
+    )
 }
 
 /**
