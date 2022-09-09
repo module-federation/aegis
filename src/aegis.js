@@ -15,6 +15,7 @@ const { StorageAdapter } = adapters
 const { pathToRegexp, match } = require('path-to-regexp')
 const { nanoid } = require('nanoid')
 const { EventEmitter } = require('stream')
+const Date = require('core-js/fn/date')
 const { find, save } = StorageAdapter
 const overrides = { find, save, ...StorageService }
 const broker = EventBrokerFactory.getInstance()
@@ -169,23 +170,23 @@ async function handle (path, method, req, res) {
   const requestInfo = Object.assign(req, { params: routeInfo.params })
 
   try {
-    // const result = controller(requestInfo, res)
-    // const ctx = requestContext.getStore()
-    // ctx.set('end', Date.now())
-    // ctx.set('duration', ctx.get('begin') - ctx.get('end'))
-    // console.log({ requestContext: ctx })
-    // return result
-    requestContext.enterWith(new Map([['id', nanoid()]]))
-    requestContext.getStore().set('begin', Date.now())
+    requestContext.enterWith(
+      new Map([
+        ['id', nanoid()],
+        ['begin', Date.now()],
+        ['req', req],
+        ['res', res]
+      ])
+    )
 
     const result = await controller(requestInfo, res)
-    requestContext.getStore().set('end', Date.now())
+
+    const store = requestContext.getStore()
+    store.set('end', Date.now())
 
     console.log({
-      ...Object.fromEntries(requestContext.getStore()),
-      duration:
-        requestContext.getStore().get('end') -
-        requestContext.getStore().get('begin'),
+      requestId: store.get('id'),
+      duration: store.get('end') - store.get('begin'),
       result
     })
 
@@ -196,29 +197,6 @@ async function handle (path, method, req, res) {
     console.error({ fn: handle.name, error })
     res.sendStatus(500)
   }
-}
-
-function handleWithContext () {
-  return (path, method, req, res) =>
-    //const result = requestContext.run(
-    requestContext.run(
-      new Map([
-        ['id', nanoid()],
-        ['req', req],
-        ['begin', Date.now()]
-      ]),
-      handle,
-      path,
-      method,
-      req,
-      res
-    )
-  // const store = requestContext.getStore()
-  // store.set('end', Date.now())
-  // store.set('duration', store.get('begin') - store.get('end'))
-  // broker.notify('')
-  // return result
-  // }
 }
 
 /**
@@ -247,7 +225,6 @@ exports.init = async function (remotes) {
   // load from storage
   await cache.load()
   // controllers
-  //return handleWithContext()
   return handle
 }
 
@@ -255,10 +232,11 @@ EventEmitter.captureRejections = true
 
 process.on('uncaughtException', error => {
   const store = requestContext.getStore()
-  store
-    .get('req')
-    .status(400)
-    .send(error)
+  if (store)
+    store
+      .get('res')
+      .status(500)
+      .send(error)
   console.error('uncaughtException', error)
   broker.notify('uncaughtException', error)
 })

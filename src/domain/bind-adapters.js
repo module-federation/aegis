@@ -52,6 +52,15 @@ export default function bindAdapters ({
     })
   }
 
+  function badPortConfig ({ spec, type, port, adapter }) {
+    return (
+      !spec ||
+      !type ||
+      (!port && type === 'inbound') ||
+      (!adapter && type === 'outbound')
+    )
+  }
+
   return Object.keys(portSpec)
     .map(portName => {
       const spec = portSpec[portName]
@@ -60,8 +69,8 @@ export default function bindAdapters ({
       const adapter = adapters[portName]
       const service = services && spec.service ? services[spec.service] : null
 
-      if (!spec || !type || !port || (!adapter && type === 'outbound')) {
-        console.debug('bad port configuration', portName, spec)
+      if (badPortConfig({ spec, type, port, adapter })) {
+        console.warn('bad port configuration', portName, spec)
         return
       }
 

@@ -1,6 +1,7 @@
 'use strict'
 
 import { isMainThread } from 'worker_threads'
+import { AppError } from '../util/app-error'
 
 /**
  * @typedef {Object} ModelParam
@@ -14,7 +15,7 @@ import { isMainThread } from 'worker_threads'
 /**
  * @typedef {function(ModelParam):Promise<import("../domain").Model>} editModel
  * @param {ModelParam} param0
- * @returns {function():Promise<import("../domain/model").Model>}
+ * @returns {function():Promise<im`port("../domain/model").Model>}
  */
 export default function makeInvokePort ({
   broker,
@@ -31,9 +32,7 @@ export default function makeInvokePort ({
    */
   return async function invokePort (input) {
     if (isMainThread) {
-      const result = await threadpool.runJob(invokePort.name, input)
-      if (result instanceof Error) throw result
-      return result
+      return threadpool.runJob(invokePort.name, input)
     } else {
       try {
         const { id = null, port, args } = input
@@ -42,12 +41,12 @@ export default function makeInvokePort ({
             ? await repository.find(id)
             : models.createModel(broker, repository, modelName, args)
 
-        if (!model) throw new Error('no such id')
+        if (!model) return AppError('no such id')
 
         const callback = model.getPorts()[port].callback || (x => x)
         return await model[port](input, callback)
       } catch (error) {
-        return new Error(error)
+        return AppError(error)
       }
     }
   }

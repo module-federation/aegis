@@ -6,10 +6,8 @@ import { Worker, BroadcastChannel } from 'worker_threads'
 import domainEvents from './domain-events'
 import ModelFactory from '.'
 import { performance as perf } from 'perf_hooks'
-import { AsyncResource } from 'async_hooks'
 import os from 'os'
-import { resolve } from 'path'
-import { exit } from 'process'
+import { AsyncResource } from 'async_hooks'
 
 const { poolOpen, poolClose, poolDrain, poolAbort } = domainEvents
 const broker = EventBrokerFactory.getInstance()
@@ -35,7 +33,15 @@ const DEFAULT_TIME_TO_LIVE = 180000
 /**@typedef {string} jobName*/
 /**@typedef {string} jobData*/
 /**@typedef {{channel:'mainChannel'|'eventChannel'}} options*/
-
+/**
+ * @typedef {{
+ *  jobName: string,
+ *  jobData: string,
+ *  resolve: (x)=>x,
+ *  reject: (x)=>x
+ *  channel: "mainChannel" | "eventChannel"
+ * }} Job
+ */
 /**
  * @typedef {object} ThreadPoolFactory
  * @property {function():ThreadPool} getThreadPool
@@ -50,13 +56,34 @@ const DEFAULT_TIME_TO_LIVE = 180000
 /** @typedef {import('./model').Model} Model} */
 /** @typedef {import('./event-broker').EventBroker} EventBroker */
 
+/**
+ * @typedef {object} Thread
+ * @property {Worker} mainChannel
+ * @property {MessagePort} eventChannel
+ * @property {function(Job)} run
+ * @property {function(reason)} stop
+ */
+
+/**
+ * Queues break context so we need some help
+ */
 class Job extends AsyncResource {
-  constructor (options) {
+  constructor ({ jobName, jobData, resolve, reject, options = {} }) {
     super('Job')
-    this.options = options
-    this.callback = (error, result) =>
-      this.runInAsyncScope(options.callback, this, error, result)
-    //options.callback(error, result)
+    this.jobName = jobName
+    this.jobData = jobData
+    this.resolve = result => this.runInAsyncScope(resolve, null, result)
+    this.reject = error => this.runInAsyncScope(reject, null, error)
+  }
+
+  destructure () {
+    return {
+      jobName: this.jobName,
+      jobData: this.jobData,
+      resolve: this.resolve,
+      reject: this.reject,
+      ...this.options
+    }
   }
 }
 
@@ -146,21 +173,11 @@ export class ThreadPool extends EventEmitter {
    */
   newThread ({ pool = this, file, workerData }) {
     EventEmitter.captureRejections = true
-    const eventChannel = new MessageChannel({ captureRejections: true })
-    const worker = new Worker(file, { workerData, captureRejections: true })
+    const eventChannel = new MessageChannel()
+    const worker = new Worker(file, { workerData })
+
     /**
-     * @typedef {{
-     *  jobName: string,
-     *  jobData: string,
-     *  resolve: (x)=>x,
-     *  reject: (x)=>x
-     *  channel: "mainChannel" | "eventChannel"
-     * }} Job
-     * @typedef {object} Thread
-     * @property {Worker} mainChannel
-     * @property {MessagePort} eventChannel
-     * @property {function(Job)} run
-     * @property {function(reason)} stop
+     * @type {Thread}
      */
     const thread = {
       file,
@@ -189,9 +206,9 @@ export class ThreadPool extends EventEmitter {
         const {
           jobName: name,
           jobData: data,
-          channel = MAINCHANNEL,
-          transfer = []
-        } = job
+          transfer = [],
+          channel = MAINCHANNEL
+        } = job.destructure()
         const startTime = perf.now()
         let caughtError = false
 
@@ -200,7 +217,6 @@ export class ThreadPool extends EventEmitter {
           // Was this the only job running?
           if (pool.noJobsRunning()) pool.emit(NOJOBS)
           // invoke callback to return result
-          console.debug({ fn: this.run.name, result })
           if (result.hasError) job.reject(result)
           else job.resolve(result)
           // reallocate thread
@@ -208,7 +224,7 @@ export class ThreadPool extends EventEmitter {
         })
 
         this[channel].once('error', error => {
-          console.error({ fn: this.run.name, error })
+          console.error({ fn: 'thread.run', error })
           pool.threads.splice(pool.threads.indexOf(this), 1)
           pool.emit('unhandledThreadError', error)
           job.reject(error)
@@ -223,6 +239,7 @@ export class ThreadPool extends EventEmitter {
           job.reject(exitCode)
         })
 
+        console.debug('run on thread', { channel, transfer, name, data })
         this[channel].postMessage({ name, data }, transfer)
       }
     }
@@ -237,7 +254,7 @@ export class ThreadPool extends EventEmitter {
    *
    * @param {string} file
    * @param {*} workerData
-   * @returns {Promise<Thread>}
+   * @returns {Thread}
    */
   startThread () {
     return this.newThread({
@@ -296,13 +313,13 @@ export class ThreadPool extends EventEmitter {
         return reject('pool is closed')
       }
 
-      const job = {
-        ...options,
+      const job = new Job({
         jobName,
         jobData,
         resolve,
-        reject
-      }
+        reject,
+        ...options
+      })
 
       let thread = this.freeThreads.shift()
 

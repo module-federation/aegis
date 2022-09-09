@@ -548,7 +548,7 @@ const Model = (() => {
      * @returns {Model} updated model
      *
      */
-    update: function (model, changes) {
+    async update(model, changes) {
       return model.update(changes)
     },
 
