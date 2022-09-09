@@ -16,9 +16,8 @@
 /**
  * @param {httpController} controller
  */
-export default function buildCallback(controller) {
+export default function buildCallback (controller) {
   /**
-   * @param {import("nats/lib/nats-base-client/types").StreamInfoRequestOptions}
    */
   return async (req, res) => {
     const httpRequest = {
@@ -29,7 +28,7 @@ export default function buildCallback(controller) {
       method: req.method,
       path: req.path,
       res: res,
-      log(func) {
+      log (func) {
         console.info({
           function: func,
           ip: httpRequest.ip,
@@ -50,6 +49,8 @@ export default function buildCallback(controller) {
         res.status(httpResponse.statusCode).send(httpResponse.body)
         return httpResponse
       })
-      .catch(e => res.status(500).send({ error: 'An unkown error occurred.', e }))
+      .catch(e =>
+        res.status(500).send({ error: 'An unkown error occurred.', e })
+      )
   }
 }

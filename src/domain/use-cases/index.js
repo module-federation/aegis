@@ -22,7 +22,7 @@ import makeServiceMesh from './create-service-mesh.js'
 import { isMainThread } from 'worker_threads'
 import { hostConfig } from '../../config'
 
-const serviceMeshPlugin =
+export const serviceMeshPlugin =
   hostConfig.services.activeServiceMesh ||
   process.env.SERVICE_MESH_PLUGIN ||
   'webswitch'

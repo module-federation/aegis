@@ -6,8 +6,8 @@ import { Worker, BroadcastChannel } from 'worker_threads'
 import domainEvents from './domain-events'
 import ModelFactory from '.'
 import { performance as perf } from 'perf_hooks'
-import { AsyncResource } from 'async_hooks'
 import os from 'os'
+import { AsyncResource } from 'async_hooks'
 
 const { poolOpen, poolClose, poolDrain, poolAbort } = domainEvents
 const broker = EventBrokerFactory.getInstance()
@@ -33,7 +33,15 @@ const DEFAULT_TIME_TO_LIVE = 180000
 /**@typedef {string} jobName*/
 /**@typedef {string} jobData*/
 /**@typedef {{channel:'mainChannel'|'eventChannel'}} options*/
-
+/**
+ * @typedef {{
+ *  jobName: string,
+ *  jobData: string,
+ *  resolve: (x)=>x,
+ *  reject: (x)=>x
+ *  channel: "mainChannel" | "eventChannel"
+ * }} Job
+ */
 /**
  * @typedef {object} ThreadPoolFactory
  * @property {function():ThreadPool} getThreadPool
@@ -48,13 +56,34 @@ const DEFAULT_TIME_TO_LIVE = 180000
 /** @typedef {import('./model').Model} Model} */
 /** @typedef {import('./event-broker').EventBroker} EventBroker */
 
+/**
+ * @typedef {object} Thread
+ * @property {Worker} mainChannel
+ * @property {MessagePort} eventChannel
+ * @property {function(Job)} run
+ * @property {function(reason)} stop
+ */
+
+/**
+ * Queues break context so we need some help
+ */
 class Job extends AsyncResource {
-  constructor (options) {
+  constructor ({ jobName, jobData, resolve, reject, options = {} }) {
     super('Job')
-    this.options = options
-    this.callback = (error, result) =>
-      this.runInAsyncScope(options.callback, this, error, result)
-    //options.callback(error, result)
+    this.jobName = jobName
+    this.jobData = jobData
+    this.resolve = result => this.runInAsyncScope(resolve, null, result)
+    this.reject = error => this.runInAsyncScope(reject, null, error)
+  }
+
+  destructure () {
+    return {
+      jobName: this.jobName,
+      jobData: this.jobData,
+      resolve: this.resolve,
+      reject: this.reject,
+      ...this.options
+    }
   }
 }
 
@@ -86,7 +115,7 @@ export class ThreadPool extends EventEmitter {
     super(options.eventEmitterOptions)
     /** @type {Thread[]} */
     this.threads = []
-    /** @type {Thread[]} */
+    /** @type {Array<Thread>} */
     this.freeThreads = []
     /** @type {Array<(Thread)=>postJob>}*/
     this.waitingJobs = waitingJobs
@@ -143,9 +172,13 @@ export class ThreadPool extends EventEmitter {
    * @returns {Promise<Thread>}
    */
   newThread ({ pool = this, file, workerData }) {
-    const eventChannel = new MessageChannel({ captureRejections: true })
-    const worker = new Worker(file, { workerData, captureRejections: true })
+    EventEmitter.captureRejections = true
+    const eventChannel = new MessageChannel()
+    const worker = new Worker(file, { workerData })
 
+    /**
+     * @type {Thread}
+     */
     const thread = {
       file,
       pool,
@@ -165,44 +198,52 @@ export class ThreadPool extends EventEmitter {
       },
 
       /**
-       * Run a job in this thread.
+       * Post this job to a worker.
        *
-       * @param {Thread} thread
+       * @param {Job} job
        */
       run (job) {
         const {
-          jobName,
-          jobData,
-          channel = MAINCHANNEL,
-          transfer = []
-        } = job.options
+          jobName: name,
+          jobData: data,
+          transfer = [],
+          channel = MAINCHANNEL
+        } = job.destructure()
         const startTime = perf.now()
+        let caughtError = false
 
         this[channel].once('message', result => {
           pool.jobTime(perf.now() - startTime)
           // Was this the only job running?
           if (pool.noJobsRunning()) pool.emit(NOJOBS)
           // invoke callback to return result
-          job.callback(null, result)
+          if (result.hasError) job.reject(result)
+          else job.resolve(result)
           // reallocate thread
           pool.reallocate(this)
         })
 
         this[channel].once('error', error => {
-          console.error({ fn: this.run.name, error })
+          console.error({ fn: 'thread.run', error })
           pool.threads.splice(pool.threads.indexOf(this), 1)
           pool.emit('unhandledThreadError', error)
-          job.callback(error, null)
+          job.reject(error)
+          caughtError = true
         })
 
+        // in case no error is emitted
         this[channel].once('exit', exitCode => {
           console.warn('thread exited', { thread: this, exitCode })
+          if (caughtError) return
           pool.threads.splice(pool.threads.indexOf(this), 1)
+          job.reject(exitCode)
         })
 
-        this[channel].postMessage({ name: jobName, data: jobData }, transfer)
+        console.debug('run on thread', { channel, transfer, name, data })
+        this[channel].postMessage({ name, data }, transfer)
       }
     }
+
     pool.connectEventChannel(worker, eventChannel)
     pool.threads.push(thread)
     pool.emit('threadCreation', { thread })
@@ -213,7 +254,7 @@ export class ThreadPool extends EventEmitter {
    *
    * @param {string} file
    * @param {*} workerData
-   * @returns {Promise<Thread>}
+   * @returns {Thread}
    */
   startThread () {
     return this.newThread({
@@ -257,10 +298,10 @@ export class ThreadPool extends EventEmitter {
 
   /**
    * Run a job (use case function) on an available thread; or queue the job
-   * until one becomes available. Return the result asynchronously.
+   * until one becomes available.
    *
    * @param {string} jobName name of a use case function in {@link UseCaseService}
-   * @param {*} jobData anything that can be clonedx
+   * @param {*} jobData anything that can be cloned
    * @returns {Promise<*>} anything that can be cloned
    */
   runJob (jobName, jobData, options = {}) {
@@ -275,12 +316,9 @@ export class ThreadPool extends EventEmitter {
       const job = new Job({
         jobName,
         jobData,
-        ...options,
-        callback: (error, result) => {
-          if (error) return reject(error)
-          if (result) return resolve(result)
-          throw new Error('no data returned to callback')
-        }
+        resolve,
+        reject,
+        ...options
       })
 
       let thread = this.freeThreads.shift()
@@ -819,16 +857,14 @@ const ThreadPoolFactory = (() => {
             ) {
               const timerId = setTimeout(async () => await abort(pool), 1000)
 
-              const responses = await Promise.all(
-                pool.threads.map(thread =>
-                  thread.run(new Job({ jobName: 'ping' }))
-                )
-              )
-
-              clearTimeout(timerId)
-
-              if (responses.filter(resp => resp.hasError).length > 0)
-                await abort(pool)
+              for (const thread of pool.threads) {
+                if (pool.aborting) return
+                thread.run({
+                  name: 'ping',
+                  data: timerId,
+                  resolve: id => clearTimeout(id)
+                })
+              }
             }
           }, pool.jobAbortTtl)
         }

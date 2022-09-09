@@ -39,7 +39,7 @@ export default function makeEmitEvent ({
         }
       } else {
         console.debug({ pool: workerData.poolName, fn: emitEvent.name, input })
-        await broker.notify(input.eventName, input)
+        broker.notify(input.eventName, input)
       }
     } catch (error) {
       console.error({ fn: emitEvent.name, error })

@@ -1,5 +1,6 @@
 'use strict'
 
+import { AsyncResource } from 'async_hooks'
 import { isMainThread } from 'worker_threads'
 import domainEvents from '../domain-events'
 
@@ -43,24 +44,16 @@ export default function makeAddModel ({
       const existingRecord = await idempotent(input)
       if (existingRecord) return existingRecord
 
-      const result = await threadpool.runJob(addModel.name, input)
-      if (result.hasError) throw result
-
-      return result
+      return threadpool.runJob(addModel.name, input)
     } else {
-      const model = await models.createModel(
-        broker,
-        repository,
-        modelName,
-        input
-      )
+      const model = models.createModel(broker, repository, modelName, input)
       await repository.save(model.getId(), model)
-
+      console.debug({ fn: addModel.name, model })
       try {
         const event = models.createEvent(eventType, modelName, model)
-        await broker.notify(eventName, event)
+        broker.notify(eventName, event)
       } catch (error) {
-        // remote the object if not processed
+        // remove the object if not processed
         await repository.delete(model.getId())
         throw error
       }

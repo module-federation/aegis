@@ -3,14 +3,23 @@
 const domain = require('./domain')
 const services = require('./services')
 const adapters = require('./adapters')
-const { EventBrokerFactory, DomainEvents, importRemotes } = domain
+const {
+  EventBrokerFactory,
+  DomainEvents,
+  importRemotes,
+  requestContext
+} = domain
 const { badUserRoute, reload } = DomainEvents
 const { StorageService } = services
 const { StorageAdapter } = adapters
 const { pathToRegexp, match } = require('path-to-regexp')
+const { nanoid } = require('nanoid')
+const { EventEmitter } = require('stream')
+const Date = require('core-js/fn/date')
 const { find, save } = StorageAdapter
 const overrides = { find, save, ...StorageService }
 const broker = EventBrokerFactory.getInstance()
+const masterLog = []
 
 const {
   deleteModels,
@@ -146,7 +155,7 @@ async function handle (path, method, req, res) {
 
   if (!routeInfo) {
     console.warn('no controller for', path)
-    res.status(404).json('not found')
+    res.sendStatus(404)
     return
   }
 
@@ -154,17 +163,39 @@ async function handle (path, method, req, res) {
 
   if (typeof controller !== 'function') {
     console.warn('no controller for', path, method)
-    res.status(404).json('not found')
+    res.sendStatus(404)
     return
   }
 
   const requestInfo = Object.assign(req, { params: routeInfo.params })
 
   try {
-    return await controller(requestInfo, res)
+    requestContext.enterWith(
+      new Map([
+        ['id', nanoid()],
+        ['begin', Date.now()],
+        ['req', req],
+        ['res', res]
+      ])
+    )
+
+    const result = await controller(requestInfo, res)
+
+    const store = requestContext.getStore()
+    store.set('end', Date.now())
+
+    console.log({
+      requestId: store.get('id'),
+      duration: store.get('end') - store.get('begin'),
+      result
+    })
+
+    requestContext.exit(() => void 0)
+
+    return result
   } catch (error) {
     console.error({ fn: handle.name, error })
-    res.status(500).json('uknown error')
+    res.sendStatus(500)
   }
 }
 
@@ -173,7 +204,7 @@ async function handle (path, method, req, res) {
  */
 exports.dispose = async function () {
   console.log('system hot-reloading')
-  await broker.notify(reload, 'system reload')
+  broker.notify(reload, 'system reload')
 }
 
 /**
@@ -196,3 +227,16 @@ exports.init = async function (remotes) {
   // controllers
   return handle
 }
+
+EventEmitter.captureRejections = true
+
+process.on('uncaughtException', error => {
+  const store = requestContext.getStore()
+  if (store)
+    store
+      .get('res')
+      .status(500)
+      .send(error)
+  console.error('uncaughtException', error)
+  broker.notify('uncaughtException', error)
+})

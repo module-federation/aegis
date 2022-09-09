@@ -14,6 +14,7 @@ export default function patchModelFactory (editModel) {
         command: httpRequest.params.command
       })
 
+      console.log(model)
       return {
         headers: {
           'Content-Type': 'application/json',
