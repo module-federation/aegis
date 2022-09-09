@@ -1,6 +1,7 @@
 'use strict'
 
 import { isMainThread } from 'worker_threads'
+import { AppError } from '../util/app-error'
 
 /**
  * @typedef {Object} ModelParam
@@ -41,19 +42,20 @@ export default function removeModelFactory ({
         throw new Error('no such id')
       }
 
-      const result = await threadpool.runJob(removeModel.name, id)
-      if (result.hasError) throw result
-
-      return result
+      return threadpool.runJob(removeModel.name, id)
     } else {
-      const model = await repository.find(id)
-      const deletedModel = models.deleteModel(model)
+      try {
+        const model = await repository.find(id)
+        const deletedModel = models.deleteModel(model)
 
-      const event = models.createEvent(eventType, modelName, deletedModel)
-      broker.notify(eventName, event)
+        const event = models.createEvent(eventType, modelName, deletedModel)
+        broker.notify(eventName, event)
 
-      await repository.delete(id)
-      return deletedModel
+        await repository.delete(id)
+        return deletedModel
+      } catch (error) {
+        return AppError(error)
+      }
     }
   }
 }

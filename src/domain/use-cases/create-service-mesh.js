@@ -1,22 +1,22 @@
 'use strict'
+import { serviceMeshPlugin } from '.'
 
 const requiredMethods = ['connect', 'publish', 'subscribe', 'close']
-const pluginName = process.env.SERVICE_MESH_PLUGIN || 'webswitch'
 
 export default function makeServiceMesh ({ broker, models, repository }) {
-  return async function (options) {
-    const plugin = await models.createModel(
+  return function (options) {
+    const plugin = models.createModel(
       broker,
       repository,
-      pluginName,
+      serviceMeshPlugin,
       options
     )
-    const missingMethods = requiredMethods.filter(method => !plugin[method])
+    //const missingMethods = requiredMethods.filter(method => !plugin[method])
 
-    if (missingMethods.length > 0)
-      throw new Error(
-        `ServiceMesh plug-in is missing required methods ${missingMethods}`
-      )
+    // if (missingMethods.length > 0)
+    //   throw new Error(
+    //     `ServiceMesh plug-in is missing required methods ${missingMethods}`
+    //   )
 
     return plugin
   }

@@ -1,10 +1,9 @@
-'use strict'
-
-class AppError {
-  constructor (error) {
-    this.message = error?.message
-    this.stack = error?.stack
-    this.name = error?.name
-    this.hasError = true
+export function AppError (error) {
+  return {
+    name: error.name,
+    message: error.message,
+    stack: error.stack,
+    cause: error.cause,
+    hasError: true
   }
 }
