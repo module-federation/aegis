@@ -1,6 +1,6 @@
 {
   "name": "@module-federation/aegis",
-  "version": "1.3.1-beta",
+  "version": "1.3.3-beta",
   "module": "lib/index.js",
   "main": "lib/index.js",
   "repository": "git@github.com:module-federation/aegis.git",
@@ -8,6 +8,7 @@
   "license": "Apache-2.0",
   "scripts": {
     "start": "./start.sh",
+    "webswitch": "cd ../aegis-host ; export SWITCH=true ; export PORT=8888 ; yarn start",
     "format": "yarn pretty -- --write",
     "build": "npm run build:esm && npm run build:cjs",
     "build:esm": "babel --delete-dir-on-start -d esm/ src/ && cp src/index.js esm",

@@ -230,7 +230,7 @@ export default function makePorts (ports, adapters, broker) {
 
           // Signal the next port to run.
           if (rememberPort) {
-            model.emit(portConf.producesEvent, portName)
+            this.emit(portConf.producesEvent, portName)
           }
 
           // the result can be something other than a model
