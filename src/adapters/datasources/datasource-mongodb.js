@@ -118,9 +118,8 @@ export class DataSourceMongoDb extends DataSourceMemory {
         cached === undefined ||
         Object.keys(cached).length == 0
       )
-        // cached can be empty object
-        return this.findDb(id)
-
+        // cached can be empty object, save after finding in db
+        return super.saveSync(id, await this.findDb(id))
       return cached
     } catch (error) {
       console.error({ fn: this.find.name, error })
@@ -253,8 +252,6 @@ export class DataSourceMongoDb extends DataSourceMemory {
     if (sort) cursor = cursor.sort(sort)
     if (limit) cursor = cursor.limit(limit)
     if (aggregate) cursor = cursor.aggregate(aggregate)
-    if (skip) cursor = cursor.skip(skip)
-    if (offset) cursor = cursor.offset(offset)
     return cursor
   }
 
@@ -381,43 +378,6 @@ export class DataSourceMongoDb extends DataSourceMemory {
       console.error({ fn: this.list.name, error })
     }
   }
-  // async list ({
-  //   writable = null,
-  //   transform,
-  //   serialize = true,
-  //   cached = false,
-  //   filter,
-  //   sort,
-  //   limit,
-  //   aggregate
-  // } = {}) {
-  //   try {
-  //     if (cached) return super.listSync(filter)
-
-  //     if (writable) {
-  //       return this.streamList({
-  //         writable,
-  //         transform,
-  //         serialize,
-  //         filter,
-  //         sort,
-  //         limit,
-  //         aggregate
-  //       })
-  //     }
-
-  //     return (
-  //       await this.mongoFind({
-  //         filter,
-  //         sort,
-  //         limit,
-  //         aggregate
-  //       })
-  //     ).toArray()
-  //   } catch (error) {
-  //     console.error({ fn: this.list.name, error })
-  //   }
-  // }
 
   async status () {
     return {

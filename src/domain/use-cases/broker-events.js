@@ -54,10 +54,11 @@ export default async function brokerEvents ({
         .filter(spec => !spec.isCached && !spec.internal)
         .map(spec => spec.modelName)
 
-    const serviceMesh = await createServiceMesh({
+    const serviceMesh = createServiceMesh({
       listServices: listLocalModels
     })
 
+    // connect to broker
     serviceMesh.connect()
 
     // reinitialize service mesh on reload
