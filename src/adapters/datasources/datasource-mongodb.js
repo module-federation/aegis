@@ -372,13 +372,11 @@ export class DataSourceMongoDb extends DataSourceMemory {
         })
       }
 
-      return this.count(
-        (
-          await this.mongoFind({
-            ...this.processOptions({ options, query })
-          })
-        ).toArray()
-      )
+      return (
+        await this.mongoFind({
+          ...this.processOptions({ options, query })
+        })
+      ).toArray()
     } catch (error) {
       console.error({ fn: this.list.name, error })
     }
