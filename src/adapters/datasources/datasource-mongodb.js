@@ -300,7 +300,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
       })
 
       return new Promise(async (resolve, reject) => {
-        const readable = (await this.mongoFind({ ...options })).stream()
+        const readable = (await this.mongoFind(options)).stream()
 
         readable.on('error', reject)
         readable.on('end', resolve)
@@ -359,7 +359,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
   } = {}) {
     try {
       if (query?.__cached) return super.listSync(query)
-      if (query?.__stats) return this.stats()
+      if (query?.__status) return this.status()
 
       console.log({ query, options })
 
@@ -419,13 +419,14 @@ export class DataSourceMongoDb extends DataSourceMemory {
   //   }
   // }
 
-  async stats () {
+  async status () {
     return {
       total: await this.count(),
       cached: this.getCacheSize(),
       bytes: this.getCacheSizeBytes()
     }
   }
+
   /**
    * @override
    * @returns
