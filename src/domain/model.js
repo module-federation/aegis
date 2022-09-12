@@ -360,15 +360,16 @@ const Model = (() => {
        * Search existing model instances (asynchronously).
        * Searches cache first, then persistent storage if not found.
        *
-       * @param {{key1, keyN}} filter
+       * @param {{filter:RegExp,writable:WritableStream,transform:TransformStream,
+       * serialize:boolean,cache:boolean,sort:'asc'|'dsc',limit:number,aggregate}} options
        * @returns {Model[]}
        */
       async list ({
         filter,
         writable = null,
         transform = null,
-        cache = false,
         serialize = true,
+        cache = false,
         sort,
         limit,
         aggregate
@@ -377,8 +378,8 @@ const Model = (() => {
           filter,
           writable,
           transform,
-          cache,
           serialize,
+          cache,
           sort,
           limit,
           aggregate
@@ -548,7 +549,7 @@ const Model = (() => {
      * @returns {Model} updated model
      *
      */
-    async update(model, changes) {
+    async update (model, changes) {
       return model.update(changes)
     },
 

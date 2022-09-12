@@ -1,85 +1,86 @@
 'use strict'
 
-const DateFunctions = {
-  today: list =>
-    list.filter(m => new Date(m.createTime).getDate() === new Date().getDate())
-      .length,
-  yesterday: list =>
-    list.filter(
-      m => new Date(m.createTime).getDate() === new Date().getDate() - 1
-    ).length,
-  thisMonth: list =>
-    list.filter(
-      m => new Date(m.createTime).getMonth() === new Date().getMonth()
-    ).length,
-  lastMonth: list =>
-    list.filter(
-      m => new Date(m.createTime).getMonth() === new Date().getMonth() - 1
-    ).length
-}
+import { WritableStream } from 'stream/web'
 
-function dates (query, repository) {
-  console.debug(query)
-  if (query?.count) {
-    const dateFunc = DateFunctions[query.count]
+const qpm = require('query-params-mongo')
+const mongodb = require('mongodb')
 
-    if (dateFunc) {
-      const list = repository.listSync()
-      return {
-        count: dateFunc(list)
-      }
-    }
-  }
-}
+const processQuery = qpm({
+  autoDetect: [{ fieldPattern: /_id$/, dataType: 'objectId' }],
+  converters: { objectId: mongodb.ObjectId }
+})
 
-function search (query, repository) {
-  const searchTerms = query.count.split(':')
+// const DateFunctions = {
+//   today: list =>
+//     list.filter(m => new Date(m.createTime).getDate() === new Date().getDate())
+//       .length,
+//   yesterday: list =>
+//     list.filter(
+//       m => new Date(m.createTime).getDate() === new Date().getDate() - 1
+//     ).length,
+//   thisMonth: list =>
+//     list.filter(
+//       m => new Date(m.createTime).getMonth() === new Date().getMonth()
+//     ).length,
+//   lastMonth: list =>
+//     list.filter(
+//       m => new Date(m.createTime).getMonth() === new Date().getMonth() - 1
+//     ).length
+// }
 
-  if (searchTerms.length > 1) {
-    const filter = { [searchTerms[0]]: searchTerms[1] }
-    const filteredList = repository.listSync(filter)
+// function dates (query, repository) {
+//   console.debug(query)
 
-    const result = {
-      ...filter,
-      count: filteredList.length
-    }
-
-    return result
-  }
-}
+//   if (dateFunc) {
+//     const list = repository.listSync()
+//     return {
+//       count: dateFunc(list)
+//     }
+//   }
+// }
 
 /**
  *
- * @param {Writable} writable
- * @param {*} query
- * @param {import("../datasource").default} repository
+ * @param {{
+ *  writable:WritableStream,
+ *  query,
+ *  repository:import("../datasource").default
+ * }}
  * @returns
  */
 async function parseQuery ({ writable, query, repository }) {
-  if (writable)
-    return repository.list({
-      writable,
-      filter: query?.filter,
-      sort: query?.sort,
-      limit: query?.limit,
-      aggregate: query?.aggregate
-    })
+  //if (writable) {
+  const pq = query ? processQuery(query) : {}
+  return repository.list({
+    writable,
+    cached: query ? query.cached : false,
+    filter: query ? pq.filter : null,
+    sort: query ? pq.sort : null,
+    limit: query ? pq.limit : null,
+    offset: query ? pq.offset : null,
+    skip: query ? pq.skip : null
+  })
+  //}
 
-  const dateResult = dates(query, repository)
-  if (dateResult) return dateResult
+  // const searchTerms = query.count.split(':')
 
-  const searchResults = search(query, repository)
-  if (searchResults) return searchResults
+  // const filter =
+  //   searchTerms.length > 0 ? { [searchTerms[0]]: searchTerms[1] } : query
 
-  if (!Number.isNaN(parseInt(query.count))) {
-    return repository.listSync(query)
-  }
+  // if (!Number.isNaN(parseInt(query.count)))
+  //   return {
+  //     filter,
+  //     count: repository.listSync(filter).length
+  //   }
 
-  return {
-    total: await repository.count(),
-    cached: repository.countSync(),
-    bytes: repository.getCacheSizeBytes()
-  }
+  // if (query.count === 'all')
+  //   return {
+  //     total: await repository.count(),
+  //     cached: repository.countSync(),
+  //     bytes: repository.getCacheSizeBytes()
+  //   }
+
+  // return repository.listSync(filter)
 }
 
 /**
@@ -92,6 +93,18 @@ async function parseQuery ({ writable, query, repository }) {
  */
 export default function makeListModels ({ repository }) {
   return async function listModels ({ query, writable }) {
-    return parseQuery({ writable, query, repository })
+    return repository.list({ query, writable })
+
+    // const pq = query ? processQuery(query) : {}
+
+    // return repository.list({
+    //   writable,
+    //   cached: query ? query.cached : false,
+    //   filter: query ? pq.filter : null,
+    //   sort: query ? pq.sort : null,
+    //   limit: query ? pq.limit : null,
+    //   offset: query ? pq.offset : null,
+    //   skip: query ? pq.skip : null
+    // })
   }
 }

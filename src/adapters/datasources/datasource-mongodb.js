@@ -2,9 +2,15 @@
 
 const HIGHWATERMARK = 50
 
-const MongoClient = require('mongodb').MongoClient
-const DataSourceMemory = require('./datasource-memory').DataSourceMemory
+const mongodb = require('mongodb')
+const { MongoClient } = mongodb
+const { DataSourceMemory } = require('./datasource-memory')
 const { Transform, Writable } = require('stream')
+const qpm = require('query-params-mongo')
+const processQuery = qpm({
+  autoDetect: [{ fieldPattern: /_id$/, dataType: 'objectId' }],
+  converters: { objectId: mongodb.ObjectId }
+})
 
 const url = process.env.MONGODB_URL || 'mongodb://localhost:27017'
 const configRoot = require('../../config').hostConfig
@@ -241,12 +247,14 @@ export class DataSourceMongoDb extends DataSourceMemory {
    *
    * @returns
    */
-  async mongoFind ({ filter, sort, limit, aggregate } = {}) {
+  async mongoFind ({ filter, sort, limit, aggregate, skip, offset } = {}) {
     console.log({ filter })
     let cursor = (await this.collection()).find(filter)
     if (sort) cursor = cursor.sort(sort)
-    if (limit) cursor = cursor.limit(parseInt(limit))
+    if (limit) cursor = cursor.limit(limit)
     if (aggregate) cursor = cursor.aggregate(aggregate)
+    if (skip) cursor = cursor.skip(skip)
+    if (offset) cursor = cursor.offset(offset)
     return cursor
   }
 
@@ -261,15 +269,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
    * }} param0
    * @returns
    */
-  streamList ({
-    filter,
-    writable,
-    serialize,
-    transform,
-    sort,
-    limit,
-    aggregate
-  }) {
+  streamList ({ writable, serialize, transform, options }) {
     try {
       let first = true
       const serializer = new Transform({
@@ -300,14 +300,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
       })
 
       return new Promise(async (resolve, reject) => {
-        const readable = (
-          await this.mongoFind({
-            filter,
-            sort,
-            limit,
-            aggregate
-          })
-        ).stream()
+        const readable = (await this.mongoFind({ ...options })).stream()
 
         readable.on('error', reject)
         readable.on('end', resolve)
@@ -323,6 +316,15 @@ export class DataSourceMongoDb extends DataSourceMemory {
         else readable.pipe(writable)
       })
     } catch (error) {}
+  }
+
+  processOptions ({ options, query }) {
+    if (options) {
+      return options
+    }
+    if (query) {
+      return processQuery(query)
+    }
   }
 
   /**
@@ -350,42 +352,82 @@ export class DataSourceMongoDb extends DataSourceMemory {
    */
   async list ({
     writable = null,
-    transform,
+    transform = null,
     serialize = true,
-    cached = false,
-    filter,
-    sort,
-    limit,
-    aggregate
+    options = null,
+    query = null
   } = {}) {
     try {
-      if (cached) return super.listSync(filter)
+      if (query?.__cached) return super.listSync(query)
+      if (query?.__stats) return this.stats()
+
+      console.log({ query, options })
 
       if (writable) {
         return this.streamList({
           writable,
-          transform,
           serialize,
-          filter,
-          sort,
-          limit,
-          aggregate
+          transform,
+          options: this.processOptions({ options, query })
         })
       }
 
-      return (
-        await this.mongoFind({
-          filter,
-          sort,
-          limit,
-          aggregate
-        })
-      ).toArray()
+      return this.count(
+        (
+          await this.mongoFind({
+            ...this.processOptions({ options, query })
+          })
+        ).toArray()
+      )
     } catch (error) {
       console.error({ fn: this.list.name, error })
     }
   }
+  // async list ({
+  //   writable = null,
+  //   transform,
+  //   serialize = true,
+  //   cached = false,
+  //   filter,
+  //   sort,
+  //   limit,
+  //   aggregate
+  // } = {}) {
+  //   try {
+  //     if (cached) return super.listSync(filter)
 
+  //     if (writable) {
+  //       return this.streamList({
+  //         writable,
+  //         transform,
+  //         serialize,
+  //         filter,
+  //         sort,
+  //         limit,
+  //         aggregate
+  //       })
+  //     }
+
+  //     return (
+  //       await this.mongoFind({
+  //         filter,
+  //         sort,
+  //         limit,
+  //         aggregate
+  //       })
+  //     ).toArray()
+  //   } catch (error) {
+  //     console.error({ fn: this.list.name, error })
+  //   }
+  // }
+
+  async stats () {
+    return {
+      total: await this.count(),
+      cached: this.getCacheSize(),
+      bytes: this.getCacheSizeBytes()
+    }
+  }
   /**
    * @override
    * @returns

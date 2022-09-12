@@ -154,18 +154,21 @@ export default class DataSource {
    *    - `writable` writable stream for output
    * @returns {Promise<any[]>}
    */
-  async list ({
-    filter,
-    cached = false,
-    writable = null,
-    transform = null,
-    serialize = true,
-    sort,
-    limit,
-    aggregate
-  } = {}) {
+  async list ({ query = null, writable = null } = {}) {
     return this.listSync(query)
   }
+  // async list ({
+  //   query,
+  //   writable = null,
+  //   filter = {},
+  //   cached = false,
+  //   transform = null,
+  //   serialize = true,
+  //   sort = 'asc',
+  //   limit = 0
+  // } = {}) {
+  //   return this.listSync(query)
+  // }
 
   /**
    *
@@ -194,22 +197,49 @@ export default class DataSource {
    * @param {*} query
    * @returns
    */
-  filterList (query, list) {
+  filterList (query, listOfObjects) {
     if (query) {
-      const count = query['count']
-      if (count && !Number.isNaN(parseInt(count))) {
-        return list.splice(0, count)
+      if (
+        query.__count &&
+        !Number.isNaN(parseInt(query.__count)) &&
+        Object.keys(query).length === 1
+      ) {
+        return listOfObjects.splice(0, query.__count)
       }
 
-      const keys = Object.keys(query)
+      const operands = {
+        and: (arr, cb) => arr.every(cb),
+        or: (arr, cb) => arr.some(cb)
+      }
+
+      let operand = query.__operand
+      if (operand) operand = operand.toLowerCase()
+      if (!operands[operand]) operand = 'and'
+
+      const boolOp = query.__operand === 'not' ? true : false
+
+      const keys = Object.keys(query).filter(
+        key => !['__count', '__cached', '__operand'].includes(key.toLowerCase())
+      )
 
       if (keys.length > 0) {
-        return list.filter(v =>
-          keys.every(k => (v[k] ? new RegExp(query[k]).test(v[k]) : false))
+        const loo = listOfObjects.filter(object =>
+          operands[operand](keys, key =>
+            object[key] ? new RegExp(query[key]).test(object[key]) : boolOp
+          )
         )
+
+        if (query.__count === 'stats')
+          return {
+            list: loo.length,
+            total: this.getCacheSize(),
+            bytes: this.getCacheSizeBytes()
+          }
+
+        return loo
       }
     }
-    return list
+    return listOfObjects
   }
 
   /**
