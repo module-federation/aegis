@@ -11,9 +11,10 @@ export default function getModelsFactory (listModels) {
     try {
       httpRequest.log(getModels.name)
 
-      const writable = httpRequest.res
-      const query = httpRequest.query
-      const models = await listModels({ query, writable })
+      const models = await listModels({
+        query: httpRequest.query,
+        writable: httpRequest.res
+      })
 
       if (!models) {
         httpRequest.stream = true

@@ -365,24 +365,18 @@ const Model = (() => {
        * @returns {Model[]}
        */
       async list ({
-        filter,
         writable = null,
         transform = null,
         serialize = true,
-        cache = false,
-        sort,
-        limit,
-        aggregate
+        options = null,
+        query = null
       }) {
         return datasource.list({
-          filter,
           writable,
           transform,
           serialize,
-          cache,
-          sort,
-          limit,
-          aggregate
+          options,
+          query
         })
       },
 
