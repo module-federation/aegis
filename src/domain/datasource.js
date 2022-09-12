@@ -157,18 +157,6 @@ export default class DataSource {
   async list ({ query = null, writable = null } = {}) {
     return this.listSync(query)
   }
-  // async list ({
-  //   query,
-  //   writable = null,
-  //   filter = {},
-  //   cached = false,
-  //   transform = null,
-  //   serialize = true,
-  //   sort = 'asc',
-  //   limit = 0
-  // } = {}) {
-  //   return this.listSync(query)
-  // }
 
   /**
    *
