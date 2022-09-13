@@ -165,7 +165,7 @@ const ModelFactory = {
         }
       })
     }
-    throw new Error('unregistered model', name)
+    throw new Error('unregistered model', modelName)
   },
 
   /**

@@ -37,9 +37,9 @@ export default function bindAdapters ({
   services,
   portSpec
 } = {}) {
-  if (!portSpec || !adapters || !ports) {
+  if (!portSpec || (!adapters && !ports)) {
     debug && console.debug('missing params')
-    return
+    return {}
   }
 
   const bindings = {

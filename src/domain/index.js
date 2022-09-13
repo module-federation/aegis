@@ -355,6 +355,8 @@ export async function importRemotes (remoteEntries, overrides = {}) {
 let modelCache
 let adapterCache
 let serviceCache
+let portCache
+let workerCache
 
 export async function importRemoteCache (name) {
   try {
@@ -376,6 +378,14 @@ export async function importRemoteCache (name) {
         ...(await importServiceCache(remotesConfig)),
         ...localOverrides
       }
+      portCache = {
+        ...(await importPortCache(remotesConfig)),
+        ...localOverrides
+      }
+      workerCache = {
+        ...(await importWorkerCache(remotesConfig)),
+        ...localOverrides
+      }
     }
 
     if (ModelFactory.getModelSpec(name.toUpperCase())) return
@@ -393,7 +403,14 @@ export async function importRemoteCache (name) {
       console.error('could not find model in cache', name.toUpperCase())
       return
     }
-    register(model, serviceCache, adapterCache, true)
+    register({
+      model,
+      services: serviceCache,
+      adapters: adapterCache,
+      ports: portCache,
+      workers: workerCache,
+      isCached: true
+    })
   } catch (e) {
     console.error(importRemoteCache.name, e)
   }
