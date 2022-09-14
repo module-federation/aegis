@@ -1,7 +1,6 @@
 'use strict'
 
 const domain = require('./domain')
-const services = require('./services')
 const adapters = require('./adapters')
 const {
   EventBrokerFactory,
@@ -10,16 +9,10 @@ const {
   requestContext
 } = domain
 const { badUserRoute, reload } = DomainEvents
-const { StorageService } = services
-const { StorageAdapter } = adapters
 const { pathToRegexp, match } = require('path-to-regexp')
 const { nanoid } = require('nanoid')
 const { EventEmitter } = require('stream')
-const Date = require('core-js/fn/date')
-const { find, save } = StorageAdapter
-const overrides = { find, save, ...StorageService }
 const broker = EventBrokerFactory.getInstance()
-const masterLog = []
 
 const {
   deleteModels,
@@ -170,6 +163,7 @@ async function handle (path, method, req, res) {
   const requestInfo = Object.assign(req, { params: routeInfo.params })
 
   try {
+    // track this request
     requestContext.enterWith(
       new Map([
         ['id', nanoid()],
@@ -178,9 +172,12 @@ async function handle (path, method, req, res) {
         ['res', res]
       ])
     )
+    console.debug(`enter context ${requestContext.getStore().get('id')}`)
 
+    // run controller and fulfill request
     const result = await controller(requestInfo, res)
 
+    // get current request
     const store = requestContext.getStore()
     store.set('end', Date.now())
 
@@ -190,7 +187,9 @@ async function handle (path, method, req, res) {
       result
     })
 
-    requestContext.exit(() => void 0)
+    // stop tracking this request now
+    const msg = `exit context ${store.get('id')}`
+    requestContext.exit(() => console.debug(msg))
 
     return result
   } catch (error) {
@@ -218,7 +217,7 @@ exports.dispose = async function () {
  */
 exports.init = async function (remotes) {
   // stream federated components
-  await importRemotes(remotes, overrides)
+  await importRemotes(remotes)
   const cache = initCache()
   // create endpoints
   makeRoutes()
@@ -231,6 +230,7 @@ exports.init = async function (remotes) {
 EventEmitter.captureRejections = true
 
 process.on('uncaughtException', error => {
+  // if current request avail, end it properly
   const store = requestContext.getStore()
   if (store)
     store

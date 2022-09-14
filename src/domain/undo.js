@@ -67,7 +67,7 @@ export default async function compensate (model) {
           }
         }
         return Promise.resolve(model)
-      }, Promise.resolve(model.update({ compensate: true })))
+      }, model.update({ compensate: true }))
     )
 
     if (undoModel.getPortFlow().length > 0) {
