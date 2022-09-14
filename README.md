@@ -41,15 +41,15 @@ _with_
   - dedicated thread pools supporting CPU-bound workloads
   - shared memory for efficient processing across threads
   - fast streaming using QUIC protocol and async I/0
-  - built-in, extensible, observable, self-forming, high speed service mesh
+  - in-process, self-forming service mesh supporting data federation and other application services.
   - autonomous self-administration (e.g. CA certs provisioned/renewed programmatically)
-  - exhaustive portability: Aegis can run as a server, cluster, or serverless function, in the datacenter, on the edge and beyond (phone, drone, pi, eventually arduino)
+  - exhaustive portability: Aegis can run as a server, cluster, or serverless function, in the datacenter, at the edge, and beyond (browser, phone, drone, pi, eventually arduino)
 - and capabilities that enhance the development experience
-  - comprehensive, rapid deployment (deploy in seconds to any compute primitive: serverless, container, etc)
+  - comprehensive, rapid deployment (deploy in seconds to any compute primitive: serverless, container, IoT, etc)
   - runtime binding and hot reload (e.g. add new functionality on the fly, switch from on-prem to cloud live)
   - zero downtime, zero installation, independent deployment--even for components running in the same process
   - Polyglot, portable, containerless, sandboxed, AoT-compiled modules run safely anywhere, at native speeds
-  - decentralized, scalable, highly composable, "tessellated" hexagonal architecture
+  - decentralized, scalable, "tessellated" hexagonal architecture
 
 ### And do it all without deployment automation
 
