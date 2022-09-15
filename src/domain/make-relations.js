@@ -23,7 +23,9 @@ export const relationType = {
     // call datasource interface to fetch from external storage
     const external = await ds.oneToMany(rel.foreignKey, model.getId())
     // return all
-    return memory.concat(external)
+    return external
+      .map(ext => !memory.find(mem => mem.equals(ext)))
+      .concat(memory)
   },
 
   /**
