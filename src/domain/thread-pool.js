@@ -72,6 +72,7 @@ class Job extends AsyncResource {
     super('Job')
     this.jobName = jobName
     this.jobData = jobData
+    this.options = options
     this.resolve = result => this.runInAsyncScope(resolve, null, result)
     this.reject = error => this.runInAsyncScope(reject, null, error)
   }
@@ -754,30 +755,27 @@ const ThreadPoolFactory = (() => {
 
     await Promise.all(
       pools
-        .filter(poolName => !allModels.includes(poolName))
-        .map(async poolName => await destroy(poolName))
+        .filter(poolName => !allModels.includes(poolName.toUpperCase()))
+        .map(poolName => destroy(threadPools.get(poolName)))
     )
   }
 
-  function destroy (poolName) {
+  function destroy (pool) {
     return new Promise((resolve, reject) => {
-      console.debug('dispose pool', poolName.toUpperCase())
-
-      const pool = threadPools.get(poolName.toUpperCase())
-      if (!pool) reject('no such pool', poolName.toUpperCase())
-
+      console.debug('dispose pool', pool.name)
       return pool
         .close()
         .notify(poolClose)
         .drain()
         .then(pool => pool.stopThreads('destroy'))
-        .then(() => threadPools.delete(poolName))
+        .then(() => threadPools.delete(pool.name))
         .catch(error => reject(error))
+        .then(resolve)
     })
   }
 
-  function destroyPools () {
-    threadPools.forEach(pool => pool.stopThreads('destroy'))
+  async function destroyPools () {
+    await Promise.all(threadPools.map(pool => destroy(pool)))
     threadPools.clear()
   }
 
@@ -856,14 +854,19 @@ const ThreadPoolFactory = (() => {
               pool.totalTransactions() - pool.jobQueueDepth() === workCompleted
             ) {
               const timerId = setTimeout(async () => await abort(pool), 1000)
+              const done = false
 
-              for (const thread of pool.threads) {
-                if (pool.aborting) return
-                thread.run({
-                  name: 'ping',
-                  data: timerId,
-                  resolve: id => clearTimeout(id)
-                })
+              for await (const thread of pool.threads) {
+                if (pool.aborting || done) return
+
+                thread.run(
+                  new Job({
+                    name: 'ping',
+                    data: timerId,
+                    resolve: id => clearTimeout(id) && (done = true),
+                    reject: console.error
+                  })
+                )
               }
             }
           }, pool.jobAbortTtl)
