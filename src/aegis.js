@@ -88,16 +88,15 @@ const router = {
       .forEach(ctrl => {
         if (ports) {
           if (ctrl.ports)
-            Object.values(ctrl.ports).forEach(port => {
+            Object.values(ctrl.ports).forEach(port =>
               routes.set(port.path || path(ctrl.endpoint), {
                 [method]: adapter(ctrl.fn)
               })
-            })
-        } else {
+            )
+        } else
           routes.set(buildPath(ctrl, path), {
             [method]: adapter(ctrl.fn)
           })
-        }
       })
   },
 
@@ -140,7 +139,6 @@ function makeRoutes () {
 /**
  * Invoke the controller for a given
  * {@link path} and {@link method}.
- *
  *
  * @param {string} path
  * @param {'get'|'patch'|'post'|'delete'} method
