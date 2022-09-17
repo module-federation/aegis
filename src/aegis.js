@@ -82,17 +82,22 @@ function buildPath (ctrl, path) {
 }
 
 const router = {
-  autoRoutes (path, method, controllers, adapter) {
+  autoRoutes (path, method, controllers, adapter, ports = false) {
     controllers()
       .filter(ctrl => !ctrl.internal)
       .forEach(ctrl => {
-        if (ctrl.ports)
-          Object.values(ctrl.ports).forEach(port => {
-            if (port.path) routes.set(port.path)
+        if (ports) {
+          if (ctrl.ports)
+            Object.values(ctrl.ports).forEach(port => {
+              routes.set(port.path || path(ctrl.endpoint), {
+                [method]: adapter(ctrl.fn)
+              })
+            })
+        } else {
+          routes.set(buildPath(ctrl, path), {
+            [method]: adapter(ctrl.fn)
           })
-        routes.set(buildPath(ctrl, path), {
-          [method]: adapter(ctrl.fn)
-        })
+        }
       })
   },
 
@@ -119,14 +124,14 @@ function makeRoutes () {
   router.autoRoutes(endpointId, 'patch', patchModels, http)
   router.autoRoutes(endpointId, 'delete', deleteModels, http)
   router.autoRoutes(endpointCmd, 'patch', patchModels, http)
-  router.autoRoutes(endpointPort, 'post', anyInvokePorts, http)
-  router.autoRoutes(endpointPort, 'patch', anyInvokePorts, http)
-  router.autoRoutes(endpointPort, 'delete', anyInvokePorts, http)
-  router.autoRoutes(endpointPort, 'get', anyInvokePorts, http)
-  router.autoRoutes(endpointPortId, 'post', anyInvokePorts, http)
-  router.autoRoutes(endpointPortId, 'patch', anyInvokePorts, http)
-  router.autoRoutes(endpointPortId, 'delete', anyInvokePorts, http)
-  router.autoRoutes(endpointPortId, 'get', anyInvokePorts, http)
+  router.autoRoutes(endpointPort, 'post', anyInvokePorts, http, true)
+  router.autoRoutes(endpointPort, 'patch', anyInvokePorts, http, true)
+  router.autoRoutes(endpointPort, 'delete', anyInvokePorts, http, true)
+  router.autoRoutes(endpointPort, 'get', anyInvokePorts, http, true)
+  router.autoRoutes(endpointPortId, 'post', anyInvokePorts, http, true)
+  router.autoRoutes(endpointPortId, 'patch', anyInvokePorts, http, true)
+  router.autoRoutes(endpointPortId, 'delete', anyInvokePorts, http, true)
+  router.autoRoutes(endpointPortId, 'get', anyInvokePorts, http, true)
   router.adminRoute(getConfig, http)
   router.userRoutes(getRoutes)
   console.log(routes)
