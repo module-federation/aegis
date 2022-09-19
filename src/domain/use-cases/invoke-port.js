@@ -1,6 +1,5 @@
 'use strict'
 
-import { dependencies } from 'webpack'
 import { isMainThread } from 'worker_threads'
 import { AppError } from '../util/app-error'
 
@@ -32,28 +31,19 @@ export default function makeInvokePort ({
    * @returns
    */
   return async function invokePort (input) {
-    async function findModel (id) {
+    async function findModelService (id = null) {
       if (id) return await repository.find(id)
       return models.getService(modelName, repository, broker)
     }
-
-    // function findCallback (port) {
-    //   try {
-    //     return models.getModelSpec(modelName).ports[port].callback
-    //   } catch (error) {: 'no callback' })
-    //     return null
-    //     console.log({ fn: invokePort.name, port, msg
-    //   }
-    // }
 
     if (isMainThread) {
       return threadpool.runJob(invokePort.name, input)
     } else {
       try {
         const { id = null, port } = input
-        const model = await findModel(id)
-        console.log({ model })
-        return await model[port](input)
+        const service = await findModelService(id)
+        console.log({ model: service })
+        return await service[port](input)
       } catch (error) {
         return AppError(error)
       }

@@ -5,12 +5,12 @@
  * @property {string} Symbol_id - immutable/private model instance uuid
  * @property {string} Symbol_modelName - immutable/private model name
  * @property {number} Symbol_createTime - immutable/private time of creation
- * @property {number} Symbol_updateTime - immutable/private time of last update
+ * @property {number} Symbol_updateTime - immutable/private time of last udate
  * @property {function(Model,*,number):Model} Symbol_validate - run validations, see `eventMask`
  * @property {function(Model,*):Model} Symbol_onUpdate - immutable/private update function
  * @property {function(Model)} Symbol_onDelete - immutable/private delete function
  * @property {function(Object, boolean):Promise<Model>} update - {@link Model.update} use this function to update the model -
- * specify changes as properties of an object, specify false to skip validation.
+ * specify changes as properties of an object, specify false to skip valpidation.
  * @property {function()} toJSON - de/serialization logic
  * @property {function(eventName,function(eventName,Model):void)} addListener listen
  * for domain events
@@ -53,13 +53,7 @@ import {
   fromSymbol,
   toSymbol
 } from './mixins'
-import makePorts from './make-ports'
-import makeRelations from './make-relations'
-import compensate from './undo'
-import asyncPipe from './util/async-pipe'
-import compose from './util/compose'
 import pipe from './util/pipe'
-import uuid from './util/uuid'
 
 /**
  *
@@ -159,13 +153,13 @@ const Model = (() => {
 
     return {
       // User mixins
-      ...compose(...mixins)(model),
+      ...dependencies.__compose(...mixins)(model),
 
       // Generate functions to fetch related models
-      ...makeRelations(relations, datasource, broker),
+      ...dependencies.__makeRelations(relations, datasource, broker),
 
       // Generate port functions to handle domain I/O
-      ...makePorts(ports, dependencies, broker),
+      ...dependencies.__makePorts(ports, dependencies, broker),
 
       // Remember port calls
       [PORTFLOW]: [],
@@ -176,8 +170,8 @@ const Model = (() => {
       // if provided, use ID from caller for idempotence
       [ID]:
         modelInfo.args && modelInfo.args[0]
-          ? modelInfo.args[0].requestId || uuid()
-          : uuid(),
+          ? modelInfo.args[0].requestId || dependencies.__uuid()
+          : dependencies.__uuid(),
 
       // Called before update is committed
       [ONUPDATE] (changes) {
@@ -216,7 +210,7 @@ const Model = (() => {
        * Back out all previous port transactions
        */
       async undo () {
-        return compensate(this)
+        return dependencies.__compensate(this)
       },
 
       /**
@@ -517,6 +511,20 @@ const Model = (() => {
     Object.freeze
   )
 
+  /**
+   * Return an object with all the methods for
+   * the specified model, but none of the properties
+   * from its factory function.
+   *
+   * This object functions as the model's service
+   * implementation. Methods that rely on factory-
+   * generated instance properties will not work;
+   * so only static methods, or instance methods
+   * created by the framework, are useable.
+   *
+   * @param {import('.').ModelSpecification} spec
+   * @returns {Model}
+   */
   const makeService = spec => make({ spec })
 
   return {
@@ -540,8 +548,8 @@ const Model = (() => {
     /**
      * Process update request.
      * (Invokes user-provided `onUpdate` and `validate` callback.)
-     * @param {Model} model - model instance to update
-     * @param {Object} changes - Object containing changes
+     * @param {Model} model - model instance  update
+     * @param {Object} changes - Object contatoining changes
      * @returns {Model} updated model
      *
      */

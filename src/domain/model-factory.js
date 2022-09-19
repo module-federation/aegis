@@ -30,6 +30,11 @@ import Event from './event'
  * @property {function():ModelSpecification[]} getRemoteModels
  * @property {function():ModelSpecification[]} getModelSpecs
  * @property {function(Model|string):ModelSpecification} getModelSpec
+ * @property {function(modelName,Datasource,EventBroker)} getService Return an object
+ * with all the methods for the specified model, but none of the properties from its factory
+ * function. This object functions as the model's service implementation. Methods that rely
+ * on factory-generated instance properties will not work; so only static methods, or
+ * instance methods created by the framework, are useable.
  */
 
 /**
@@ -272,9 +277,9 @@ const ModelFactory = {
   getService: (modelName, datasource, broker) =>
     Model.makeService({
       ...modelFactories.get(modelName),
-      broker,
+      modelName,
       datasource,
-      modelName
+      broker
     })
 }
 

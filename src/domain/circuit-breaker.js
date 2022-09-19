@@ -92,8 +92,8 @@ function getThreshold (error, thresholds) {
  * @param {thresholds} thresholds
  * @returns {boolean} has it been breached?
  */
-function thresholdBreached (log, error, thresholds) {
-  console.log({ fn: thresholdBreached.name, error, thresholds })
+function wasThresholdBreached (log, error, thresholds) {
+  console.log({ fn: wasThresholdBreached.name, error, thresholds })
 
   if (log.length < 1) {
     console.log('no log')
@@ -138,7 +138,7 @@ function setStateOnError (log, error, options) {
   const state = getState(log)
   if (
     state === State.HalfOpen ||
-    (state === State.Closed && thresholdBreached(log, error, options))
+    (state === State.Closed && wasThresholdBreached(log, error, options))
   ) {
     return State.Open
   }
@@ -229,8 +229,8 @@ const Switch = function (id, thresholds) {
      * @param {Error} error
      * @returns {boolean}
      */
-    thresholdBreached (error) {
-      return thresholdBreached(log, error, thresholds)
+    wasThresholdBreached (error) {
+      return wasThresholdBreached(log, error, thresholds)
     },
     /**
      * Check if its time to test the circuit, i.e. retry.
@@ -319,7 +319,7 @@ const CircuitBreaker = function (id, protectedCall, thresholds) {
           return await protectedCall.apply(this, args)
         } catch (error) {
           breaker.appendLog(error)
-          if (breaker.thresholdBreached(error)) {
+          if (breaker.wasThresholdBreached(error)) {
             breaker.trip()
             return breaker.fallbackFn.apply(this, error, args)
           }
@@ -341,7 +341,7 @@ const CircuitBreaker = function (id, protectedCall, thresholds) {
       if (breaker.halfOpen()) {
         try {
           const result = await protectedCall.apply(this, args)
-          if (breaker.thresholdBreached('breakerTest')) {
+          if (breaker.wasThresholdBreached('breakerTest')) {
             console.warn('breaker test failed', id)
             breaker.trip()
           } else {

@@ -186,6 +186,11 @@
 
 import ModelFactory from './model-factory'
 import bindAdapters from './bind-adapters'
+import uuid from './util/uuid'
+import makePorts from './make-ports'
+import makeRelations from './make-relations'
+import compensate from './undo'
+import compose from './util/compose'
 
 import {
   importRemoteModels,
@@ -199,7 +204,6 @@ import {
   importWorkerCache,
   importPortCache
 } from './import-remotes'
-import { EventEmitter } from 'stream'
 
 /**
  *
@@ -258,7 +262,12 @@ function register ({
 
   const dependencies = {
     ...model.dependencies,
-    ...bindings
+    ...bindings, // override
+    __uuid: uuid,
+    __compose: compose,
+    __compensate: compensate,
+    __makePorts: makePorts,
+    __makeRelations: makeRelations
   }
 
   ModelFactory.registerModel({
