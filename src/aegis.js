@@ -186,8 +186,8 @@ async function handle (path, method, req, res) {
 
     console.log({
       requestId: store.get('id'),
-      totalDuration: store.get('end') - store.get('begin'),
-      threadDuration: store.get('threadEnd') - store.get('threadStart')
+      threadDuration: store.get('threadDuration'),
+      totalDuration: store.get('end') - store.get('begin')
     })
 
     // stop tracking this request now

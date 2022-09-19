@@ -78,6 +78,17 @@ class Job extends AsyncResource {
     this.reject = error => this.runInAsyncScope(reject, null, error)
   }
 
+  start () {
+    this.startTime = Date.now()
+  }
+
+  stop () {
+    this.stopTime = Date.now()
+    this.duration = this.stopTime - this.startTime
+    requestContext.getStore().set('threadDuration', this.duration)
+    return this.duration
+  }
+
   destructure () {
     return {
       jobName: this.jobName,
@@ -199,8 +210,6 @@ export class ThreadPool extends EventEmitter {
         console.debug('thread exit', { exitCode, threadId: this.id })
       },
 
-      recordDuration (pool) {},
-
       /**
        * Post this job to a worker.
        *
@@ -214,41 +223,43 @@ export class ThreadPool extends EventEmitter {
           channel = MAINCHANNEL
         } = job.destructure()
         let caughtError = false
-        job.start = Date.now() 
-        requestContext
-          .getStore()
-          .set('threadStart', Date.now())
+        job.start()
 
-        this[channel].once('message', result => {
-          const store = requestContext.getStore()
-          if (store) {
-            store.set('threadEnd', Date.now())
-            pool.jobTime(Date.now() - job.start)
-          } else console.log('context lost')
-          // Was this the only job running?
-          if (pool.noJobsRunning()) pool.emit(NOJOBS)
-          // invoke callback to return result
-          if (result.hasError) job.reject(result)
-          else job.resolve(result)
-          // reallocate thread
-          pool.reallocate(this)
-        })
+        this[channel].once(
+          'message',
+          AsyncResource.bind(result => {
+            pool.jobTime(job.stop())
+            // Was this the only job running?
+            if (pool.noJobsRunning()) pool.emit(NOJOBS)
+            // invoke callback to return result
+            if (result.hasError) job.reject(result)
+            else job.resolve(result)
+            // reallocate thread
+            pool.reallocate(this)
+          })
+        )
 
-        this[channel].once('error', error => {
-          console.error({ fn: 'thread.run', error })
-          pool.threads.splice(pool.threads.indexOf(this), 1)
-          pool.emit('unhandledThreadError', error)
-          job.reject(error)
-          caughtError = true
-        })
+        this[channel].once(
+          'error',
+          AsyncResource.bind(error => {
+            console.error({ fn: 'thread.run', error })
+            pool.threads.splice(pool.threads.indexOf(this), 1)
+            pool.emit('unhandledThreadError', error)
+            job.reject(error)
+            caughtError = true
+          })
+        )
 
         // in case no error is emitted
-        this[channel].once('exit', exitCode => {
-          console.warn('thread exited', { thread: this, exitCode })
-          if (caughtError) return
-          pool.threads.splice(pool.threads.indexOf(this), 1)
-          job.reject(exitCode)
-        })
+        this[channel].once(
+          'exit',
+          AsyncResource.bind(exitCode => {
+            console.warn('thread exited', { thread: this, exitCode })
+            if (caughtError) return
+            pool.threads.splice(pool.threads.indexOf(this), 1)
+            job.reject(exitCode)
+          })
+        )
 
         console.debug('run on thread', { channel, transfer, name, data })
         this[channel].postMessage({ name, data }, transfer)
