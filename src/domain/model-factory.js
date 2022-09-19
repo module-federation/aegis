@@ -267,7 +267,15 @@ const ModelFactory = {
    */
   getEventName: createEventName,
 
-  EventTypes
+  EventTypes,
+
+  getService: (modelName, datasource, broker) =>
+    Model.makeService({
+      ...modelFactories.get(modelName),
+      broker,
+      datasource,
+      modelName
+    })
 }
 
 Object.freeze(modelFactories)

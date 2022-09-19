@@ -142,7 +142,7 @@ const Model = (() => {
    */
   function make (modelInfo) {
     const {
-      model,
+      model = {},
       spec: {
         onUpdate = defaultOnUpdate,
         onDelete = defaultOnDelete,
@@ -517,6 +517,8 @@ const Model = (() => {
     Object.freeze
   )
 
+  const makeService = spec => make({ spec })
+
   return {
     /**
      * Create a new model instance
@@ -528,10 +530,10 @@ const Model = (() => {
      */
     create: modelInfo => makeModel(modelInfo),
 
-    /**
+    /**spec
      * Load a saved model
      * @param {Model} savedModel deserialized model
-     * @param {import('.').ModelSpecification} spec
+     * @param {import('.').ModelSpecification}
      */
     load: modelInfo => loadModel(modelInfo),
 
@@ -581,7 +583,9 @@ const Model = (() => {
      * @param {Model} model
      * @returns {string} model's ID
      */
-    getId: model => model[ID]
+    getId: model => model[ID],
+
+    makeService
   }
 })()
 

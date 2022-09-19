@@ -3,6 +3,7 @@
 import { AsyncResource } from 'async_hooks'
 import { isMainThread } from 'worker_threads'
 import domainEvents from '../domain-events'
+import { AppError } from '../util/app-error'
 
 /** @todo abstract away thread library */
 
@@ -46,20 +47,24 @@ export default function makeAddModel ({
 
       return threadpool.runJob(addModel.name, input)
     } else {
-      const model = models.createModel(broker, repository, modelName, input)
-      await repository.save(model.getId(), model)
-      console.debug({ fn: addModel.name, model })
       try {
-        const event = models.createEvent(eventType, modelName, model)
-        broker.notify(eventName, event)
-      } catch (error) {
-        // remove the object if not processed
-        await repository.delete(model.getId())
-        throw error
-      }
+        const model = models.createModel(broker, repository, modelName, input)
+        await repository.save(model.getId(), model)
+        console.debug({ fn: addModel.name, model })
+        try {
+          const event = models.createEvent(eventType, modelName, model)
+          broker.notify(eventName, event)
+        } catch (error) {
+          // remove the object if not processed
+          await repository.delete(model.getId())
+          return AppError(error)
+        }
 
-      // Return the latest changes
-      return repository.find(model.getId())
+        // Return the latest changes
+        return repository.find(model.getId())
+      } catch (error) {
+        return AppError(error)
+      }
     }
   }
 
