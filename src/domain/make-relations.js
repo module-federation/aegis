@@ -24,7 +24,7 @@ export const relationType = {
     const external = await ds.oneToMany(rel.foreignKey, model.getId())
     // return all
     return external
-      .map(ext => !memory.find(mem => mem.equals(ext)))
+      .filter(ext => !memory.find(mem => mem.equals(ext)))
       .concat(memory)
   },
 

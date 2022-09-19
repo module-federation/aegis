@@ -8,6 +8,7 @@ import ModelFactory from '.'
 import { performance as perf } from 'perf_hooks'
 import os from 'os'
 import { AsyncResource } from 'async_hooks'
+import { requestContext } from '.'
 
 const { poolOpen, poolClose, poolDrain, poolAbort } = domainEvents
 const broker = EventBrokerFactory.getInstance()
@@ -198,6 +199,8 @@ export class ThreadPool extends EventEmitter {
         console.debug('thread exit', { exitCode, threadId: this.id })
       },
 
+      recordDuration (pool) {},
+
       /**
        * Post this job to a worker.
        *
@@ -210,11 +213,18 @@ export class ThreadPool extends EventEmitter {
           transfer = [],
           channel = MAINCHANNEL
         } = job.destructure()
-        const startTime = perf.now()
         let caughtError = false
+        job.start = Date.now() 
+        requestContext
+          .getStore()
+          .set('threadStart', Date.now())
 
         this[channel].once('message', result => {
-          pool.jobTime(perf.now() - startTime)
+          const store = requestContext.getStore()
+          if (store) {
+            store.set('threadEnd', Date.now())
+            pool.jobTime(Date.now() - job.start)
+          } else console.log('context lost')
           // Was this the only job running?
           if (pool.noJobsRunning()) pool.emit(NOJOBS)
           // invoke callback to return result
