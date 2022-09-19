@@ -74,8 +74,10 @@ class Job extends AsyncResource {
     this.jobName = jobName
     this.jobData = jobData
     this.options = options
+    this.requestId = requestContext.getStore().get('id')
     this.resolve = result => this.runInAsyncScope(resolve, null, result)
     this.reject = error => this.runInAsyncScope(reject, null, error)
+    console.log('new job, requestId', this.requestId)
   }
 
   start () {
@@ -228,6 +230,7 @@ export class ThreadPool extends EventEmitter {
         this[channel].once(
           'message',
           AsyncResource.bind(result => {
+            console.log('job done, requestId', job.requestId)
             pool.jobTime(job.stop())
             // Was this the only job running?
             if (pool.noJobsRunning()) pool.emit(NOJOBS)

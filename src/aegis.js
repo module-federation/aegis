@@ -12,6 +12,7 @@ const { badUserRoute, reload } = DomainEvents
 const { pathToRegexp, match } = require('path-to-regexp')
 const { nanoid } = require('nanoid')
 const { EventEmitter } = require('stream')
+const { constants } = require('buffer')
 const broker = EventBrokerFactory.getInstance()
 
 const {
@@ -184,11 +185,13 @@ async function handle (path, method, req, res) {
     const store = requestContext.getStore()
     store.set('end', Date.now())
 
-    console.log({
+    const perfMsg = {
       requestId: store.get('id'),
       threadDuration: store.get('threadDuration'),
       totalDuration: store.get('end') - store.get('begin')
-    })
+    }
+    console.log(perfMsg)
+    broker.notify('perf', perfMsg)
 
     // stop tracking this request now
     const msg = `exit context ${store.get('id')}`
