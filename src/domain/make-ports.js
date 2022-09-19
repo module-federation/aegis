@@ -240,7 +240,7 @@ export default function makePorts (ports, adapters, broker) {
             return this.undo()
           }
 
-          throw new Error('port error', port, error)
+          throw error
         }
       }
 
@@ -250,6 +250,7 @@ export default function makePorts (ports, adapters, broker) {
           // check if the port defines breaker thresholds
           const thresholds = portConf.circuitBreaker
 
+          if (!thresholds) return portFn.apply(this, args)
           /**
            * the circuit breaker instance
            * @type {import('./circuit-breaker').breaker}
