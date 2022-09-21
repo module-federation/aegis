@@ -17,8 +17,6 @@ export default function anyInvokePortFactory (invokePort) {
         id: httpRequest.params.id || null
       })
 
-      console.debug({ function: invokePort.name, output: result })
-
       return {
         headers: {
           'Content-Type': 'application/json',
@@ -34,7 +32,7 @@ export default function anyInvokePortFactory (invokePort) {
         headers: {
           'Content-Type': 'application/json'
         },
-        statusCode: 400,
+        statusCode: e.code || 400,
         body: {
           error: e.message
         }

@@ -81,6 +81,30 @@ const Model = (() => {
   }
 
   /**
+   * Convert symbols in `obj` to functions
+   *
+   * @param {*} obj
+   * @returns
+   */
+  function fromSymbols (obj) {
+    return Object.getOwnPropertySymbols(obj)
+      .map(s => ({
+        [obj[s].name
+          .split('[')
+          .join('')
+          .split(']')
+          .join('')]: obj[s]
+      }))
+      .reduce((a, b) => ({ ...a, ...b }))
+  }
+
+  // function fromSymbols (obj) {
+  //   return Object.getOwnPropertySymbols(obj)
+  //     .map(s => ({ [Symbol.keyFor(s).split('.')[1]]: obj[s] }))
+  //     .reduce((a, b) => ({ ...a, ...b }))
+  // }
+
+  /**
    * bitmask for identifying events
    * @enum {number}
    */
@@ -151,15 +175,24 @@ const Model = (() => {
       }
     } = modelInfo
 
+    const {
+      uuid,
+      compose,
+      compensate,
+      makePorts,
+      makeRelations,
+      logger
+    } = fromSymbols(dependencies)
+
     return {
       // User mixins
-      ...dependencies.__compose(...mixins)(model),
+      ...compose(...mixins)(model),
 
       // Generate functions to fetch related models
-      ...dependencies.__makeRelations(relations, datasource, broker),
+      ...makeRelations(relations, datasource, broker),
 
       // Generate port functions to handle domain I/O
-      ...dependencies.__makePorts(ports, dependencies, broker),
+      ...makePorts(ports, dependencies, broker),
 
       // Remember port calls
       [PORTFLOW]: [],
@@ -170,8 +203,8 @@ const Model = (() => {
       // if provided, use ID from caller for idempotence
       [ID]:
         modelInfo.args && modelInfo.args[0]
-          ? modelInfo.args[0].requestId || dependencies.__uuid()
-          : dependencies.__uuid(),
+          ? modelInfo.args[0].requestId || uuid()
+          : uuid(),
 
       // Called before update is committed
       [ONUPDATE] (changes) {
@@ -210,7 +243,7 @@ const Model = (() => {
        * Back out all previous port transactions
        */
       async undo () {
-        return dependencies.__compensate(this)
+        return compensate(this)
       },
 
       /**
@@ -538,7 +571,7 @@ const Model = (() => {
      */
     create: modelInfo => makeModel(modelInfo),
 
-    /**spec
+    /**
      * Load a saved model
      * @param {Model} savedModel deserialized model
      * @param {import('.').ModelSpecification}

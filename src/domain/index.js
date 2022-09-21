@@ -262,12 +262,13 @@ function register ({
 
   const dependencies = {
     ...model.dependencies,
-    ...bindings, // override
-    __uuid: uuid,
-    __compose: compose,
-    __compensate: compensate,
-    __makePorts: makePorts,
-    __makeRelations: makeRelations
+    ...bindings,
+    [Symbol('compensate')]: compensate,
+    [Symbol('compose')]: compose,
+    [Symbol('uuid')]: uuid,
+    [Symbol('makePorts')]: makePorts,
+    [Symbol('makeRelations')]: makeRelations,
+    [Symbol('logger')]: console.log
   }
 
   ModelFactory.registerModel({
@@ -412,6 +413,7 @@ export async function importRemoteCache (name) {
       console.error('could not find model in cache', name.toUpperCase())
       return
     }
+
     register({
       model,
       services: serviceCache,

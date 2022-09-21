@@ -239,6 +239,7 @@ export class ThreadPool extends EventEmitter {
             else job.resolve(result)
             // reallocate thread
             pool.reallocate(this)
+            job.emitDestroy()
           })
         )
 
@@ -249,6 +250,7 @@ export class ThreadPool extends EventEmitter {
             pool.threads.splice(pool.threads.indexOf(this), 1)
             pool.emit('unhandledThreadError', error)
             job.reject(error)
+            job.emitDestroy()
             caughtError = true
           })
         )
@@ -261,10 +263,11 @@ export class ThreadPool extends EventEmitter {
             if (caughtError) return
             pool.threads.splice(pool.threads.indexOf(this), 1)
             job.reject(exitCode)
+            job.emitDestroy()
           })
         )
 
-        console.debug('run on thread', { channel, transfer, name, data })
+        console.debug('run on thread', { id: this.id, channel, name, data })
         this[channel].postMessage({ name, data }, transfer)
       }
     }
