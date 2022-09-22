@@ -1,15 +1,16 @@
 /**
- *
+ * Wrap {@link Error}'s for quick identification as
+ * errors after deserialization crossing thread boundary
  * @param {Error} error
  * @returns
  */
-export function AppError (error, code = null) {
+export function AppError (error, code = 400, cause = null) {
   return {
     name: error.name,
-    message: error.message,
     stack: error.stack,
-    cause: error.cause,
-    code: code, // set http status code
+    code: error.code || code, // set http status code
+    cause: error.cause || cause,
+    message: error.message,
     hasError: true
   }
 }
