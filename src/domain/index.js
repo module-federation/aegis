@@ -186,11 +186,6 @@
 
 import ModelFactory from './model-factory'
 import bindAdapters from './bind-adapters'
-import uuid from './util/uuid'
-import makePorts from './make-ports'
-import makeRelations from './make-relations'
-import compensate from './undo'
-import compose from './util/compose'
 
 import {
   importRemoteModels,
@@ -262,13 +257,7 @@ function register ({
 
   const dependencies = {
     ...model.dependencies,
-    ...bindings,
-    [Symbol('compensate')]: compensate,
-    [Symbol('compose')]: compose,
-    [Symbol('uuid')]: uuid,
-    [Symbol('makePorts')]: makePorts,
-    [Symbol('makeRelations')]: makeRelations,
-    [Symbol('logger')]: console.log
+    ...bindings
   }
 
   ModelFactory.registerModel({

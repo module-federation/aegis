@@ -54,6 +54,12 @@ import {
   toSymbol
 } from './mixins'
 import pipe from './util/pipe'
+import uuid from './util/uuid'
+import makePorts from './make-ports'
+import makeRelations from './make-relations'
+import compensate from './undo'
+import compose from './util/compose'
+import { requestContext } from './util/async-context'
 
 /**
  *
@@ -79,30 +85,6 @@ const Model = (() => {
     validate: VALIDATE,
     portFlow: PORTFLOW
   }
-
-  /**
-   * Convert symbols in `obj` to functions
-   *
-   * @param {*} obj
-   * @returns
-   */
-  function fromSymbols (obj) {
-    return Object.getOwnPropertySymbols(obj)
-      .map(s => ({
-        [obj[s].name
-          .split('[')
-          .join('')
-          .split(']')
-          .join('')]: obj[s]
-      }))
-      .reduce((a, b) => ({ ...a, ...b }))
-  }
-
-  // function fromSymbols (obj) {
-  //   return Object.getOwnPropertySymbols(obj)
-  //     .map(s => ({ [Symbol.keyFor(s).split('.')[1]]: obj[s] }))
-  //     .reduce((a, b) => ({ ...a, ...b }))
-  // }
 
   /**
    * bitmask for identifying events
@@ -175,15 +157,6 @@ const Model = (() => {
       }
     } = modelInfo
 
-    const {
-      uuid,
-      compose,
-      compensate,
-      makePorts,
-      makeRelations,
-      logger
-    } = fromSymbols(dependencies)
-
     return {
       // User mixins
       ...compose(...mixins)(model),
@@ -211,7 +184,7 @@ const Model = (() => {
         return onUpdate(this, changes)
       },
 
-      // Called before delete is committed
+      // Called before edelte is committed
       [ONDELETE] () {
         return onDelete(this)
       },
@@ -487,7 +460,11 @@ const Model = (() => {
       },
 
       equals (model) {
-        model && model.getId && model.getId() === this[ID]
+        return model && model.getId && model.getId() === this[ID]
+      },
+
+      getContext () {
+        return requestContext.getStore()
       }
     }
   }

@@ -160,6 +160,7 @@ const router = {
 
 function makeRoutes () {
   router.autoRoutes(endpoint, 'get', liveUpdate, http)
+  router.autoRoutes(endpoint, 'get', getModels, http)
   router.autoRoutes(endpoint, 'post', postModels, http)
   router.autoRoutes(endpointId, 'get', getModelsById, http)
   router.autoRoutes(endpointId, 'patch', patchModels, http)

@@ -9,6 +9,8 @@ import { performance as perf } from 'perf_hooks'
 import os from 'os'
 import { AsyncResource } from 'async_hooks'
 import { requestContext } from '.'
+import { removeListener } from 'process'
+import compose from './util/compose'
 
 const { poolOpen, poolClose, poolDrain, poolAbort } = domainEvents
 const broker = EventBrokerFactory.getInstance()
@@ -71,12 +73,16 @@ const DEFAULT_TIME_TO_LIVE = 180000
 class Job extends AsyncResource {
   constructor ({ jobName, jobData, resolve, reject, options = {} }) {
     super('Job')
+    const store = requestContext.getStore()
+    this.requestId = store.get('id')
+
     this.jobName = jobName
     this.jobData = jobData
     this.options = options
-    this.requestId = requestContext.getStore().get('id')
+    this.context = [...store].filter(([k]) => !['req', 'res'].includes(k))
     this.resolve = result => this.runInAsyncScope(resolve, null, result)
     this.reject = error => this.runInAsyncScope(reject, null, error)
+
     console.log('new job, requestId', this.requestId)
   }
 
@@ -92,13 +98,18 @@ class Job extends AsyncResource {
   }
 
   destructure () {
+    const ctx = requestContext.getStore()
     return {
       jobName: this.jobName,
-      jobData: this.jobData,
+      jobData: { ...this.jobData, context: this.context },
       resolve: this.resolve,
       reject: this.reject,
       ...this.options
     }
+  }
+
+  dispose () {
+    this.emitDestroy()
   }
 }
 
@@ -147,11 +158,11 @@ export class ThreadPool extends EventEmitter {
     this.closed = false
     this.options = options
     this.reloads = 0
-    this.jobsRequested = this.jobsQueued = 0
     this.totJobTime = 0
     this.startTime = Date.now()
-    this.broadcastChannel = options.bc
     this.aborting = false
+    this.jobsRequested = this.jobsQueued = 0
+    this.broadcastChannel = options.bc
 
     if (options.preload) {
       console.info('preload enabled for', this.name)
@@ -206,10 +217,8 @@ export class ThreadPool extends EventEmitter {
         worker.on(event, callback)
       },
 
-      async stop (reason) {
-        pool.emit('threadTermination', { thread: this, reason })
-        const exitCode = await worker.terminate()
-        console.debug('thread exit', { exitCode, threadId: this.id })
+      async stop () {
+        return worker.terminate()
       },
 
       /**
@@ -224,50 +233,51 @@ export class ThreadPool extends EventEmitter {
           transfer = [],
           channel = MAINCHANNEL
         } = job.destructure()
-        let caughtError = false
-        job.start()
 
-        this[channel].once(
-          'message',
-          AsyncResource.bind(result => {
-            console.log('job done, requestId', job.requestId)
-            pool.jobTime(job.stop())
-            // Was this the only job running?
-            if (pool.noJobsRunning()) pool.emit(NOJOBS)
-            // invoke callback to return result
-            if (result.hasError) job.reject(result)
-            else job.resolve(result)
-            // reallocate thread
-            pool.reallocate(this)
-            job.emitDestroy()
-          })
-        )
+        const unsubscribe = (eventName, callback) =>
+          this[channel].removeListener(eventName, callback)
 
-        this[channel].once(
-          'error',
-          AsyncResource.bind(error => {
-            console.error({ fn: 'thread.run', error })
-            pool.threads.splice(pool.threads.indexOf(this), 1)
-            pool.emit('unhandledThreadError', error)
-            job.reject(error)
-            job.emitDestroy()
-            caughtError = true
-          })
-        )
+        const messageFn = AsyncResource.bind(result => {
+          pool.jobTime(job.stop())
+          unsubscribe('error', errorFn)
+          unsubscribe('exit', exitFn)
+          // Was this the only job running?
+          if (pool.noJobsRunning()) pool.emit(NOJOBS)
+          // invoke callback to return result
+          if (result.hasError) job.reject(result)
+          else job.resolve(result)
+          // reallocate thread
+          pool.reallocate(this)
+          job.dispose()
+        })
+
+        const errorFn = AsyncResource.bind(error => {
+          console.error({ fn: 'thread.run', error })
+          unsubscribe('exit', exitFn)
+          unsubscribe('message', messageFn)
+          pool.threads.splice(pool.threads.indeOf(this), 1)
+          pool.emit('unhandledThreadError', errxor)
+          job.reject(error)
+          job.dispose()
+        })
 
         // in case no error is emitted
-        this[channel].once(
-          'exit',
-          AsyncResource.bind(exitCode => {
-            console.warn('thread exited', { thread: this, exitCode })
-            if (caughtError) return
-            pool.threads.splice(pool.threads.indexOf(this), 1)
-            job.reject(exitCode)
-            job.emitDestroy()
-          })
-        )
+        const exitFn = AsyncResource.bind(exitCode => {
+          console.warn('thread exited', { thread: this, exitCode })
+          unsubscribe('message', messageFn)
+          unsubscribe('error', errorFn)
+          pool.threads.splice(pool.threads.indexOf(this), 1)
+          job.reject(exitCode)
+          job.dispose()
+        })
 
         console.debug('run on thread', { id: this.id, channel, name, data })
+
+        this[channel].once('message', messageFn)
+        this[channel].once('error', errorFn)
+        this[channel].once('exit', exitFn)
+        job.start()
+
         this[channel].postMessage({ name, data }, transfer)
       }
     }
@@ -313,13 +323,15 @@ export class ThreadPool extends EventEmitter {
    * @returns
    */
   async stopThread (thread, reason) {
-    const exitCode = await thread.stop(reason)
-    console.debug('thread exit', { exitCode })
-    return exitCode
+    const exitCode = await thread.stop()
+    const exitStatus = { pool: this.name, id: thread.id, exitCode, reason }
+    this.emit('threadExit', exitStatus)
+    return exitStatus
   }
 
   async stopThreads (reason) {
-    while (this.threads.length > 0) await this.threads.pop().stop(reason)
+    for await (const thread of this.threads)
+      console.warn(this.stopThread(thread, reason))
     this.freeThreads.splice(0, this.freeThreads.length)
     return this
   }
@@ -841,13 +853,17 @@ const ThreadPoolFactory = (() => {
     console.warn('aborting pool', { pool, reason })
     await pool.abort(reason)
 
-    // get waitng jobs going
+    // get jobs going again
     if (pool.waitingJobs.length > 1) {
       try {
         const runJob = pool.waitingJobs.shift()
         const thread = pool.allocate()
         if (thread) runJob(thread)
-        else console.error('no threads after abort', pool)
+        else {
+          pool.waitingJobs.push(runJob)
+          console.error('no threads after abort', pool)
+          pool.emit('noThreadsAfterAbort', pool)
+        }
       } catch (error) {
         console.error({ fn: abort.name, error })
       }
@@ -880,7 +896,7 @@ const ThreadPoolFactory = (() => {
               pool.availThreadCount() < 1 &&
               pool.totalTransactions() - pool.jobQueueDepth() === workCompleted
             ) {
-              const timerId = setTimeout(async () => await abort(pool), 1000)
+              const timerId = setTimeout(abort(pool), 1000)
               const done = false
 
               for await (const thread of pool.threads) {

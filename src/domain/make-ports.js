@@ -165,7 +165,7 @@ async function updatePortFlow (model, port) {
  * of another.
  *
  * See the {@link ModelSpecification} for port configuration options.
- *
+ * @typedef {function(import('./index').ports, object[], import('./event-broker').EventBroker):()=>Promise<import('./model').Model>} makePorts
  * @param {import('./index').ports} ports - object containing domain interfaces
  * @param {object} adapters - dependencies object containing adapters and ports
  * @param {import('./event-broker').EventBroker} broker
