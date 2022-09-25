@@ -12,7 +12,6 @@ const { badUserRoute, reload } = DomainEvents
 const { pathToRegexp, match } = require('path-to-regexp')
 const { nanoid } = require('nanoid')
 const { EventEmitter } = require('stream')
-const { constants } = require('buffer')
 const broker = EventBrokerFactory.getInstance()
 
 const {
@@ -122,41 +121,6 @@ const router = {
     routes.set(adminPath, { get: adapter(controller()) })
   }
 }
-
-// const router = {
-//   autoRoutes (path, method, controllers, adapter, ports = false) {
-//     controllers()
-//       .filter(ctrl => !ctrl.internal)
-//       .forEach(ctrl => {
-//         if (ports) {
-//           if (ctrl.ports)
-//             Object.values(ctrl.ports).forEach(port =>
-//               routes.set(port.path || path(ctrl.endpoint), {
-//                 [method]: adapter(ctrl.fn)
-//               })
-//             )
-//         } else
-//           routes.set(buildPath(ctrl, path), {
-//             [method]: adapter(ctrl.fn)
-//           })
-//       })
-//   },
-
-//   userRoutes (controllers) {
-//     try {
-//       controllers().forEach(ctlr => routes.set(ctlr.path, ctlr))
-//     } catch (error) {
-//       broker.notify(badUserRoute.name, badUserRoute(error))
-//       console.warn(badUserRoute(error))
-//     }
-//   },
-
-//   adminRoute (controller, adapter) {
-//     const adminPath = `${apiRoot}/config`
-//     routes.set(adminPath, { get: adapter(controller()) })
-//   }
-//   router.autoRoutes(endpoint, 'get', getModels, http)
-//}
 
 function makeRoutes () {
   router.autoRoutes(endpoint, 'get', liveUpdate, http)

@@ -73,14 +73,12 @@ class Job extends AsyncResource {
     super('Job')
     const store = requestContext.getStore()
     this.requestId = store.get('id')
-
     this.jobName = jobName
     this.jobData = jobData
     this.options = options
     this.context = [...store].filter(([k]) => !['req', 'res'].includes(k))
     this.resolve = result => this.runInAsyncScope(resolve, null, result)
     this.reject = error => this.runInAsyncScope(reject, null, error)
-
     console.log('new job, requestId', this.requestId)
   }
 
@@ -252,7 +250,7 @@ export class ThreadPool extends EventEmitter {
           console.error({ fn: 'thread.run', error })
           unsubscribe('exit', exitFn)
           unsubscribe('message', messageFn)
-          pool.threads.splice(pool.threads.indeOf(this), 1)
+          pool.threads.splice(pool.threads.indexOf(this), 1)
           pool.emit('unhandledThreadError', error)
           job.reject(error)
           job.dispose()
