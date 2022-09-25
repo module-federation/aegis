@@ -9,8 +9,6 @@ import { performance as perf } from 'perf_hooks'
 import os from 'os'
 import { AsyncResource } from 'async_hooks'
 import { requestContext } from '.'
-import { removeListener } from 'process'
-import compose from './util/compose'
 
 const { poolOpen, poolClose, poolDrain, poolAbort } = domainEvents
 const broker = EventBrokerFactory.getInstance()
@@ -98,7 +96,6 @@ class Job extends AsyncResource {
   }
 
   destructure () {
-    const ctx = requestContext.getStore()
     return {
       jobName: this.jobName,
       jobData: { ...this.jobData, context: this.context },
@@ -256,7 +253,7 @@ export class ThreadPool extends EventEmitter {
           unsubscribe('exit', exitFn)
           unsubscribe('message', messageFn)
           pool.threads.splice(pool.threads.indeOf(this), 1)
-          pool.emit('unhandledThreadError', errxor)
+          pool.emit('unhandledThreadError', error)
           job.reject(error)
           job.dispose()
         })
