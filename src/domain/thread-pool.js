@@ -716,7 +716,7 @@ const ThreadPoolFactory = (() => {
 
     const facade = {
       async runJob (jobName, jobData) {
-        return getPool(poolName, options).runJob(jobName, jobData)
+        return getPool(poolName, options).runJob(jobName, jobData, options)
       },
       status () {
         return getPool(poolName, options).status()

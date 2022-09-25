@@ -34,7 +34,7 @@ export default function removeModelFactory ({
   const eventName = models.getEventName(eventType, modelName)
   handlers.forEach(handler => broker.on(eventName, handler))
 
-  return async function removeModel (id) {
+  return async function removeModel ({ id }) {
     if (isMainThread) {
       const model = await repository.find(id)
 
@@ -42,7 +42,7 @@ export default function removeModelFactory ({
         throw new Error('no such id')
       }
 
-      return threadpool.runJob(removeModel.name, id)
+      return threadpool.runJob(removeModel.name, { id })
     } else {
       try {
         const model = await repository.find(id)

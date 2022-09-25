@@ -117,9 +117,12 @@ export class DataSourceMongoDb extends DataSourceMemory {
         cached === null ||
         cached === undefined ||
         Object.keys(cached).length == 0
-      )
+      ) {
         // cached can be empty object, save after finding in db
-        return super.saveSync(id, await this.findDb(id))
+        const data = await this.findDb(id)
+        super.saveSync(id, data)
+        return data
+      }
       return cached
     } catch (error) {
       console.error({ fn: this.find.name, error })
@@ -172,6 +175,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
         }
         // run while db is down - cache will be ahead
         console.error('db trans failed, sync it later')
+        return data
       }
       return cache
     } catch (e) {
