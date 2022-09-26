@@ -4,8 +4,6 @@ import executeCommand from './execute-command'
 import async from '../util/async-error'
 import domainEvents from '../domain-events'
 import { isMainThread } from 'worker_threads'
-import e from 'express'
-import { AsyncResource } from 'async_hooks'
 import { AppError } from '../util/app-error'
 
 /**

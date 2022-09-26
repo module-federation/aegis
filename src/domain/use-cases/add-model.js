@@ -1,6 +1,5 @@
 'use strict'
 
-import { AsyncResource } from 'async_hooks'
 import { isMainThread } from 'worker_threads'
 import domainEvents from '../domain-events'
 import { AppError } from '../util/app-error'
