@@ -25,7 +25,7 @@ export const relationType = {
     // return all
     if (memory.length > 0)
       return external
-        .filter(ext => !memory.find(mem => mem?.equals && mem.equals(ext)))
+        .filter(ext => !memory.find(mem => mem.equals(ext)))
         .concat(memory)
     return external
   },

@@ -164,12 +164,12 @@ export default class DataSource {
    * @returns
    */
   listSync (query = null) {
-    if (query.__status) return this.status()
+    if (query.__status) return this.count()
     const list = this.generateList()
     return query ? this.filterList(query, list) : list
   }
 
-  status () {
+  count () {
     return {
       cached: this.getCacheSize(),
       bytes: this.getCacheSizeBytes()

@@ -360,7 +360,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
   } = {}) {
     try {
       if (query?.__cached) return super.listSync(query)
-      if (query?.__status) return this.status()
+      if (query?.__count) return this.count()
 
       console.log({ query, options })
 
@@ -383,9 +383,9 @@ export class DataSourceMongoDb extends DataSourceMemory {
     }
   }
 
-  async status () {
+  async count () {
     return {
-      total: await this.count(),
+      total: await this.countDb(),
       cached: this.getCacheSize(),
       bytes: this.getCacheSizeBytes()
     }
@@ -395,7 +395,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
    * @override
    * @returns
    */
-  async count () {
+  async countDb () {
     return await (await this.collection()).countDocuments()
   }
 
