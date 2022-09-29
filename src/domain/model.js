@@ -59,7 +59,7 @@ import makePorts from './make-ports'
 import makeRelations from './make-relations'
 import compensate from './undo'
 import compose from './util/compose'
-import { requestContext } from './util/async-context'
+import * as asyncContext from './util/async-context'
 
 /**
  *
@@ -341,8 +341,18 @@ const Model = (() => {
         return datasource.find(id)
       },
 
-      createWriteStream () {
-        return datasource.createWriteStream()
+      async findRelated (modelName, id) {
+        if (
+          relations &&
+          Object.values(relations).find(
+            v => v.modelName === modelName.toUpperCase()
+          )
+        ) {
+          return datasource
+            .getFactory()
+            .getDataSource(modelName)
+            .find(id)
+        }
       },
 
       /**
@@ -378,6 +388,36 @@ const Model = (() => {
           options,
           query
         })
+      },
+
+      async listRelated ({
+        modelName,
+        writable = null,
+        transform = null,
+        serialize = true,
+        options = null,
+        query = null
+      }) {
+        if (
+          relations &&
+          Object.values(relations).find(
+            v => v.modelName === modelName.toUpperCase()
+          )
+        )
+          return datasource
+            .getFactory()
+            .getDataSource(modelName.toUpperCase())
+            .list({
+              writable,
+              transform,
+              serialize,
+              options,
+              query
+            })
+      },
+
+      createWriteStream () {
+        return datasource.createWriteStream()
       },
 
       /**
@@ -460,11 +500,15 @@ const Model = (() => {
       },
 
       equals (model) {
-        return model && model.getId && model.getId() === this[ID]
+        return (
+          model &&
+          (model.id || model.getId) &&
+          (model.id === this[ID] || model.getId() === this[ID])
+        )
       },
 
-      getContext () {
-        return requestContext.getStore()
+      getContext (name) {
+        return asyncContext[name]
       }
     }
   }

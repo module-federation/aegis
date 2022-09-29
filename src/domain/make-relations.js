@@ -9,6 +9,18 @@ const {
 
 const maxwait = process.env.REMOTE_OBJECT_MAXWAIT || 6000
 
+function hydrateModel (ds, rel) {
+  return function hydrate (model) {
+    if (model.getId) return model
+    return require('.').default.loadModel(
+      model,
+      require('.').EventBrokerFactory.getInstance(),
+      ds,
+      rel.modelName
+    )
+  }
+}
+
 export const relationType = {
   /**
    * Search memory and external storage
@@ -21,7 +33,9 @@ export const relationType = {
     // retrieve from memory
     const memory = ds.listSync({ [rel.foreignKey]: model.getId() })
     // call datasource interface to fetch from external storage
-    const external = await ds.oneToMany(rel.foreignKey, model.getId())
+    const external = await Promise.all(
+      ds.oneToMany(rel.foreignKey, model.getId())
+    )
     // return all
     if (memory.length > 0)
       return external
@@ -57,17 +71,32 @@ export const relationType = {
     return this.manyToOne(model, ds, rel)
   },
 
-  containsMany: async (model, ds, rel) =>
-    await Promise.all(
+  containsMany: (model, ds, rel) =>
+    Promise.all(
       model[rel.arrayKey].map(arrayItem => ds.find(arrayItem[rel.foreignKey]))
     ),
 
-  custom: async (model, ds, rel) => ds[rel.name](model, ds, rel),
-
-  findById: async (model, ds, rel) => ds.find(id)
+  /**
+   * call a custom method in the related datastore
+   * @param {*} model
+   * @param {*} ds
+   * @param {*} rel
+   * @returns
+   */
+  custom: async (model, ds, rel) => ds[rel.name](model, ds, rel)
 }
 
-const referentialIntegrity = {
+/**
+ * If we create a new related object, foreign keys need to reference it
+ */
+const updateForeignKeys = {
+  /**
+   *
+   * @param {import('./model').Model} fromModel
+   * @param {import('./model').Model[]} toModels one or more models depending on the relation
+   * @param {import('./index').relations[x]} relation
+   * @param {import('./model-factory').Datasource} ds
+   */
   [relationType.manyToOne.name] (fromModel, toModels, relation, ds) {
     fromModel.updateSync({ [relation.foreignKey]: toModels[0].getId() }, false)
   },
@@ -86,19 +115,12 @@ const referentialIntegrity = {
     })
   },
 
-  [relationType.containsMany.name] (fromModel, toModels, relation, ds) {}
-}
-
-/**
- * If we create a new object, foreign keys need to reference it
- * @param {import('./model').Model} fromModel
- * @param {import('./model').Model[]} toModels one or more models depending on the relation
- * @param {import('./index').relations[x]} relation
- * @param {import('./model-factory').Datasource} ds
- */
-function updateForeignKeys (fromModel, toModels, relation, ds) {
-  console.debug({ fn: updateForeignKeys.name, toModels })
-  return referentialIntegrity[relation.type](fromModel, toModels, relation, ds)
+  [relationType.containsMany.name] (fromModel, toModels, relation, ds) {
+    // console(relation.arrayKey)
+    // fromModel[relation.arrayKey].concat([
+    //   ...toModels.map(m => m[relation.foreignKey])
+    // ])
+  }
 }
 
 /**
@@ -112,10 +134,9 @@ function updateForeignKeys (fromModel, toModels, relation, ds) {
 async function createNewModels (args, fromModel, relation, ds) {
   if (args.length > 0) {
     const { UseCaseService } = require('.')
-
     const service = UseCaseService(relation.modelName.toUpperCase())
     const newModels = await Promise.all(args.map(arg => service.addModel(arg)))
-    return updateForeignKeys(fromModel, newModels, relation, ds)
+    return updateForeignKeys[relation.type](fromModel, newModels, relation, ds)
   }
 }
 
@@ -181,6 +202,7 @@ export default function makeRelations (relations, datasource, broker) {
       const rel = relations[relation]
       const modelName = rel.modelName.toUpperCase()
       rel.name = relation
+
       try {
         // relation type unknown
         if (!relationType[rel.type]) {
@@ -194,12 +216,9 @@ export default function makeRelations (relations, datasource, broker) {
             // Get or create datasource of related object
             const ds = datasource.getFactory().getDataSource(modelName)
 
-            // args meancreate new local model instances
-            if (args?.length > 0 && isRelatedModelLocal(rel)) {
+            if (args.length > 0 && isRelatedModelLocal(rel))
               // args mean create new instance(s) of related model
-              console.debug({ fn: relation, msg: 'creating new models' })
               return await createNewModels(args, this, rel, ds)
-            }
 
             const models = await relationType[rel.type](this, ds, rel)
 
@@ -214,7 +233,7 @@ export default function makeRelations (relations, datasource, broker) {
 
               // new models: update foreign keys
               if (event?.args?.length > 0)
-                updateForeignKeys(this, event.model, rel, ds)
+                updateForeignKeys[rel.type](this, event.model, rel, ds)
 
               return await relationType[rel.type](this, ds, rel)
             }

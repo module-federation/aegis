@@ -33,7 +33,11 @@ export default function listConfigsFactory ({
           : await Promise.all(
               datasources.listDataSources().map(async k => ({
                 dsname: k,
-                objects: await datasources.getSharedDataSource(k).count()
+                objects: await datasources.getSharedDataSource(k).countDb(),
+                cached: await datasources.getSharedDataSource(k).getCacheSize(),
+                memory: await datasources
+                  .getSharedDataSource(k)
+                  .getCacheSizeBytes()
               }))
             ),
 
