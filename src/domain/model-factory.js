@@ -13,7 +13,7 @@ import Event from './event'
  * @callback loadModel
  * @param {import('./event-broker').EventBroker broker
  * @param {import('./datasource').default datasource
- * @param {import('.').Model
+ * @param {import('.').Model model
  * @param {string} modelName
  * }
  */

@@ -9,16 +9,13 @@ const {
 
 const maxwait = process.env.REMOTE_OBJECT_MAXWAIT || 6000
 
-function hydrateModel (ds, rel) {
-  return function hydrate (model) {
-    if (model.getId) return model
-    return require('.').default.loadModel(
-      model,
-      require('.').EventBrokerFactory.getInstance(),
-      ds,
-      rel.modelName
-    )
-  }
+function hydrateModel (model, ds, rel) {
+  return require('.').default.loadModel(
+    require('.').EventBrokerFactory.getInstance(),
+    ds,
+    model,
+    rel.modelName
+  )
 }
 
 export const relationType = {
@@ -30,17 +27,20 @@ export const relationType = {
    * @returns {Promise<import('./index').datasource[]>}
    */
   oneToMany: async (model, ds, rel) => {
+    const filter = { [rel.foreignKey]: model.getId() }
     // retrieve from memory
-    const memory = ds.listSync({ [rel.foreignKey]: model.getId() })
+    const memory = ds.listSync(filter)
     // call datasource interface to fetch from external storage
-    const external = await Promise.all(
-      ds.oneToMany(rel.foreignKey, model.getId())
+    const external = (await ds.oneToMany(filter)).map(m =>
+      hydrateModel(m, ds, rel)
     )
+
     // return all
     if (memory.length > 0)
       return external
         .filter(ext => !memory.find(mem => mem.equals(ext)))
         .concat(memory)
+
     return external
   },
 
@@ -57,7 +57,7 @@ export const relationType = {
     // return if found
     if (memory) return memory
     // if not, call ds interface to search external storage
-    return ds.manyToOne(model[rel.foreignKey])
+    return hydrateModel(ds.manyToOne(model[rel.foreignKey], ds, rel))
   },
 
   /**
@@ -98,7 +98,10 @@ const updateForeignKeys = {
    * @param {import('./model-factory').Datasource} ds
    */
   [relationType.manyToOne.name] (fromModel, toModels, relation, ds) {
-    fromModel.updateSync({ [relation.foreignKey]: toModels[0].getId() }, false)
+    return fromModel.updateSync(
+      { [relation.foreignKey]: toModels[0].getId() },
+      false
+    )
   },
 
   [relationType.oneToOne.name] (fromModel, toModels, relation, ds) {
@@ -106,7 +109,7 @@ const updateForeignKeys = {
   },
 
   [relationType.oneToMany.name] (fromModel, toModels, relation, ds) {
-    toModels.map(m => {
+    return toModels.map(m => {
       const model = ds.findSync(m.id)
       ds.saveSync({
         ...model,
