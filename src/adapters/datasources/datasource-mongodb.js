@@ -1,5 +1,10 @@
 'use strict'
 
+import ModelFactory from '../../domain'
+import { EventBrokerFactory } from '../../domain'
+
+const broker = EventBrokerFactory.getInstance()
+
 const HIGHWATERMARK = 50
 
 const mongodb = require('mongodb')
@@ -421,7 +426,12 @@ export class DataSourceMongoDb extends DataSourceMemory {
    * @returns
    */
   async manyToOne (pkvalue) {
-    return (await this.collection()).findOne({ id: pkvalue })
+    return ModelFactory.loadModel(
+      broker,
+      this,
+      (await this.collection()).findOne({ id: pkvalue }),
+      this.name
+    )
   }
 
   /**
@@ -431,7 +441,10 @@ export class DataSourceMongoDb extends DataSourceMemory {
    * @returns
    */
   async oneToMany (fkname, pkvalue) {
-    return (await this.collection()).find({ [fkname]: pkvalue }).toArray()
+    return (await this.collection())
+      .find({ [fkname]: pkvalue })
+      .toArray()
+      .map(m => ModelFactory.loadModel(broker, this, m, this.name))
   }
 
   /**
