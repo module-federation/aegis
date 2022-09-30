@@ -59,7 +59,7 @@ import makePorts from './make-ports'
 import makeRelations from './make-relations'
 import compensate from './undo'
 import compose from './util/compose'
-import { requestContext } from './util/async-context'
+import * as asyncContext from './util/async-context'
 
 /**
  *
@@ -341,8 +341,24 @@ const Model = (() => {
         return datasource.find(id)
       },
 
-      createWriteStream () {
-        return datasource.createWriteStream()
+      /**
+       * find related model instance by id
+       * @param {string} modelName related model
+       * @param {string} id uuid of model instance
+       * @returns
+       */
+      async findRelated (modelName, id) {
+        if (
+          relations &&
+          Object.values(relations).find(
+            v => v.modelName === modelName.toUpperCase()
+          )
+        ) {
+          return datasource
+            .getFactory()
+            .getDataSource(modelName.toUpperCase())
+            .find(id)
+        }
       },
 
       /**
@@ -357,27 +373,50 @@ const Model = (() => {
       },
 
       /**
+       * @typedef {{
+       * writable:import('stream').Writable,
+       * transform:import('stream').Transform,
+       * serialize:boolean=true,
+       * options:*,
+       * query:*
+       * }} listOptions
+       */
+
+      /**
        * Search existing model instances (asynchronously).
        * Searches cache first, then persistent storage if not found.
        *
-       * @param {{filter:RegExp,writable:WritableStream,transform:TransformStream,
-       * serialize:boolean,cache:boolean,sort:'asc'|'dsc',limit:number,aggregate}} options
+       * @param {modelName:string} modelName related model to query
+       * @param {listOptions} options
        * @returns {Model[]}
        */
-      async list ({
-        writable = null,
-        transform = null,
-        serialize = true,
-        options = null,
-        query = null
-      }) {
-        return datasource.list({
-          writable,
-          transform,
-          serialize,
-          options,
-          query
-        })
+      async list (options) {
+        return datasource.list(options)
+      },
+
+      /**
+       * Search related models.
+       *
+       * @param {modelName:string} modelName related model to query
+       * @param {listOptions} options list options (streaming, filter, etc)
+       * @returns {Promise<Model>}
+       */
+      async listRelated (modelName, options) {
+        if (
+          relations &&
+          Object.values(relations).find(
+            v => v.modelName === modelName.toUpperCase()
+          )
+        ) {
+          return datasource
+            .getFactory()
+            .getDataSource(modelName.toUpperCase())
+            .list(options)
+        }
+      },
+
+      createWriteStream () {
+        return datasource.createWriteStream()
       },
 
       /**
@@ -460,11 +499,15 @@ const Model = (() => {
       },
 
       equals (model) {
-        return model && model.getId && model.getId() === this[ID]
+        return (
+          model &&
+          (model.id || model.getId) &&
+          (model.id === this[ID] || model.getId() === this[ID])
+        )
       },
 
-      getContext () {
-        return requestContext.getStore()
+      getContext (name) {
+        return asyncContext[name]
       }
     }
   }

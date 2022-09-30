@@ -25,24 +25,24 @@ export default function makeInvokePort ({
   models,
   authorize = async x => await x()
 } = {}) {
+  async function findModelService (id = null) {
+    if (id) {
+      return repository.find(id)
+    }
+    return models.getService(modelName, repository, broker)
+  }
   /**
    *
    * @param {{id:string,model:import('..').Model,args:string[],port:string}} input
    * @returns
    */
   return async function invokePort (input) {
-    async function findModelService (id = null) {
-      if (id) return await repository.find(id)
-      return models.getService(modelName, repository, broker)
-    }
-
     if (isMainThread) {
       return threadpool.runJob(invokePort.name, input)
     } else {
       try {
         const { id = null, port } = input
         const service = await findModelService(id)
-        console.log({ model: service })
         return await service[port](input)
       } catch (error) {
         return AppError(error)

@@ -12,6 +12,7 @@ const { badUserRoute, reload } = DomainEvents
 const { pathToRegexp, match } = require('path-to-regexp')
 const { nanoid } = require('nanoid')
 const { EventEmitter } = require('stream')
+const { isMainThread, parentPort } = require('worker_threads')
 const broker = EventBrokerFactory.getInstance()
 
 const {
@@ -94,7 +95,6 @@ const router = {
         if (ports) {
           if (ctrl.ports)
             Object.values(ctrl.ports).forEach(port => {
-              console.log({ endpoint: ctrl.endpoint, ports: ctrl.ports })
               if (checkAllowedMethods(ctrl, method))
                 routes.set(port.path || path(ctrl.endpoint), {
                   [method]: adapter(ctrl.fn)
@@ -242,13 +242,12 @@ exports.init = async function (remotes) {
 EventEmitter.captureRejections = true
 
 process.on('uncaughtException', error => {
-  // if current request avail, end it properly
+  // if request avail, end it properly
   const store = requestContext.getStore()
-  if (store)
-    store
-      .get('res')
-      .status(500)
-      .send(error)
+  if (store) {
+    const res = store.get('res')
+    if (res && !res.headersSent) res.status(500).send(error)
+  }
   console.error('uncaughtException', error)
   broker.notify('uncaughtException', error)
 })

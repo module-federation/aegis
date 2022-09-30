@@ -221,8 +221,10 @@ export default function makePorts (ports, adapters, broker) {
 
           // Remember what ports we called in case of restart or undo
           const model = rememberPort
-            ? await updatePortFlow.call(result, port)
+            ? await updatePortFlow.call(this, result, port)
             : this
+
+          console.log({ port, model })
 
           // Signal the next port to run.
           if (rememberPort) {

@@ -9,6 +9,15 @@ const {
 
 const maxwait = process.env.REMOTE_OBJECT_MAXWAIT || 6000
 
+function hydrateModel (model, ds, rel) {
+  return require('.').default.loadModel(
+    require('.').EventBrokerFactory.getInstance(),
+    ds,
+    model,
+    rel.modelName
+  )
+}
+
 export const relationType = {
   /**
    * Search memory and external storage
@@ -18,15 +27,19 @@ export const relationType = {
    * @returns {Promise<import('./index').datasource[]>}
    */
   oneToMany: async (model, ds, rel) => {
+    const filter = { [rel.foreignKey]: model.getId() }
     // retrieve from memory
-    const memory = ds.listSync({ [rel.foreignKey]: model.getId() })
+    const memory = ds.listSync(filter)
     // call datasource interface to fetch from external storage
-    const external = await ds.oneToMany(rel.foreignKey, model.getId())
+    const many = await ds.oneToMany(filter)
+    const external = many.map(m => hydrateModel(m, ds, rel))
+
     // return all
     if (memory.length > 0)
       return external
-        .filter(ext => !memory.find(mem => mem?.equals && mem.equals(ext)))
+        .filter(ext => !memory.find(mem => mem.equals(ext)))
         .concat(memory)
+
     return external
   },
 
@@ -43,7 +56,8 @@ export const relationType = {
     // return if found
     if (memory) return memory
     // if not, call ds interface to search external storage
-    return ds.manyToOne(model[rel.foreignKey])
+    const one = await ds.manyToOne({ id: model[rel.foreignKey] })
+    return hydrateModel(one, ds, rel)
   },
 
   /**
@@ -57,19 +71,30 @@ export const relationType = {
     return this.manyToOne(model, ds, rel)
   },
 
-  containsMany: async (model, ds, rel) =>
-    await Promise.all(
+  containsMany: (model, ds, rel) =>
+    Promise.all(
       model[rel.arrayKey].map(arrayItem => ds.find(arrayItem[rel.foreignKey]))
     ),
 
-  custom: async (model, ds, rel) => ds[rel.name](model, ds, rel),
-
-  findById: async (model, ds, rel) => ds.find(id)
+  custom: x => x
 }
 
-const referentialIntegrity = {
+/**
+ * If we create a new related object, foreign keys need to reference it
+ */
+const updateForeignKeys = {
+  /**
+   *
+   * @param {import('./model').Model} fromModel
+   * @param {import('./model').Model[]} toModels one or more models depending on the relation
+   * @param {import('./index').relations[x]} relation
+   * @param {import('./model-factory').Datasource} ds
+   */
   [relationType.manyToOne.name] (fromModel, toModels, relation, ds) {
-    fromModel.updateSync({ [relation.foreignKey]: toModels[0].getId() }, false)
+    return fromModel.updateSync(
+      { [relation.foreignKey]: toModels[0].getId() },
+      false
+    )
   },
 
   [relationType.oneToOne.name] (fromModel, toModels, relation, ds) {
@@ -77,7 +102,7 @@ const referentialIntegrity = {
   },
 
   [relationType.oneToMany.name] (fromModel, toModels, relation, ds) {
-    toModels.map(m => {
+    return toModels.map(m => {
       const model = ds.findSync(m.id)
       ds.saveSync({
         ...model,
@@ -86,19 +111,12 @@ const referentialIntegrity = {
     })
   },
 
-  [relationType.containsMany.name] (fromModel, toModels, relation, ds) {}
-}
-
-/**
- * If we create a new object, foreign keys need to reference it
- * @param {import('./model').Model} fromModel
- * @param {import('./model').Model[]} toModels one or more models depending on the relation
- * @param {import('./index').relations[x]} relation
- * @param {import('./model-factory').Datasource} ds
- */
-function updateForeignKeys (fromModel, toModels, relation, ds) {
-  console.debug({ fn: updateForeignKeys.name, toModels })
-  return referentialIntegrity[relation.type](fromModel, toModels, relation, ds)
+  [relationType.containsMany.name] (fromModel, toModels, relation, ds) {
+    // console(relation.arrayKey)
+    // fromModel[relation.arrayKey].concat([
+    //   ...toModels.map(m => m[relation.foreignKey])
+    // ])
+  }
 }
 
 /**
@@ -112,10 +130,9 @@ function updateForeignKeys (fromModel, toModels, relation, ds) {
 async function createNewModels (args, fromModel, relation, ds) {
   if (args.length > 0) {
     const { UseCaseService } = require('.')
-
     const service = UseCaseService(relation.modelName.toUpperCase())
     const newModels = await Promise.all(args.map(arg => service.addModel(arg)))
-    return updateForeignKeys(fromModel, newModels, relation, ds)
+    return updateForeignKeys[relation.type](fromModel, newModels, relation, ds)
   }
 }
 
@@ -169,6 +186,21 @@ function isRelatedModelLocal (relation) {
 }
 
 /**
+ * restrict the scope of available functions
+ *
+ * @param {*} ds
+ * @returns
+ */
+function limitDs (ds) {
+  return {
+    find: ds.find,
+    list: ds.list,
+    save: ds.save,
+    delete: ds.delete
+  }
+}
+
+/**
  * Generate functions to retrieve related domain objects.
  * @param {import("./index").relations} relations
  * @param {import("./datasource").default} datasource
@@ -181,6 +213,7 @@ export default function makeRelations (relations, datasource, broker) {
       const rel = relations[relation]
       const modelName = rel.modelName.toUpperCase()
       rel.name = relation
+
       try {
         // relation type unknown
         if (!relationType[rel.type]) {
@@ -194,12 +227,20 @@ export default function makeRelations (relations, datasource, broker) {
             // Get or create datasource of related object
             const ds = datasource.getFactory().getDataSource(modelName)
 
-            // args meancreate new local model instances
-            if (args?.length > 0 && isRelatedModelLocal(rel)) {
-              // args mean create new instance(s) of related model
-              console.debug({ fn: relation, msg: 'creating new models' })
-              return await createNewModels(args, this, rel, ds)
+            if (rel.type === 'custom') {
+              const restrictedDs = limitDs(datasource)
+              return datasource[relation].apply(restrictedDs, {
+                modelName,
+                model: this,
+                ds: limitDs(ds),
+                relation,
+                args
+              })
             }
+
+            if (args.length > 0 && isRelatedModelLocal(rel))
+              // args mean create new instance(s) of related model
+              return await createNewModels(args, this, rel, ds)
 
             const models = await relationType[rel.type](this, ds, rel)
 
@@ -214,7 +255,7 @@ export default function makeRelations (relations, datasource, broker) {
 
               // new models: update foreign keys
               if (event?.args?.length > 0)
-                updateForeignKeys(this, event.model, rel, ds)
+                updateForeignKeys[rel.type](this, event.model, rel, ds)
 
               return await relationType[rel.type](this, ds, rel)
             }

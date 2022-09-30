@@ -65,7 +65,7 @@
  * @typedef {{
  *  [x: string]: {
  *    modelName:string,
- *    type:"oneToMany"|"manyToOne"|"oneToOne"|"oneToAny"|"containsMany",
+ *    type:"oneToMany"|"manyToOne"|"oneToOne"|"containsMany"|"custom"
  *    foreignKey:any,
  *    key?:any
  *  }

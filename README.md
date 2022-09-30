@@ -9,7 +9,7 @@ See the [aegis-host](https://github.com/module-federation/aegis-host) repo for d
 <div align="left">
     <a href="https://blog.federated-microservices.com" target="_blank">
         <img src="https://user-images.githubusercontent.com/38910830/142773640-5a4d710d-a428-4bfc-9f56-03e90255eb1b.gif" alt="GitHub Video"
-        border="10" width="460" height="250"/>
+        border="10"width="460"height="250"/>
     </a>
 </div>
 
