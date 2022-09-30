@@ -31,9 +31,8 @@ export const relationType = {
     // retrieve from memory
     const memory = ds.listSync(filter)
     // call datasource interface to fetch from external storage
-    const external = (await ds.oneToMany(filter)).map(m =>
-      hydrateModel(m, ds, rel)
-    )
+    const many = await ds.oneToMany(filter)
+    const external = many.map(m => hydrateModel(m, ds, rel))
 
     // return all
     if (memory.length > 0)
@@ -57,7 +56,8 @@ export const relationType = {
     // return if found
     if (memory) return memory
     // if not, call ds interface to search external storage
-    return hydrateModel(ds.manyToOne(model[rel.foreignKey], ds, rel))
+    const one = await ds.manyToOne({ id: model[rel.foreignKey] })
+    return hydrateModel(one, ds, rel)
   },
 
   /**
@@ -76,14 +76,7 @@ export const relationType = {
       model[rel.arrayKey].map(arrayItem => ds.find(arrayItem[rel.foreignKey]))
     ),
 
-  /**
-   * call a custom method in the related datastore
-   * @param {*} model
-   * @param {*} ds
-   * @param {*} rel
-   * @returns
-   */
-  custom: async (model, ds, rel) => ds[rel.name](model, ds, rel)
+  custom: x => x
 }
 
 /**
@@ -193,6 +186,21 @@ function isRelatedModelLocal (relation) {
 }
 
 /**
+ * restrict the scope of available functions
+ *
+ * @param {*} ds
+ * @returns
+ */
+function limitDs (ds) {
+  return {
+    find: ds.find,
+    list: ds.list,
+    save: ds.save,
+    delete: ds.delete
+  }
+}
+
+/**
  * Generate functions to retrieve related domain objects.
  * @param {import("./index").relations} relations
  * @param {import("./datasource").default} datasource
@@ -218,6 +226,17 @@ export default function makeRelations (relations, datasource, broker) {
           async [relation] (...args) {
             // Get or create datasource of related object
             const ds = datasource.getFactory().getDataSource(modelName)
+
+            if (rel.type === 'custom') {
+              const restrictedDs = limitDs(datasource)
+              return datasource[relation].apply(restrictedDs, {
+                modelName,
+                model: this,
+                ds: limitDs(ds),
+                relation,
+                args
+              })
+            }
 
             if (args.length > 0 && isRelatedModelLocal(rel))
               // args mean create new instance(s) of related model

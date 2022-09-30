@@ -425,8 +425,8 @@ export class DataSourceMongoDb extends DataSourceMemory {
    * @param {*} pkvalue primary key value
    * @returns
    */
-  async manyToOne (pkvalue) {
-    return (await this.collection()).findOne({ id: pkvalue })
+  async manyToOne (filter) {
+    return (await this.collection()).findOne(filter)
   }
 
   /**
@@ -436,6 +436,10 @@ export class DataSourceMongoDb extends DataSourceMemory {
    * @returns
    */
   async oneToMany (filter) {
+    return (await this.collection()).find(filter).toArray()
+  }
+
+  async containsMany (filter) {
     return (await this.collection()).find(filter).toArray()
   }
 
