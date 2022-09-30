@@ -259,9 +259,9 @@ export class DataSourceMongoDb extends DataSourceMemory {
     console.log('Aegis MongoDataAdapter: filter',{ filter })
     let cursor = (await this.collection()).find(filter)
     if (sort) cursor = cursor.sort(sort)
-    if (limit) cursor = cursor.limit(limit)
     if (aggregate) cursor = cursor.aggregate(aggregate)
     if (skip) cursor = cursor.skip(skip)
+    if (limit) cursor = cursor.limit(limit)
     return cursor
   }
 
