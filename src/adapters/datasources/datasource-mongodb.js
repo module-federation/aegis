@@ -366,23 +366,19 @@ export class DataSourceMongoDb extends DataSourceMemory {
     try {
       if (query?.__cached) return super.listSync(query)
       if (query?.__count) return this.count()
-
-      console.log({ query, options })
+      const processedOptions = this.processOptions({ options, query })
+      console.log({ processedOptions })
 
       if (writable) {
         return this.streamList({
           writable,
           serialize,
           transform,
-          options: this.processOptions({ options, query })
+          options: processedOptions
         })
       }
 
-      return (
-        await this.mongoFind({
-          ...this.processOptions({ options, query })
-        })
-      ).toArray()
+      return (await this.mongoFind({ ...processedOptions })).toArray()
     } catch (error) {
       console.error({ fn: this.list.name, error })
     }

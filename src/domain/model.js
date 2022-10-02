@@ -405,14 +405,13 @@ const Model = (() => {
         if (
           relations &&
           Object.values(relations).find(
-            v => v.modelName === modelName.toUpperCase()
+            v => v.modelName.toUpperCase() === modelName.toUpperCase()
           )
-        ) {
+        )
           return datasource
             .getFactory()
             .getDataSource(modelName.toUpperCase())
             .list(options)
-        }
       },
 
       createWriteStream () {

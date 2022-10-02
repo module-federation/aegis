@@ -26,9 +26,7 @@ export default function makeInvokePort ({
   authorize = async x => await x()
 } = {}) {
   async function findModelService (id = null) {
-    if (id) {
-      return repository.find(id)
-    }
+    if (id) return repository.find(id)
     return models.getService(modelName, repository, broker)
   }
   /**
