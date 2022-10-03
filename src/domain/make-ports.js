@@ -224,8 +224,6 @@ export default function makePorts (ports, adapters, broker) {
             ? (await updatePortFlow.call(this, result, port)) || this
             : this
 
-          console.log({ port, model })
-
           // Signal the next port to run.
           if (rememberPort) {
             model.emit(portConf.producesEvent, portName)
