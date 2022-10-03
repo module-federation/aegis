@@ -8,11 +8,11 @@
   "license": "Apache-2.0",
   "scripts": {
     "start": "./start.sh",
-    "webswitch": "cd ../aegis-host ; export SWITCH=true ; export PORT=8888 ; yarn start",
-    "format": "yarn pretty -- --write",
     "build": "npm run build:esm && npm run build:cjs",
+    "webswitch": "cd ../aegis-host ; export SWITCH=true ; export PORT=8888 ; yarn start",
     "build:esm": "babel --delete-dir-on-start -d esm/ src/ && cp src/index.js esm",
     "build:cjs": "babel --delete-dir-on-start --env-name cjs -d lib/ src/ && cp src/index.js lib",
+    "format": "yarn pretty -- --write",
     "prepublish": "yarn build",
     "stats": "git ls-files | xargs wc -l",
     "test": "jest"

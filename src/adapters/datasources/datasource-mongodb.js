@@ -378,7 +378,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
         })
       }
 
-      return (await this.mongoFind({ ...processedOptions })).toArray()
+      return (await this.mongoFind(processedOptions)).toArray()
     } catch (error) {
       console.error({ fn: this.list.name, error })
     }
@@ -435,6 +435,11 @@ export class DataSourceMongoDb extends DataSourceMemory {
     return (await this.collection()).find(filter).toArray()
   }
 
+  /**
+   * 
+   * @param {*} filter 
+   * @returns 
+   */
   async containsMany (filter) {
     return (await this.collection()).find(filter).toArray()
   }

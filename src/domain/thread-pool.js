@@ -71,12 +71,10 @@ const DEFAULT_TIME_TO_LIVE = 180000
 class Job extends AsyncResource {
   constructor ({ jobName, jobData, resolve, reject, options = {} }) {
     super('Job')
-    const store = requestContext.getStore()
-    this.requestId = store.get('id')
+    this.requestId = requestContext.getStore().get('id')
     this.jobName = jobName
     this.jobData = jobData
     this.options = options
-    this.context = [...store].filter(([k]) => !['req', 'res'].includes(k))
     this.resolve = result => this.runInAsyncScope(resolve, null, result)
     this.reject = error => this.runInAsyncScope(reject, null, error)
     console.log('new job, requestId', this.requestId)
@@ -247,6 +245,7 @@ export class ThreadPool extends EventEmitter {
         })
 
         const errorFn = AsyncResource.bind(error => {
+          pool.jobTime(job.stop())
           console.error({ fn: 'thread.run', error })
           unsubscribe('exit', exitFn)
           unsubscribe('message', messageFn)
@@ -258,6 +257,7 @@ export class ThreadPool extends EventEmitter {
 
         // in case no error is emitted
         const exitFn = AsyncResource.bind(exitCode => {
+          pool.jobTime(job.stop())
           console.warn('thread exited', { thread: this, exitCode })
           unsubscribe('message', messageFn)
           unsubscribe('error', errorFn)
@@ -526,8 +526,8 @@ export class ThreadPool extends EventEmitter {
       }
     }
     return (
-      Object.values(conditions).some(satisfied => satisfied()) &&
-      pool.capacityAvailable()
+      pool.capacityAvailable() &&
+      Object.values(conditions).some(satisfied => satisfied())
     )
   }
 
@@ -803,7 +803,7 @@ const ThreadPoolFactory = (() => {
         .drain()
         .then(pool => pool.stopThreads('destroy'))
         .then(() => threadPools.delete(pool.name))
-        .catch(error => reject(error))
+        .catch(reject)
         .then(resolve)
     })
   }

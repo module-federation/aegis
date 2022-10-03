@@ -42,6 +42,16 @@
  */
 
 /**
+ * @typedef {{
+ * writable:import('stream').Writable,
+ * transform:import('stream').Transform,
+ * serialize:boolean=true,
+ * options:*,
+ * query:*
+ * }} listOptions
+ */
+
+/**
  * @typedef {import(".").Event} Event
  */
 
@@ -342,26 +352,6 @@ const Model = (() => {
       },
 
       /**
-       * find related model instance by id
-       * @param {string} modelName related model
-       * @param {string} id uuid of model instance
-       * @returns
-       */
-      async findRelated (modelName, id) {
-        if (
-          relations &&
-          Object.values(relations).find(
-            v => v.modelName === modelName.toUpperCase()
-          )
-        ) {
-          return datasource
-            .getFactory()
-            .getDataSource(modelName.toUpperCase())
-            .find(id)
-        }
-      },
-
-      /**
        * Search existing model instances (synchronously).
        * Only searches the cache. Does not search persistent storage.
        *
@@ -373,16 +363,6 @@ const Model = (() => {
       },
 
       /**
-       * @typedef {{
-       * writable:import('stream').Writable,
-       * transform:import('stream').Transform,
-       * serialize:boolean=true,
-       * options:*,
-       * query:*
-       * }} listOptions
-       */
-
-      /**
        * Search existing model instances (asynchronously).
        * Searches cache first, then persistent storage if not found.
        *
@@ -392,26 +372,6 @@ const Model = (() => {
        */
       async list (options) {
         return datasource.list(options)
-      },
-
-      /**
-       * Search related models.
-       *
-       * @param {modelName:string} modelName related model to query
-       * @param {listOptions} options list options (streaming, filter, etc)
-       * @returns {Promise<Model>}
-       */
-      async listRelated (modelName, options) {
-        if (
-          relations &&
-          Object.values(relations).find(
-            v => v.modelName.toUpperCase() === modelName.toUpperCase()
-          )
-        )
-          return datasource
-            .getFactory()
-            .getDataSource(modelName.toUpperCase())
-            .list(options)
       },
 
       createWriteStream () {
@@ -507,6 +467,22 @@ const Model = (() => {
 
       getContext (name) {
         return asyncContext[name]
+      },
+
+      fetchRelatedModel (modelName) {
+        const rel = Object.values(relations).find(
+          v => v.modelName.toUpperCase() === modelName.toUpperCase()
+        )
+
+        if (!rel) throw new Error('no relation found')
+
+        const ds = datasource
+          .getFactory()
+          .getDataSource(modelName.toUpperCase())
+
+        if (!ds) throw new Error('no datasoure found')
+
+        return require('.').default.getService(modelName, ds, broker)
       }
     }
   }
