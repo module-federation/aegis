@@ -19,6 +19,7 @@ import makeHotReload from './hot-reload'
 import brokerEvents from './broker-events'
 import DistributedCache from '../distributed-cache'
 import makeServiceMesh from './create-service-mesh.js'
+import { PortEventRouter } from '../event-router'
 import { isMainThread } from 'worker_threads'
 import { hostConfig } from '../../config'
 
@@ -34,6 +35,7 @@ export function registerEvents () {
     datasources: DataSourceFactory,
     models: ModelFactory,
     threadpools: ThreadPoolFactory,
+    PortEventRouter,
     DistributedCache,
     createServiceMesh: makeOne(serviceMeshPlugin, makeServiceMesh, {
       internal: true

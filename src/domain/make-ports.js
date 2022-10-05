@@ -226,6 +226,7 @@ export default function makePorts (ports, adapters, broker) {
 
           // Signal the next port to run.
           if (rememberPort) {
+            console.log({ producerEvent: portConf.producesEvent })
             model.emit(portConf.producesEvent, portName)
           }
 
