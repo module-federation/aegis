@@ -175,7 +175,7 @@ const Model = (() => {
       ...makeRelations(relations, datasource, broker),
 
       // Generate port functions to handle domain I/O
-      ...makePorts(ports, dependencies, broker),
+      ...makePorts(ports, dependencies, broker, datasource),
 
       // Remember port calls
       [PORTFLOW]: [],

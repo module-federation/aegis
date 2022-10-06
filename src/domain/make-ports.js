@@ -100,6 +100,13 @@ async function isUndoRunning (model) {
   return latest.compensate
 }
 
+function hydrate (broker, datasource, eventInfo) {
+  const model = eventInfo.model
+  const modelName = eventInfo.model.modelName
+  if (!modelName) return eventInfo.model
+  return require('.').default.loadModel(broker, datasource, model, modelName)
+}
+
 /**
  * Register an event handler to invoke this `port`.
  * @param {string} portName
@@ -109,22 +116,24 @@ async function isUndoRunning (model) {
  * @returns {boolean} whether or not to remember this port
  * for compensation and restart
  */
-function addPortListener (portName, portConf, broker, disabled) {
-  if (disabled) return false
-
+function addPortListener (portName, portConf, broker, datasource) {
   if (portConf.consumesEvent) {
     const callback = getPortCallback(portConf.callback)
 
     // listen for triggering event
     broker.on(
       portConf.consumesEvent,
-      async function ({ eventName, model }) {
+      async function (eventInfo) {
+        const model = hydrate(broker, datasource, eventInfo)
         // Don't call any more ports if undoing.
-        if (await isUndoRunning(model)) {
-          console.warn('undo running, canceling port operation')
-          return
-        }
-        console.info(`event ${eventName} fired: calling port ${portName}`)
+       
+        console.info(
+        // if (await isUndoRunning(model)) {
+        //   console.log('undo running, canceling port operation')
+        //   return
+        // }   `event ${eventInfo.eventName} fired: calling port ${portName}`,
+          eventInfo
+        )
         // invoke this port
         await async(model[portName](callback))
       },
@@ -170,7 +179,7 @@ async function updatePortFlow (model, port) {
  * @param {object} adapters - dependencies object containing adapters and ports
  * @param {import('./event-broker').EventBroker} broker
  */
-export default function makePorts (ports, adapters, broker) {
+export default function makePorts (ports, adapters, broker, datasource) {
   if (!ports || !adapters) {
     return
   }
@@ -182,7 +191,9 @@ export default function makePorts (ports, adapters, broker) {
       const disabled = portConf.disabled || !adapters[port]
 
       // Listen for event that will invoke this port
-      const rememberPort = addPortListener(portName, portConf, broker, disabled)
+      const rememberPort = disabled
+        ? false
+        : addPortListener(portName, portConf, broker, datasource)
 
       /**
        *

@@ -1,4 +1,5 @@
 import { workerData, BroadcastChannel } from 'worker_threads'
+import Model from './model'
 
 export class PortEventRouter {
   constructor (models, broker) {
@@ -31,53 +32,62 @@ export class PortEventRouter {
       .flat()
   }
 
+  /**
+   * Listen for producer events from other thread pools and invoke
+   * local ports that consume them. Listen for local producer events
+   * and forward to pools that consume them. If a producer event is
+   * not consumed by any local thread, foward to service mesh.
+   */
   listen () {
-    const local = this.getThreadLocalPorts()
-    const remote = this.getThreadRemotePorts()
+    const localPorts = this.getThreadLocalPorts()
+    const remotePorts = this.getThreadRemotePorts()
 
-    const remoteConsumers = remote.filter(r =>
-      local.find(l => l.producesEvent === r.consumesEvent)
+    const publishPorts = remotePorts.filter(remote =>
+      localPorts.find(local => local.producesEvent === remote.consumesEvent)
     )
-    const remoteProducers = local.filter(l =>
-      remote.find(r => r.producesEvent === l.consumesEvent)
+    const subscribePorts = remotePorts.filter(remote =>
+      localPorts.find(local => local.consumesEvent === remote.producesEvent)
     )
-    // const remoteHostConsumers = remote.filter(r =>
-    //   local.find(l => l.producesEvent !== r.consumesEvent)
-    // )
 
     const services = new Set()
     const channels = new Map()
 
-    remoteConsumers.forEach(c => {
-      if (c.modelName) services.add(c.modelName)
+    publishPorts.forEach(port => {
+      if (port.modelName) services.add(port.modelName)
     })
-    remoteProducers.forEach(c => {
-      if (c.modelName) services.add(c.modelName)
+    subscribePorts.forEach(port => {
+      if (port.modelName) services.add(port.modelName)
     })
     services.forEach(service =>
       channels.set(service, new BroadcastChannel(service))
     )
 
-    console.log('remoteConsumers', remoteConsumers)
-    console.log('remoteProducers', remoteProducers)
+    console.log('publishPorts', publishPorts)
+    console.log('subscribePorts', subscribePorts)
     console.log('channels', channels)
 
-    remoteConsumers.forEach(c =>
-      this.broker.on('galacticSignalBroadcasting', event => {
-        console.log('broadcasting', { c })
-        channels.get(c.modelName).postMessage(JSON.parse(JSON.stringify(event)))
+    // dispatch outgoing events
+    publishPorts.forEach(port =>
+      this.broker.on(port.consumesEvent, event => {
+        console.log('broadcasting...', { port, event })
+        channels
+          .get(port.modelName)
+          .postMessage(JSON.parse(JSON.stringify(event)))
       })
     )
 
-    remoteProducers.forEach(
-      p =>
-        (p.onmessage = msg => this.broker.notify(msg.data.eventName, msg.data))
-    )
+    // listen for incoming events
+    subscribePorts.forEach(port => {
+      channels.get(port.modelName).onmessage = msg => {
+        console.log('subscribePorts.onmessage', msg.data)
+        this.broker.notify(msg.data.eventName, msg.data)
+      }
+    })
 
-    // remoteHostConsumers.forEach(c =>
-    //   this.broker.on(c.producesEvent, event =>
-    //     this.broker.notify('to_main', event)
-    //   )
-    // )
+    // listen on this model's channel
+    new BroadcastChannel(workerData.poolName).onmessage = msg => {
+      console.log('onmessage', msg.data)
+      this.broker.notify(msg.data.eventName, msg.data)
+    }
   }
 }
