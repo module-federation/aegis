@@ -197,7 +197,7 @@ async function handle(path, method, req, res) {
       totalDuration: store.get('end') - store.get('begin')
     }
     console.log(perfMsg)
-    broker.notify('perf', perfMsg$)
+    broker.notify('perf', perfMsg)
 
     return result
   } catch (error) {
