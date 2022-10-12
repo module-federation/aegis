@@ -1,26 +1,27 @@
-import { workerData, BroadcastChannel } from 'worker_threads'
-import Model from './model'
+'use strict'
+
+import { workerData, BroadcastChannel, isMainThread } from 'worker_threads'
+const modelName = isMainThread ? null : workerData.poolName
 
 export class PortEventRouter {
-  constructor (models, broker) {
+  constructor(models, broker) {
     this.models = models
     this.broker = broker
   }
 
-  getThreadLocalPorts () {
-    const spec = this.models.getModelSpec(workerData.poolName)
-    return Object.values(spec.ports)
+  getThreadLocalPorts() {
+    return Object.values(this.models.getModelSpec(modelName))
       .filter(port => port.consumesEvent || port.producesEvent)
       .map(port => ({
         ...port,
-        modelName: workerData.poolName
+        modelName
       }))
   }
 
-  getThreadRemotePorts () {
+  getThreadRemotePorts() {
     return this.models
       .getModelSpecs()
-      .filter(spec => spec.ports && spec.modelName !== workerData.poolName)
+      .filter(spec => spec.ports && spec.modelName !== modelName)
       .map(spec =>
         Object.values(spec.ports)
           .filter(port => port.consumesEvent || port.producesEvent)
@@ -32,13 +33,22 @@ export class PortEventRouter {
       .flat()
   }
 
+  handleChannelEvent(msg) {
+    if (msg.data.eventName)
+      this.broker.notify(msg.data.eventName, msg.data)
+    else {
+      console.log('missing eventName', msg.data)
+      this.broker.notify('missingEventName', msg.data)
+    }
+  }
+
   /**
    * Listen for producer events from other thread pools and invoke
    * local ports that consume them. Listen for local producer events
    * and forward to pools that consume them. If a producer event is
    * not consumed by any local thread, foward to service mesh.
    */
-  listen () {
+  listen() {
     const localPorts = this.getThreadLocalPorts()
     const remotePorts = this.getThreadRemotePorts()
 
@@ -47,6 +57,9 @@ export class PortEventRouter {
     )
     const subscribePorts = remotePorts.filter(remote =>
       localPorts.find(local => local.consumesEvent === remote.producesEvent)
+    )
+    const unhandledPorts = localPorts.filter(remote =>
+      !remotePorts.find(local => local.producesEvent === remote.consumesEvent)
     )
 
     const services = new Set()
@@ -58,12 +71,14 @@ export class PortEventRouter {
     subscribePorts.forEach(port => {
       if (port.modelName) services.add(port.modelName)
     })
+
     services.forEach(service =>
       channels.set(service, new BroadcastChannel(service))
     )
 
     console.log('publishPorts', publishPorts)
     console.log('subscribePorts', subscribePorts)
+    console.log('unhandledPorts', unhandledPorts)
     console.log('channels', channels)
 
     // dispatch outgoing events
@@ -80,14 +95,20 @@ export class PortEventRouter {
     subscribePorts.forEach(port => {
       channels.get(port.modelName).onmessage = msg => {
         console.log('subscribePorts.onmessage', msg.data)
-        this.broker.notify(msg.data.eventName, msg.data)
+        this.handleChannelEvent(msg)
       }
     })
 
-    // listen on this model's channel
-    new BroadcastChannel(workerData.poolName).onmessage = msg => {
+    unhandledPorts.forEach(port => {
+      this.broker.on(port.producesEvent, event => {
+        this.broker.notify('to_main', event)
+      })
+    })
+
+    // listen to this model's channel
+    new BroadcastChannel(modelName).onmessage = msg => {
       console.log('onmessage', msg.data)
-      this.broker.notify(msg.data.eventName, msg.data)
+      this.handleChannelEvent(msg)
     }
   }
 }
