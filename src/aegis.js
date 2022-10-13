@@ -204,7 +204,7 @@ async function handle(path, method, req, res) {
     console.error({ fn: handle.name, error })
     res.sendStatus(500)
   } finally {
-    const msg = `exit context ${store.get('id')}`
+    const msg = `exit context ${requestContext.getStore().get('id')}`
     requestContext.exit(() => console.log(msg))
   }
 }
