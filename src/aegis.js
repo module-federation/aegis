@@ -232,8 +232,8 @@ exports.init = async function (remotes) {
   const cache = initCache()
   // create endpoints
   makeRoutes()
-  // load from storage
-  await cache.load()
+  // dont await completion
+  cache.load()
   // controllers
   return handle
 }
