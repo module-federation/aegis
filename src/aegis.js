@@ -179,7 +179,8 @@ async function handle(path, method, req, res) {
         ['id', nanoid()],
         ['begin', Date.now()],
         ['req', req],
-        ['res', res]
+        ['res', res],
+        ['headers', req.headers]
       ])
     )
     console.debug(`enter context ${requestContext.getStore().get('id')}`)
@@ -202,7 +203,7 @@ async function handle(path, method, req, res) {
     return result
   } catch (error) {
     console.error({ fn: handle.name, error })
-    res.sendStatus(500)
+    res.status(500).send(error.message)
   } finally {
     const msg = `exit context ${requestContext.getStore().get('id')}`
     requestContext.exit(() => console.log(msg))

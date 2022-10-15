@@ -186,6 +186,8 @@
 
 import ModelFactory from './model-factory'
 import bindAdapters from './bind-adapters'
+import { requestContext } from './util/async-context'
+import uuid from './util/uuid'
 
 import {
   importRemoteModels,
@@ -197,7 +199,7 @@ import {
   importAdapterCache,
   importServiceCache,
   importWorkerCache,
-  importPortCache
+  importPortCache,
 } from './import-remotes'
 
 /**
@@ -228,6 +230,32 @@ const onloadEvent = model => ({
   model: model
 })
 
+function getUniqueId() {
+  return getIdempotencyKey() || getContextId() || uuid()
+}
+
+function getContextId() {
+  const store = requestContext.getStore()
+  if (store) {
+    return store.get('id')
+  }
+}
+
+function getIdempotencyKey() {
+  const store = requestContext.getStore()
+  if (store) {
+    const headers = store.get('headers')
+    console.log(headers)
+    if (headers) {
+      const idemKey = Object
+        .values(headers)
+        .find(k => k === headers['idempotency-key'])
+      console.log('>>>>>>>>>>>>>>>>>>>>>>>>>>>>idempotency-key', idemKey)
+      return idemKey
+    }
+  }
+}
+
 /**
  * Register the {@link ModelSpecification}: inject dependencies,
  * bind adapters, register events
@@ -238,7 +266,7 @@ const onloadEvent = model => ({
  * workers:{[x: string]:Function},
  * isCached:boolean}}
  */
-function register ({
+function register({
   model,
   ports,
   services,
@@ -256,6 +284,7 @@ function register ({
   })
 
   const dependencies = {
+    getUniqueId,
     ...model.dependencies,
     ...bindings
   }
@@ -301,7 +330,7 @@ function register ({
  * @param {*} services - services on which the model depends
  * @param {*} adapters - adapters for talking to the services
  */
-async function importModels ({
+async function importModels({
   remoteEntries,
   services,
   adapters,
@@ -322,7 +351,7 @@ let localOverrides = {}
  * @param {import('../../webpack/remote-entries-type.js')} remoteEntries
  * @param {*} overrides - override or add services and adapters
  */
-export async function importRemotes (remoteEntries, overrides = {}) {
+export async function importRemotes(remoteEntries, overrides = {}) {
   const services = await importRemoteServices(remoteEntries)
   const adapters = await importRemoteAdapters(remoteEntries)
   const workers = await importRemoteWorkers(remoteEntries)
@@ -357,7 +386,7 @@ let serviceCache
 let portCache
 let workerCache
 
-export async function importRemoteCache (name) {
+export async function importRemoteCache(name) {
   try {
     if (!remotesConfig) {
       console.warn('distributed cache cannot be initialized')

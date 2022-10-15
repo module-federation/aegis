@@ -11,6 +11,7 @@ export class PortEventRouter {
 
   getThreadLocalPorts() {
     return Object.values(this.models.getModelSpec(modelName))
+      .filter(port => port)
       .filter(port => port.consumesEvent || port.producesEvent)
       .map(port => ({
         ...port,
