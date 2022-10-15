@@ -22,13 +22,15 @@ import makeServiceMesh from './create-service-mesh.js'
 import { PortEventRouter } from '../event-router'
 import { isMainThread } from 'worker_threads'
 import { hostConfig } from '../../config'
+import { requestContext } from '../util/async-context'
+import uuid from '../util/uuid'
 
 export const serviceMeshPlugin =
   hostConfig.services.activeServiceMesh ||
   process.env.SERVICE_MESH_PLUGIN ||
   'webswitch'
-
-export function registerEvents () {
+  
+export function registerEvents() {
   // main thread handles event dispatch
   brokerEvents({
     broker: EventBrokerFactory.getInstance(),
@@ -48,7 +50,7 @@ export function registerEvents () {
  * @param {*} modelName
  * @returns
  */
-function findLocalRelatedModels (modelName) {
+function findLocalRelatedModels(modelName) {
   const localModels = ModelFactory.getModelSpecs().map(spec =>
     spec.modelName.toUpperCase()
   )
@@ -56,8 +58,8 @@ function findLocalRelatedModels (modelName) {
   const result = !spec?.relations
     ? []
     : Object.keys(spec.relations)
-        .map(k => spec.relations[k].modelName.toUpperCase())
-        .filter(modelName => localModels.includes(modelName))
+      .map(k => spec.relations[k].modelName.toUpperCase())
+      .filter(modelName => localModels.includes(modelName))
   return result
 }
 
@@ -66,22 +68,22 @@ function findLocalRelatedModels (modelName) {
  * @param {*} modelName
  * @returns
  */
-function findLocalRelatedDatasources (modelName) {
+function findLocalRelatedDatasources(modelName) {
   return findLocalRelatedModels(modelName).map(modelName => ({
     modelName,
     dsMap: DataSourceFactory.getSharedDataSource(modelName).dsMap
   }))
 }
 
-function getDataSource (spec, { shared = true }) {
+function getDataSource(spec, { shared = true }) {
   return shared
     ? DataSourceFactory.getSharedDataSource(spec.modelName)
     : isMainThread
-    ? DataSourceFactory.getDataSource(spec.modelName)
-    : null
+      ? DataSourceFactory.getDataSource(spec.modelName)
+      : null
 }
 
-function getThreadPool (spec, ds) {
+function getThreadPool(spec, ds) {
   if (spec.internal) return null
   return ThreadPoolFactory.getThreadPool(spec.modelName, {
     preload: false,
@@ -94,7 +96,7 @@ function getThreadPool (spec, ds) {
  *
  * @param {import('..').ModelSpecification} model
  */
-function buildOptions (model, opts = {}) {
+function buildOptions(model, opts = {}) {
   const options = {
     modelName: model.modelName,
     models: ModelFactory,
@@ -114,7 +116,7 @@ function buildOptions (model, opts = {}) {
       threadpool: getThreadPool(model, ds),
 
       // if caller provides id, use it as key for idempotency
-      async idempotent (input) {
+      async idempotent(input) {
         if (!input.requestId) return
         return ds.find(m => m.getId() === input.requestId)
       }
@@ -134,7 +136,7 @@ function buildOptions (model, opts = {}) {
  * @param {function({}):function():Promise<Model>} factory
  * @returns
  */
-function make (factory) {
+function make(factory) {
   const specs = ModelFactory.getModelSpecs()
   return specs.map(spec => ({
     endpoint: spec.endpoint,
@@ -150,7 +152,7 @@ function make (factory) {
  * @param {function({}):function():Promise<Model>} factory
  * @returns
  */
-function makeOne (modelName, factory, options = {}) {
+function makeOne(modelName, factory, options = {}) {
   const spec = ModelFactory.getModelSpec(modelName.toUpperCase(), options)
   return factory(buildOptions(spec, options))
 }
@@ -216,7 +218,7 @@ const userController = (fn, ports) => async (req, res) => {
  *
  * @returns {import('../index').endpoint}
  */
-export function getUserRoutes () {
+export function getUserRoutes() {
   try {
     return ModelFactory.getModelSpecs()
       .filter(spec => spec.routes)
@@ -229,8 +231,8 @@ export function getUserRoutes () {
               .map(key =>
                 typeof route[key] === 'function'
                   ? {
-                      [key]: userController(route[key], api)
-                    }
+                    [key]: userController(route[key], api)
+                  }
                   : { [key]: route[key] }
               )
               .reduce((a, b) => ({ ...a, ...b }))
@@ -265,7 +267,7 @@ export const UseCases = {
  * @param {string} [modelName]
  * @returns
  */
-export function UseCaseService (modelName = null) {
+export function UseCaseService(modelName = null) {
   if (typeof modelName === 'string') {
     const modelNameUpper = modelName.toUpperCase()
     return {

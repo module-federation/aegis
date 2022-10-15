@@ -179,7 +179,8 @@ async function handle(path, method, req, res) {
         ['id', nanoid()],
         ['begin', Date.now()],
         ['req', req],
-        ['res', res]
+        ['res', res],
+        ['headers', req.headers]
       ])
     )
     console.debug(`enter context ${requestContext.getStore().get('id')}`)
