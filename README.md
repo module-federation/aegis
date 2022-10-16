@@ -102,6 +102,7 @@ yarn demo
 - Run on Arduino
 - Built-in, pluggable, streaming service mesh
 - Point cloud support for LiDAR integration
+- Support DDS for low-latency IoT networks
 - PyNode - Python on Node - interpreted, not transpiled
 - Support for streaming media and realtime AI inference
 - Support for QUIC, NDI, WebRTC protocols
