@@ -176,11 +176,10 @@ async function handle(path, method, req, res) {
     // track this request
     requestContext.enterWith(
       new Map([
-        ['id', nanoid()],
+        ['id', req.headers['idempotency-key'] || nanoid()],
         ['begin', Date.now()],
-        ['req', req],
-        ['res', res],
-        ['headers', req.headers]
+        ['user', req.user],
+        ['res', res]
       ])
     )
     console.debug(`enter context ${requestContext.getStore().get('id')}`)

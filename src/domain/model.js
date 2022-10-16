@@ -279,9 +279,9 @@ const Model = (() => {
        */
       async update(changes, validate = true) {
         // get the last saved version
-        const saved = await datasource.find(this[ID])
+        const saved = await datasource.find(this[ID]) || {}
         // merge changes with last saved and optionally validate
-        const valid = validateUpdates(saved || this, changes, validate)
+        const valid = validateUpdates({ ...this, ...saved }, changes, validate)
 
         // update timestamp
         const merge = await datasource.save(this[ID], {
@@ -315,10 +315,8 @@ const Model = (() => {
        * @returns {Model}
        */
       updateSync(changes, validate = true) {
-        // get the last saved version
-        const saved = datasource.findSync(this[ID])
         // merge changes with lastest copy and optionally validate
-        const valid = validateUpdates(saved || this, changes, validate)
+        const valid = validateUpdates(this, changes, validate)
 
         // update timestamp
         const merge = datasource.saveSync(this[ID], {
@@ -465,12 +463,26 @@ const Model = (() => {
         return asyncContext[name]
       },
 
+      /**
+       * Returns service of related domain provided
+       * this domain is related to it via modelspec.
+       * If not, we won't be able to access the 
+       * domain's memory. Every domain model employs
+       * this capability-based security measure.
+       * @returns 
+       */
       fetchRelatedModel(modelName) {
         const rel = Object.values(relations).find(
           v => v.modelName.toUpperCase() === modelName.toUpperCase()
         )
 
         if (!rel) throw new Error('no relation found')
+
+        if (!datasource
+          .getFactory()
+          .listDataSources()
+          .includes(modelName.toUpperCase()))
+          throw new Error('no datasource found')
 
         const ds = datasource
           .getFactory()

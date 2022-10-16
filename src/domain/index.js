@@ -231,29 +231,12 @@ const onloadEvent = model => ({
 })
 
 function getUniqueId() {
-  return getIdempotencyKey() || getContextId() || uuid()
+  return getContextId() || uuid()
 }
 
 function getContextId() {
   const store = requestContext.getStore()
-  if (store) {
-    return store.get('id')
-  }
-}
-
-function getIdempotencyKey() {
-  const store = requestContext.getStore()
-  if (store) {
-    const headers = store.get('headers')
-    console.log(headers)
-    if (headers) {
-      const idemKey = Object
-        .values(headers)
-        .find(k => k === headers['idempotency-key'])
-      console.log('>>>>>>>>>>>>>>>>>>>>>>>>>>>>idempotency-key', idemKey)
-      return idemKey
-    }
-  }
+  if (store) return store.get('id')
 }
 
 /**
