@@ -1,3 +1,5 @@
+"use strict"
+
 'use strict'
 
 import { isMainThread } from 'worker_threads'
@@ -16,40 +18,40 @@ import { AppError } from '../util/app-error'
  * @property {...import('../index').eventHandler} handlers - {@link eventHandler} configured in the model spec.
  */
 
-/** @typedef {function(*):Promise<import("../domain").Model>} addModel */
+/** @typedef {function(*):Promise<import("../domain").Model>} createModel */
 
 /**
  * @param {injectedDependencies} param0
- * @returns {addModel}
+ * @returns {createModel}
  */
-export default function makeAddModel ({
+export default function makeCreateModel ({
   modelName,
   models,
   repository,
   threadpool,
   idempotent,
   broker,
-  handlers = []
+  handlers = [],
 } = {}) {
   const eventType = models.EventTypes.CREATE
   const eventName = models.getEventName(eventType, modelName)
-  handlers.forEach(handler => broker.on(eventName, handler))
+  handlers.forEach((handler) => broker.on(eventName, handler))
 
   // Add an event whose callback invokes this factory.
-  broker.on(domainEvents.addModel(modelName), addModel)
+  broker.on(domainEvents.createModel(modelName), createModel)
 
-  /** @type {addModel} */
-  async function addModel (input) {
+  /** @type {createModel} */
+  async function createModel (input) {
     if (isMainThread) {
       const existingRecord = await idempotent(input)
       if (existingRecord) return existingRecord
 
-      return threadpool.runJob(addModel.name, input)
+      return threadpool.runJob(createModel.name, input)
     } else {
       try {
         const model = models.createModel(broker, repository, modelName, input)
         await repository.save(model.getId(), model)
-        console.debug({ fn: addModel.name, model })
+        console.debug({ fn: createModel.name, model })
         try {
           const event = models.createEvent(eventType, modelName, model)
           broker.notify(eventName, event)
@@ -67,5 +69,5 @@ export default function makeAddModel ({
     }
   }
 
-  return addModel
+  return createModel
 }

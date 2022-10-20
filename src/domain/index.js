@@ -230,11 +230,11 @@ const onloadEvent = model => ({
   model: model
 })
 
-function getUniqueId() {
+function getUniqueId () {
   return getContextId() || uuid()
 }
 
-function getContextId() {
+function getContextId () {
   const store = requestContext.getStore()
   if (store) return store.get('id')
 }
@@ -249,7 +249,7 @@ function getContextId() {
  * workers:{[x: string]:Function},
  * isCached:boolean}}
  */
-function register({
+function register ({
   model,
   ports,
   services,
@@ -275,6 +275,9 @@ function register({
   ModelFactory.registerModel({
     ...model,
     modelName: modelName,
+    domain: typeof model.domain === 'string'
+      ? model.domain.toUpperCase()
+      : modelName,
     dependencies,
     factory: model.factory(dependencies),
     worker: workers[modelName],
@@ -313,7 +316,7 @@ function register({
  * @param {*} services - services on which the model depends
  * @param {*} adapters - adapters for talking to the services
  */
-async function importModels({
+async function importModels ({
   remoteEntries,
   services,
   adapters,
@@ -334,7 +337,7 @@ let localOverrides = {}
  * @param {import('../../webpack/remote-entries-type.js')} remoteEntries
  * @param {*} overrides - override or add services and adapters
  */
-export async function importRemotes(remoteEntries, overrides = {}) {
+export async function importRemotes (remoteEntries, overrides = {}) {
   const services = await importRemoteServices(remoteEntries)
   const adapters = await importRemoteAdapters(remoteEntries)
   const workers = await importRemoteWorkers(remoteEntries)
@@ -369,7 +372,7 @@ let serviceCache
 let portCache
 let workerCache
 
-export async function importRemoteCache(name) {
+export async function importRemoteCache (name) {
   try {
     if (!remotesConfig) {
       console.warn('distributed cache cannot be initialized')
@@ -441,6 +444,8 @@ export { default as ThreadPoolFactory } from './thread-pool'
 export { default as DomainEvents } from './domain-events'
 
 export { AppError } from '../domain/util/app-error'
+
+export { makeDomain } from './use-cases'
 
 export { requestContext } from '../domain/util/async-context'
 

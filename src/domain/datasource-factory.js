@@ -90,14 +90,17 @@ const DataSourceFactory = (() => {
    * @param {dsOpts} [options]
    * @returns {DataSource}
    */
-  function createDataSource (name, options = {}) {
+  function createDataSource (name, options) {
+    if (!name) throw new Error('missing name', { fn: createDataSource.name, options })
     const spec = ModelFactory.getModelSpec(name)
+    if (!spec) return
+    console.debug({ ...options, domain: spec.domain })
     const dsMap = options.dsMap || new Map()
     const DsClass = createDataSourceClass(spec, options)
-    const DsMixinsClass = options.mixins
+    const DsMixinsClass = options.mixins?.length > 0
       ? compose(...options.mixins)(DsClass)
       : DsClass
-    const newDs = new DsMixinsClass(dsMap, this, name)
+    const newDs = new DsMixinsClass(dsMap, this, name, options)
     if (!options.ephemeral) dataSources.set(name, newDs)
     return newDs
   }
@@ -128,9 +131,12 @@ const DataSourceFactory = (() => {
    * @param {dsOpts} [options]
    * @returns
    */
-  function getSharedDataSource (name, options = { mixins: [] }) {
+  function getSharedDataSource (name, options) {
     const upperName = name.toUpperCase()
-
+    let opts = options
+    if (!opts) opts = {}
+    if (!opts.mixins) opts.mixins = []
+    
     if (!dataSources) {
       dataSources = new Map()
     }

@@ -227,7 +227,7 @@ export default function DistributedCache ({
     const service = UseCaseService(modelName)
     const models = await Promise.all(
       event.args.map(async arg => {
-        return service.addModel(arg)
+        return service.createModel(arg)
       })
     )
     return { ...event, model: models }
@@ -366,7 +366,7 @@ export default function DistributedCache ({
       publish({ ...event, eventName: externalCrudEvent(eventName) })
     )
 
-  function handlecrudeEvent (modelSpecs) {}
+  function handlecrudeEvent (modelSpecs) { }
   /**
    * Subcribe to external CRUD events for related models.
    * Also listen for request and response events for locally
@@ -406,12 +406,12 @@ export default function DistributedCache ({
         externalCacheResponse(modelName),
         internalCacheResponse(modelName)
       )
-      // listen for CRUD events from related, external models
-      ;[
-        models.getEventName(models.EventTypes.UPDATE, modelName),
-        models.getEventName(models.EventTypes.CREATE, modelName),
-        models.getEventName(models.EventTypes.DELETE, modelName)
-      ].forEach(receiveCrudBroadcast)
+        // listen for CRUD events from related, external models
+        ;[
+          models.getEventName(models.EventTypes.UPDATE, modelName),
+          models.getEventName(models.EventTypes.CREATE, modelName),
+          models.getEventName(models.EventTypes.DELETE, modelName)
+        ].forEach(receiveCrudBroadcast)
     })
 
     // Respond to external search requests and broadcast local CRUD events
@@ -422,17 +422,17 @@ export default function DistributedCache ({
         externalCacheResponse(modelName)
       )
 
-      // fulfillDeploymentRequest(
-      //   externalDeploymentRequest(modelName),
-      //   externalDeploymentResponse(modelName)
-      // )
+        // fulfillDeploymentRequest(
+        //   externalDeploymentRequest(modelName),
+        //   externalDeploymentResponse(modelName)
+        // )
 
-      // Listen for local CRUD events and forward externally
-      ;[
-        models.getEventName(models.EventTypes.UPDATE, modelName),
-        models.getEventName(models.EventTypes.CREATE, modelName),
-        models.getEventName(models.EventTypes.DELETE, modelName)
-      ].forEach(broadcastCrudEvent)
+        // Listen for local CRUD events and forward externally
+        ;[
+          models.getEventName(models.EventTypes.UPDATE, modelName),
+          models.getEventName(models.EventTypes.CREATE, modelName),
+          models.getEventName(models.EventTypes.DELETE, modelName)
+        ].forEach(broadcastCrudEvent)
     })
   }
 

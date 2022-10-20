@@ -2,18 +2,18 @@
 
 /**
  *
- * @param {import("../use-cases/add-model").addModel} addModel
+ * @param {import("../use-cases/add-model").createModel} createModel
  * @param {function():string} hash
  * @returns {import("./http-adapter").httpController}
  */
-export default function postModelFactory (addModel) {
+export default function postModelFactory (createModel) {
   return async function postModel (httpRequest) {
     try {
       httpRequest.log(postModel.name)
 
-      const model = await addModel(httpRequest.body)
+      const model = await createModel(httpRequest.body)
 
-      console.debug({ function: addModel.name, output: model })
+      console.debug({ function: createModel.name, output: model })
 
       return {
         headers: {

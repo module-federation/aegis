@@ -1,27 +1,26 @@
-'use strict'
+"use strict"
 
-import ModelFactory from '../../domain'
-import { EventBrokerFactory } from '../../domain'
+import { EventBrokerFactory } from "../../domain"
 
 const broker = EventBrokerFactory.getInstance()
 
 const HIGHWATERMARK = 50
 
-const mongodb = require('mongodb')
+const mongodb = require("mongodb")
 const { MongoClient } = mongodb
-const { DataSourceMemory } = require('./datasource-memory')
-const { Transform, Writable } = require('stream')
-const qpm = require('query-params-mongo')
+const { DataSourceMemory } = require("./datasource-memory")
+const { Transform, Writable } = require("stream")
+const qpm = require("query-params-mongo")
 const processQuery = qpm({
-  autoDetect: [{ fieldPattern: /_id$/, dataType: 'objectId' }],
-  converters: { objectId: mongodb.ObjectId }
+  autoDetect: [{ fieldPattern: /_id$/, dataType: "objectId" }],
+  converters: { objectId: mongodb.ObjectId },
 })
 
-const url = process.env.MONGODB_URL || 'mongodb://localhost:27017'
-const configRoot = require('../../config').hostConfig
+const url = process.env.MONGODB_URL || "mongodb://localhost:27017"
+const configRoot = require("../../config").hostConfig
 const dsOptions = configRoot.adapters.datasources.DataSourceMongoDb.options || {
   runOffline: true,
-  numConns: 2
+  numConns: 2,
 }
 const cacheSize = configRoot.adapters.cacheSize || 3000
 
@@ -31,8 +30,8 @@ const cacheSize = configRoot.adapters.cacheSize || 3000
 const connections = []
 
 const mongoOpts = {
-  //useNewUrlParserd: true,
-  useUnifiedTopology: true
+  //useNewUrlParser: true,
+  useUnifiedTopology: true,
 }
 
 /**
@@ -41,15 +40,15 @@ const mongoOpts = {
  * even when the database is offline.
  */
 export class DataSourceMongoDb extends DataSourceMemory {
-  constructor (map, factory, name) {
-    super(map, factory, name)
+  constructor (map, factory, name, options) {
+    super(map, factory, name, options)
     this.cacheSize = cacheSize
     this.mongoOpts = mongoOpts
-    // keep running even if db is down
-    this.runOffline = dsOptions.runOffline
-    this.url = url
     this.className = this.constructor.name
-    //console.log(this)
+    this.runOffline = dsOptions.runOffline
+    this.domain = options?.domain || name
+    this.url = url
+    console.log(this)
   }
 
   async connection () {
@@ -58,7 +57,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
         const client = new MongoClient(this.url, this.mongoOpts)
         await client.connect()
         connections.push(client)
-        client.on('connectionClosed', () =>
+        client.on("connectionClosed", () =>
           connections.splice(connections.indexOf(client), 1)
         )
       }
@@ -71,7 +70,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
   }
 
   async collection () {
-    return (await this.connection()).db(this.name).collection(this.name)
+    return (await this.connection()).db(this.domain).collection(this.name)
   }
 
   /**
@@ -94,7 +93,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
   async loadModels () {
     try {
       const cursor = (await this.collection()).find().limit(this.cacheSize)
-      cursor.forEach(model => super.saveSync(model.id, model))
+      cursor.forEach((model) => super.saveSync(model.id, model))
     } catch (error) {
       console.error({ fn: this.loadModels.name, error })
     }
@@ -144,11 +143,9 @@ export class DataSourceMongoDb extends DataSourceMemory {
   async saveDb (id, data) {
     try {
       const clone = JSON.parse(this.serialize(data))
-      await (await this.collection()).replaceOne(
-        { _id: id },
-        { ...clone, _id: id },
-        { upsert: true }
-      )
+      await (
+        await this.collection()
+      ).replaceOne({ _id: id }, { ...clone, _id: id }, { upsert: true })
       return clone
     } catch (error) {
       console.error({ fn: this.saveDb.name, error })
@@ -175,11 +172,11 @@ export class DataSourceMongoDb extends DataSourceMemory {
         if (!this.runOffline) {
           this.deleteSync(id)
           // after delete mem and db are sync'd
-          console.error('db trans failed, rolled back')
+          console.error("db trans failed, rolled back")
           return
         }
         // run while db is down - cache will be ahead
-        console.error('db trans failed, sync it later')
+        console.error("db trans failed, sync it later")
         return data
       }
       return cache
@@ -202,14 +199,14 @@ export class DataSourceMongoDb extends DataSourceMemory {
       const ctx = this
 
       async function upsert () {
-        const operations = objects.map(str => {
+        const operations = objects.map((str) => {
           const obj = JSON.parse(str)
           return {
             replaceOne: {
               filter: { ...filter, _id: obj.id },
               replacement: { ...obj, _id: obj.id },
-              upsert: true
-            }
+              upsert: true,
+            },
           }
         })
 
@@ -219,7 +216,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
             const result = await col.bulkWrite(operations)
             console.log(result.getRawResponse())
             objects = []
-          } catch (error) {}
+          } catch (error) { }
         }
       }
 
@@ -236,13 +233,13 @@ export class DataSourceMongoDb extends DataSourceMemory {
         end (chunk, _, done) {
           objects.push(chunk)
           done()
-        }
+        },
       })
 
-      writable.on('finish', async () => await upsert())
+      writable.on("finish", async () => await upsert())
 
       return writable
-    } catch (error) {}
+    } catch (error) { }
   }
 
   /**
@@ -283,7 +280,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
 
         // start of array
         construct (callback) {
-          this.push('[')
+          this.push("[")
           callback()
         },
 
@@ -291,7 +288,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
         transform (chunk, _encoding, callback) {
           // comma-separate
           if (first) first = false
-          else this.push(',')
+          else this.push(",")
 
           // serialize record
           this.push(JSON.stringify(chunk))
@@ -300,36 +297,31 @@ export class DataSourceMongoDb extends DataSourceMemory {
 
         // end of array
         flush (callback) {
-          this.push(']')
+          this.push("]")
           callback()
-        }
+        },
       })
 
       return new Promise(async (resolve, reject) => {
         const readable = (await this.mongoFind(options)).stream()
 
-        readable.on('error', reject)
-        readable.on('end', resolve)
+        readable.on("error", reject)
+        readable.on("end", resolve)
 
         // optionally transform db stream then pipe to output
         if (serialize && transform)
-          readable
-            .pipe(transform)
-            .pipe(serializer)
-            .pipe(writable)
+          readable.pipe(transform).pipe(serializer).pipe(writable)
         else if (serialize) readable.pipe(serializer).pipe(writable)
         else if (transform) readable.pipe(transform).pipe(writable)
         else readable.pipe(writable)
       })
-    } catch (error) {}
+    } catch (error) { }
   }
 
   processOptions ({ options, query }) {
-    if (options) {
-      return options
-    }
-    if (query) {
-      return processQuery(query)
+    return {
+      ...processQuery(query),
+      ...options,
     }
   }
 
@@ -361,11 +353,12 @@ export class DataSourceMongoDb extends DataSourceMemory {
     transform = null,
     serialize = true,
     options = null,
-    query = null
+    query = null,
   } = {}) {
     try {
       if (query?.__cached) return super.listSync(query)
       if (query?.__count) return this.count()
+
       const processedOptions = this.processOptions({ options, query })
       console.log({ processedOptions })
 
@@ -374,7 +367,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
           writable,
           serialize,
           transform,
-          options: processedOptions
+          options: processedOptions,
         })
       }
 
@@ -388,7 +381,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
     return {
       total: await this.countDb(),
       cached: this.getCacheSize(),
-      bytes: this.getCacheSizeBytes()
+      bytes: this.getCacheSizeBytes(),
     }
   }
 
@@ -436,9 +429,9 @@ export class DataSourceMongoDb extends DataSourceMemory {
   }
 
   /**
-   * 
-   * @param {*} filter 
-   * @returns 
+   *
+   * @param {*} filter
+   * @returns
    */
   async containsMany (filter) {
     return (await this.collection()).find(filter).toArray()

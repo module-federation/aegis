@@ -23,7 +23,7 @@ import ThreadPoolFactory from '../thread-pool'
  */
 
 /**
- * @typedef {function(ModelParam):Promise<import("../domain").Model>} addModel
+ * @typedef {function(ModelParam):Promise<import("../domain").Model>} createModel
  * @param {dependencies} param0
  * @returns {function():Promise<import('../domain').Model>}
  */

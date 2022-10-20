@@ -41,6 +41,8 @@
     "nanoid": "3.3.2",
     "nats": "2.7.1",
     "path-to-regexp": "^6.2.1",
+    "pretty": "^2.0.0",
+    "pretty-cli": "^0.0.14",
     "python-shell": "^3.0.1",
     "query-params-mongo": "^1.1.3",
     "regenerator-runtime": "0.13.9",
@@ -68,7 +70,7 @@
     "mocha": "10.0.0",
     "mocha-esm": "1.1.1",
     "split": "1.0.1",
-    "standard": "17.0.0",
+    "standard": "^17.0.0",
     "yarn": "1.22.19"
   }
 }
