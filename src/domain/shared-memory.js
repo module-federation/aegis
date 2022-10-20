@@ -9,7 +9,7 @@ const broker = EventBrokerFactory.getInstance()
 
 const MAPSIZE = 2048 * 56
 // Size is in UTF-16 codepointse
-const KEYSIZE = 32
+const KEYSIZE = 64
 const OBJSIZE = 4056
 
 const dataType = {
@@ -36,8 +36,8 @@ const dataType = {
  */
 const SharedMemoryMixin = superclass =>
   class extends superclass {
-    constructor (map, factory, name) {
-      super(map, factory, name)
+    constructor(map, factory, name, options) {
+      super(map, factory, name, options)
 
       // Indicate which class we extend
       this.className = super.className
@@ -48,7 +48,7 @@ const SharedMemoryMixin = superclass =>
      * @override
      * @returns {import('.').Model}
      */
-    mapSet (id, data) {
+    mapSet(id, data) {
       return this.dsMap.set(id, dataType.write[typeof data](data))
     }
 
@@ -58,7 +58,7 @@ const SharedMemoryMixin = superclass =>
      * @param {*} id
      * @returns {import('.').Model}
      */
-    mapGet (id) {
+    mapGet(id) {
       try {
         if (!id) return console.log('no id provided')
         const raw = this.dsMap.get(id)
@@ -77,7 +77,7 @@ const SharedMemoryMixin = superclass =>
      * @override
      * @returns
      */
-    mapToArray () {
+    mapToArray() {
       return this.dsMap.map(v =>
         isMainThread
           ? JSON.parse(v)
@@ -85,11 +85,11 @@ const SharedMemoryMixin = superclass =>
       )
     }
 
-    mapCount () {
+    mapCount() {
       return this.dsMap.length
     }
 
-    getClassName () {
+    getClassName() {
       return this.className
     }
   }
@@ -99,7 +99,7 @@ const SharedMemoryMixin = superclass =>
  * @param {string} name i.e. modelName
  * @returns {SharedMap}
  */
-function findSharedMap (name) {
+function findSharedMap(name) {
   if (name === workerData.poolName) return workerData.sharedMap
 
   if (workerData.dsRelated?.length > 0) {
@@ -109,12 +109,12 @@ function findSharedMap (name) {
   return null
 }
 
-function rehydrateSharedMap (name) {
+function rehydrateSharedMap(name) {
   const sharedMap = findSharedMap(name)
   if (sharedMap) return Object.setPrototypeOf(sharedMap, SharedMap.prototype)
 }
 
-function createSharedMap (mapsize, keysize, objsize, name) {
+function createSharedMap(mapsize, keysize, objsize, name) {
   return Object.assign(new SharedMap(mapsize, keysize, objsize), {
     modelName: name // assign modelName
   })
@@ -128,7 +128,7 @@ function createSharedMap (mapsize, keysize, objsize, name) {
  * @param {import('./datasource-factory').dsOpts} options
  * @returns {import('./datasource').default}
  */
-export function withSharedMemory (
+export function withSharedMemory(
   createDataSource,
   factory,
   name,
@@ -150,7 +150,7 @@ export function withSharedMemory (
         dsMap: sharedMap,
         mixins: [
           DsClass =>
-            class DataSourceSharedMemory extends SharedMemoryMixin(DsClass) {}
+            class DataSourceSharedMemory extends SharedMemoryMixin(DsClass) { }
         ].concat(options.mixins)
       })
 

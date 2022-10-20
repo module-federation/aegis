@@ -23,13 +23,13 @@ describe('Controllers', function () {
         'ABC',
         model => ({ model })
       )
-      const addModel = await addModelFactory({
+      const createModel = await addModelFactory({
         modelName: 'ABC',
         models: ModelFactory,
         repository: DataSourceFactory.getDataSource('ABC'),
         broker: EventBrokerFactory.getInstance()
       })
-      const resp = await postModelFactory(addModel)({
+      const resp = await postModelFactory(createModel)({
         body: { a: 'a' },
         headers: { 'User-Agent': 'test' },
         ip: '127.0.0.1',

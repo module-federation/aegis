@@ -131,7 +131,7 @@ async function createNewModels (args, fromModel, relation, ds) {
   if (args.length > 0) {
     const { UseCaseService } = require('.')
     const service = UseCaseService(relation.modelName.toUpperCase())
-    const newModels = await Promise.all(args.map(arg => service.addModel(arg)))
+    const newModels = await Promise.all(args.map(arg => service.createModel(arg)))
     return updateForeignKeys[relation.type](fromModel, newModels, relation, ds)
   }
 }

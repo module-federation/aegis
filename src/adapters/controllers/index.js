@@ -3,7 +3,7 @@
 import { UseCases, getUserRoutes } from '../../domain/use-cases'
 
 const {
-  addModels,
+  createModels,
   editModels,
   findModels,
   listConfigs,
@@ -33,7 +33,7 @@ function make (useCases, controllerFactory) {
   }))
 }
 
-export const postModels = () => make(addModels, postModelFactory)
+export const postModels = () => make(createModels, postModelFactory)
 export const patchModels = () => make(editModels, patchModelFactory)
 export const getModels = () => make(listModels, getModelsFactory)
 export const getModelsById = () => make(findModels, getModelByIdFactory)
@@ -50,7 +50,7 @@ export const initCache = () => {
 
   async function loadModelInstances () {
     console.time(label)
-    await Promise.allSettled(specs.map(async m => m && m.fn ? m.fn() : false))
+    //await Promise.allSettled(specs.map(async m => m && m.fn ? m.fn() : false))
     console.timeEnd(label)
   }
 

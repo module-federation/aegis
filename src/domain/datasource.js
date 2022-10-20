@@ -42,11 +42,12 @@ function roughSizeOfObject (...objects) {
  * Data source base class
  */
 export default class DataSource {
-  constructor (map, factory, name) {
+  constructor (map, factory, name, options = {}) {
     this.className = this.constructor.name
     this.dsMap = map
     this.factory = factory
     this.name = name
+    this.options = options
   }
 
   /**
@@ -258,7 +259,7 @@ export default class DataSource {
    *
    * @param {*} options
    */
-  async load (options) {}
+  async load (options) { }
 
   /**
    *
@@ -308,7 +309,7 @@ export default class DataSource {
    * @param {*} pkprop key and value of primary
    * @returns {Promise<import('.').datasource>}
    */
-  async manyToOne (pkvalue) {}
+  async manyToOne (pkvalue) { }
 
   /**
    * Called by framework to return multiple records linked to primary.
@@ -316,12 +317,12 @@ export default class DataSource {
    * @param {*} pkvalue primary key value
    * @returns {Promise<import('.').datasource[]>}
    */
-  async oneToMany (fkname, pkvalue) {}
+  async oneToMany (fkname, pkvalue) { }
 
   /**
    *
    */
-  close () {}
+  close () { }
 
   getClassName () {
     return this.className

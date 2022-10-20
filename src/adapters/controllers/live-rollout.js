@@ -2,7 +2,7 @@
 
 /**
  *
- * @param {import("../use-cases/add-model").addModel} addModel
+ * @param {import("../use-cases/add-model").createModel} addModel
  * @param {function():string} hash
  * @returns {import("./http-adapter").httpController}
  */

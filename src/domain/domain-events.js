@@ -32,7 +32,7 @@ const domainEvents = {
   undoStarted: modelName => `undoStart_${String(modelName).toUpperCase()}`,
   undoFailed: modelName => `undoFailed_${String(modelName).toUpperCase()}`,
   undoWorked: modelName => `undoWorked_${String(modelName).toUpperCase()}`,
-  addModel: modelName => `addModel_${String(modelName).toUpperCase()}`,
+  createModel: modelName => `addModel_${String(modelName).toUpperCase()}`,
   editModel: modelName => `editModel_${String(modelName).toUpperCase()}`,
   portTimeout: (modelName, port) =>
     `portTimeout_${port}_${String(modelName).toUpperCase()}`,
