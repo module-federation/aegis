@@ -46,8 +46,8 @@ export function registerEvents () {
 function modelsInDomain (domain) {
   return ModelFactory
     .getModelSpecs()
-    .filter(s => s.domain && s.domain === domain)
-    .map(s => s.modelName)
+    .filter(s => s.domain && s.domain.toUpperCase() === domain.toUpperCase())
+    .map(s => s.modelName.toUpperCase())
 }
 
 /**
@@ -86,18 +86,19 @@ function findLocalRelatedDatasources (spec) {
   }))
 }
 
-function getDataSource (spec, options) {
+function getDataSource (modelName, options) {
   const { shared = true } = options
   return shared
-    ? DataSourceFactory.getSharedDataSource(spec.modelName, options)
+    ? DataSourceFactory.getSharedDataSource(modelName, options)
     : isMainThread
-      ? DataSourceFactory.getDataSource(spec.modelName, options)
+      ? DataSourceFactory.getDataSource(modelName, options)
       : null
 }
 
-function getThreadPool (spec, ds) {
+function getThreadPool (spec, ds, options) {
   if (spec.internal) return null
-  return ThreadPoolFactory.getThreadPool(spec.domain, {
+  return ThreadPoolFactory.getThreadPool(spec.domain,  {
+    ...options,
     preload: false,
     sharedMap: ds.dsMap,
     dsRelated: findLocalRelatedDatasources(spec),
@@ -109,7 +110,7 @@ function getThreadPool (spec, ds) {
  * @param {import('..').ModelSpecification} spec
  */
 function buildOptions (spec, options) {
-  const _options = {
+  const invariant = {
     modelName: spec.modelName,
     models: ModelFactory,
     broker: EventBrokerFactory.getInstance(),
@@ -117,16 +118,13 @@ function buildOptions (spec, options) {
   }
 
   if (isMainThread) {
-    const ds = getDataSource(spec, options)
-
+    const ds = getDataSource(spec.modelName, options)
     return {
-      ..._options,
+      ...invariant,
       // main thread does not write to persistent store
       repository: ds,
-
       // only main thread knows about thread pools (no nesting)
       threadpool: getThreadPool(spec, ds),
-
       // if caller provides id, use it as key for idempotency
       async idempotent (input) {
         if (!input.requestId) return
@@ -135,9 +133,9 @@ function buildOptions (spec, options) {
     }
   } else {
     return {
-      ..._options,
+      ...invariant,
       // only worker threads can write to persistent storage
-      repository: getDataSource(spec, options),
+      repository: getDataSource(spec.modelName, options),
     }
   }
 }
@@ -166,7 +164,7 @@ function make (factory) {
  */
 function makeOne (modelName, factory, options = {}) {
   const spec = ModelFactory.getModelSpec(modelName.toUpperCase(), options)
-  return factory(buildOptions(spec, { ...options, domain: spec.domain }))
+  return factory(buildOptions(spec, { domain: spec.domain }))
 }
 
 const createModels = () => make(makeCreateModel)
@@ -208,10 +206,10 @@ const domainPorts = (modelName) => ({
 })
 
 /**
- *
+ *returns
  * @param {*} fn
  * @param {*} ports
- * @returns
+ * @
  */
 const userController = (fn, ports) => async (req, res) => {
   try {

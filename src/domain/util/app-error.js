@@ -10,7 +10,7 @@ export function AppError (error, code = 400, cause = null) {
     stack: error.stack,
     code: error.code || code, // set http status code
     cause: error.cause || cause,
-    message: error.message+error.stack,
+    message: error.message,
     hasError: true
   }
 }

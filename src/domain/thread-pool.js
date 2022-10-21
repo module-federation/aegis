@@ -69,17 +69,18 @@ const DEFAULT_TIME_TO_LIVE = 180000
  * Queues break context so we need some help
  */
 class Job extends AsyncResource {
-  constructor ({ jobName, jobData, modelName, resolve, reject, options = {} }) {
+  constructor ({ jobName, jobData, modelName, resolve, reject, options }) {
     super('Job')
     const store = new Map([...requestContext.getStore()])
     this.requestId = store.get('id')
     store.delete('res') // can't pass socket
     store.delete('req') // can't pass socket
+    this.options = options
     this.jobName = jobName
     this.jobData = { jobData, modelName, context: store }
     this.resolve = result => this.runInAsyncScope(resolve, null, result)
     this.reject = error => this.runInAsyncScope(reject, null, error)
-    console.log('new job, requestId', this.requestId)
+    console.log('new job, requestId', this.requestId, this.jobData)
   }
 
   startTimer () {
@@ -87,8 +88,7 @@ class Job extends AsyncResource {
   }
 
   stopTimer () {
-    this.stopTime = Date.now()
-    this.duration = this.stopTime - this.startTime
+    this.duration = Date.now() - this.startTime
     requestContext.getStore().set('threadDuration', this.duration)
     return this.duration
   }
@@ -157,7 +157,7 @@ export class ThreadPool extends EventEmitter {
     this.startTime = Date.now()
     this.aborting = false
     this.jobsRequested = this.jobsQueued = 0
-    this.broadcastChannel = options.bc
+    this.broadcastChannel = options.broadcast
 
     if (options.preload) {
       console.info('preload enabled for', this.name)
@@ -341,7 +341,7 @@ export class ThreadPool extends EventEmitter {
    * @param {*} jobData anything that can be cloned
    * @returns {Promise<*>} anything that can be cloned
    */
-  runJob (jobName, jobData, options = {}) {
+  runJob (jobName, jobData, modelName, options = {}) {
     return new Promise((resolve, reject) => {
       this.jobsRequested++
 
@@ -349,13 +349,12 @@ export class ThreadPool extends EventEmitter {
         console.warn('pool is closed')
         return reject('pool is closed')
       }
-
       const job = new Job({
         jobName,
         jobData,
         resolve,
         reject,
-        modelName: this.name,
+        modelName,
         ...options
       })
 
@@ -623,9 +622,9 @@ const ThreadPoolFactory = (() => {
       return broadcastChannels.get(poolName)
     }
 
-    const bc = new BroadcastChannel(poolName)
-    broadcastChannels.set(poolName, bc)
-    return bc
+    const broadcast = new BroadcastChannel(poolName)
+    broadcastChannels.set(poolName, broadcast)
+    return broadcast
   }
 
   /**
@@ -667,19 +666,17 @@ const ThreadPoolFactory = (() => {
 
     // include the shared array for the worker to access
     const sharedMap = options.sharedMap
-    const maxThreads = calculateMaxThreads()
-    const bc = getBroadcastChannel(poolName)
     const dsRelated = options.dsRelated || {}
-    const initData = options.initData || {}
-    initData.modelName = options.modelName || null
+    const broadcast = getBroadcastChannel(poolName)
+    const maxThreads = calculateMaxThreads()
     const file = options.file || options.eval || './src/worker.js'
 
     try {
       const pool = new ThreadPool({
         file,
         name: poolName,
-        workerData: { poolName, sharedMap, dsRelated, initData },
-        options: { ...options, maxThreads, bc }
+        workerData: { poolName, sharedMap, dsRelated },
+        options: { ...options, maxThreads, broadcast }
       })
 
       threadPools.set(poolName, pool)
@@ -708,7 +705,8 @@ const ThreadPoolFactory = (() => {
    * in a service's lifetime: when started for the first time and when restarted
    * to handle a deployment.
    */
-  function getThreadPool (poolName, options = { preload: false }) {
+  function getThreadPool (poolName, options) {
+    console.log({ fn: getThreadPool.name, options })
     function getPool (poolName, options) {
       if (threadPools.has(poolName)) {
         return threadPools.get(poolName)
@@ -717,8 +715,8 @@ const ThreadPoolFactory = (() => {
     }
 
     const facade = {
-      async runJob (jobName, jobData) {
-        return getPool(poolName, options).runJob(jobName, jobData, options)
+      async runJob (jobName, jobData, modelName) {
+        return getPool(poolName, options).runJob(jobName, jobData, modelName, options)
       },
       status () {
         return getPool(poolName, options).status()

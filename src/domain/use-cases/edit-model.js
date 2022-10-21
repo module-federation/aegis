@@ -48,7 +48,7 @@ export default function makeEditModel ({
         throw new Error('no such id')
       }
 
-      return threadpool.runJob(editModel.name, input)
+      return threadpool.runJob(editModel.name, input, modelName)
     } else {
       try {
         // model has been found by main thread
