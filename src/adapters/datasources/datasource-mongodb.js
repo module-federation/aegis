@@ -40,15 +40,15 @@ const mongoOpts = {
  * even when the database is offline.
  */
 export class DataSourceMongoDb extends DataSourceMemory {
-  constructor (map, factory, name, options) {
+  constructor (map, factory, name, options = {}) {
     super(map, factory, name, options)
     this.cacheSize = cacheSize
     this.mongoOpts = mongoOpts
     this.className = this.constructor.name
     this.runOffline = dsOptions.runOffline
-    this.domain = options?.domain || name
+    this.domain = options.domain || name
     this.url = url
-    console.log(this)
+    //console.log(this)
   }
 
   async connection () {

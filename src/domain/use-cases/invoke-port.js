@@ -36,11 +36,12 @@ export default function makeInvokePort ({
    */
   return async function invokePort (input) {
     if (isMainThread) {
-      return threadpool.runJob(invokePort.name, input)
+      return threadpool.runJob(invokePort.name, input, modelName)
     } else {
       try {
         const { id = null, port } = input
         const service = await findModelService(id)
+        if (!service) throw new Error('could not find service')
         return await service[port](input)
       } catch (error) {
         return AppError(error)
