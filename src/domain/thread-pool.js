@@ -5,7 +5,6 @@ import { EventEmitter } from 'stream'
 import { Worker, BroadcastChannel } from 'worker_threads'
 import domainEvents from './domain-events'
 import ModelFactory from '.'
-import { performance as perf } from 'perf_hooks'
 import os from 'os'
 import { AsyncResource } from 'async_hooks'
 import { requestContext } from '.'
@@ -706,7 +705,6 @@ const ThreadPoolFactory = (() => {
    * to handle a deployment.
    */
   function getThreadPool (poolName, options) {
-    console.log({ fn: getThreadPool.name, options })
     function getPool (poolName, options) {
       if (threadPools.has(poolName)) {
         return threadPools.get(poolName)
