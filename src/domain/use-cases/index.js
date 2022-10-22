@@ -114,7 +114,7 @@ function buildOptions (spec, options) {
     modelName: spec.modelName,
     models: ModelFactory,
     broker: EventBrokerFactory.getInstance(),
-    handlers: spec.eventHandlers,
+    handlers: spec.eventHandlers
   }
 
   if (isMainThread) {
