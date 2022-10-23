@@ -1,6 +1,5 @@
 'use strict'
 
-import { Writable } from 'stream'
 import { changeDataCapture } from './util/change-data-capture'
 
 /** change data capture */
@@ -304,24 +303,65 @@ export default class DataSource {
     return this.countSync() * roughSizeOfObject(this.listSync({ __count: 1 }))
   }
 
-  /**
-   * Called by framework to return primary key
-   * @param {*} pkprop key and value of primary
-   * @returns {Promise<import('.').datasource>}
-   */
-  async manyToOne (pkvalue) { }
 
   /**
-   * Called by framework to return multiple records linked to primary.
-   * @param {*} fkname foreign key name
-   * @param {*} pkvalue primary key value
-   * @returns {Promise<import('.').datasource[]>}
+   * Subclasses must override this method to run
+   * the query against the datastore it accesses.
+   * @param {{foreignKey:id}} filter
    */
-  async oneToMany (fkname, pkvalue) { }
+  oneToMany (filter) {
+    return this.listSync(filter)
+  }
 
   /**
-   *
+   * Subclasses must override this method to run
+   * the query against the datastore it accesses.
+   * @param {foreignKey} filter 
+   * @returns 
    */
+  manyToOne (filter) {
+    return this.find(filter)
+  }
+
+  /**
+   * Subclasses must override this method to run
+   * the query against the datastore it accesses.
+   * @param {{foreignKey:id}} filter 
+   * @returns 
+   */
+  containsMany (filter) {
+    return this.listSync(filter)
+  }
+
+  /**
+   * called when a related model attempts to save
+   */
+  requestSave () {
+    throw new Error('requestSave not implemented')
+  }
+
+  /**
+   * called when a related model attempts to delete
+   */
+  requestDelete () {
+    throw new Error('requestDelete not implemented')
+  }
+
+  getWritableStream () {
+    throw new Error('getWritableStream not implemented')
+  }
+
+  getReadableStream () {
+    throw new Error('getReadableStream not implemented')
+  }
+
+  requestWritableStream () {
+    throw new Error('getWritableStream not implemented')
+  }
+
+  /**
+ *
+ */
   close () { }
 
   getClassName () {

@@ -186,18 +186,34 @@ function isRelatedModelLocal (relation) {
 }
 
 /**
- * restrict the scope of available functions
+ * @typedef {import('./datasource').default} DataSource
+ */
+
+/**
+ * For security reasons, restrict access to certain functions in {@link DataSource}.
+ * 
+ *   - `save` maps to `requestSave`, which the datasource 
+ *      must implement and allow for the requesting model
+ * 
+ *   -  In the same way, `getWritableStream` maps to 
+ *      `requestWritableStream` and `delete` to 
+ *      `requestDelete`
+ * 
+ *   - `factory`, which allows indiscriminate access to any
+ *      model's datasource, is not available
  *
- * @param {*} ds
- * @returns
+ * @param {DataSource} ds
+ * @returns {DataSource}
  */
 function limitDs (ds) {
   return {
     find: ds.find,
     list: ds.list,
-    save: ds.save,
-    delete: ds.delete
-  }
+    save: ds.requestSave,
+    count: ds.count,
+    delete: ds.requestDelete,
+    getWritableStream: ds.requestWritableStream,
+    getReadableStream: ds.getReadableStream
 }
 
 /**
@@ -211,7 +227,7 @@ export default function makeRelations (relations, datasource, broker) {
   return Object.keys(relations)
     .map(function (relation) {
       const rel = relations[relation]
-      const modelName = rel.modelName.toUpperCase()
+      const relatedModelName = rel.modelName.toUpperCase()
       rel.name = relation
 
       try {
@@ -225,18 +241,17 @@ export default function makeRelations (relations, datasource, broker) {
           // the relation function
           async [relation] (...args) {
             // Get or create datasource of related object
-            const ds = datasource.getFactory().getDataSource(modelName)
+            const ds = datasource.getFactory().getDataSource(relatedModelName)
 
-            if (rel.type === 'custom') {
-              const restrictedDs = limitDs(datasource)
-              return datasource[relation].apply(restrictedDs, {
-                modelName,
+            if (rel.type === 'custom')
+              return datasource[relation]({
+                args,
+                relation,
+                modelName: relatedModelName,
                 model: this,
                 ds: limitDs(ds),
-                relation,
-                args
               })
-            }
+
 
             if (args.length > 0 && isRelatedModelLocal(rel))
               // args mean create new instance(s) of related model
