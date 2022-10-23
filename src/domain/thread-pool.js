@@ -891,7 +891,7 @@ const ThreadPoolFactory = (() => {
               pool.availThreadCount() < 1 &&
               pool.totalTransactions() - pool.jobQueueDepth() === workCompleted
             ) {
-              const timerId = setTimeout(abort(pool), 1000)
+              const timerId = setTimeout(() => abort(pool), 1000)
               const done = false
 
               for await (const thread of pool.threads) {
