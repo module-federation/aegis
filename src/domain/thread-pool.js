@@ -158,7 +158,7 @@ export class ThreadPool extends EventEmitter {
     this.jobsRequested = this.jobsQueued = 0
     this.broadcastChannel = options.broadcast
 
-    if (options.preload) {
+    if (options?.preload) {
       console.info('preload enabled for', this.name)
       this.startThreads()
     }
@@ -729,7 +729,7 @@ const ThreadPoolFactory = (() => {
       }
     }
 
-    return options.preload ? getPool(poolName, options) : facade
+    return options?.preload ? getPool(poolName, options) : facade
   }
 
   /**

@@ -318,11 +318,10 @@ export class DataSourceMongoDb extends DataSourceMemory {
     } catch (error) { }
   }
 
-  processOptions ({ options, query }) {
-    return {
-      ...processQuery(query),
-      ...options,
-    }
+  processOptions (param) {
+    const { options, query } = param
+    if (query) return processQuery(query)
+    if (options) return options
   }
 
   /**
@@ -341,25 +340,26 @@ export class DataSourceMongoDb extends DataSourceMemory {
    *  cached: boolean,
    *  serialize: boolean,
    *  transform: Transform
-   * }} options
+   * }} params
    *    - details
    *    - `serialize` seriailize input to writable
    *    - `cached` list cache only
    *    - `transform` transform stream before writing
    *    - `writable` writable stream for output
    */
-  async list ({
-    writable = null,
-    transform = null,
-    serialize = true,
-    options = null,
-    query = null,
-  } = {}) {
+  async list (param = {}) {
+    const {
+      writable = null,
+      transform = null,
+      serialize = true,
+      query = null,
+    } = param
+
     try {
       if (query?.__cached) return super.listSync(query)
       if (query?.__count) return this.count()
 
-      const processedOptions = this.processOptions({ options, query })
+      const processedOptions = this.processOptions(param)
       console.log({ processedOptions })
 
       if (writable) {
