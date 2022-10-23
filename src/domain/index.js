@@ -133,6 +133,9 @@
  * @property {number} [cacheSize] - maxium number of cached instances before purging
  * @property {number} [cacheSizeKb] - maximum size in kilobytes of cached instances before cache purge
  * @property {boolean} [cachedWrite] - allow cached instances of an object to write to persistent storage
+ * @property {()=>[]} list
+ * @property {(id)=>{}} find
+ * @property {(id,data)=>data} save
  */
 
 /**
