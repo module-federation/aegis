@@ -22,6 +22,19 @@ const DefaultDataSource = adapters[defaultAdapter]
 
 if (!DefaultDataSource) throw new Error('no default datasource')
 
+const RestrictedDsMixin = superclass => class extends superclass {
+  getFactory () {
+    throw new Error('unauthorized')
+  }
+}
+
+const restrictDs = dsClass => class RestrictedDs extends RestrictedDsMixin(dsClass) { }
+
+function createRestrictedDs (DsClass, map, factory, name, options) {
+  const restrictedDs = restrictDs(DsClass)
+  return new restrictedDs(map, factory, name, options)
+}
+
 /**
  * Manages each domain model's dedicated datasource.
  * @todo handle all state same way
@@ -34,6 +47,7 @@ if (!DefaultDataSource) throw new Error('no default datasource')
 const DataSourceFactory = (() => {
   // References all DSes
   let dataSources
+  let restrictedDatasources
 
   /**
    * @param {*} name
@@ -92,16 +106,25 @@ const DataSourceFactory = (() => {
    */
   function createDataSource (name, options) {
     if (!name) throw new Error('missing name', { fn: createDataSource.name, options })
+
     const spec = ModelFactory.getModelSpec(name)
     if (!spec) return
-    console.debug({ ...options, domain: spec.domain })
+
     const dsMap = options.dsMap || new Map()
+
     const DsClass = createDataSourceClass(spec, options)
+
     const DsMixinsClass = options.mixins?.length > 0
       ? compose(...options.mixins)(DsClass)
       : DsClass
+
     const newDs = new DsMixinsClass(dsMap, this, name, options)
-    if (!options.ephemeral) dataSources.set(name, newDs)
+    const restrictedDs = createRestrictedDs(DsMixinsClass, dsMap, null, name, options)
+
+    if (!options.ephemeral) {
+      dataSources.set(name, newDs)
+      restrictedDatasources.set(name, restrictedDs)
+    }
     return newDs
   }
 
@@ -116,6 +139,7 @@ const DataSourceFactory = (() => {
 
     if (!dataSources) {
       dataSources = new Map()
+      restrictedDatasources = new Map()
     }
 
     if (dataSources.has(upperName)) {
@@ -136,9 +160,10 @@ const DataSourceFactory = (() => {
     let opts = options
     if (!opts) opts = {}
     if (!opts.mixins) opts.mixins = []
-    
+
     if (!dataSources) {
       dataSources = new Map()
+      restrictedDatasources = new Map()
     }
 
     if (dataSources.has(upperName)) {
@@ -146,6 +171,10 @@ const DataSourceFactory = (() => {
     }
 
     return withSharedMemory(createDataSource, this, upperName, options)
+  }
+
+  function getRestrictedDataSource (name) {
+    if (restrictedDatasources) return restrictedDatasources.get(name)
   }
 
   function close () {
@@ -160,6 +189,7 @@ const DataSourceFactory = (() => {
      */
     getDataSource,
     getSharedDataSource,
+    getRestrictedDataSource,
     hasDataSource,
     listDataSources,
     close
