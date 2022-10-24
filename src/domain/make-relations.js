@@ -186,6 +186,14 @@ function isRelatedModelLocal (relation) {
     .includes(relation.modelName.toUpperCase())
 }
 
+function checkDomain (modelName1, modelName2) {
+  const spec1 = require('.').default.getModelSpec(modelName1)
+  if (!spec1.domain) throw new Error(`model not in domain ${modelName1}`)
+  const spec2 = require('.').default.getModelSpec(modelName1)
+  if (!spec2.domain) throw new Error(`model not in domain ${modelName2}`)
+  if (spec1.domain !== spec2.domain) throw new Error(`models not in same domain`)
+}
+
 /**
  * @typedef {import('./datasource').default} DataSource
  */
@@ -218,12 +226,14 @@ export default function makeRelations (relations, datasource, broker) {
             const ds = datasource.getFactory().getDataSource(relatedModelName)
 
             if (rel.type === 'custom') {
+              checkDomain(relatedModelName, this.getName())
               const rds = datasource
                 .getFactory()
-                .getRestrictedDataSource(datasource.name)
+                .getRestrictedDataSource(this.getName())
               const relRds = datasource
                 .getFactory()
                 .getRestrictedDataSource(relatedModelName)
+
               return datasource[relation].call(
                 rds,
                 {
