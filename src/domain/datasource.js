@@ -154,7 +154,7 @@ export default class DataSource {
    *    - `writable` writable stream for output
    * @returns {Promise<any[]>}
    */
-  async list ({ query = null, writable = null } = {}) {
+  async list ({ query = null } = {}) {
     return this.listSync(query)
   }
 
@@ -164,7 +164,7 @@ export default class DataSource {
    * @returns
    */
   listSync (query = null) {
-    if (query.__status) return this.count()
+    if (query?.__count) return this.count()
     const list = this.generateList()
     return query ? this.filterList(query, list) : list
   }

@@ -1,5 +1,6 @@
 'use strict'
 
+import DataSource from './datasource'
 import domainEvents from './domain-events'
 const {
   internalCacheRequest,
@@ -190,33 +191,6 @@ function isRelatedModelLocal (relation) {
  */
 
 /**
- * For security reasons, restrict access to certain functions in {@link DataSource}.
- * 
- *   - `save` maps to `requestSave`, which the datasource 
- *      must implement and allow for the requesting model
- * 
- *   -  In the same way, `getWritableStream` maps to 
- *      `requestWritableStream` and `delete` to 
- *      `requestDelete`
- * 
- *   - `factory`, which allows indiscriminate access to any
- *      model's datasource, is not available
- *
- * @param {DataSource} ds
- * @returns {DataSource}
- */
-function limitDs (ds) {
-  return {
-    find: ds.find,
-    list: ds.list,
-    save: ds.requestSave,
-    count: ds.count,
-    delete: ds.requestDelete,
-    getWritableStream: ds.requestWritableStream,
-    getReadableStream: ds.getReadableStream
-}
-
-/**
  * Generate functions to retrieve related domain objects.
  * @param {import("./index").relations} relations
  * @param {import("./datasource").default} datasource
@@ -243,17 +217,25 @@ export default function makeRelations (relations, datasource, broker) {
             // Get or create datasource of related object
             const ds = datasource.getFactory().getDataSource(relatedModelName)
 
-            if (rel.type === 'custom')
-              return datasource[relation]({
-                args,
-                relation,
-                modelName: relatedModelName,
-                model: this,
-                ds: limitDs(ds),
-              })
+            if (rel.type === 'custom') {
+              const rds = datasource
+                .getFactory()
+                .getRestrictedDataSource(datasource.name)
+              const relRds = datasource
+                .getFactory()
+                .getRestrictedDataSource(relatedModelName)
+              return datasource[relation].call(
+                rds,
+                {
+                  args,
+                  relation,
+                  model: this,
+                  ds: relRds
+                }
+              )
+            }
 
-
-            if (args.length > 0 && isRelatedModelLocal(rel))
+            if (args?.length > 0 && isRelatedModelLocal(rel))
               // args mean create new instance(s) of related model
               return await createNewModels(args, this, rel, ds)
 
