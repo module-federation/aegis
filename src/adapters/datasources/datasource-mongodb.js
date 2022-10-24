@@ -146,7 +146,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
       await (
         await this.collection()
       ).replaceOne({ _id: id }, { ...clone, _id: id }, { upsert: true })
-      return clone
+      return data
     } catch (error) {
       console.error({ fn: this.saveDb.name, error })
     }
