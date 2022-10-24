@@ -40,13 +40,13 @@ export default function makeCreateModel ({
   /** @type {createModel} */
   async function createModel (input) {
     if (isMainThread) {
-      const existingRecord = await idempotent(input)
+      const existingRecord = await idempotent()
       if (existingRecord) return existingRecord
 
       return threadpool.runJob(createModel.name, input, modelName)
     } else {
       try {
-        
+
         const model = models.createModel(broker, repository, modelName, input)
         await repository.save(model.getId(), model)
         console.debug({ fn: createModel.name, model })
