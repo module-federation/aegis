@@ -22,6 +22,7 @@ import makeServiceMesh from "./create-service-mesh.js"
 import { PortEventRouter } from "../event-router"
 import { isMainThread } from "worker_threads"
 import { hostConfig } from "../../config"
+import { requestContext } from "../util/async-context"
 
 export const serviceMeshPlugin =
   hostConfig.services.activeServiceMesh ||
@@ -97,7 +98,7 @@ function getDataSource (modelName, options) {
 
 function getThreadPool (spec, ds, options) {
   if (spec.internal) return null
-  return ThreadPoolFactory.getThreadPool(spec.domain,  {
+  return ThreadPoolFactory.getThreadPool(spec.domain, {
     ...options,
     preload: false,
     sharedMap: ds.dsMap,
@@ -126,9 +127,8 @@ function buildOptions (spec, options) {
       // only main thread knows about thread pools (no nesting)
       threadpool: getThreadPool(spec, ds),
       // if caller provides id, use it as key for idempotency
-      async idempotent (input) {
-        if (!input.requestId) return
-        return ds.find((m) => m.getId() === input.requestId)
+      async idempotent () {
+        return ds.find(requestContext.getStore().get('id'))
       },
     }
   } else {
