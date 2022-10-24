@@ -97,6 +97,6 @@ export default function listConfigsFactory ({
     }
   } catch (error) {
     console.error({ fn: listConfigsFactory.name, error })
-   // throw error
+    throw error
   }
 }

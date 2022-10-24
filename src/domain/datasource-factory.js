@@ -31,8 +31,8 @@ const RestrictedDsMixin = superclass => class extends superclass {
 const restrictDs = dsClass => class RestrictedDs extends RestrictedDsMixin(dsClass) { }
 
 function createRestrictedDs (DsClass, map, factory, name, options) {
-  const restrictedDs = restrictDs(DsClass)
-  return new restrictedDs(map, factory, name, options)
+  const RestrictedDs = restrictDs(DsClass)
+  return new RestrictedDs(map, factory, name, options)
 }
 
 /**
