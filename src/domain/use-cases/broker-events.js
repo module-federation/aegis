@@ -2,25 +2,7 @@
 
 /** @module domain/brokerEvents */
 
-import { BroadcastChannel, isMainThread, workerData } from 'worker_threads'
-
-/** @type {BroadcastChannel}*/
-let broadcastChannel
-
-/**
- *
- * @param {*} modelName
- * @param {*} broker
- * @returns
- */
-function createBroadcastChannel (modelName, broker) {
-  if (broadcastChannel) return broadcastChannel
-  broadcastChannel = new BroadcastChannel(modelName)
-  // notify listeners
-  broadcastChannel.onmessage = msgEvent =>
-    broker.notify(msgEvent.data.eventName, msgEvent.data)
-  return broadcastChannel
-}
+import { isMainThread } from 'worker_threads'
 
 /**
  * Broker events between {@link threadpool}s and remote mesh instances.
@@ -41,10 +23,11 @@ function createBroadcastChannel (modelName, broker) {
  */
 export default async function brokerEvents ({
   broker,
-  datasources,
   models,
+  datasources,
+  PortEventRouter,
   DistributedCache,
-  createServiceMesh
+  createServiceMesh,
 }) {
   if (isMainThread) {
     // generate a list of installed services
@@ -72,7 +55,6 @@ export default async function brokerEvents ({
     // forward all events from service mesh to worker threads
     serviceMesh.subscribe('*', event => broker.notify('to_worker', event))
   } else {
-    createBroadcastChannel(workerData.poolName, broker)
     // create listeners that handle events from main
     require('../domain-events').registerEvents(broker)
 
@@ -86,6 +68,10 @@ export default async function brokerEvents ({
     })
 
     cache.listen()
+
+    const router = new PortEventRouter(models, broker)
+
+    router.listen()
   }
 
   /**

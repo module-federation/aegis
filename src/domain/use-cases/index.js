@@ -1,31 +1,33 @@
-'use strict'
+"use strict"
 
-import ModelFactory from '../model-factory'
-import DataSourceFactory from '../datasource-factory'
-import ThreadPoolFactory from '../thread-pool.js'
-import EventBrokerFactory from '../event-broker'
+import ModelFactory from "../model-factory"
+import DataSourceFactory from "../datasource-factory"
+import ThreadPoolFactory from "../thread-pool.js"
+import EventBrokerFactory from "../event-broker"
 
-import makeAddModel from './add-model'
-import makeEditModel from './edit-model'
-import makeListModels from './list-models'
-import makeFindModel from './find-model'
-import makeRemoveModel from './remove-model'
-import makeLoadModels from './load-models'
-import makeDeployModel from './deploy-model'
-import makeListConfig from './list-configs'
-import makeEmitEvent from './emit-event'
-import makeInvokePort from './invoke-port'
-import makeHotReload from './hot-reload'
-import brokerEvents from './broker-events'
-import DistributedCache from '../distributed-cache'
-import makeServiceMesh from './create-service-mesh.js'
-import { isMainThread } from 'worker_threads'
-import { hostConfig } from '../../config'
+import makeCreateModel from "./create-model"
+import makeEditModel from "./edit-model"
+import makeListModels from "./list-models"
+import makeFindModel from "./find-model"
+import makeRemoveModel from "./remove-model"
+import makeLoadModels from "./load-models"
+import makeDeployModel from "./deploy-model"
+import makeListConfig from "./list-configs"
+import makeEmitEvent from "./emit-event"
+import makeInvokePort from "./invoke-port"
+import makeHotReload from "./hot-reload"
+import brokerEvents from "./broker-events"
+import DistributedCache from "../distributed-cache"
+import makeServiceMesh from "./create-service-mesh.js"
+import { PortEventRouter } from "../event-router"
+import { isMainThread } from "worker_threads"
+import { hostConfig } from "../../config"
+import { requestContext } from "../util/async-context"
 
 export const serviceMeshPlugin =
   hostConfig.services.activeServiceMesh ||
   process.env.SERVICE_MESH_PLUGIN ||
-  'webswitch'
+  "webswitch"
 
 export function registerEvents () {
   // main thread handles event dispatch
@@ -34,11 +36,19 @@ export function registerEvents () {
     datasources: DataSourceFactory,
     models: ModelFactory,
     threadpools: ThreadPoolFactory,
+    PortEventRouter,
     DistributedCache,
     createServiceMesh: makeOne(serviceMeshPlugin, makeServiceMesh, {
-      internal: true
-    })
+      internal: true,
+    }),
   })
+}
+
+function modelsInDomain (domain) {
+  return ModelFactory
+    .getModelSpecs()
+    .filter(s => s.domain && s.domain.toUpperCase() === domain.toUpperCase())
+    .map(s => s.modelName.toUpperCase())
 }
 
 /**
@@ -47,16 +57,20 @@ export function registerEvents () {
  * @returns
  */
 function findLocalRelatedModels (modelName) {
-  const localModels = ModelFactory.getModelSpecs().map(spec =>
+  const localModels = ModelFactory.getModelSpecs().map((spec) =>
     spec.modelName.toUpperCase()
   )
   const spec = ModelFactory.getModelSpec(modelName)
   const result = !spec?.relations
     ? []
     : Object.keys(spec.relations)
-        .map(k => spec.relations[k].modelName.toUpperCase())
-        .filter(modelName => localModels.includes(modelName))
-  return result
+      .map((k) => spec.relations[k].modelName.toUpperCase())
+      .filter((modelName) => localModels.includes(modelName))
+
+  if (!spec.domain) return result
+  const models = modelsInDomain(spec.domain)
+  const dedup = new Set(result.concat(models))
+  return Array.from(dedup)
 }
 
 /**
@@ -64,64 +78,64 @@ function findLocalRelatedModels (modelName) {
  * @param {*} modelName
  * @returns
  */
-function findLocalRelatedDatasources (modelName) {
-  return findLocalRelatedModels(modelName).map(modelName => ({
+function findLocalRelatedDatasources (spec) {
+  return findLocalRelatedModels(spec.modelName).map((modelName) => ({
     modelName,
-    dsMap: DataSourceFactory.getSharedDataSource(modelName).dsMap
+    dsMap: DataSourceFactory.getSharedDataSource(modelName, {
+      domain: spec.domain,
+    }).dsMap,
   }))
 }
 
-function getDataSource (spec, { shared = true }) {
+function getDataSource (modelName, options) {
+  const { shared = true } = options
   return shared
-    ? DataSourceFactory.getSharedDataSource(spec.modelName)
+    ? DataSourceFactory.getSharedDataSource(modelName, options)
     : isMainThread
-    ? DataSourceFactory.getDataSource(spec.modelName)
-    : null
+      ? DataSourceFactory.getDataSource(modelName, options)
+      : null
 }
 
-function getThreadPool (spec, ds) {
+function getThreadPool (spec, ds, options) {
   if (spec.internal) return null
-  return ThreadPoolFactory.getThreadPool(spec.modelName, {
+  return ThreadPoolFactory.getThreadPool(spec.domain, {
+    ...options,
     preload: false,
     sharedMap: ds.dsMap,
-    dsRelated: findLocalRelatedDatasources(spec.modelName)
+    dsRelated: findLocalRelatedDatasources(spec),
   })
 }
 
 /**
  *
- * @param {import('..').ModelSpecification} model
+ * @param {import('..').ModelSpecification} spec
  */
-function buildOptions (model, opts = {}) {
-  const options = {
-    modelName: model.modelName,
+function buildOptions (spec, options) {
+  const invariant = {
+    modelName: spec.modelName,
     models: ModelFactory,
     broker: EventBrokerFactory.getInstance(),
-    handlers: model.eventHandlers
+    handlers: spec.eventHandlers
   }
 
   if (isMainThread) {
-    const ds = getDataSource(model, opts)
-
+    const ds = getDataSource(spec.modelName, options)
     return {
-      ...options,
+      ...invariant,
       // main thread does not write to persistent store
       repository: ds,
-
       // only main thread knows about thread pools (no nesting)
-      threadpool: getThreadPool(model, ds),
-
+      threadpool: getThreadPool(spec, ds),
       // if caller provides id, use it as key for idempotency
-      async idempotent (input) {
-        if (!input.requestId) return
-        return ds.find(m => m.getId() === input.requestId)
-      }
+      async idempotent () {
+        return ds.find(requestContext.getStore().get('id'))
+      },
     }
   } else {
     return {
-      ...options,
+      ...invariant,
       // only worker threads can write to persistent storage
-      repository: getDataSource(model, opts)
+      repository: getDataSource(spec.modelName, options),
     }
   }
 }
@@ -134,11 +148,11 @@ function buildOptions (model, opts = {}) {
  */
 function make (factory) {
   const specs = ModelFactory.getModelSpecs()
-  return specs.map(spec => ({
+  return specs.map((spec) => ({
     endpoint: spec.endpoint,
     path: spec.path,
     ports: spec.ports,
-    fn: factory(buildOptions(spec))
+    fn: factory(buildOptions(spec, { domain: spec.domain })),
   }))
 }
 
@@ -150,10 +164,10 @@ function make (factory) {
  */
 function makeOne (modelName, factory, options = {}) {
   const spec = ModelFactory.getModelSpec(modelName.toUpperCase(), options)
-  return factory(buildOptions(spec, options))
+  return factory(buildOptions(spec, { domain: spec.domain }))
 }
 
-const addModels = () => make(makeAddModel)
+const createModels = () => make(makeCreateModel)
 const editModels = () => make(makeEditModel)
 const listModels = () => make(makeListModels)
 const findModels = () => make(makeFindModel)
@@ -164,19 +178,19 @@ const deployModels = () => make(makeDeployModel)
 const invokePorts = () => make(makeInvokePort)
 const hotReload = () => [
   {
-    endpoint: 'reload',
+    endpoint: "reload",
     fn: makeHotReload({
       models: ModelFactory,
-      broker: EventBrokerFactory.getInstance()
-    })
-  }
+      broker: EventBrokerFactory.getInstance(),
+    }),
+  },
 ]
 const listConfigs = () =>
   makeListConfig({
     models: ModelFactory,
     broker: EventBrokerFactory.getInstance(),
     datasources: DataSourceFactory,
-    threadpools: ThreadPoolFactory
+    threadpools: ThreadPoolFactory,
   })
 
 /**
@@ -184,25 +198,25 @@ const listConfigs = () =>
  *
  * @param {*} modelName
  */
-const domainPorts = modelName => ({
+const domainPorts = (modelName) => ({
   ...UseCaseService(modelName),
   eventBroker: EventBrokerFactory.getInstance(),
   modelSpec: ModelFactory.getModelSpec(modelName),
-  dataSource: DataSourceFactory.getDataSource(modelName)
+  dataSource: DataSourceFactory.getDataSource(modelName),
 })
 
 /**
- *
+ *returns
  * @param {*} fn
  * @param {*} ports
- * @returns
+ * @
  */
 const userController = (fn, ports) => async (req, res) => {
   try {
     return await fn(req, res, ports)
   } catch (error) {
     console.error({ fn: userController.name, error })
-    res.status(500).json({ msg: 'error occurred', error })
+    res.status(500).json({ msg: "error occurred", error })
   }
 }
 
@@ -217,18 +231,18 @@ const userController = (fn, ports) => async (req, res) => {
 export function getUserRoutes () {
   try {
     return ModelFactory.getModelSpecs()
-      .filter(spec => spec.routes)
-      .map(spec =>
+      .filter((spec) => spec.routes)
+      .map((spec) =>
         spec.routes
-          .filter(route => route)
-          .map(route => {
+          .filter((route) => route)
+          .map((route) => {
             const api = domainPorts(spec.modelName)
             return Object.keys(route)
-              .map(key =>
-                typeof route[key] === 'function'
+              .map((key) =>
+                typeof route[key] === "function"
                   ? {
-                      [key]: userController(route[key], api)
-                    }
+                    [key]: userController(route[key], api),
+                  }
                   : { [key]: route[key] }
               )
               .reduce((a, b) => ({ ...a, ...b }))
@@ -241,7 +255,7 @@ export function getUserRoutes () {
 }
 
 export const UseCases = {
-  addModels,
+  createModels,
   editModels,
   listModels,
   findModels,
@@ -252,7 +266,7 @@ export const UseCases = {
   registerEvents,
   emitEvents,
   deployModels,
-  invokePorts
+  invokePorts,
 }
 
 /**
@@ -264,10 +278,10 @@ export const UseCases = {
  * @returns
  */
 export function UseCaseService (modelName = null) {
-  if (typeof modelName === 'string') {
+  if (typeof modelName === "string") {
     const modelNameUpper = modelName.toUpperCase()
     return {
-      addModel: makeOne(modelNameUpper, makeAddModel),
+      createModel: makeOne(modelNameUpper, makeCreateModel),
       editModel: makeOne(modelNameUpper, makeEditModel),
       listModels: makeOne(modelNameUpper, makeListModels),
       findModel: makeOne(modelNameUpper, makeFindModel),
@@ -276,11 +290,11 @@ export function UseCaseService (modelName = null) {
       emitEvent: makeOne(modelNameUpper, makeEmitEvent),
       deployModel: makeOne(modelNameUpper, makeDeployModel),
       invokePort: makeOne(modelNameUpper, makeInvokePort),
-      listConfigs: listConfigs()
+      listConfigs: listConfigs(),
     }
   }
   return {
-    addModels: addModels(),
+    createModels: createModels(),
     editModels: editModels(),
     listModels: listModels(),
     findModels: findModels(),
@@ -290,6 +304,15 @@ export function UseCaseService (modelName = null) {
     hotReload: hotReload(),
     emitEvent: emitEvents(),
     invokePort: invokePorts(),
-    listConfigs: listConfigs()
+    listConfigs: listConfigs(),
   }
+}
+
+export function makeDomain (domain) {
+  if (!domain) throw new Error('no domain provided')
+  return modelsInDomain(domain.toUpperCase())
+    .map(modelName => ({
+      [modelName]: UseCaseService(modelName)
+    }))
+    .reduce((a, b) => ({ ...a, ...b }), {})
 }

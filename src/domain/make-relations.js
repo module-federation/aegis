@@ -1,5 +1,6 @@
 'use strict'
 
+import DataSource from './datasource'
 import domainEvents from './domain-events'
 const {
   internalCacheRequest,
@@ -131,7 +132,7 @@ async function createNewModels (args, fromModel, relation, ds) {
   if (args.length > 0) {
     const { UseCaseService } = require('.')
     const service = UseCaseService(relation.modelName.toUpperCase())
-    const newModels = await Promise.all(args.map(arg => service.addModel(arg)))
+    const newModels = await Promise.all(args.map(arg => service.createModel(arg)))
     return updateForeignKeys[relation.type](fromModel, newModels, relation, ds)
   }
 }
@@ -185,20 +186,17 @@ function isRelatedModelLocal (relation) {
     .includes(relation.modelName.toUpperCase())
 }
 
-/**
- * restrict the scope of available functions
- *
- * @param {*} ds
- * @returns
- */
-function limitDs (ds) {
-  return {
-    find: ds.find,
-    list: ds.list,
-    save: ds.save,
-    delete: ds.delete
-  }
+function checkDomain (modelName1, modelName2) {
+  const spec1 = require('.').default.getModelSpec(modelName1)
+  if (!spec1.domain) throw new Error(`model not in domain ${modelName1}`)
+  const spec2 = require('.').default.getModelSpec(modelName1)
+  if (!spec2.domain) throw new Error(`model not in domain ${modelName2}`)
+  if (spec1.domain !== spec2.domain) throw new Error(`models not in same domain`)
 }
+
+/**
+ * @typedef {import('./datasource').default} DataSource
+ */
 
 /**
  * Generate functions to retrieve related domain objects.
@@ -211,7 +209,7 @@ export default function makeRelations (relations, datasource, broker) {
   return Object.keys(relations)
     .map(function (relation) {
       const rel = relations[relation]
-      const modelName = rel.modelName.toUpperCase()
+      const relatedModelName = rel.modelName.toUpperCase()
       rel.name = relation
 
       try {
@@ -225,20 +223,29 @@ export default function makeRelations (relations, datasource, broker) {
           // the relation function
           async [relation] (...args) {
             // Get or create datasource of related object
-            const ds = datasource.getFactory().getDataSource(modelName)
+            const ds = datasource.getFactory().getDataSource(relatedModelName)
 
             if (rel.type === 'custom') {
-              const restrictedDs = limitDs(datasource)
-              return datasource[relation].apply(restrictedDs, {
-                modelName,
-                model: this,
-                ds: limitDs(ds),
-                relation,
-                args
-              })
+              checkDomain(relatedModelName, this.getName())
+              const rds = datasource
+                .getFactory()
+                .getRestrictedDataSource(this.getName())
+              const relRds = datasource
+                .getFactory()
+                .getRestrictedDataSource(relatedModelName)
+
+              return datasource[relation].call(
+                rds,
+                {
+                  args,
+                  relation,
+                  model: this,
+                  ds: relRds
+                }
+              )
             }
 
-            if (args.length > 0 && isRelatedModelLocal(rel))
+            if (args?.length > 0 && isRelatedModelLocal(rel))
               // args mean create new instance(s) of related model
               return await createNewModels(args, this, rel, ds)
 

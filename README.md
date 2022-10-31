@@ -100,12 +100,12 @@ yarn demo
 - Run on WasmEdge
 - Run in the browser
 - Run on Arduino
-- Built-in, pluggable, streaming service mesh
+- Addtional service mesh plugins.
+- Support ROS2/DDS for low-latency IoT networks
 - Point cloud support for LiDAR integration
 - PyNode - Python on Node - interpreted, not transpiled
-- Support for streaming media and realtime AI inference
 - Support for QUIC, NDI, WebRTC protocols
-- Addt'l datasource adapters: GraphDb, Blockchain, Solid Pod
+- Addt'l datasource adapters: Graph, Blockchain, Solid Pod, timeseries
 - Adaptive Deployment (AIOps based dynamic infra)
 - Data privacy based on Zero Knowledge Proofs
 - OCI wrapper for wasm-based runtime

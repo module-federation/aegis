@@ -9,7 +9,7 @@ const broker = EventBrokerFactory.getInstance()
 
 const MAPSIZE = 2048 * 56
 // Size is in UTF-16 codepointse
-const KEYSIZE = 32
+const KEYSIZE = 64
 const OBJSIZE = 4056
 
 const dataType = {
@@ -36,8 +36,8 @@ const dataType = {
  */
 const SharedMemoryMixin = superclass =>
   class extends superclass {
-    constructor (map, factory, name) {
-      super(map, factory, name)
+    constructor (map, factory, name, options) {
+      super(map, factory, name, options)
 
       // Indicate which class we extend
       this.className = super.className
@@ -100,7 +100,7 @@ const SharedMemoryMixin = superclass =>
  * @returns {SharedMap}
  */
 function findSharedMap (name) {
-  if (name === workerData.poolName) return workerData.sharedMap
+  if (name === workerData.poolName && workerData.sharedMap) workerData.sharedMap
 
   if (workerData.dsRelated?.length > 0) {
     const dsRel = workerData.dsRelated.find(ds => ds.modelName === name)
@@ -150,7 +150,8 @@ export function withSharedMemory (
         dsMap: sharedMap,
         mixins: [
           DsClass =>
-            class DataSourceSharedMemory extends SharedMemoryMixin(DsClass) {}
+            class 
+             extends SharedMemoryMixin(DsClass) { }
         ].concat(options.mixins)
       })
 

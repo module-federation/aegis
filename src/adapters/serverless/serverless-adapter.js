@@ -39,7 +39,7 @@ exports.makeServerlessAdapter = function (getParsers) {
 
     return async function handle (...args) {
       const { req, res } = await parseMessage('request', ...args)
-      const response = await aegis.handle(req.path, req.method, req, res)
+      const response = await aegis(req.path, req.method, req, res)
       return parseMessage('response', response)
     }
   }

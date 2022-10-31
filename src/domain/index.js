@@ -133,6 +133,9 @@
  * @property {number} [cacheSize] - maxium number of cached instances before purging
  * @property {number} [cacheSizeKb] - maximum size in kilobytes of cached instances before cache purge
  * @property {boolean} [cachedWrite] - allow cached instances of an object to write to persistent storage
+ * @property {()=>[]} list
+ * @property {(id)=>{}} find
+ * @property {(id,data)=>data} save
  */
 
 /**
@@ -186,6 +189,8 @@
 
 import ModelFactory from './model-factory'
 import bindAdapters from './bind-adapters'
+import { requestContext } from './util/async-context'
+import uuid from './util/uuid'
 
 import {
   importRemoteModels,
@@ -197,7 +202,7 @@ import {
   importAdapterCache,
   importServiceCache,
   importWorkerCache,
-  importPortCache
+  importPortCache,
 } from './import-remotes'
 
 /**
@@ -228,6 +233,15 @@ const onloadEvent = model => ({
   model: model
 })
 
+function getUniqueId () {
+  return getContextId() || uuid()
+}
+
+function getContextId () {
+  const store = requestContext.getStore()
+  if (store) return store.get('id')
+}
+
 /**
  * Register the {@link ModelSpecification}: inject dependencies,
  * bind adapters, register events
@@ -256,6 +270,7 @@ function register ({
   })
 
   const dependencies = {
+    getUniqueId,
     ...model.dependencies,
     ...bindings
   }
@@ -263,6 +278,9 @@ function register ({
   ModelFactory.registerModel({
     ...model,
     modelName: modelName,
+    domain: typeof model.domain === 'string'
+      ? model.domain.toUpperCase()
+      : modelName,
     dependencies,
     factory: model.factory(dependencies),
     worker: workers[modelName],
@@ -429,6 +447,8 @@ export { default as ThreadPoolFactory } from './thread-pool'
 export { default as DomainEvents } from './domain-events'
 
 export { AppError } from '../domain/util/app-error'
+
+export { makeDomain } from './use-cases'
 
 export { requestContext } from '../domain/util/async-context'
 
