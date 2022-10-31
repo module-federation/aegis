@@ -34,7 +34,10 @@ export default function getModelByIdFactory (findModel) {
           headers: {
             'Content-Type': 'application/json'
           },
-          statusCode: 404
+          statusCode: 404,
+          body: {
+            error: e.message
+          }
         }
       }
 
