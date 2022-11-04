@@ -95,7 +95,7 @@ const router = {
       .forEach(ctrl => {
         if (ports) {
           if (ctrl.ports) {
-            for(const portName of ctrl.ports) {
+            for(const portName in ctrl.ports) {
               const port = ctrl.ports[portName];
               if(port.path) {
                 routeOverrides.set(port.path, portName);
@@ -180,7 +180,7 @@ async function handle(path, method, req, res) {
     return
   }
 
-  const requestInfo = Object.assign(req, { params: routeInfo.params, routeOverrides: routeOverrides.get(path) })
+  const requestInfo = Object.assign(req, { params: routeInfo.params, routeOverride: routeOverrides.get(path) })
 
   try {
     // track this request
