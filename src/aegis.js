@@ -75,6 +75,7 @@ class RouteMap extends Map {
 }
 
 const routes = new RouteMap()
+const routeOverrides = new Map()
 
 function buildPath(ctrl, path) {
   return ctrl.path && ctrl.path[path.name]
@@ -93,17 +94,26 @@ const router = {
       .filter(ctrl => !ctrl.internal)
       .forEach(ctrl => {
         if (ports) {
-          if (ctrl.ports)
-            Object.values(ctrl.ports).forEach(port => {
-              if (checkAllowedMethods(ctrl, method))
+          if (ctrl.ports) {
+            for(const portName of ctrl.ports) {
+              const port = ctrl.ports[portName];
+              if(port.path) {
+                routeOverrides.set(port.path, portName);
+              }
+
+              if (checkAllowedMethods(ctrl, method)) { 
                 routes.set(port.path || path(ctrl.endpoint), {
                   [method]: adapter(ctrl.fn)
                 })
-            })
-        } else
+              }
+            }
+          }
+       
+        } else {
           routes.set(buildPath(ctrl, path), {
             [method]: adapter(ctrl.fn)
           })
+        }
       })
   },
 
@@ -170,7 +180,7 @@ async function handle(path, method, req, res) {
     return
   }
 
-  const requestInfo = Object.assign(req, { params: routeInfo.params })
+  const requestInfo = Object.assign(req, { params: routeInfo.params, routeOverrides: routeOverrides.get(path) })
 
   try {
     // track this request
