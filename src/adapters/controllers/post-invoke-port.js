@@ -10,9 +10,7 @@ export default function anyInvokePortFactory (invokePort) {
   return async function anyInvokePort (httpRequest) {
     try {
       httpRequest.log(anyInvokePort.name)
-      console.log("ROUTE_OVERRIDE::::", httpRequest)
       const result = await invokePort({
-        isOverrideCall: Object.hasOwn(httpRequest, 'routeOverride'),
         port: httpRequest.params.port || httpRequest.routeOverride,
         args: httpRequest.body,
         id: httpRequest.params.id || null
