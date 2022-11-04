@@ -10,9 +10,8 @@ export default function anyInvokePortFactory (invokePort) {
   return async function anyInvokePort (httpRequest) {
     try {
       httpRequest.log(anyInvokePort.name)
-
       const result = await invokePort({
-        port: httpRequest.params.port,
+        port: httpRequest.params.port || httpRequest.routeOverride,
         args: httpRequest.body,
         id: httpRequest.params.id || null
       })

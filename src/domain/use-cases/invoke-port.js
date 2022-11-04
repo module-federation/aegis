@@ -39,10 +39,10 @@ export default function makeInvokePort ({
       return threadpool.runJob(invokePort.name, input, modelName)
     } else {
       try {
-        const { id = null, port } = input
+        const { jobData: {id = null, port} } = input 
         const service = await findModelService(id)
         if (!service) throw new Error('could not find service')
-        return await service[port](input)
+        return await service[port](input.jobData)
       } catch (error) {
         return AppError(error)
       }
