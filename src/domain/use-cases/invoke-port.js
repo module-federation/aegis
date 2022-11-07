@@ -39,9 +39,21 @@ export default function makeInvokePort ({
       return threadpool.runJob(invokePort.name, input, modelName)
     } else {
       try {
-        const { jobData: {id = null, port} } = input 
+        const { jobData: {id = null, port = null} } = input;
         const service = await findModelService(id)
-        if (!service) throw new Error('could not find service')
+        if (!service) {
+          throw new Error('could not find service')
+        } 
+
+        if(!port) {
+          const path = input.context.get('path');
+          const portTupleWithCustomPath = Object.entries(object1).filter((port) => port[1].path === path);
+          if(!portTupleWithCustomPath) {
+            throw new Error('no port specified');
+          }
+          return await service[portTupleWithCustomPath[0]](input.jobData);
+        }
+
         return await service[port](input.jobData)
       } catch (error) {
         return AppError(error)

@@ -29,7 +29,6 @@ export default function buildCallback(controller) {
       path: req.path,
       res: res,
       headers: req.headers,
-      routeOverride: req.routeOverride,
       log(func) {
         console.info({
           function: func,

@@ -180,7 +180,7 @@ async function handle(path, method, req, res) {
     return
   }
 
-  const requestInfo = Object.assign(req, { params: routeInfo.params, routeOverride: routeOverrides.get(path) })
+  const requestInfo = Object.assign(req, { params: routeInfo.params })
 
   try {
     // track this request
@@ -189,7 +189,8 @@ async function handle(path, method, req, res) {
         ['id', req.headers['idempotency-key'] || nanoid()],
         ['begin', Date.now()],
         ['user', req.user],
-        ['res', res]
+        ['res', res],
+        ['path', path]
       ])
     )
     console.debug(`enter context ${requestContext.getStore().get('id')}`)
