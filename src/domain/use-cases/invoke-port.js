@@ -23,6 +23,7 @@ export default function makeInvokePort ({
   threadpool,
   modelName,
   models,
+  context,
   authorize = async x => await x()
 } = {}) {
   async function findModelService (id = null) {
@@ -46,10 +47,14 @@ export default function makeInvokePort ({
         } 
 
         if(!port) {
-          const path = input.context.get('path');
-          const portTupleWithCustomPath = Object.entries(object1).filter((port) => port[1].path === path);
+          const specPorts = service.getPorts();
+          const path = context['requestContext'].getStore().get('path');
+          const portTupleWithCustomPath = Object.entries(specPorts).filter((port) => port[1].path === path);
           if(!portTupleWithCustomPath) {
             throw new Error('no port specified');
+          }
+          if(!service[portTupleWithCustomPath[0]]) {
+            throw new Error('no port found');
           }
           return await service[portTupleWithCustomPath[0]](input.jobData);
         }
