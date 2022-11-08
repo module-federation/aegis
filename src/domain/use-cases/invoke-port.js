@@ -53,14 +53,13 @@ export default function makeInvokePort ({
           console.log("SPEC_PORTS::::", specPorts)
           console.log("SPEC_PORT_ENTRIES:::", Object.entries(specPorts));
 
-          const [ portName ] = Object.entries(specPorts).filter((port) => port[1].path === path);
-          console.log("PORT_TUPLE::::", portName)
+          const portTuple = Object.entries(specPorts).filter((port) => port[1].path === path);
+          console.log("PORT_TUPLE::::", portTuple)
 
-
-          if(!portName) {
+          if(!portTuple) {
             throw new Error('no port specified');
           }
-          if(!service[portName]) {
+          if(!service[portTuple[0]]) {
             throw new Error('no port found');
           }
 
