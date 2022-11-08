@@ -54,7 +54,7 @@ export default function makeInvokePort ({
           console.log("SPEC_PORT_ENTRIES:::", Object.entries(specPorts));
 
           const portTupleWithCustomPath = Object.entries(specPorts).filter((port) => port[1].path === path);
-
+          console.log("PORT_TUPLE::::", portTupleWithCustomPath)
 
 
           if(!portTupleWithCustomPath) {
