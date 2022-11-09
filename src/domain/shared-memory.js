@@ -65,8 +65,9 @@ const SharedMemoryMixin = superclass =>
         if (!raw) return console.log('no data')
         const data = dataType.read[typeof raw](raw)
 
-        console.log("MAP_GET:::")
-        return ModelFactory.loadModel(broker, this, data, this.name)
+        return isMainThread
+          ? data
+          : ModelFactory.loadModel(broker, this, data, this.name)
       } catch (error) {
         console.error({ fn: this.mapGet.name, error })
       }
@@ -77,9 +78,7 @@ const SharedMemoryMixin = superclass =>
      * @returns
      */
     mapToArray () {
-      console.log("MAP_TO_ARR:::")
-      return this.dsMap.map(v => ModelFactory.loadModel(broker, this, JSON.parse(v), this.name)
-      )
+      return this.dsMap.map(v => ModelFactory.loadModel(broker, this, JSON.parse(v), this.name));
     }
 
     mapCount () {
