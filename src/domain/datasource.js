@@ -3,7 +3,6 @@
 import { changeDataCapture } from './util/change-data-capture'
 
 /** change data capture */
-let CDC = {}
 const cdcEnabled = false // /true/i.test('CHANGE_DATA_CAPTURE')
 
 function roughSizeOfObject (...objects) {
@@ -37,53 +36,35 @@ function roughSizeOfObject (...objects) {
   return bytes
 }
 
+const FACTORY = Symbol()
+
 /**
  * Data source base class
  */
 export default class DataSource {
-  constructor (map, factory, name, options = {}) {
+  constructor (map, name, options) {
     this.className = this.constructor.name
     this.dsMap = map
-    this.factory = factory
     this.name = name
     this.options = options
   }
 
-  /**
-   *
-   * @param {*} id
-   * @param {*} data
-   * @returns
-   */
-  changeDataCapture (id, data) {
-    const cdc = CDC[this.name] && CDC[this.name][id] ? CDC[this.name][id] : null
-    const deserialized = JSON.parse(JSON.stringify(data))
-    if (cdc) {
-      const indeces = []
-      indeces[0] = cdc.changes.length
-      Object.keys(data).forEach(key => (cdc.proxy[key] = deserialized[key]))
-      cdc.indeces[1] = cdc.changes.length
-      cdc.metadata.push({ time: Date.now(), indeces, user: null })
-      return cdc.changes.slice(cdc.indeces[0], cdc.indeces[1] - cdc.indeces[0])
-    }
-    let changes
-    const writeEvent = { time: Date.now(), indeces: [], user: null }
-    CDC[this.name] = {}
-    CDC[this.name][id] = {}
-    CDC[this.name][id].changes = changes = []
-    writeEvent.indeces[0] = 0
-    CDC[this.name][id].proxy = changeDataCapture(deserialized, changes)
-    Object.keys(data).forEach(
-      key => (CDC[this.name][id].proxy[key] = data[key])
-    )
-    writeEvent.indeces[1] = changes.length
-    CDC[this.name][id].metadata = []
-    CDC[this.name][id].metadata.push(writeEvent)
+  changeHandlers () {}
+
+  handleChanges (id, data) {
+    if (!cdcEnabled) return data
+
+    const prev = this.findSync(id)
+    if (!prev) return data
+
+    const proxyClone = changeDataCapture({ ...prev }, this.changeHandlers())
+    return Object.freeze(Object.assign(proxyClone, data))
   }
 
   /**
-   * Upsert model instance asynchronomously
-   * to handle I/0 latency and concurrency
+   * Upsert model instance asynchronously
+   * to handle I/0 latency & concurrency.
+   *
    * @param {*} id
    * @param {*} data
    * @returns {Promise<object>}
@@ -93,16 +74,16 @@ export default class DataSource {
   }
 
   /**
-   * Synchronous cache write. Dont use
-   * this method to call a remote datasource.
-   * Use async {@link save} instead.
+   * Synchronous cache write. Don't use this
+   * method to save to a remote data source;
+   * use asychronous {@link save} method.
+   *
    * @param {string} id
    * @param {import(".").Model} data
    * @returns
    */
   saveSync (id, data) {
-    if (cdcEnabled) this.changeDataCapture(id, data)
-    return this.mapSet(id, data)
+    return this.mapSet(id, this.handleChanges(id, data))
   }
 
   /**
@@ -225,7 +206,7 @@ export default class DataSource {
           )
         )
 
-        if (query.__count === 'stats')
+        if (query.__count)
           return {
             list: loo.length,
             total: this.getCacheSize(),
@@ -258,15 +239,7 @@ export default class DataSource {
    *
    * @param {*} options
    */
-  async load (options) { }
-
-  /**
-   *
-   * @returns {import("./datasource-factory").DataSourceFactory}
-   */
-  getFactory () {
-    return this.factory
-  }
+  async load (options) {}
 
   /**
    *
@@ -303,7 +276,6 @@ export default class DataSource {
     return this.countSync() * roughSizeOfObject(this.listSync({ __count: 1 }))
   }
 
-
   /**
    * Subclasses must override this method to run
    * the query against the datastore it accesses.
@@ -316,8 +288,8 @@ export default class DataSource {
   /**
    * Subclasses must override this method to run
    * the query against the datastore it accesses.
-   * @param {foreignKey} filter 
-   * @returns 
+   * @param {foreignKey} filter
+   * @returns
    */
   manyToOne (filter) {
     return this.find(filter)
@@ -326,8 +298,8 @@ export default class DataSource {
   /**
    * Subclasses must override this method to run
    * the query against the datastore it accesses.
-   * @param {{foreignKey:id}} filter 
-   * @returns 
+   * @param {{foreignKey:id}} filter
+   * @returns
    */
   containsMany (filter) {
     return this.listSync(filter)
@@ -360,9 +332,9 @@ export default class DataSource {
   }
 
   /**
- *
- */
-  close () { }
+   *
+   */
+  close () {}
 
   getClassName () {
     return this.className

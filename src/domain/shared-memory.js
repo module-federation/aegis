@@ -7,21 +7,29 @@ import { EventBrokerFactory } from '.'
 
 const broker = EventBrokerFactory.getInstance()
 
+// size is in UTF-16 codepoints
 const MAPSIZE = 2048 * 56
-// Size is in UTF-16 codepointse
 const KEYSIZE = 64
 const OBJSIZE = 4056
 
+function logError (x) {
+  console.error({ msg: 'unexpected datatype', type: typeof x, value: x })
+}
+
 const dataType = {
   write: {
-    string: x => x,
+    string: x => logError(x),
     object: x => JSON.stringify(x),
-    number: x => x
+    number: x => logError(x),
+    symbol: x => logError(x),
+    undefined: x => logError(x)
   },
   read: {
     string: x => JSON.parse(x),
-    object: x => x,
-    number: x => x
+    object: x => logError(x),
+    number: x => logError(x),
+    symbol: x => logError(x),
+    undefined: x => logError(x)
   }
 }
 
@@ -36,8 +44,8 @@ const dataType = {
  */
 const SharedMemoryMixin = superclass =>
   class extends superclass {
-    constructor (map, factory, name, options) {
-      super(map, factory, name, options)
+    constructor (map, name, options) {
+      super(map, name, options)
 
       // Indicate which class we extend
       this.className = super.className
@@ -59,15 +67,30 @@ const SharedMemoryMixin = superclass =>
      * @returns {import('.').Model}
      */
     mapGet (id) {
+      if (!id) {
+        return console.warn({
+          fn: `${__filename}:${this.mapGet.name}`,
+          message: 'no id provided'
+        })
+      }
+
       try {
-        if (!id) return console.log('no id provided')
-        const raw = this.dsMap.get(id)
-        if (!raw) return console.log('no data')
-        const data = dataType.read[typeof raw](raw)
+        const jsonStr = this.dsMap.get(id)
+        if (!jsonStr) {
+          return console.warn({
+            fn: `${__filename}:${this.mapGet.name}`,
+            message: 'no data found'
+          })
+        }
+
+        const jsonObj = dataType.read[typeof jsonStr](jsonStr)
+        if (!jsonObj || typeof jsonObj !== 'object') {
+          throw new Error('problem reading data from shared mem')
+        }
 
         return isMainThread
-          ? data
-          : ModelFactory.loadModel(broker, this, data, this.name)
+          ? jsonObj
+          : ModelFactory.loadModel(broker, this, jsonObj, this.name)
       } catch (error) {
         console.error({ fn: this.mapGet.name, error })
       }
@@ -80,11 +103,15 @@ const SharedMemoryMixin = superclass =>
     mapToArray () {
       return this.dsMap.map(v =>
         isMainThread
-          ? JSON.parse(v)
+          ? JSON.parse(dv)
           : ModelFactory.loadModel(broker, this, JSON.parse(v), this.name)
       )
     }
 
+    /**
+     * @override
+     * @returns
+     */
     mapCount () {
       return this.dsMap.length
     }
@@ -100,13 +127,12 @@ const SharedMemoryMixin = superclass =>
  * @returns {SharedMap}
  */
 function findSharedMap (name) {
-  if (name === workerData.poolName && workerData.sharedMap) workerData.sharedMap
+  if (name === workerData.poolName) return workerData.sharedMap
 
   if (workerData.dsRelated?.length > 0) {
     const dsRel = workerData.dsRelated.find(ds => ds.modelName === name)
     if (dsRel) return dsRel.dsMap
   }
-  return null
 }
 
 function rehydrateSharedMap (name) {
@@ -144,16 +170,15 @@ export function withSharedMemory (
       ? createSharedMap(mapsize, keysize, objsize, name)
       : rehydrateSharedMap(name)
 
-    if (sharedMap instanceof SharedMap)
+    if (sharedMap instanceof SharedMap) {
       return createDataSource.call(factory, name, {
         ...options,
         dsMap: sharedMap,
-        mixins: [
-          DsClass =>
-            class 
-             extends SharedMemoryMixin(DsClass) { }
-        ].concat(options.mixins)
+        mixins: [DsClass => class extends SharedMemoryMixin(DsClass) {}].concat(
+          options.mixins || []
+        )
       })
+    }
 
     return createDataSource.call(factory, name, options)
   } catch (error) {

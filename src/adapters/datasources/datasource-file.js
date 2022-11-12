@@ -9,8 +9,8 @@ export class DataSourceFile extends DataSourceMemory {
   /**
    * @param {Set} map
    */
-  constructor(map, factory, name) {
-    super(map, factory, name)
+  constructor(map, name, options) {
+    super(map, name, options)
     this.file = this.getFilePath()
     this.className = DataSourceFile.name
   }

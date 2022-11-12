@@ -1,6 +1,9 @@
 'use strict'
 
-import DataSource from './datasource'
+/**
+ * @typedef {import('./datasource').default} DataSource
+ */
+
 import domainEvents from './domain-events'
 const {
   internalCacheRequest,
@@ -72,16 +75,44 @@ export const relationType = {
     return this.manyToOne(model, ds, rel)
   },
 
+  /**
+   * retrieve embedded documents from array
+   *
+   * @param {*} model
+   * @param {*} ds
+   * @param {*} rel
+   * @returns
+   */
   containsMany: (model, ds, rel) =>
     Promise.all(
       model[rel.arrayKey].map(arrayItem => ds.find(arrayItem[rel.foreignKey]))
     ),
 
-  custom: x => x
+  /**
+   *
+   * @param {import('.').Model} model
+   * @param {import('.').datasource} ds
+   * @param {*} rel
+   * @param {*} args
+   * @returns
+   */
+  custom: (model, ds, rel, args) => {
+    // use restricted datasources, i.e. no access to DataSourceFactory
+    const rds = ds.factory.getRestrictedDataSource(model.modelName)
+    const relRds = ds.factory.getRestrictedDataSource(rel.modelName, {
+      isCached: true,
+      ephemeral: true
+    })
+
+    // if relRds is in the same domain but is remote, this fails
+    if (rds.domain !== relRds.domain) return null
+
+    return rds[rel.name]({ args, model, ds: relRds, relation: rel })
+  }
 }
 
 /**
- * If we create a new related object, foreign keys need to reference it
+ * If we create a new related object, foreign keys need to reference it.
  */
 const updateForeignKeys = {
   /**
@@ -91,32 +122,38 @@ const updateForeignKeys = {
    * @param {import('./index').relations[x]} relation
    * @param {import('./model-factory').Datasource} ds
    */
-  [relationType.manyToOne.name] (fromModel, toModels, relation, ds) {
-    return fromModel.updateSync(
+  async [relationType.manyToOne.name] (fromModel, toModels, relation, ds) {
+    return fromModel.update(
       { [relation.foreignKey]: toModels[0].getId() },
       false
     )
   },
 
-  [relationType.oneToOne.name] (fromModel, toModels, relation, ds) {
+  async [relationType.oneToOne.name] (fromModel, toModels, relation, ds) {
     return this[relationType.manyToOne.name](fromModel, toModels, relation, ds)
   },
 
-  [relationType.oneToMany.name] (fromModel, toModels, relation, ds) {
-    return toModels.map(m => {
-      const model = ds.findSync(m.id)
-      ds.saveSync({
-        ...model,
-        [relation.foreignKey]: fromModel.getId()
+  async [relationType.oneToMany.name] (fromModel, toModels, relation, ds) {
+    return Promise.all(
+      toModels.map(async m => {
+        const model = await ds.find(m.id || m.getId())
+        return ds.save(m.id, {
+          ...model,
+          [relation.foreignKey]: fromModel.getId()
+        })
       })
-    })
+    )
   },
 
-  [relationType.containsMany.name] (fromModel, toModels, relation, ds) {
-    // console(relation.arrayKey)
-    // fromModel[relation.arrayKey].concat([
-    //   ...toModels.map(m => m[relation.foreignKey])
-    // ])
+  async [relationType.containsMany.name] (fromModel, toModels, relation, ds) {
+    toModels.map(model =>
+      model.update({ [relation.foreignKey]: fromModel.getId() })
+    )
+  },
+
+  async [relationType.custom.name] (fromModel, toModels, relation, ds) {
+    const customFn = fromModel[`${relation}UpdateForeignKeys`]
+    if (customFn === 'function') customFn(toModels, relation, ds)
   }
 }
 
@@ -132,7 +169,9 @@ async function createNewModels (args, fromModel, relation, ds) {
   if (args.length > 0) {
     const { UseCaseService } = require('.')
     const service = UseCaseService(relation.modelName.toUpperCase())
-    const newModels = await Promise.all(args.map(arg => service.createModel(arg)))
+    const newModels = await Promise.all(
+      args.map(arg => service.createModel(arg))
+    )
     return updateForeignKeys[relation.type](fromModel, newModels, relation, ds)
   }
 }
@@ -178,6 +217,12 @@ export function requireRemoteObject (model, relation, broker, ...args) {
   })
 }
 
+/**
+ * Find out if a related model runs locally.
+ *
+ * @param {import('.').relations[x]} relation
+ * @returns {boolean}
+ */
 function isRelatedModelLocal (relation) {
   return require('.')
     .default.getModelSpecs()
@@ -185,18 +230,6 @@ function isRelatedModelLocal (relation) {
     .map(spec => spec.modelName.toUpperCase())
     .includes(relation.modelName.toUpperCase())
 }
-
-function checkDomain (modelName1, modelName2) {
-  const spec1 = require('.').default.getModelSpec(modelName1)
-  if (!spec1.domain) throw new Error(`model not in domain ${modelName1}`)
-  const spec2 = require('.').default.getModelSpec(modelName1)
-  if (!spec2.domain) throw new Error(`model not in domain ${modelName2}`)
-  if (spec1.domain !== spec2.domain) throw new Error(`models not in same domain`)
-}
-
-/**
- * @typedef {import('./datasource').default} DataSource
- */
 
 /**
  * Generate functions to retrieve related domain objects.
@@ -222,37 +255,23 @@ export default function makeRelations (relations, datasource, broker) {
         return {
           // the relation function
           async [relation] (...args) {
-            // Get or create datasource of related object
-            const ds = datasource.getFactory().getDataSource(relatedModelName)
+            // Get existing (or create temp) datasource of related object
+            const local = isRelatedModelLocal(rel)
+            const createNew = args?.length > 0
 
-            if (rel.type === 'custom') {
-              checkDomain(relatedModelName, this.getName())
-              const rds = datasource
-                .getFactory()
-                .getRestrictedDataSource(this.getName())
-              const relRds = datasource
-                .getFactory()
-                .getRestrictedDataSource(relatedModelName)
+            let ds = datasource.factory.getDataSource(
+              relatedModelName,
+              local ? {} : { isCached: true, ephemeral: true }
+            )
 
-              return datasource[relation].call(
-                rds,
-                {
-                  args,
-                  relation,
-                  model: this,
-                  ds: relRds
-                }
-              )
-            }
-
-            if (args?.length > 0 && isRelatedModelLocal(rel))
-              // args mean create new instance(s) of related model
+            // args mean create related model instances
+            if (createNew && local && rel.type !== 'custom')
               return await createNewModels(args, this, rel, ds)
 
-            const models = await relationType[rel.type](this, ds, rel)
+            const models = await relationType[rel.type](this, ds, rel, args)
 
             if (!models || models.length < 1) {
-              // couldn't find the object locally - try remote instances
+              // find remote instance(s)
               const event = await requireRemoteObject(
                 this,
                 rel,
@@ -260,18 +279,20 @@ export default function makeRelations (relations, datasource, broker) {
                 ...args
               )
 
-              // new models: update foreign keys
-              if (event?.args?.length > 0)
+              // we now have the code, so get the real ds
+              ds = ds.factory.getDataSource(rel.modelName)
+
+              if (createNew)
                 updateForeignKeys[rel.type](this, event.model, rel, ds)
 
-              return await relationType[rel.type](this, ds, rel)
+              return await relationType[rel.type](this, ds, rel, args)
             }
 
             return models
           }
         }
-      } catch (e) {
-        console.error(e)
+      } catch (error) {
+        console.error({ fn: makeRelations.name, error })
       }
     })
     .reduce((c, p) => ({ ...p, ...c }))

@@ -118,7 +118,7 @@ const Model = (() => {
     }
   }
 
-  function queueNotice(model) {
+  function queueNotice (model) {
     console.debug(queueNotice.name, 'disabled')
   }
 
@@ -134,7 +134,7 @@ const Model = (() => {
    * @param {} clonedModel
    * @returns
    */
-  function rehydrate(clonedModel, model) {
+  function rehydrate (clonedModel, model) {
     return model.prototype
       ? Object.setPrototypeOf(clonedModel, model.prototype)
       : clonedModel
@@ -149,7 +149,7 @@ const Model = (() => {
    * }} modelInfo
    * @returns {Model}
    */
-  function make(modelInfo) {
+  function make (modelInfo) {
     const {
       model = {},
       spec: {
@@ -186,12 +186,12 @@ const Model = (() => {
       [ID]: dependencies.getUniqueId(),
 
       // Called before update is committed
-      [ONUPDATE](changes) {
+      [ONUPDATE] (changes) {
         return onUpdate(this, changes)
       },
 
       // Called before edelte is committed
-      [ONDELETE]() {
+      [ONDELETE] () {
         return onDelete(this)
       },
 
@@ -201,7 +201,7 @@ const Model = (() => {
        * @param {eventMask} event - event type, see {@link eventMask}.
        * @returns {Model} - updated model
        */
-      [VALIDATE](changes, event) {
+      [VALIDATE] (changes, event) {
         return validate(this, changes, event)
       },
 
@@ -211,7 +211,7 @@ const Model = (() => {
        * @param {number} event
        * @returns {string} key name/s: create, update, onload, delete
        */
-      getEventMaskName(event) {
+      getEventMaskName (event) {
         if (typeof event !== 'number') return
         const key = Object.keys(eventMask).find(k => eventMask[k] & event)
         return key
@@ -221,7 +221,7 @@ const Model = (() => {
        * Compensate for downstream transaction failures.
        * Back out all previous port transactions
        */
-      async undo() {
+      async undo () {
         return compensate(this)
       },
 
@@ -233,7 +233,7 @@ const Model = (() => {
        * @param {boolean} [multi] - allow multiple listeners for event,
        * defaults to `true`
        */
-      addListener(eventName, callback, options) {
+      addListener (eventName, callback, options) {
         broker.on(eventName, callback, options)
       },
 
@@ -245,7 +245,7 @@ const Model = (() => {
        * @param {boolean} [forward] - forward event to service mesh,
        * defaults to `false`
        */
-      emit(eventName, eventData, options) {
+      emit (eventName, eventData, options) {
         broker.notify(
           eventName,
           {
@@ -259,7 +259,7 @@ const Model = (() => {
 
       /** @typedef {import('./serializer.js').Serializer} Serializer */
 
-      getDataSourceType() {
+      getDataSourceType () {
         return datasource.getClassName()
       },
 
@@ -277,9 +277,9 @@ const Model = (() => {
        * @param {boolean} validate - run validation by default
        * @returns {Promise<Model>}
        */
-      async update(changes, validate = true) {
+      async update (changes, validate = true) {
         // get the last saved version
-        const saved = await datasource.find(this[ID]) || {}
+        const saved = (await datasource.find(this[ID])) || {}
         // merge changes with last saved and optionally validate
         const valid = validateUpdates({ ...this, ...saved }, changes, validate)
 
@@ -314,7 +314,7 @@ const Model = (() => {
        * @param {boolean} validate
        * @returns {Model}
        */
-      updateSync(changes, validate = true) {
+      updateSync (changes, validate = true) {
         // merge changes with lastest copy and optionally validate
         const valid = validateUpdates(this, changes, validate)
 
@@ -335,12 +335,12 @@ const Model = (() => {
        * @param {*} data
        * @returns
        */
-      async save(id = null, data = null) {
+      async save (id = null, data = null) {
         if (id && data) return datasource.save(id, data)
         return datasource.save(this[ID], this)
       },
 
-      async find(id) {
+      async find (id) {
         if (!id) throw new Error('missing id')
         return datasource.find(id)
       },
@@ -352,7 +352,7 @@ const Model = (() => {
        * @param {{key1, keyN}} filter - list of required matching key-values
        * @returns {Model[]}
        */
-      listSync(filter) {
+      listSync (filter) {
         return datasource.listSync(filter)
       },
 
@@ -364,11 +364,11 @@ const Model = (() => {
        * @param {listOptions} options
        * @returns {Model[]}
        */
-      async list(options) {
+      async list (options) {
         return datasource.list(options)
       },
 
-      createWriteStream() {
+      createWriteStream () {
         return datasource.createWriteStream()
       },
 
@@ -376,11 +376,11 @@ const Model = (() => {
        * Original request passed in by caller
        * @returns arguments passed by caller
        */
-      getArgs() {
+      getArgs () {
         return modelInfo.args ? modelInfo.args : []
       },
 
-      getDependencies() {
+      getDependencies () {
         return dependencies
       },
 
@@ -388,7 +388,7 @@ const Model = (() => {
        * Identify events types.
        * @returns {eventMask}
        */
-      getEventMask() {
+      getEventMask () {
         return eventMask
       },
 
@@ -397,11 +397,11 @@ const Model = (() => {
        *
        * @returns {import(".").ModelSpecification}
        */
-      getSpec() {
+      getSpec () {
         return modelInfo.spec
       },
 
-      isCached() {
+      isCached () {
         return modelInfo.spec.isCached
       },
 
@@ -410,7 +410,7 @@ const Model = (() => {
        *
        * @returns {import(".").ports}
        */
-      getPorts() {
+      getPorts () {
         return modelInfo.spec.ports
       },
 
@@ -419,7 +419,7 @@ const Model = (() => {
        *
        * @returns
        */
-      getName() {
+      getName () {
         return this[MODELNAME]
       },
 
@@ -428,7 +428,7 @@ const Model = (() => {
        *
        * @returns {string}
        */
-      getId() {
+      getId () {
         return this[ID]
       },
 
@@ -437,7 +437,7 @@ const Model = (() => {
        *
        * @returns {string[]} history of ports called by this model instance
        */
-      getPortFlow() {
+      getPortFlow () {
         return this[PORTFLOW]
       },
 
@@ -447,11 +447,11 @@ const Model = (() => {
        * @param {string} key - string representation of Symbol
        * @returns {Symbol}
        */
-      getKey(key) {
+      getKey (key) {
         return keyMap[key]
       },
 
-      equals(model) {
+      equals (model) {
         return (
           model &&
           (model.id || model.getId) &&
@@ -459,34 +459,33 @@ const Model = (() => {
         )
       },
 
-      getContext(name) {
+      getContext (name) {
         return asyncContext[name]
       },
 
       /**
        * Returns service of related domain provided
        * this domain is related to it via modelspec.
-       * If not, we won't be able to access the 
+       * If not, we won't be able to access the
        * domain's memory. Every domain model employs
        * this capability-based security measure.
-       * @returns 
+       * @returns
        */
-      fetchRelatedModel(modelName) {
+      fetchRelatedModel (modelName) {
         const rel = Object.values(relations).find(
           v => v.modelName.toUpperCase() === modelName.toUpperCase()
         )
 
         if (!rel) throw new Error('no relation found')
 
-        if (!datasource
-          .getFactory()
-          .listDataSources()
-          .includes(modelName.toUpperCase()))
+        if (
+          !datasource.factory
+            .listDataSources()
+            .includes(modelName.toUpperCase())
+        )
           throw new Error('no datasource found')
 
-        const ds = datasource
-          .getFactory()
-          .getDataSource(modelName.toUpperCase())
+        const ds = datasource.factory.getDataSource(modelName.toUpperCase())
 
         if (!ds) throw new Error('no datasoure found')
 
@@ -589,7 +588,7 @@ const Model = (() => {
      * @returns {Model} updated model
      *
      */
-    async update(model, changes) {
+    async update (model, changes) {
       return model.update(changes)
     },
 

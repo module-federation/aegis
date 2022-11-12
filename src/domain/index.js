@@ -136,6 +136,7 @@
  * @property {()=>[]} list
  * @property {(id)=>{}} find
  * @property {(id,data)=>data} save
+ * @property {import('.').ports} factory
  */
 
 /**
@@ -202,16 +203,14 @@ import {
   importAdapterCache,
   importServiceCache,
   importWorkerCache,
-  importPortCache,
+  importPortCache
 } from './import-remotes'
 
 /**
  *
  * @param {Model} model
  */
-const createEvent = model => ({
-  model: model
-})
+const createEvent = model => ({ model })
 
 /**
  * @param {{updated:Model,changes:Object}} param0
@@ -225,12 +224,12 @@ const updateEvent = ({ updated, changes }) => ({
 
 const deleteEvent = model => ({
   modelId: ModelFactory.getModelId(model),
-  model: model
+  model
 })
 
 const onloadEvent = model => ({
   modelId: ModelFactory.getModelId(model),
-  model: model
+  model
 })
 
 function getUniqueId () {
@@ -270,17 +269,16 @@ function register ({
   })
 
   const dependencies = {
-    getUniqueId,
     ...model.dependencies,
-    ...bindings
+    ...bindings,
+    getUniqueId
   }
 
   ModelFactory.registerModel({
     ...model,
-    modelName: modelName,
-    domain: typeof model.domain === 'string'
-      ? model.domain.toUpperCase()
-      : modelName,
+    modelName,
+    domain:
+      typeof model.domain === 'string' ? model.domain.toUpperCase() : modelName,
     dependencies,
     factory: model.factory(dependencies),
     worker: workers[modelName],

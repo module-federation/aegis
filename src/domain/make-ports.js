@@ -93,11 +93,9 @@ function getPortCallback (cb) {
 /**
  * Are we compensating for a canceled transaction?
  * @param {import(".").Model} model
- * @returns {Promise<boolean>}
  */
-async function isUndoRunning (model) {
-  const latest = await model.find(model.getId())
-  return latest.compensate
+function isUndoRunning (model) {
+  return model.findSync(model.getId()).compensate
 }
 
 function hydrate (broker, datasource, eventInfo) {
@@ -125,13 +123,14 @@ function addPortListener (portName, portConf, broker, datasource) {
       portConf.consumesEvent,
       async function (eventInfo) {
         const model = hydrate(broker, datasource, eventInfo)
-        // Don't call any more ports if undoing.
-       
-        console.info(
-        // if (await isUndoRunning(model)) {
-        //   console.log('undo running, canceling port operation')
-        //   return
-        // }   `event ${eventInfo.eventName} fired: calling port ${portName}`,
+
+        if (isUndoRunning(model)) {
+          console.log('undo running, canceling port operation')
+          return
+        }
+
+        console.log(
+          `event ${eventInfo.eventName} fired: calling port ${portName}`,
           eventInfo
         )
         // invoke this port

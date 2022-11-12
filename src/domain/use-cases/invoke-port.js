@@ -9,6 +9,7 @@ import { AppError } from '../util/app-error'
  * @property {import('../model-factory').ModelFactory models
  * @property {import('../datasources/datasource').default} repository
  * @property {import('../domain/event-broker').EventBroker} broker
+ * @property {import('../thread-pool').ThreadPool} threadpool
  * @property {Function[]} handlers
  */
 
@@ -41,7 +42,12 @@ export default function makeInvokePort ({
       try {
         const { id = null, port } = input
         const service = await findModelService(id)
-        if (!service) throw new Error('could not find service')
+
+        if (!service) throw new Error('service not found')
+
+        if (typeof service[port] !== 'function')
+          throw new Error(`${port} is not a function`)
+
         return await service[port](input)
       } catch (error) {
         return AppError(error)

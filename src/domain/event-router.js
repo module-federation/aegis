@@ -1,42 +1,44 @@
 'use strict'
 
 import { workerData, BroadcastChannel, isMainThread } from 'worker_threads'
+import { modelsInDomain } from './use-cases'
 const modelName = isMainThread ? null : workerData.poolName
 
 export class PortEventRouter {
-  constructor(models, broker) {
+  constructor (models, broker) {
     this.models = models
     this.broker = broker
   }
 
-  getThreadLocalPorts() {
-    return Object.values(this.models.getModelSpec(modelName))
-      .filter(port => port)
-      .filter(port => port.consumesEvent || port.producesEvent)
-      .map(port => ({
-        ...port,
-        modelName
-      }))
+  getThreadLocalPorts () {
+    return this.models
+      .getModelSpecs()
+      .filter(
+        spec =>
+          (spec.domain &&
+            modelsInDomain(spec.domain).includes(spec.modelName)) ||
+          spec.modelName === modelName
+      )
+      .flatMap(spec =>
+        Object.values(spec.ports)
+          .filter(port => port.consumesEvent || port.producesEvent)
+          .map(port => ({ ...port, modelName: spec.modelName }))
+      )
   }
 
-  getThreadRemotePorts() {
+  getThreadRemotePorts () {
     return this.models
       .getModelSpecs()
       .filter(spec => spec.ports && spec.modelName !== modelName)
-      .map(spec =>
+      .flatMap(spec =>
         Object.values(spec.ports)
           .filter(port => port.consumesEvent || port.producesEvent)
-          .map(port => ({
-            ...port,
-            modelName: spec.modelName
-          }))
+          .map(port => ({ ...port, modelName: spec.modelName }))
       )
-      .flat()
   }
 
-  handleChannelEvent(msg) {
-    if (msg.data.eventName)
-      this.broker.notify(msg.data.eventName, msg.data)
+  handleChannelEvent (msg) {
+    if (msg.data.eventName) this.broker.notify(msg.data.eventName, msg.data)
     else {
       console.log('missing eventName', msg.data)
       this.broker.notify('missingEventName', msg.data)
@@ -49,7 +51,7 @@ export class PortEventRouter {
    * and forward to pools that consume them. If a producer event is
    * not consumed by any local thread, foward to service mesh.
    */
-  listen() {
+  listen () {
     const localPorts = this.getThreadLocalPorts()
     const remotePorts = this.getThreadRemotePorts()
 
@@ -59,8 +61,9 @@ export class PortEventRouter {
     const subscribePorts = remotePorts.filter(remote =>
       localPorts.find(local => local.consumesEvent === remote.producesEvent)
     )
-    const unhandledPorts = localPorts.filter(remote =>
-      !remotePorts.find(local => local.producesEvent === remote.consumesEvent)
+    const unhandledPorts = localPorts.filter(
+      remote =>
+        !remotePorts.find(local => local.producesEvent === remote.consumesEvent)
     )
 
     const services = new Set()

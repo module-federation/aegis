@@ -9,9 +9,10 @@ export default function getModelByIdFactory (findModel) {
     try {
       httpRequest.log(getModelById.name)
 
-      const id = httpRequest.params.id
-      const query = httpRequest.query
-      const model = await findModel({ id, query })
+      const model = await findModel({ 
+        id: httpRequest.params.id,
+        query: httpRequest.query
+      })
 
       const { content, contentType } = getContent(
         httpRequest,
