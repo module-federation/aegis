@@ -37,17 +37,6 @@ const DsFactoryAccessors = superclass =>
 
 const accessFactory = DsClass => class extends DsFactoryAccessors(DsClass) {}
 
-class SomeClass {}
-
-const NewFeature = superclass =>
-  class extends superclass {
-    newMethod () {}
-  }
-
-const newFeature = ExistingClass => class extends NewFeature(ExistingClass) {}
-
-newFeature(SomeClass)
-
 /**
  * Manages each domain model's dedicated datasource.
  * @todo handle all state same way
