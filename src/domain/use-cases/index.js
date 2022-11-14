@@ -129,7 +129,7 @@ function buildOptions (spec, options) {
       threadpool: getThreadPool(spec, ds),
       // if caller provides id, use it as key for idempotency
       async idempotent () {
-        return ds.find(requestContext.getStore().get('id'))
+        return ds.find(context.requestContext.getStore().get('id'))
       }
     }
   } else {
