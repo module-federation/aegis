@@ -427,6 +427,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
       .find({ [fkname]: pkvalue })
       .toArray()
       .map(m => ModelFactory.loadModel(broker, this, m, this.name))
+   }
 
   /**
    *
