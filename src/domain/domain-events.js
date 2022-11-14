@@ -7,6 +7,7 @@ export function registerEvents (broker) {
   //
   broker.on('shutdown', signal => process.exit(signal || 0))
   broker.on('emitEvent', event => broker.notify(event.eventName, event))
+  broker.on('ping', event => broker.notify('to_main', event.data.jobData))
 }
 
 const domainEvents = {

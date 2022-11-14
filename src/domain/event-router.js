@@ -1,42 +1,50 @@
 'use strict'
 
 import { workerData, BroadcastChannel, isMainThread } from 'worker_threads'
-const modelName = isMainThread ? null : workerData.poolName
+import { modelsInDomain } from './use-cases'
 
 export class PortEventRouter {
-  constructor(models, broker) {
+  constructor (models, broker) {
     this.models = models
     this.broker = broker
   }
 
-  getThreadLocalPorts() {
-    return Object.values(this.models.getModelSpec(modelName))
-      .filter(port => port)
-      .filter(port => port.consumesEvent || port.producesEvent)
-      .map(port => ({
-        ...port,
-        modelName
-      }))
-  }
-
-  getThreadRemotePorts() {
+  getThreadLocalPorts () {
+    const localSpec = this.models.getModelSpec(
+      workerData.poolName.toUpperCase()
+    )
     return this.models
       .getModelSpecs()
-      .filter(spec => spec.ports && spec.modelName !== modelName)
-      .map(spec =>
+      .filter(
+        spec =>
+          spec.ports &&
+          (spec.domain.toUpperCase() === localSpec.domain.toUpperCase() ||
+            spec.modelName.toUpperCase() === localSpec.modelName.toUpperCase())
+      )
+      .flatMap(spec =>
         Object.values(spec.ports)
           .filter(port => port.consumesEvent || port.producesEvent)
-          .map(port => ({
-            ...port,
-            modelName: spec.modelName
-          }))
+          .map(port => ({ ...port, modelName: spec.modelName }))
       )
-      .flat()
   }
 
-  handleChannelEvent(msg) {
-    if (msg.data.eventName)
-      this.broker.notify(msg.data.eventName, msg.data)
+  getThreadRemotePorts () {
+    return this.models
+      .getModelSpecs()
+      .filter(
+        spec =>
+          spec.ports &&
+          !this.getThreadLocalPorts().find(l => l.modelName === spec.modelName)
+      )
+      .flatMap(spec =>
+        Object.values(spec.ports)
+          .filter(port => port.consumesEvent || port.producesEvent)
+          .map(port => ({ ...port, modelName: spec.modelName }))
+      )
+  }
+
+  handleChannelEvent (msg) {
+    if (msg.data.eventName) this.broker.notify(msg.data.eventName, msg.data)
     else {
       console.log('missing eventName', msg.data)
       this.broker.notify('missingEventName', msg.data)
@@ -49,9 +57,12 @@ export class PortEventRouter {
    * and forward to pools that consume them. If a producer event is
    * not consumed by any local thread, foward to service mesh.
    */
-  listen() {
+  listen () {
     const localPorts = this.getThreadLocalPorts()
     const remotePorts = this.getThreadRemotePorts()
+
+    console.debug({ localPorts })
+    console.debug({ remotePorts })
 
     const publishPorts = remotePorts.filter(remote =>
       localPorts.find(local => local.producesEvent === remote.consumesEvent)
@@ -59,19 +70,18 @@ export class PortEventRouter {
     const subscribePorts = remotePorts.filter(remote =>
       localPorts.find(local => local.consumesEvent === remote.producesEvent)
     )
-    const unhandledPorts = localPorts.filter(remote =>
-      !remotePorts.find(local => local.producesEvent === remote.consumesEvent)
+    const unhandledPorts = localPorts.filter(
+      local =>
+        !remotePorts.find(
+          remote => local.producesEvent === remote.consumesEvent
+        ) && !localPorts.find(l => local.producesEvent === l.consumesEvent)
     )
 
     const services = new Set()
     const channels = new Map()
 
-    publishPorts.forEach(port => {
-      if (port.modelName) services.add(port.modelName)
-    })
-    subscribePorts.forEach(port => {
-      if (port.modelName) services.add(port.modelName)
-    })
+    publishPorts.forEach(port => services.add(port.modelName))
+    subscribePorts.forEach(port => services.add(port.modelName))
 
     services.forEach(service =>
       channels.set(service, new BroadcastChannel(service))
@@ -107,7 +117,7 @@ export class PortEventRouter {
     })
 
     // listen to this model's channel
-    new BroadcastChannel(modelName).onmessage = msg => {
+    new BroadcastChannel(workerData.poolName.toUpperCase()).onmessage = msg => {
       console.log('onmessage', msg.data)
       this.handleChannelEvent(msg)
     }

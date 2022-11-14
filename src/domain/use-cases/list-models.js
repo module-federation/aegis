@@ -10,6 +10,6 @@
  */
 export default function makeListModels ({ repository }) {
   return async function listModels ({ query, writable }) {
-    return repository.list({ query, writable })
+    return repository.list({ query, writable, serialize: true })
   }
 }

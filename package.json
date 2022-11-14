@@ -15,7 +15,8 @@
     "format": "yarn pretty -- --write",
     "prepublish": "yarn build",
     "stats": "git ls-files | xargs wc -l",
-    "test": "jest"
+    "test": "jest",
+    "buildc": "gcc forkrun.c -o forkrun"
   },
   "peerDependencies": {
     "core-js": "^3"
@@ -69,6 +70,7 @@
     "jsdoc-to-markdown": "7.1.1",
     "mocha": "10.0.0",
     "mocha-esm": "1.1.1",
+    "prettier": "2.7.1",
     "split": "1.0.1",
     "standard": "^17.0.0",
     "yarn": "1.22.19"

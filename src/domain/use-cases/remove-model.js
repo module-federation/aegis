@@ -37,10 +37,7 @@ export default function removeModelFactory ({
   return async function removeModel ({ id }) {
     if (isMainThread) {
       const model = await repository.find(id)
-
-      if (!model) {
-        throw new Error('no such id')
-      }
+      if (!model) throw new Error('no such id')
 
       return threadpool.runJob(removeModel.name, { id }, modelName)
     } else {

@@ -12,7 +12,6 @@ const { badUserRoute, reload } = DomainEvents
 const { pathToRegexp, match } = require('path-to-regexp')
 const { nanoid } = require('nanoid')
 const { EventEmitter } = require('stream')
-const { isMainThread, parentPort } = require('worker_threads')
 const broker = EventBrokerFactory.getInstance()
 
 const {
@@ -43,13 +42,13 @@ const endpointPortId = e => `${modelPath}/${e}/:id/service/ports/:port`
  * @extends {Map}
  */
 class RouteMap extends Map {
-  find(path) {
+  find (path) {
     const routeInfo = [...super.values()].find(v => v.regex.test(path))
     if (routeInfo)
       return { ...routeInfo, params: routeInfo.matcher(path).params }
   }
 
-  set(path, method) {
+  set (path, method) {
     if (super.has(path)) {
       super.set(path, { ...super.get(path), ...method })
       return
@@ -62,13 +61,13 @@ class RouteMap extends Map {
     })
   }
 
-  has(path) {
+  has (path) {
     this.hasPath = path
     this.routeInfo = this.find(path)
     return this.routeInfo ? true : false
   }
 
-  get(path) {
+  get (path) {
     // if equal we already know the answer
     return path === this.hasPath ? this.routeInfo : this.find(path)
   }
@@ -77,19 +76,19 @@ class RouteMap extends Map {
 const routes = new RouteMap()
 const routeOverrides = new Map()
 
-function buildPath(ctrl, path) {
+function buildPath (ctrl, path) {
   return ctrl.path && ctrl.path[path.name]
     ? ctrl.path[path.name]
     : path(ctrl.endpoint)
 }
 
-function checkAllowedMethods(ctrl, method) {
+function checkAllowedMethods (ctrl, method) {
   if (!ctrl.ports.methods) return true
   return ctrl.ports.methods.includes(method)
 }
 
 const router = {
-  autoRoutes(path, method, controllers, adapter, ports = false) {
+  autoRoutes (path, method, controllers, adapter, ports = false) {
     controllers()
       .filter(ctrl => !ctrl.internal)
       .forEach(ctrl => {
@@ -117,7 +116,7 @@ const router = {
       })
   },
 
-  userRoutes(controllers) {
+  userRoutes (controllers) {
     try {
       controllers().forEach(ctlr => routes.set(ctlr.path, ctlr))
     } catch (error) {
@@ -126,13 +125,13 @@ const router = {
     }
   },
 
-  adminRoute(controller, adapter) {
+  adminRoute (controller, adapter) {
     const adminPath = `${apiRoot}/config`
     routes.set(adminPath, { get: adapter(controller()) })
   }
 }
 
-function makeRoutes() {
+function makeRoutes () {
   router.autoRoutes(endpoint, 'get', liveUpdate, http)
   router.autoRoutes(endpoint, 'get', getModels, http)
   router.autoRoutes(endpoint, 'post', postModels, http)
@@ -163,7 +162,7 @@ function makeRoutes() {
  * @param {Response} res
  * @returns
  */
-async function handle(path, method, req, res) {
+async function handle (path, method, req, res) {
   const routeInfo = routes.get(path)
 
   if (!routeInfo) {

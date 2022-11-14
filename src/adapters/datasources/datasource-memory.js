@@ -6,8 +6,8 @@ import DataSource from '../../domain/datasource'
  * Temporary in-memory storage.
  */
 export class DataSourceMemory extends DataSource {
-  constructor (map, factory, name, options) {
-    super(map, factory, name, options)
+  constructor (map, name, namespace, options) {
+    super(map, name, namespace, options)
     this.className = DataSourceMemory.name
   }
 

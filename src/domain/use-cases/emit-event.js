@@ -8,6 +8,7 @@ import { isMainThread, workerData } from 'worker_threads'
  * @property {import('../model-factory').ModelFactory models
  * @property {import('../datasources/datasource').default} repository
  * @property {import('../domain/event-broker').EventBroker} broker
+ * @property {import('../thread-pool').ThreadPool} threadpool
  * @property {Function[]} handlers
  */
 
@@ -33,7 +34,7 @@ export default function makeEmitEvent ({
     try {
       if (isMainThread) {
         try {
-          await threadpool.runJob(input.eventName, input)
+          await threadpool.fireEvent(input)
         } catch (error) {
           throw error
         }

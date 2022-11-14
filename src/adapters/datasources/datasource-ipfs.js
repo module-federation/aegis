@@ -6,8 +6,8 @@ import IPFS from 'ipfs-core'
  * Storage on the distributed web {@link https://ipfs.io}
  */
 export class DataSourceIpfs extends DataSourceFile {
-  constructor (map, factory, name) {
-    super(map, factory, name)
+  constructor (map, name, namespace, options = {}) {
+    super(map, name, namespace, options)
   }
 
   async save (id, data) {
