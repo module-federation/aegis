@@ -103,7 +103,7 @@ const SharedMemoryMixin = superclass =>
     mapToArray () {
       return this.dsMap.map(v =>
         isMainThread
-          ? JSON.parse(dv)
+          ? JSON.parse(v)
           : ModelFactory.loadModel(broker, this, JSON.parse(v), this.name)
       )
     }

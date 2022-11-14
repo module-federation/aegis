@@ -15,9 +15,10 @@ export class PortEventRouter {
       .getModelSpecs()
       .filter(
         spec =>
-          (spec.domain &&
+          spec.ports &&
+          ((spec.domain &&
             modelsInDomain(spec.domain).includes(spec.modelName)) ||
-          spec.modelName === modelName
+            spec.modelName === modelName)
       )
       .flatMap(spec =>
         Object.values(spec.ports)
@@ -29,8 +30,14 @@ export class PortEventRouter {
   getThreadRemotePorts () {
     return this.models
       .getModelSpecs()
-      .filter(spec => spec.ports && spec.modelName !== modelName)
-      .flatMap(spec =>
+      .filter(
+        spec =>
+          spec.ports &&
+          !this.getThreadLocalPorts().some(
+            port => port.modelName === spec.modelName
+          )
+      )
+      .flatMap(
         Object.values(spec.ports)
           .filter(port => port.consumesEvent || port.producesEvent)
           .map(port => ({ ...port, modelName: spec.modelName }))
@@ -69,12 +76,8 @@ export class PortEventRouter {
     const services = new Set()
     const channels = new Map()
 
-    publishPorts.forEach(port => {
-      if (port.modelName) services.add(port.modelName)
-    })
-    subscribePorts.forEach(port => {
-      if (port.modelName) services.add(port.modelName)
-    })
+    publishPorts.forEach(port => services.add(port.modelName))
+    subscribePorts.forEach(port => services.add(port.modelName))
 
     services.forEach(service =>
       channels.set(service, new BroadcastChannel(service))
