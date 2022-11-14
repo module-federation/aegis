@@ -158,6 +158,7 @@ export function withSharedMemory (
   createDataSource,
   factory,
   name,
+  namespace,
   options = {}
 ) {
   const mapsize = options.mapsize || MAPSIZE
@@ -171,7 +172,7 @@ export function withSharedMemory (
       : rehydrateSharedMap(name)
 
     if (sharedMap instanceof SharedMap) {
-      return createDataSource.call(factory, name, {
+      return createDataSource.call(factory, name, namespace, {
         ...options,
         dsMap: sharedMap,
         mixins: [DsClass => class extends SharedMemoryMixin(DsClass) {}].concat(
@@ -180,7 +181,7 @@ export function withSharedMemory (
       })
     }
 
-    return createDataSource.call(factory, name, options)
+    return createDataSource.call(factory, name, namespace, options)
   } catch (error) {
     console.error({ fn: withSharedMemory.name, error })
   }

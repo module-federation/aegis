@@ -8,9 +8,9 @@ const remote = require(path.resolve(process.cwd(), 'dist/remoteEntry'))
 
 const {
   importRemotes,
-  EventBrokerFactory,
-  AppError,
   makeDomain,
+  AppError,
+  EventBrokerFactory,
   requestContext
 } = domain
 
@@ -91,14 +91,14 @@ remoteEntries.then(remotes => {
           }
 
           try {
-            // set context for this request
+            // set the context for this request with
             requestContext.enterWith(new Map(msg.data.context))
 
-            // invoke an inbound port method on this domain model
+            // invoke an inbound port method on the domain model
             const result = await domainPort(msg.data.jobData)
 
             if (!result) {
-              throw new Errror('no result')
+              throw new Error('no result from port')
             }
 
             parentPort.postMessage(JSON.parse(JSON.stringify(result)))
@@ -119,7 +119,7 @@ remoteEntries.then(remotes => {
           return
         }
 
-        throw new Error('invalid msg ${msg}')
+        throw new Error(`invalid msg ${msg}`)
       } catch (error) {
         // catch so we dont kill the thread
         console.error({ fn: 'worker', error })

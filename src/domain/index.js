@@ -277,8 +277,7 @@ function register ({
   ModelFactory.registerModel({
     ...model,
     modelName,
-    domain:
-      typeof model.domain === 'string' ? model.domain.toUpperCase() : modelName,
+    domain: (model.domain || model.modelName).toUpperCase(),
     dependencies,
     factory: model.factory(dependencies),
     worker: workers[modelName],

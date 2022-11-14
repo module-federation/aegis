@@ -19,10 +19,8 @@ import compose from './util/compose'
 
 const debug = /\*|datasource/i.test(process.env.DEBUG)
 const defaultAdapter = configRoot.hostConfig.adapters.defaultDatasource
-const DefaultDataSource = adapters[defaultAdapter]
-
-if (!DefaultDataSource) throw new Error('no default datasource')
-
+const DefaultDataSource =
+  adapters[defaultAdapter] || dsClasses['DataSourceMemory']
 const FACTORY = Symbol()
 
 const DsFactoryAccessors = superclass =>
@@ -51,7 +49,7 @@ const accessFactory = DsClass => class extends DsFactoryAccessors(DsClass) {}
 const DataSourceFactory = (() => {
   /**
    * Contains the datasource of every model
-   * @type {Map<string, DataSource>} 
+   * @type {Map<string, DataSource>}
    */
   let dataSources
 
@@ -127,18 +125,19 @@ const DataSourceFactory = (() => {
    * @param {dsOpts} [options]
    * @returns {DataSource}
    */
-  function createDataSource (name, options) {
+  function createDataSource (name, namespace, options) {
     const spec = ModelFactory.getModelSpec(name)
     const dsMap = options.dsMap || new Map()
 
     const DsClass = createDataSourceClass(spec, options)
     const DsExtendedClass = extendDataSourceClass(DsClass, options)
 
-    const newDs = new DsExtendedClass(dsMap, name, options)
+    const newDs = new DsExtendedClass(dsMap, name, namespace, options)
     newDs.factory = this // setter to avoid exposing in ctor
 
     if (!options.ephemeral) dataSources.set(name, newDs)
 
+    debug && console.debug({ newDs })
     return newDs
   }
 
@@ -149,11 +148,16 @@ const DataSourceFactory = (() => {
    * @param {dsOpts} options
    * @returns {import('./datasource').default}
    */
-  function getDataSource (name, options) {
+  function getDataSource (name, namespace, options) {
+    if (!name) throw new Error('no name provided')
+
     const upperName = name.toUpperCase()
+    const upperNs = (namespace || name).toUpperCase()
+
     if (!dataSources) dataSources = new Map()
     if (dataSources.has(upperName)) return dataSources.get(upperName)
-    return createDataSource(upperName, options)
+
+    return createDataSource(upperName, upperNs, options)
   }
 
   /**
@@ -164,11 +168,12 @@ const DataSourceFactory = (() => {
    * @param {dsOpts} [options]
    * @returns
    */
-  function getSharedDataSource (name, options) {
+  function getSharedDataSource (name, namespace, options) {
     const upperName = name.toUpperCase()
+    const upperNs = namespace.toUpperCase()
     if (!dataSources) dataSources = new Map()
     if (dataSources.has(upperName)) return dataSources.get(upperName)
-    return withSharedMemory(createDataSource, this, upperName, options)
+    return withSharedMemory(createDataSource, this, upperName, upperNs, options)
   }
 
   /**

@@ -53,23 +53,29 @@ export function modelsInDomain (domain) {
 /**
  *
  * @param {*} modelName
- * @returns
+ * @returns {import('..').ModelSpecification[]}
  */
 function findLocalRelatedModels (modelName) {
-  const localModels = ModelFactory.getModelSpecs().map(spec =>
-    spec.modelName.toUpperCase()
-  )
-  const spec = ModelFactory.getModelSpec(modelName)
-  const result = !spec?.relations
+  const targetModel = ModelFactory.getModelSpec(modelName)
+  const localModels = ModelFactory.getModelSpecs().map(s => s.modelName)
+
+  const byRelation = !targetModel?.relations
     ? []
-    : Object.keys(spec.relations)
-        .map(k => spec.relations[k].modelName.toUpperCase())
+    : Object.keys(targetModel.relations)
+        .map(k => targetModel.relations[k].modelName.toUpperCase())
         .filter(modelName => localModels.includes(modelName))
 
-  if (!spec.domain) return result
-  const models = modelsInDomain(spec.domain)
-  const dedup = new Set(result.concat(models))
-  return Array.from(dedup)
+  const byDomain = modelsInDomain(targetModel.domain)
+
+  return {
+    byDomain: () => byDomain,
+    byRelation: () => byRelation,
+    toNames: () => byRelation.concat(byDomain),
+    toSpecs: () =>
+      byRelation
+        .concat(byDomain)
+        .map(modelName => ModelFactory.getModelSpec(modelName))
+  }
 }
 
 /**
@@ -78,19 +84,16 @@ function findLocalRelatedModels (modelName) {
  * @returns
  */
 function findLocalRelatedDatasources (spec) {
-  return findLocalRelatedModels(spec.modelName).map(modelName => ({
-    modelName,
-    dsMap: DataSourceFactory.getSharedDataSource(modelName, {
-      namespace: spec.domain
-    }).dsMap
-  }))
+  return findLocalRelatedModels(spec.modelName)
+    .toSpecs()
+    .map(s => ({
+      modelName: s.modelName,
+      dsMap: getDataSource(s).dsMap
+    }))
 }
 
-function getDataSource (modelName, options) {
-  const { shared = true } = options
-  return shared
-    ? DataSourceFactory.getSharedDataSource(modelName, options)
-    : DataSourceFactory.getDataSource(modelName, options)
+function getDataSource (spec) {
+  return DataSourceFactory.getSharedDataSource(spec.modelName, spec.domain)
 }
 
 function getThreadPool (spec, ds, options) {
@@ -116,7 +119,7 @@ function buildOptions (spec, options) {
   }
 
   if (isMainThread) {
-    const ds = getDataSource(spec.modelName, options)
+    const ds = getDataSource(spec)
     return {
       ...invariant,
       // main thread does not write to persistent store
@@ -132,7 +135,7 @@ function buildOptions (spec, options) {
     return {
       ...invariant,
       // only worker threads can write to persistent storage
-      repository: getDataSource(spec.modelName, options)
+      repository: getDataSource(spec)
     }
   }
 }
@@ -149,7 +152,7 @@ function make (factory) {
     endpoint: spec.endpoint,
     path: spec.path,
     ports: spec.ports,
-    fn: factory(buildOptions(spec, { domain: spec.domain }))
+    fn: factory(buildOptions(spec))
   }))
 }
 
@@ -161,7 +164,7 @@ function make (factory) {
  */
 function makeOne (modelName, factory, options = {}) {
   const spec = ModelFactory.getModelSpec(modelName.toUpperCase(), options)
-  return factory(buildOptions(spec, { domain: spec.domain }))
+  return factory(buildOptions(spec))
 }
 
 const createModels = () => make(makeCreateModel)

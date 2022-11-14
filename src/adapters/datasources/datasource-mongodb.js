@@ -36,13 +36,12 @@ const mongoOpts = {
  * even when the database is offline.
  */
 export class DataSourceMongoDb extends DataSourceMemory {
-  constructor (map, name, options = {}) {
-    super(map, name, options)
+  constructor (map, name, namespace, options = {}) {
+    super(map, name, namespace, options)
     this.cacheSize = cacheSize
     this.mongoOpts = mongoOpts
     this.className = this.constructor.name
     this.runOffline = dsOptions.runOffline
-    this.namespace = options.namespace || name
     this.url = url
     //console.log(this)
   }

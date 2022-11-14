@@ -33,7 +33,7 @@ function roughSizeOfObject (...objects) {
     }
   })
 
-  return Array.isArray(objects) ? bytes / objects.length : bytes
+  return bytes
 }
 
 const FACTORY = Symbol()
@@ -42,10 +42,11 @@ const FACTORY = Symbol()
  * Data source base class
  */
 export default class DataSource {
-  constructor (map, name, options) {
+  constructor (map, name, namespace, options = {}) {
     this.className = this.constructor.name
     this.dsMap = map
     this.name = name
+    this.namespace = namespace
     this.options = options
   }
 
@@ -144,8 +145,16 @@ export default class DataSource {
    * @param {object} query
    * @returns
    */
-  listSync (query = {}) {
-    if (query.__count) return this.count()
+  listSync (query) {
+    if (query?.__count) {
+      const [key = null, value = null] = query.__count.split(':')
+
+      if (key && value) {
+        return this.filterList({ [key]: value }, this.generateList()).length
+      }
+      return this.count()
+    }
+    
     const list = this.generateList()
     return query ? this.filterList(query, list) : list
   }
@@ -181,34 +190,25 @@ export default class DataSource {
       }
 
       const operands = {
-        and: (arr, cb) => arr.every(cb),
-        or: (arr, cb) => arr.some(cb)
+        and: (keys, cb) => keys.every(cb),
+        or: (keys, cb) => keys.some(cb)
       }
 
-      let operand = query.__operand
-      if (operand) operand = operand.toLowerCase()
-      if (!operands[operand]) operand = 'and'
-
-      const boolOp = query.__operand === 'not' ? true : false
+      const operand = query.__operand ? query.__operand.toLowerCase() : 'and'
+      if (typeof operands[operand] !== 'function')
+        throw new Error('invalid query')
 
       const keys = Object.keys(query).filter(
-        key => !['__count', '__cached', '__operand'].includes(key.toLowerCase())
+        key => !['__cached', '__operand'].includes(key.toLowerCase())
       )
 
       if (keys.length > 0) {
         const loo = listOfObjects.filter(object =>
-          operands[operand](keys, key =>
-            object[key] ? new RegExp(query[key]).test(object[key]) : boolOp
+          operands[operand](
+            keys,
+            key => object[key] && new RegExp(query[key]).test(object[key])
           )
         )
-
-        if (query.__count)
-          return {
-            list: loo.length,
-            total: this.getCacheSize(),
-            bytes: this.getCacheSizeBytes()
-          }
-
         return loo
       }
     }
