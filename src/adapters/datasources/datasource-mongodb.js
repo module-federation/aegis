@@ -407,8 +407,13 @@ export class DataSourceMongoDb extends DataSourceMemory {
    * @param {*} pkvalue primary key value
    * @returns
    */
-  async manyToOne (filter) {
-    return (await this.collection()).findOne(filter)
+   async manyToOne (pkvalue) {
+    return ModelFactory.loadModel(
+      broker,
+      this,
+      (await this.collection()).findOne({ id: pkvalue }),
+      this.name
+    )
   }
 
   /**
@@ -417,9 +422,11 @@ export class DataSourceMongoDb extends DataSourceMemory {
    * @param {*} pkvalue value of primary key
    * @returns
    */
-  async oneToMany (filter) {
-    return (await this.collection()).find(filter).toArray()
-  }
+   async oneToMany (fkname, pkvalue) {
+    return (await this.collection())
+      .find({ [fkname]: pkvalue })
+      .toArray()
+      .map(m => ModelFactory.loadModel(broker, this, m, this.name))
 
   /**
    *
