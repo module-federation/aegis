@@ -5,24 +5,24 @@ import DataSourceFactory from '../datasource-factory'
 import ThreadPoolFactory from '../thread-pool.js'
 import EventBrokerFactory from '../event-broker'
 
-import makeCreateModel from './create-model'
-import makeEditModel from './edit-model'
-import makeListModels from './list-models'
-import makeFindModel from './find-model'
-import makeRemoveModel from './remove-model'
-import makeLoadModels from './load-models'
-import makeDeployModel from './deploy-model'
-import makeListConfig from './list-configs'
-import makeEmitEvent from './emit-event'
-import makeInvokePort from './invoke-port'
-import makeHotReload from './hot-reload'
-import brokerEvents from './broker-events'
-import DistributedCache from '../distributed-cache'
-import makeServiceMesh from './create-service-mesh.js'
-import { PortEventRouter } from '../event-router'
-import { isMainThread } from 'worker_threads'
-import { hostConfig } from '../../config'
-import { requestContext } from '../util/async-context'
+import makeCreateModel from "./create-model"
+import makeEditModel from "./edit-model"
+import makeListModels from "./list-models"
+import makeFindModel from "./find-model"
+import makeRemoveModel from "./remove-model"
+import makeLoadModels from "./load-models"
+import makeDeployModel from "./deploy-model"
+import makeListConfig from "./list-configs"
+import makeEmitEvent from "./emit-event"
+import makeInvokePort from "./invoke-port"
+import makeHotReload from "./hot-reload"
+import brokerEvents from "./broker-events"
+import DistributedCache from "../distributed-cache"
+import makeServiceMesh from "./create-service-mesh.js"
+import { PortEventRouter } from "../event-router"
+import { isMainThread } from "worker_threads"
+import { hostConfig } from "../../config"
+import * as context from "../util/async-context"
 
 export const serviceMeshPlugin =
   hostConfig.services.activeServiceMesh ||
@@ -115,7 +115,8 @@ function buildOptions (spec, options) {
     modelName: spec.modelName,
     models: ModelFactory,
     broker: EventBrokerFactory.getInstance(),
-    handlers: spec.eventHandlers
+    handlers: spec.eventHandlers,
+    context,
   }
 
   if (isMainThread) {

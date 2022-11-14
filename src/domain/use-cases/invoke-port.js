@@ -24,6 +24,7 @@ export default function makeInvokePort ({
   threadpool,
   modelName,
   models,
+  context,
   authorize = async x => await x()
 } = {}) {
   async function findModelService (id = null) {
@@ -40,13 +41,26 @@ export default function makeInvokePort ({
       return threadpool.runJob(invokePort.name, input, modelName)
     } else {
       try {
-        const { id = null, port } = input
+        const { id = null, port = null} = input;
         const service = await findModelService(id)
 
-        if (!service) throw new Error('service not found')
+        if (!service) {
+          throw new Error('could not find service')
+        } 
 
-        if (typeof service[port] !== 'function')
-          throw new Error(`${port} is not a function`)
+        if(!port) {
+          const specPorts = service.getPorts();
+          const path = context['requestContext'].getStore().get('path');
+          const [ [ portName ] ] = Object.entries(specPorts).filter((port) => port[1].path === path);
+          if(!portName) {
+            throw new Error('no port specified');
+          }
+          if(!service[portName]) {
+            throw new Error('no port found');
+          }
+
+          return await service[portName](input);
+        }
 
         return await service[port](input)
       } catch (error) {
