@@ -8,7 +8,6 @@ import ModelFactory from '.'
 import os from 'os'
 import { AsyncResource } from 'async_hooks'
 import { requestContext } from '.'
-import { resolveCaa } from 'dns'
 import path from 'path'
 
 const { poolOpen, poolClose, poolDrain, poolAbort } = domainEvents
@@ -82,7 +81,7 @@ class Job extends AsyncResource {
     this.jobData = { jobData, modelName, context: store }
     this.resolve = result => this.runInAsyncScope(resolve, null, result)
     this.reject = error => this.runInAsyncScope(reject, null, error)
-    console.log('new job, requestId', this.requestId, this.jobData)
+    console.debug('new job, requestId', this.requestId, this.jobData)
   }
 
   startTimer () {
@@ -563,9 +562,40 @@ export class ThreadPool extends EventEmitter {
   }
 
   async fireEvent (event) {
-    return this.runJob(event.eventName, event, this.name, {
-      channel: EVENTCHANNEL
-    })
+    // send to all pools, all threads
+    if (event.scope === 'host') {
+      broker.notify('to_worker', { ...event, eventSource: this.name })
+      return
+    }
+
+    // send to all threads in this pool
+    if (event.scope === 'pool') {
+      this.broadcastEvent(event)
+      return
+    }
+
+    // send to one thread in this pool
+    if (event.scope === 'thread') {
+      const thread = this.freeThreads[0] || this.threads[0]
+      if (thread) thread.eventChannel.postMessage(event)
+      return
+    }
+
+    // use if a response is required
+    if (event.scope === 'response') {
+      // this is the only scope that will start a thread
+      return this.runJob(event.eventName, event, this.name, {
+        channel: EVENTCHANNEL
+      })
+    }
+
+    const err = {
+      fn: this.fireEvent.name,
+      msg: 'event not fired, no scope specified'
+    }
+
+    console.warn(err)
+    this.emit('malformedEvent', err)
   }
 
   /**
@@ -731,11 +761,10 @@ const ThreadPoolFactory = (() => {
         return getPool(poolName, options).status()
       },
       async fireEvent (event) {
-        return getPool(poolName, options).runJob(event.name, event.data, {
-          channel: EVENTCHANNEL
-        })
+        return getPool(poolName, options).fireEvent(event)
       },
       broadcastEvent (event) {
+        // dont create the pool for this
         return getBroadcastChannel(poolName).postMessage(event)
       }
     }
@@ -751,7 +780,7 @@ const ThreadPoolFactory = (() => {
    * @returns {Promise<any>} returns a response
    */
   async function fireEvent (event) {
-    const pool = threadPools.get(event.data)
+    const pool = threadPools.get(event.domain)
     if (pool) return pool.fireEvent(event)
   }
 
