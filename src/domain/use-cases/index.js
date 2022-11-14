@@ -22,7 +22,7 @@ import makeServiceMesh from "./create-service-mesh.js"
 import { PortEventRouter } from "../event-router"
 import { isMainThread } from "worker_threads"
 import { hostConfig } from "../../config"
-import { requestContext } from "../util/async-context"
+import * as context from "../util/async-context"
 
 export const serviceMeshPlugin =
   hostConfig.services.activeServiceMesh ||
@@ -115,12 +115,13 @@ function buildOptions (spec, options) {
     modelName: spec.modelName,
     models: ModelFactory,
     broker: EventBrokerFactory.getInstance(),
-    handlers: spec.eventHandlers
+    handlers: spec.eventHandlers,
+    context,
   }
 
   if (isMainThread) {
     const ds = getDataSource(spec.modelName, options)
-    return {
+    return { 
       ...invariant,
       // main thread does not write to persistent store
       repository: ds,
