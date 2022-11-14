@@ -33,7 +33,7 @@ function roughSizeOfObject (...objects) {
     }
   })
 
-  return bytes
+  return Array.isArray(objects) ? bytes / objects.length : bytes
 }
 
 const FACTORY = Symbol()
@@ -144,8 +144,8 @@ export default class DataSource {
    * @param {object} query
    * @returns
    */
-  listSync (query = null) {
-    if (query?.__count) return this.count()
+  listSync (query = {}) {
+    if (query.__count) return this.count()
     const list = this.generateList()
     return query ? this.filterList(query, list) : list
   }
@@ -176,12 +176,8 @@ export default class DataSource {
    */
   filterList (query, listOfObjects) {
     if (query) {
-      if (
-        query.__count &&
-        !Number.isNaN(parseInt(query.__count)) &&
-        Object.keys(query).length === 1
-      ) {
-        return listOfObjects.splice(0, query.__count)
+      if (typeof query.__limit === 'number') {
+        return listOfObjects.splice(0, query.__limit)
       }
 
       const operands = {
@@ -273,7 +269,7 @@ export default class DataSource {
    * @returns
    */
   getCacheSizeBytes () {
-    return this.countSync() * roughSizeOfObject(this.listSync({ __count: 1 }))
+    return this.countSync() * roughSizeOfObject(this.listSync({ __limit: 1 }))
   }
 
   /**
@@ -282,7 +278,7 @@ export default class DataSource {
    * @param {{foreignKey:id}} filter
    */
   oneToMany (filter) {
-    return this.listSync(filter)
+    return this.list(filter)
   }
 
   /**
@@ -302,7 +298,7 @@ export default class DataSource {
    * @returns
    */
   containsMany (filter) {
-    return this.listSync(filter)
+    return this.list(filter)
   }
 
   /**

@@ -2,7 +2,6 @@
 
 import { workerData, BroadcastChannel, isMainThread } from 'worker_threads'
 import { modelsInDomain } from './use-cases'
-const modelName = isMainThread ? null : workerData.poolName
 
 export class PortEventRouter {
   constructor (models, broker) {
@@ -11,14 +10,16 @@ export class PortEventRouter {
   }
 
   getThreadLocalPorts () {
+    const localSpec = this.models.getModelSpec(
+      workerData.poolName.toUpperCase()
+    )
     return this.models
       .getModelSpecs()
       .filter(
         spec =>
           spec.ports &&
-          ((spec.domain &&
-            modelsInDomain(spec.domain).includes(spec.modelName)) ||
-            spec.modelName === modelName)
+          (spec.domain.toUpperCase() === localSpec.domain.toUpperCase() ||
+            spec.modelName.toUpperCase() === localSpec.modelName.toUpperCase())
       )
       .flatMap(spec =>
         Object.values(spec.ports)
@@ -33,11 +34,9 @@ export class PortEventRouter {
       .filter(
         spec =>
           spec.ports &&
-          !this.getThreadLocalPorts().some(
-            port => port.modelName === spec.modelName
-          )
+          !this.getThreadLocalPorts().find(l => l.modelName === spec.modelName)
       )
-      .flatMap(
+      .flatMap(spec =>
         Object.values(spec.ports)
           .filter(port => port.consumesEvent || port.producesEvent)
           .map(port => ({ ...port, modelName: spec.modelName }))
@@ -62,6 +61,9 @@ export class PortEventRouter {
     const localPorts = this.getThreadLocalPorts()
     const remotePorts = this.getThreadRemotePorts()
 
+    console.debug({ localPorts })
+    console.debug({ remotePorts })
+
     const publishPorts = remotePorts.filter(remote =>
       localPorts.find(local => local.producesEvent === remote.consumesEvent)
     )
@@ -69,8 +71,10 @@ export class PortEventRouter {
       localPorts.find(local => local.consumesEvent === remote.producesEvent)
     )
     const unhandledPorts = localPorts.filter(
-      remote =>
-        !remotePorts.find(local => local.producesEvent === remote.consumesEvent)
+      local =>
+        !remotePorts.find(
+          remote => local.producesEvent === remote.consumesEvent
+        ) && !localPorts.find(l => local.producesEvent === l.consumesEvent)
     )
 
     const services = new Set()
@@ -113,7 +117,7 @@ export class PortEventRouter {
     })
 
     // listen to this model's channel
-    new BroadcastChannel(modelName).onmessage = msg => {
+    new BroadcastChannel(workerData.poolName.toUpperCase()).onmessage = msg => {
       console.log('onmessage', msg.data)
       this.handleChannelEvent(msg)
     }

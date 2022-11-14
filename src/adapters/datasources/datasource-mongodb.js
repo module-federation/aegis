@@ -42,7 +42,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
     this.mongoOpts = mongoOpts
     this.className = this.constructor.name
     this.runOffline = dsOptions.runOffline
-    this.domain = options.domain || name
+    this.namespace = options.namespace || name
     this.url = url
     //console.log(this)
   }
@@ -66,7 +66,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
   }
 
   async collection () {
-    return (await this.connection()).db(this.domain).collection(this.name)
+    return (await this.connection()).db(this.namespace).collection(this.name)
   }
 
   /**
@@ -316,9 +316,8 @@ export class DataSourceMongoDb extends DataSourceMemory {
   }
 
   processOptions (param) {
-    const { options, query } = param
-    if (query) return processQuery(query)
-    if (options) return options
+    const { options = {}, query = {} } = param
+    return { ...options, ...processQuery(query) }
   }
 
   /**
@@ -349,27 +348,21 @@ export class DataSourceMongoDb extends DataSourceMemory {
       writable = null,
       transform = null,
       serialize = false,
-      options = null,
-      query = null
+      query = {}
     } = param
 
     try {
-      if (query?.__cached) return super.listSync(query)
-      if (query?.__count) return this.count()
+      if (query.__cached) return super.listSync(query)
+      if (query.__count) return this.count()
 
-      const processedOptions = this.processOptions(param)
-      console.log({ processedOptions })
+      const options = this.processOptions(param)
+      console.log({ options })
 
       if (writable) {
-        return this.streamList({
-          writable,
-          serialize,
-          transform,
-          options: processedOptions
-        })
+        return this.streamList({ writable, serialize, transform, options })
       }
 
-      return (await this.mongoFind(processedOptions)).toArray()
+      return (await this.mongoFind(options)).toArray()
     } catch (error) {
       console.error({ fn: this.list.name, error })
     }

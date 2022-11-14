@@ -81,7 +81,7 @@ function findLocalRelatedDatasources (spec) {
   return findLocalRelatedModels(spec.modelName).map(modelName => ({
     modelName,
     dsMap: DataSourceFactory.getSharedDataSource(modelName, {
-      domain: spec.domain
+      namespace: spec.domain
     }).dsMap
   }))
 }
@@ -90,9 +90,7 @@ function getDataSource (modelName, options) {
   const { shared = true } = options
   return shared
     ? DataSourceFactory.getSharedDataSource(modelName, options)
-    : isMainThread
-    ? DataSourceFactory.getDataSource(modelName, options)
-    : null
+    : DataSourceFactory.getDataSource(modelName, options)
 }
 
 function getThreadPool (spec, ds, options) {
@@ -273,10 +271,10 @@ export const UseCases = {
  * handling all CRUD operations for domain models.
  * An alias for the service could be "InboundPorts"
  *
- * @param {string} [modelName]
+ * @param {string} modelName
  * @returns
  */
-export function UseCaseService (modelName = null) {
+export function UseCaseService (modelName) {
   if (typeof modelName === 'string') {
     const modelNameUpper = modelName.toUpperCase()
     return {
@@ -291,19 +289,6 @@ export function UseCaseService (modelName = null) {
       invokePort: makeOne(modelNameUpper, makeInvokePort),
       listConfigs: listConfigs()
     }
-  }
-  return {
-    createModels: createModels(),
-    editModels: editModels(),
-    listModels: listModels(),
-    findModels: findModels(),
-    removeModels: removeModels(),
-    loadModelSpecs: loadModelSpecs(),
-    deployModel: deployModels(),
-    hotReload: hotReload(),
-    emitEvent: emitEvents(),
-    invokePort: invokePorts(),
-    listConfigs: listConfigs()
   }
 }
 

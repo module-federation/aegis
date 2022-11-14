@@ -41,13 +41,18 @@ const accessFactory = DsClass => class extends DsFactoryAccessors(DsClass) {}
  * Manages each domain model's dedicated datasource.
  * @todo handle all state same way
  * @typedef {{
- *  getDataSource:function(string):import("./datasource").default,
+ *  getDataSource:function(string): import("./datasource").default,
+ *  getSharedDataSource(string): import("./datasource").default,
+ *  getRestrictedDataSource(string): import("./datasource").default,
  *  listDataSources:Map[]
  * }} DataSourceFactory
  * @type {DataSourceFactory}
  */
 const DataSourceFactory = (() => {
-  // References all DSes
+  /**
+   * Contains the datasource of every model
+   * @type {Map<string, DataSource>} 
+   */
   let dataSources
 
   /**
@@ -134,8 +139,6 @@ const DataSourceFactory = (() => {
 
     if (!options.ephemeral) dataSources.set(name, newDs)
 
-    debug && console.debug({ newDs })
-
     return newDs
   }
 
@@ -148,11 +151,8 @@ const DataSourceFactory = (() => {
    */
   function getDataSource (name, options) {
     const upperName = name.toUpperCase()
-
     if (!dataSources) dataSources = new Map()
-
     if (dataSources.has(upperName)) return dataSources.get(upperName)
-
     return createDataSource(upperName, options)
   }
 
@@ -166,11 +166,8 @@ const DataSourceFactory = (() => {
    */
   function getSharedDataSource (name, options) {
     const upperName = name.toUpperCase()
-
     if (!dataSources) dataSources = new Map()
-
     if (dataSources.has(upperName)) return dataSources.get(upperName)
-
     return withSharedMemory(createDataSource, this, upperName, options)
   }
 
@@ -214,4 +211,5 @@ const DataSourceFactory = (() => {
   })
 })()
 
+/** @type {DataSourceFactory}*/
 export default DataSourceFactory
