@@ -117,7 +117,7 @@ function buildOptions (spec, options) {
     broker: EventBrokerFactory.getInstance(),
     handlers: spec.eventHandlers,
     context,
-  }
+  };
 
   if (isMainThread) {
     const ds = getDataSource(spec)

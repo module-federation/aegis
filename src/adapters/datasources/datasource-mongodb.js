@@ -1,15 +1,19 @@
 'use strict'
 
-const HIGHWATERMARK = 50
 
-const mongodb = require('mongodb')
-const { MongoClient } = mongodb
-const { DataSourceMemory } = require('./datasource-memory')
-const { Transform, Writable } = require('stream')
-const qpm = require('query-params-mongo')
+
+import { MongoClient, ObjectId } from 'mongodb';
+import { Transform, Writable } from 'stream';
+import qpm from 'query-params-mongo';
+
+import ModelFactory from '../../domain';
+import EventBrokerFactory from '../../domain/event-broker';
+import { DataSourceMemory } from './datasource-memory';
+
+const HIGHWATERMARK = 50
 const processQuery = qpm({
   autoDetect: [{ fieldPattern: /_id$/, dataType: 'objectId' }],
-  converters: { objectId: mongodb.ObjectId }
+  converters: { objectId: ObjectId }
 })
 
 const url = process.env.MONGODB_URL || 'mongodb://localhost:27017'
@@ -29,6 +33,9 @@ const mongoOpts = {
   //useNewUrlParser: true,
   useUnifiedTopology: true
 }
+
+// Event Broker for hydrating models 
+const broker = EventBrokerFactory.getInstance();
 
 /**
  * MongoDB adapter extends in-memory datasource to support caching.
@@ -352,8 +359,14 @@ export class DataSourceMongoDb extends DataSourceMemory {
       serialize = false,
       query = {}
     } = param
-
     try {
+      console.log("QUERY:::", query);
+      console.log("TRANSFORM:::", transform);
+      console.log("SERIALIZE:::", serialize);
+      console.log("WRITEABLE:::", writable);
+
+
+
       if (query.__cached) return super.listSync(query)
       if (query.__count) return this.count()
 
@@ -363,8 +376,13 @@ export class DataSourceMongoDb extends DataSourceMemory {
       if (writable) {
         return this.streamList({ writable, serialize, transform, options })
       }
-
-      return (await this.mongoFind(options)).toArray()
+      const results = [];
+      const listResults = (await this.mongoFind(options));
+      for await (const doc of listResults) {
+        results.push(doc);
+      }
+      
+      return results.map(r => ModelFactory.loadModel(broker,  this, r , this.name));
     } catch (error) {
       console.error({ fn: this.list.name, error })
     }

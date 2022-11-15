@@ -150,9 +150,9 @@ const DataSourceFactory = (() => {
    */
   function getDataSource (name, namespace, options) {
     if (!name) throw new Error('no name provided')
-
     const upperName = name.toUpperCase()
-    const upperNs = (namespace || name).toUpperCase()
+    // name can eval to empty object meaning we want to check name first
+    const upperNs = (name || namespace).toUpperCase()
 
     if (!dataSources) dataSources = new Map()
     if (dataSources.has(upperName)) return dataSources.get(upperName)
