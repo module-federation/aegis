@@ -360,12 +360,6 @@ export class DataSourceMongoDb extends DataSourceMemory {
       query = {}
     } = param
     try {
-      console.log("QUERY:::", query);
-      console.log("TRANSFORM:::", transform);
-      console.log("SERIALIZE:::", serialize);
-      console.log("WRITEABLE:::", writable);
-
-
 
       if (query.__cached) return super.listSync(query)
       if (query.__count) return this.count()
