@@ -36,14 +36,11 @@ function roughSizeOfObject (...objects) {
   return bytes
 }
 
-const FACTORY = Symbol()
-
 /**
  * Data source base class
  */
 export default class DataSource {
   constructor (map, name, namespace, options = {}) {
-    this.className = this.constructor.name
     this.dsMap = map
     this.name = name
     this.namespace = namespace
@@ -71,7 +68,7 @@ export default class DataSource {
    * @returns {Promise<object>}
    */
   async save (id, data) {
-    return this.saveSync(id, data)
+    throw new Error('abstract method not implemented')
   }
 
   /**
@@ -104,7 +101,7 @@ export default class DataSource {
    * @returns {Promise<any>} record
    */
   async find (id) {
-    return this.findSync(id)
+    throw new Error('abstract method not implemented')
   }
 
   /**
@@ -136,8 +133,8 @@ export default class DataSource {
    *    - `writable` writable stream for output
    * @returns {Promise<any[]>}
    */
-  async list ({ query = null } = {}) {
-    return this.listSync(query)
+  async list (options) {
+    throw new Error('abstract method not implemented')
   }
 
   /**
@@ -150,11 +147,15 @@ export default class DataSource {
       const [key = null, value = null] = query.__count.split(':')
 
       if (key && value) {
-        return this.filterList({ [key]: value }, this.generateList()).length
+        return {
+          [key]: value,
+          total: this.filterList({ [key]: value }, this.generateList()).length
+        }
       }
+
       return this.count()
     }
-    
+
     const list = this.generateList()
     return query ? this.filterList(query, list) : list
   }
@@ -203,10 +204,10 @@ export default class DataSource {
       )
 
       if (keys.length > 0) {
-        const loo = listOfObjects.filter(object =>
+        const loo = listOfObjects.filter(obj =>
           operands[operand](
             keys,
-            key => object[key] && new RegExp(query[key]).test(object[key])
+            key => obj[key] && new RegExp(query[key]).test(obj[key])
           )
         )
         return loo
@@ -221,7 +222,7 @@ export default class DataSource {
    * @param {boolean} sync sync cluster nodes, true by default
    */
   async delete (id, sync = true) {
-    return this.deleteSync(id)
+    throw new Error('abstract method not implemented')
   }
 
   deleteSync (id) {
@@ -273,35 +274,6 @@ export default class DataSource {
   }
 
   /**
-   * Subclasses must override this method to run
-   * the query against the datastore it accesses.
-   * @param {{foreignKey:id}} filter
-   */
-  oneToMany (filter) {
-    return this.list(filter)
-  }
-
-  /**
-   * Subclasses must override this method to run
-   * the query against the datastore it accesses.
-   * @param {foreignKey} filter
-   * @returns
-   */
-  manyToOne (filter) {
-    return this.find(filter)
-  }
-
-  /**
-   * Subclasses must override this method to run
-   * the query against the datastore it accesses.
-   * @param {{foreignKey:id}} filter
-   * @returns
-   */
-  containsMany (filter) {
-    return this.list(filter)
-  }
-
-  /**
    * called when a related model attempts to save
    */
   requestSave () {
@@ -331,8 +303,4 @@ export default class DataSource {
    *
    */
   close () {}
-
-  getClassName () {
-    return this.className
-  }
 }

@@ -1,16 +1,16 @@
 import fs from 'fs'
 import path from 'path'
-import { DataSourceMemory } from './datasource-memory'
+import DataSource from '../../domain/datasource'
 
 /**
  * Persistent storage on filesystem
  */
-export class DataSourceFile extends DataSourceMemory {
+export class DataSourceFile extends DataSource {
   /**
    * @param {Set} map
    */
-  constructor (map, name, namespace, options = {}) {
-    super(map, name, namespace, options)
+  constructor (map, name, options = {}) {
+    super(map, name, options)
     this.file = this.getFilePath()
     this.className = DataSourceFile.name
   }

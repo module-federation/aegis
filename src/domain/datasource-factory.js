@@ -1,5 +1,7 @@
 'use strict'
 
+import { Transform } from 'stream'
+import { isMainThread } from 'worker_threads'
 /** @typedef {import('.').Model} Model */
 
 /**
@@ -10,6 +12,7 @@
  */
 
 import ModelFactory from '.'
+import EventBrokerFactory from './event-broker'
 import * as adapters from '../adapters/datasources'
 import { dsClasses } from '../adapters/datasources'
 import configRoot from '../config'
@@ -18,22 +21,74 @@ import { withSharedMemory } from './shared-memory'
 import compose from './util/compose'
 
 const debug = /\*|datasource/i.test(process.env.DEBUG)
+const broker = EventBrokerFactory.getInstance()
+const FACTORY = Symbol('factory')
 const defaultAdapter = configRoot.hostConfig.adapters.defaultDatasource
 const DefaultDataSource =
   adapters[defaultAdapter] || dsClasses['DataSourceMemory']
-const FACTORY = Symbol()
 
-const DsFactoryAccessors = superclass =>
+const DsCoreExtensions = superclass =>
   class extends superclass {
     set factory (value) {
       this[FACTORY] = value
     }
+
     get factory () {
       return this[FACTORY]
     }
+
+    transform () {
+      const ctx = this
+      return new Transform({
+        objectMode: true,
+
+        transform (chunk, _encoding, callback) {
+          this.push(ModelFactory.loadModel(broker, ctx, chunk, ctx.name))
+          callback()
+        }
+      })
+    }
+
+    serialize (data, options) {
+      if (options?.serializers) return options.serializers['serialize'](data)
+      return JSON.stringify(data)
+    }
+
+    async save (id, data) {
+      this.saveSync(id, data)
+      const clone = JSON.parse(this.serialize(data))
+      super.save(id, clone)
+    }
+
+    async find (id) {
+      const cache = this.findSync(id)
+      if (cache) return cache
+
+      const model = await super.find(id)
+
+      if (model) {
+        this.saveSync(model.id, model)
+        return this.findSync(id)
+      }
+    }
+
+    async list (options) {
+      if (options.writable && !isMainThread) 
+        return super.list({ ...options, transform: this.transform() })
+      
+      const arr = await super.list(options)
+
+      return isMainThread
+        ? arr
+        : arr
+        ? arr.map(model =>
+            ModelFactory.loadModel(broker, this, model, this.name)
+          )
+        : null
+    }
   }
 
-const accessFactory = DsClass => class extends DsFactoryAccessors(DsClass) {}
+const extendClass = DsClass => class extends DsCoreExtensions(DsClass) {}
 
 /**
  * Manages each domain model's dedicated datasource.
@@ -97,7 +152,7 @@ const DataSourceFactory = (() => {
       const url = spec.datasource.url
       const cacheSize = spec.datasource.cacheSize
       const adapterFactory = spec.datasource.factory
-      const BaseClass = dsClasses[spec.datasource.baseClass]
+      const BaseClass = dsClasses[spec.datasource.baseClass] || DataSource
       return adapterFactory(url, cacheSize, BaseClass)
     }
 
@@ -105,7 +160,7 @@ const DataSourceFactory = (() => {
   }
 
   /**
-   * Apply any compositional mixins specifed in {@link options}.
+   * Apply core compositional mixins specifed in {@link options}.
    * Compostion allows us to observe the open/closed principle
    * and add new feature/functions arbitrarily to any datasource
    * class in the hierarchy without having to modify it.
@@ -115,7 +170,7 @@ const DataSourceFactory = (() => {
    * @returns {typeof DataSource}
    */
   function extendDataSourceClass (DsClass, options = {}) {
-    const mixins = [accessFactory].concat(options.mixins || [])
+    const mixins = [extendClass].concat(options.mixins || [])
     return compose(...mixins)(DsClass)
   }
 
@@ -137,7 +192,8 @@ const DataSourceFactory = (() => {
 
     if (!options.ephemeral) dataSources.set(name, newDs)
 
-    debug && console.debug({ newDs })
+    //debug &&
+    console.debug({ newDs })
     return newDs
   }
 
@@ -148,16 +204,11 @@ const DataSourceFactory = (() => {
    * @param {dsOpts} options
    * @returns {import('./datasource').default}
    */
-  function getDataSource (name, namespace, options) {
-    if (!name) throw new Error('no name provided')
-
-    const upperName = name.toUpperCase()
-    const upperNs = (namespace || name).toUpperCase()
-
+  function getDataSource (name, namespace = null, options = {}) {
     if (!dataSources) dataSources = new Map()
-    if (dataSources.has(upperName)) return dataSources.get(upperName)
-
-    return createDataSource(upperName, upperNs, options)
+    if (!namespace) return dataSources.get(name)
+    if (dataSources.has(name)) return dataSources.get(name)
+    return createDataSource(name, namespace, options)
   }
 
   /**
@@ -169,11 +220,10 @@ const DataSourceFactory = (() => {
    * @returns
    */
   function getSharedDataSource (name, namespace, options) {
-    const upperName = name.toUpperCase()
-    const upperNs = namespace.toUpperCase()
     if (!dataSources) dataSources = new Map()
-    if (dataSources.has(upperName)) return dataSources.get(upperName)
-    return withSharedMemory(createDataSource, this, upperName, upperNs, options)
+    if (!namespace) return dataSources.get(name)
+    if (dataSources.has(name)) return dataSources.get(name)
+    return withSharedMemory(createDataSource, this, name, namespace, options)
   }
 
   /**
@@ -184,8 +234,8 @@ const DataSourceFactory = (() => {
    * @param {string} name
    * @returns {ProxyHandler<DataSource>}
    */
-  function getRestrictedDataSource (name) {
-    return new Proxy(getDataSource(name), {
+  function getRestrictedDataSource (name, namespace, options) {
+    return new Proxy(getDataSource(name, namespace, options), {
       get (target, key) {
         if (key === 'factory') {
           throw new Error('unauthorized')
