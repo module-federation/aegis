@@ -37,18 +37,6 @@ const DsCoreExtensions = superclass =>
       return this[FACTORY]
     }
 
-    transform () {
-      const ctx = this
-      return new Transform({
-        objectMode: true,
-
-        transform (chunk, _encoding, callback) {
-          this.push(ModelFactory.loadModel(broker, ctx, chunk, ctx.name))
-          callback()
-        }
-      })
-    }
-
     serialize (data, options) {
       if (options?.serializers) return options.serializers['serialize'](data)
       return JSON.stringify(data)
@@ -61,30 +49,41 @@ const DsCoreExtensions = superclass =>
     }
 
     async find (id) {
-      const cache = this.findSync(id)
-      if (cache) return cache
-
+      const cached = this.findSync(id)
+      if (cached) return cached
       const model = await super.find(id)
-
       if (model) {
-        this.saveSync(model.id, model)
-        return this.findSync(id)
+        this.saveSync(id, model)
+        return isMainThread
+          ? model
+          : ModelFactory.loadModel(broker, this, model, this.name)
       }
     }
 
+    transform () {
+      const ctx = this
+      return new Transform({
+        objectMode: true,
+
+        transform (chunk, _encoding, callback) {
+          this.push(ModelFactory.loadModel(broker, ctx, chunk, ctx.name))
+          callback()
+        }
+      })
+    }
+
     async list (options) {
-      if (options.writable && !isMainThread) 
+      if (options?.writable && !isMainThread)
         return super.list({ ...options, transform: this.transform() })
-      
+
       const arr = await super.list(options)
 
-      return isMainThread
-        ? arr
-        : arr
-        ? arr.map(model =>
-            ModelFactory.loadModel(broker, this, model, this.name)
-          )
-        : null
+      if (Array.isArray(arr))
+        return isMainThread
+          ? arr
+          : arr.map(model =>
+              ModelFactory.loadModel(broker, this, model, this.name)
+            )
     }
   }
 

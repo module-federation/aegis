@@ -98,7 +98,7 @@ remoteEntries.then(remotes => {
             const result = await domainPort(msg.data.jobData)
 
             if (!result) {
-              throw new Error('no result from port')
+              throw new Error(`no result from port ${result}`)
             }
 
             parentPort.postMessage(JSON.parse(JSON.stringify(result)))

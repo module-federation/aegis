@@ -279,9 +279,9 @@ const Model = (() => {
        */
       async update (changes, validate = true) {
         // get the last saved version
-        const saved = (await datasource.find(this[ID])) || {}
+        //const saved = (await datasource.findSync                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             (this[ID])) || {}
         // merge changes with last saved and optionally validate
-        const valid = validateUpdates({ ...this, ...saved }, changes, validate)
+        const valid = validateUpdates(this, changes, validate)
 
         // update timestamp
         const merge = await datasource.save(this[ID], {

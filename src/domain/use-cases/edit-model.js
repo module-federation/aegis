@@ -54,9 +54,12 @@ export default function makeEditModel ({
 
         // get model
         const model = await repository.find(id)
+        console.debug({ model })
 
         // only the worker does the update
         const updated = await models.updateModel(model, changes)
+
+        console.debug({ updated })
         await repository.save(id, updated)
 
         const event = models.createEvent(eventType, modelName, {
