@@ -35,16 +35,13 @@ export const relationType = {
     // retrieve from memory
     const memory = ds.listSync(filter)
     // call datasource interface to fetch from external storage
-    const many = await ds.oneToMany(filter)
-    const external = many.map(m => hydrateModel(m, ds, rel))
-
+    const externalMedia = await ds.list({ query: filter })
     // return all
     if (memory.length > 0)
-      return external
+      return externalMedia
         .filter(ext => !memory.find(mem => mem.equals(ext)))
         .concat(memory)
-
-    return external
+    return externalMedia
   },
 
   /**
@@ -60,8 +57,7 @@ export const relationType = {
     // return if found
     if (memory) return memory
     // if not, call ds interface to search external storage
-    const one = await ds.manyToOne({ id: model[rel.foreignKey] })
-    return hydrateModel(one, ds, rel)
+    return ds.find({ id: model[rel.foreignKey] })
   },
 
   /**
@@ -241,9 +237,11 @@ export default function makeRelations (relations, datasource, broker) {
 
   return Object.keys(relations)
     .map(function (relation) {
-      const rel = relations[relation]
-      const relatedModelName = rel.modelName.toUpperCase()
-      rel.name = relation
+      const rel = {
+        ...relations[relation],
+        modelName: relations[relation].modelName.toUpperCase(),
+        name: relation
+      }
 
       try {
         // relation type unknown
@@ -260,7 +258,8 @@ export default function makeRelations (relations, datasource, broker) {
             const createNew = args?.length > 0
 
             let ds = datasource.factory.getDataSource(
-              relatedModelName,
+              rel.modelName,
+              'tempns',
               local ? {} : { isCached: true, ephemeral: true }
             )
 

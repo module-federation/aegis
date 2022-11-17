@@ -5,24 +5,25 @@ import DataSourceFactory from '../datasource-factory'
 import ThreadPoolFactory from '../thread-pool.js'
 import EventBrokerFactory from '../event-broker'
 
-import makeCreateModel from "./create-model"
-import makeEditModel from "./edit-model"
-import makeListModels from "./list-models"
-import makeFindModel from "./find-model"
-import makeRemoveModel from "./remove-model"
-import makeLoadModels from "./load-models"
-import makeDeployModel from "./deploy-model"
-import makeListConfig from "./list-configs"
-import makeEmitEvent from "./emit-event"
-import makeInvokePort from "./invoke-port"
-import makeHotReload from "./hot-reload"
-import brokerEvents from "./broker-events"
-import DistributedCache from "../distributed-cache"
-import makeServiceMesh from "./create-service-mesh.js"
-import { PortEventRouter } from "../event-router"
-import { isMainThread } from "worker_threads"
-import { hostConfig } from "../../config"
-import * as context from "../util/async-context"
+import makeCreateModel from './create-model'
+import makeEditModel from './edit-model'
+import makeListModels from './list-models'
+import makeFindModel from './find-model'
+import makeRemoveModel from './remove-model'
+import makeLoadModels from './load-models'
+import makeDeployModel from './deploy-model'
+import makeListConfig from './list-configs'
+import makeEmitEvent from './emit-event'
+import makeInvokePort from './invoke-port'
+import makeHotReload from './hot-reload'
+import brokerEvents from './broker-events'
+import DistributedCache from '../distributed-cache'
+import makeServiceMesh from './create-service-mesh.js'
+import { PortEventRouter } from '../event-router'
+import { isMainThread } from 'worker_threads'
+import { hostConfig } from '../../config'
+import { requestContext } from '../util/async-context'
+import * as context from '../util/async-context'
 
 export const serviceMeshPlugin =
   hostConfig.services.activeServiceMesh ||
@@ -92,8 +93,12 @@ function findLocalRelatedDatasources (spec) {
     }))
 }
 
-function getDataSource (spec) {
-  return DataSourceFactory.getSharedDataSource(spec.modelName, spec.domain)
+function getDataSource (spec, options) {
+  return DataSourceFactory.getSharedDataSource(
+    spec.modelName,
+    spec.domain,
+    options
+  )
 }
 
 function getThreadPool (spec, ds, options) {
@@ -116,17 +121,17 @@ function buildOptions (spec, options) {
     models: ModelFactory,
     broker: EventBrokerFactory.getInstance(),
     handlers: spec.eventHandlers,
-    context,
+    context
   }
 
   if (isMainThread) {
-    const ds = getDataSource(spec)
+    const ds = getDataSource(spec, options)
     return {
       ...invariant,
       // main thread does not write to persistent store
       repository: ds,
       // only main thread knows about thread pools (no nesting)
-      threadpool: getThreadPool(spec, ds),
+      threadpool: getThreadPool(spec, ds, options),
       // if caller provides id, use it as key for idempotency
       async idempotent () {
         return ds.find(context.requestContext.getStore().get('id'))
@@ -136,7 +141,7 @@ function buildOptions (spec, options) {
     return {
       ...invariant,
       // only worker threads can write to persistent storage
-      repository: getDataSource(spec)
+      repository: getDataSource(spec, options)
     }
   }
 }
@@ -165,7 +170,7 @@ function make (factory) {
  */
 function makeOne (modelName, factory, options = {}) {
   const spec = ModelFactory.getModelSpec(modelName.toUpperCase(), options)
-  return factory(buildOptions(spec))
+  return factory(buildOptions(spec, spec.domain))
 }
 
 const createModels = () => make(makeCreateModel)

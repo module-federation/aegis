@@ -8,7 +8,6 @@ import DataSource from '../../domain/datasource'
 export class DataSourceMemory extends DataSource {
   constructor (map, name, namespace, options) {
     super(map, name, namespace, options)
-    this.className = DataSourceMemory.name
   }
 
   /**
@@ -22,7 +21,7 @@ export class DataSourceMemory extends DataSource {
    * @param {*} sync - sync cluster nodes, true by default
    * @returns
    */
-  async save (id, data, sync = true) {
+  save (id, data, sync = true) {
     if (sync && process.send === 'function') {
       /** send data to cluster members */
       process.send({
@@ -33,13 +32,21 @@ export class DataSourceMemory extends DataSource {
         id
       })
     }
-    return this.saveSync(id, data)
+    this.saveSync(id, data)
+  }
+
+  find (id) {
+    return this.findSync(id)
+  }
+
+  list (options) {
+    return this.listSync(options)
   }
 
   /**
    * @override
    */
-  async delete (id, sync = true) {
+  delete (id, sync = true) {
     if (sync && process.send === 'function') {
       process.send({
         cmd: 'deleteBroadcast',

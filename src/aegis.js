@@ -94,20 +94,19 @@ const router = {
       .forEach(ctrl => {
         if (ports) {
           if (ctrl.ports) {
-            for(const portName in ctrl.ports) {
-              const port = ctrl.ports[portName];
-              if(port.path) {
-                routeOverrides.set(port.path, portName);
+            for (const portName in ctrl.ports) {
+              const port = ctrl.ports[portName]
+              if (port.path) {
+                routeOverrides.set(port.path, portName)
               }
 
-              if (checkAllowedMethods(ctrl, method)) { 
+              if (checkAllowedMethods(ctrl, method)) {
                 routes.set(port.path || path(ctrl.endpoint), {
                   [method]: adapter(ctrl.fn)
                 })
               }
             }
           }
-       
         } else {
           routes.set(buildPath(ctrl, path), {
             [method]: adapter(ctrl.fn)
@@ -189,7 +188,8 @@ async function handle (path, method, req, res) {
         ['begin', Date.now()],
         ['user', req.user],
         ['res', res],
-        ['path', path]
+        ['path', path],
+        ['headers', req.headers]
       ])
     )
     console.debug(`enter context ${requestContext.getStore().get('id')}`)

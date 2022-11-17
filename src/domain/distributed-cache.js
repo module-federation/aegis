@@ -288,7 +288,7 @@ export default function DistributedCache ({
         // find the requested object or objects
         const relatedModels = await relationType[relation.type](
           model,
-          datasources.getDataSource(relation.modelName.toUpperCase()),
+          datasources.getDataSource(relation.modelName),
           relation
         )
 

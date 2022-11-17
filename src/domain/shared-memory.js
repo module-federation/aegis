@@ -13,7 +13,9 @@ const KEYSIZE = 64
 const OBJSIZE = 4056
 
 function logError (x) {
-  console.error({ msg: 'unexpected datatype', type: typeof x, value: x })
+  const errObj = { msg: 'unexpected datatype', type: typeof x, value: x }
+  console.error(errObj)
+  throw new Error(JSON.stringify(errObj))
 }
 
 const dataType = {
@@ -46,10 +48,6 @@ const SharedMemoryMixin = superclass =>
   class extends superclass {
     constructor (map, name, options) {
       super(map, name, options)
-
-      // Indicate which class we extend
-      this.className = super.className
-      this.mixinClass = this.constructor.name
     }
 
     /**
@@ -68,19 +66,13 @@ const SharedMemoryMixin = superclass =>
      */
     mapGet (id) {
       if (!id) {
-        return console.warn({
-          fn: `${__filename}:${this.mapGet.name}`,
-          message: 'no id provided'
-        })
+        return console.warn({ fn: this.mapGet.name, msg: 'no id provided' })
       }
 
       try {
         const jsonStr = this.dsMap.get(id)
         if (!jsonStr) {
-          return console.warn({
-            fn: `${__filename}:${this.mapGet.name}`,
-            message: 'no data found'
-          })
+          return console.warn({ fn: this.mapGet.name, msg: 'no data found' })
         }
 
         const jsonObj = dataType.read[typeof jsonStr](jsonStr)
@@ -89,7 +81,7 @@ const SharedMemoryMixin = superclass =>
         }
 
         return isMainThread
-          ? jsonObj
+          ? jsonObj // main thread objects remain dehydrated
           : ModelFactory.loadModel(broker, this, jsonObj, this.name)
       } catch (error) {
         console.error({ fn: this.mapGet.name, error })

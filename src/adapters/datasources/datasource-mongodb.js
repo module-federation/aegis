@@ -1,10 +1,11 @@
 'use strict'
 
+import DataSource from '../../domain/datasource'
+
 const HIGHWATERMARK = 50
 
 const mongodb = require('mongodb')
 const { MongoClient } = mongodb
-const { DataSourceMemory } = require('./datasource-memory')
 const { Transform, Writable } = require('stream')
 const qpm = require('query-params-mongo')
 const processQuery = qpm({
@@ -35,15 +36,13 @@ const mongoOpts = {
  * The cache is always updated first, which allows the system to run
  * even when the database is offline.
  */
-export class DataSourceMongoDb extends DataSourceMemory {
+export class DataSourceMongoDb extends DataSource {
   constructor (map, name, namespace, options = {}) {
     super(map, name, namespace, options)
     this.cacheSize = cacheSize
     this.mongoOpts = mongoOpts
-    this.className = this.constructor.name
     this.runOffline = dsOptions.runOffline
     this.url = url
-    //console.log(this)
   }
 
   async connection () {
@@ -94,56 +93,11 @@ export class DataSourceMongoDb extends DataSourceMemory {
     }
   }
 
-  async findDb (id) {
+  async find (id) {
     try {
       return (await this.collection()).findOne({ _id: id })
     } catch (error) {
       console.error({ fn: this.findDb.name, error })
-    }
-  }
-
-  /**
-   * Check the cache first.
-   * @overrid
-   * @param {*} id - `Model.id`
-   */
-  async find (id) {
-    try {
-      const cached = super.findSync(id)
-      if (
-        cached === null ||
-        cached === undefined ||
-        Object.keys(cached).length == 0
-      ) {
-        // cached can be empty object, save after finding in db
-        const data = await this.findDb(id)
-        if (data) super.saveSync(id, data)
-        return data
-      }
-      return cached
-    } catch (error) {
-      console.error({ fn: this.find.name, error })
-    }
-  }
-
-  serialize (data) {
-    if (this.serializer) {
-      return JSON.stringify(data, this.serializer.serialize)
-    }
-    return JSON.stringify(data)
-  }
-
-  async saveDb (id, data) {
-    try {
-      const clone = JSON.parse(this.serialize(data))
-      await (await this.collection()).replaceOne(
-        { _id: id },
-        { ...clone, _id: id },
-        { upsert: true }
-      )
-      return data
-    } catch (error) {
-      console.error({ fn: this.saveDb.name, error })
     }
   }
 
@@ -159,23 +113,15 @@ export class DataSourceMongoDb extends DataSourceMemory {
    */
   async save (id, data) {
     try {
-      super.saveSync(id, data)
-      try {
-        await this.saveDb(id, data)
-      } catch (error) {
-        // default is true
-        if (!this.runOffline) {
-          super.deleteSync(id)
-          // after delete mem and db are sync'd
-          console.error('db trans failed, rolled back')
-          return
-        }
-        // run while db is down - cache will be ahead
-        console.error('db trans failed, sync it later')
+      const col = await this.collection()
+      col.replaceOne({ _id: id }, { ...data, _id: id }, { upsert: true })
+    } catch (error) {
+      // default is true
+      if (!this.runOffline) {
+        throw new Error('db trans failed, rolled back', error)
       }
-      return data
-    } catch (e) {
-      console.error(e)
+      // run while db is down - cache will be ahead
+      console.error('db trans failed, sync it later', error)
     }
   }
 
@@ -247,7 +193,7 @@ export class DataSourceMongoDb extends DataSourceMemory {
    */
 
   async mongoFind ({ filter, sort, limit, aggregate, skip } = {}) {
-    console.log('Aegis MongoDataAdapter: filter',{ filter })
+    console.log('Aegis MongoDataAdapter: filter', { filter })
     let cursor = (await this.collection()).find(filter)
     if (sort) cursor = cursor.sort(sort)
     if (aggregate) cursor = cursor.aggregate(aggregate)
@@ -400,34 +346,6 @@ export class DataSourceMongoDb extends DataSourceMemory {
     } catch (error) {
       console.error(error)
     }
-  }
-
-  /**
-   * @override
-   * @param {*} pkvalue primary key value
-   * @returns
-   */
-  async manyToOne (filter) {
-    return (await this.collection()).findOne(filter)
-  }
-
-  /**
-   * @override
-   * @param {*} fkname name of foreign key
-   * @param {*} pkvalue value of primary key
-   * @returns
-   */
-  async oneToMany (filter) {
-    return (await this.collection()).find(filter).toArray()
-  }
-
-  /**
-   *
-   * @param {*} filter
-   * @returns
-   */
-  async containsMany (filter) {
-    return (await this.collection()).find(filter).toArray()
   }
 
   /**
