@@ -159,10 +159,10 @@ const DataSourceFactory = (() => {
   }
 
   /**
-   * Apply core compositional mixins specifed in {@link options}.
-   * Compostion allows us to observe the open/closed principle
-   * and add new feature/functions arbitrarily to any datasource
-   * class in the hierarchy without having to modify it.
+   * Apply core compositional mixins and any extensions specifed in
+   * {@link options}. Compostion allows us to observe the open/closed
+   * principle and add new feature/functions arbitrarily to any
+   * datasource class in the hierarchy without having to modify it.
    *
    * @param {typeof DataSource} DsClass
    * @param {dsOpts} options

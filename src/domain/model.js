@@ -123,12 +123,10 @@ const Model = (() => {
   }
 
   /**
-   * Because it is immutable, a model
-   * becomes a shallow clone the first
-   * time it is updated. Therefore, if
-   * the model is a class, uses
-   * inheritance, or is instantiate
-   * with the new keyword, we have to
+   * Because it is immutable, a model is cloned when it is updated.
+   * It is also cloned when passed between worker threads, stored in
+   * shared memory, loaded from external storage or arrives on a network
+   * socket. Therefore, if the model depends on inheritance, we have to
    * restore its prototype.
    *
    * @param {} clonedModel
@@ -278,20 +276,16 @@ const Model = (() => {
        * @returns {Promise<Model>}
        */
       async update (changes, validate = true) {
-        // get the last saved version
-        //const saved = (await datasource.findSync                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             (this[ID])) || {}
-        // merge changes with last saved and optionally validate
-        const valid = validateUpdates(this, changes, validate)
+        const lastsaved = datasource.findSync(this[ID]) || {}
+        const mergedata = { ...lastsaved, ...this }
+        const validated = validateUpdates(mergedata, changes, validate)
+        const timestamp = { ...validated, [UPDATETIME]: Date.now() }
+        
+        await datasource.save(this[ID], timestamp)
+        const rehydrated = rehydrate(timestamp, model)
+        queueNotice(rehydrated)
 
-        // update timestamp
-        const merge = await datasource.save(this[ID], {
-          ...valid,
-          [UPDATETIME]: Date.now()
-        })
-
-        const final = rehydrate(merge, model)
-        queueNotice(final)
-        return final
+        return rehydrated
       },
 
       /**
@@ -316,16 +310,14 @@ const Model = (() => {
        */
       updateSync (changes, validate = true) {
         // merge changes with lastest copy and optionally validate
-        const valid = validateUpdates(this, changes, validate)
-
+        const validated = validateUpdates(this, changes, validate)
         // update timestamp
-        const merge = datasource.saveSync(this[ID], {
-          ...valid,
-          [UPDATETIME]: Date.now()
-        })
+        const timestamp = { ...validated, [UPDATETIME]: Date.now() }
+
+        datasource.saveSync(this[ID], timestamp)
 
         // restore prototype if used
-        return rehydrate(merge, model)
+        return rehydrate(timestamp, model)
       },
 
       /**
