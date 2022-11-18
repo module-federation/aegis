@@ -6,6 +6,7 @@
 
 import domainEvents from './domain-events'
 import { importRemoteCache } from './import-remotes'
+
 const {
   internalCacheRequest,
   internalCacheResponse,
@@ -13,15 +14,6 @@ const {
 } = domainEvents
 
 const maxwait = process.env.REMOTE_OBJECT_MAXWAIT || 6000
-
-function hydrateModel (model, ds, rel) {
-  return require('.').default.loadModel(
-    require('.').EventBrokerFactory.getInstance(),
-    ds,
-    model,
-    rel.modelName
-  )
-}
 
 export const relationType = {
   /**
@@ -188,7 +180,7 @@ export function requireRemoteObject (model, relation, broker, ...args) {
   const request = internalCacheRequest(relation.modelName)
   const response = internalCacheResponse(relation.modelName)
 
-  console.debug({ fn: requireRemoteObject.name })
+  console.debug({ fn: requireRemoteObject.name, relation })
 
   const name = (model ? model.getName() : relation.modelName).toUpperCase()
   const id = model ? model.getId() : relation.id

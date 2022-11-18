@@ -34,7 +34,7 @@
  * @property {function():string} getName - model name
  * @property {function():string} getId - model instance id
  * @property {function():import(".").ModelSpecification} getSpec - get ModelSpec
- * @property {function():string[]} getPortFlow - get port history
+ * @property {function():string[]} getPortFlow - get port invocation history
  * @property {function():import(".").ports} getPorts - get port config
  * @property {function():string} getName - model name
  * @property {function(string):{arg0:string,symbol:Symbol}} getKey
@@ -280,7 +280,7 @@ const Model = (() => {
         const mergedata = { ...lastsaved, ...this }
         const validated = validateUpdates(mergedata, changes, validate)
         const timestamp = { ...validated, [UPDATETIME]: Date.now() }
-        
+
         await datasource.save(this[ID], timestamp)
         const rehydrated = rehydrate(timestamp, model)
         queueNotice(rehydrated)
@@ -335,6 +335,11 @@ const Model = (() => {
       async find (id) {
         if (!id) throw new Error('missing id')
         return datasource.find(id)
+      },
+
+      findSync (id) {
+        if (!id) throw new Error('missing id')
+        return datasource.findSync(id)
       },
 
       /**
