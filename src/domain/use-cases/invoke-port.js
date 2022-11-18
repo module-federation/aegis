@@ -52,7 +52,7 @@ export default function makeInvokePort ({
         if(!port) {
           const specPorts = service.getPorts();
           const path = context['requestContext'].getStore().get('path');
-          const [ [ portName ] ] = Object.entries(specPorts).filter((port) => match(port[1].path, { encode: encodeURI })(path) !== false);
+          const [ [ portName ] ] = Object.entries(specPorts).filter((port) => match(port[1].path || "", { encode: encodeURI })(path) !== false);
           if(!portName) {
             throw new Error('no port specified');
           }
