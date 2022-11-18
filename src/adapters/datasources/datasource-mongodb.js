@@ -1,16 +1,13 @@
 'use strict'
 
-import DataSource from '../../domain/datasource'
+import { ObjectId, MongoClient } from 'mongodb';
+import { Transform, Writable } from 'stream';
+import qpm from 'query-params-mongo';
+import DataSource from '../../domain/datasource';
 
-const HIGHWATERMARK = 50
-
-const mongodb = require('mongodb')
-const { MongoClient } = mongodb
-const { Transform, Writable } = require('stream')
-const qpm = require('query-params-mongo')
 const processQuery = qpm({
   autoDetect: [{ fieldPattern: /_id$/, dataType: 'objectId' }],
-  converters: { objectId: mongodb.ObjectId }
+  converters: { objectId: ObjectId }
 })
 
 const url = process.env.MONGODB_URL || 'mongodb://localhost:27017'
@@ -19,7 +16,9 @@ const dsOptions = configRoot.adapters.datasources.DataSourceMongoDb.options || {
   runOffline: true,
   numConns: 2
 }
-const cacheSize = configRoot.adapters.cacheSize || 3000
+
+const HIGHWATERMARK = 50;
+const cacheSize = configRoot.adapters.cacheSize || 3000;
 
 /**
  * @type {Map<string,MongoClient>}
@@ -57,6 +56,10 @@ export class DataSourceMongoDb extends DataSource {
       }
       const client = connections.shift()
       connections.push(client)
+
+      // run indexing operations
+      await this.createIndexes();
+
       return client
     } catch (error) {
       console.error({ fn: this.connection.name, error })
@@ -65,6 +68,21 @@ export class DataSourceMongoDb extends DataSource {
 
   async collection () {
     return (await this.connection()).db(this.namespace).collection(this.name)
+  }
+
+  async createIndexes(indexes) {
+    try {
+      const indexOperations = indexes.map((index) => {
+        return {
+          name: index.fields.join("_"),
+          key:  index.fields.reduce((a, v) => ({ ...a, [v]: 1 }), {}),
+          ...index.options,
+        }
+      });
+      return (await this.collection()).createIndexes(indexOperations);
+    } catch(error) {
+      console.error(error);
+    }
   }
 
   /**

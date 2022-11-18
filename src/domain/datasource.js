@@ -95,6 +95,16 @@ export default class DataSource {
     return this.dsMap.set(id, data)
   }
 
+  /** 
+  * Create indexes as defined in the datasource object in the model
+  * @param {Array<object>}
+  * @returns {Promise<boolean>} result
+  */
+ 
+  async createIndexes(indexes) {
+    throw new Error('abstract method not implemented')
+  }
+
   /**
    * Find model instance by ID
    * @param {*} id record id
