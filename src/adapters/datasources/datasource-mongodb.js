@@ -42,6 +42,12 @@ export class DataSourceMongoDb extends DataSource {
     this.mongoOpts = mongoOpts
     this.runOffline = dsOptions.runOffline
     this.url = url
+
+
+    console.log("MAP:::", map);
+    console.log("NAME:::", name);
+    console.log("NAMESPACE:::", namespace);
+    console.log("OPTIONS:::", options);
   }
 
   async connection () {
@@ -56,7 +62,7 @@ export class DataSourceMongoDb extends DataSource {
       }
       const client = connections.shift()
       connections.push(client)
-
+      
       // run indexing operations
       await this.createIndexes();
 
