@@ -1,6 +1,7 @@
 'use strict'
 
 import { isMainThread } from 'worker_threads'
+import { match } from 'path-to-regexp'
 import { AppError } from '../util/app-error'
 
 /**
@@ -51,7 +52,7 @@ export default function makeInvokePort ({
         if(!port) {
           const specPorts = service.getPorts();
           const path = context['requestContext'].getStore().get('path');
-          const [ [ portName ] ] = Object.entries(specPorts).filter((port) => port[1].path === path);
+          const [ [ portName ] ] = Object.entries(specPorts).filter((port) => match(port[1].path, { encode: encodeURI })(path) !== false);
           if(!portName) {
             throw new Error('no port specified');
           }
