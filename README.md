@@ -122,4 +122,20 @@ yarn demo
 [gitpod-image]: https://img.shields.io/badge/Gitpod-ready--to--code-908a85?logo=gitpod
 [gitpod-url]: https://gitpod.io/github.com/module-federation/aegis
 
+## Git Setup
 
+This repo was forked from the `github.com/module-federation/aegis`. The idea is to maintain a common git history with Aegis in Module Federation but without the fork relationship which removes any dependency in the BLI on the Module Federation repo but allows us to update this repo as well as contribute to the open source project seamlessly.
+
+Remotes: 
+  - origin -> `github.com/briteliteimmersive/aegis-core`
+  - bli -> `github.com/briteliteimmersive/aegis` (fork of OSS)
+  - oss -> `github.com/module-federation/aegis`
+
+### Updating this repo from the OSS library
+
+- `git pull oss main`
+
+### Opening a PR in module-federation/aegis
+
+- `git push bli <branch name>`
+-  Open PR in BLI pointed to Module Federation
