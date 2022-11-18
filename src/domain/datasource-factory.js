@@ -51,7 +51,9 @@ const DsCoreExtensions = superclass =>
     async find (id) {
       const cached = this.findSync(id)
       if (cached) return cached
+
       const model = await super.find(id)
+
       if (model) {
         this.saveSync(id, model)
         return isMainThread
@@ -62,6 +64,7 @@ const DsCoreExtensions = superclass =>
 
     transform () {
       const ctx = this
+
       return new Transform({
         objectMode: true,
 
@@ -73,8 +76,10 @@ const DsCoreExtensions = superclass =>
     }
 
     async list (options) {
-      if (options?.writable && !isMainThread)
-        return super.list({ ...options, transform: this.transform() })
+      if (options?.writable)
+        return isMainThread
+          ? super.list(options)
+          : super.list({ ...options, transfrom: this.transform() })
 
       const arr = await super.list(options)
 
@@ -205,8 +210,11 @@ const DataSourceFactory = (() => {
    */
   function getDataSource (name, namespace = null, options = {}) {
     if (!dataSources) dataSources = new Map()
+
     if (!namespace) return dataSources.get(name)
+
     if (dataSources.has(name)) return dataSources.get(name)
+
     return createDataSource(name, namespace, options)
   }
 
@@ -218,10 +226,13 @@ const DataSourceFactory = (() => {
    * @param {dsOpts} [options]
    * @returns
    */
-  function getSharedDataSource (name, namespace, options) {
+  function getSharedDataSource (name, namespace = null, options = {}) {
     if (!dataSources) dataSources = new Map()
+
     if (!namespace) return dataSources.get(name)
+
     if (dataSources.has(name)) return dataSources.get(name)
+
     return withSharedMemory(createDataSource, this, name, namespace, options)
   }
 
