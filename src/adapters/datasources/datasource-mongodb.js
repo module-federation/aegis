@@ -142,7 +142,7 @@ export class DataSourceMongoDb extends DataSource {
     } catch (error) {
       // default is true
       if (!this.runOffline) {
-        throw new Error('db trans failed, rolled back', error)
+        throw new Error('db trans failed,', error)
       }
       // run while db is down - cache will be ahead
       console.error('db trans failed, sync it later', error)
@@ -217,7 +217,11 @@ export class DataSourceMongoDb extends DataSource {
    */
 
   async mongoFind ({ filter, sort, limit, aggregate, skip } = {}) {
-    console.log('Aegis MongoDataAdapter: filter', { filter })
+    console.log({
+      ctor: this.constructor.name,
+      fn: this.mongoFind.name,
+      filter
+    })
     let cursor = (await this.collection()).find(filter)
     if (sort) cursor = cursor.sort(sort)
     if (aggregate) cursor = cursor.aggregate(aggregate)
@@ -366,7 +370,7 @@ export class DataSourceMongoDb extends DataSource {
   async delete (id) {
     try {
       await (await this.collection()).deleteOne({ _id: id })
-      super.deleteSync(id)
+      this.deleteSync(id)
     } catch (error) {
       console.error(error)
     }

@@ -13,7 +13,7 @@ let parsers
 exports.makeServerlessAdapter = function (getParsers) {
   const provider = process.env.CLOUDPROVIDER || 'aws'
 
-  return function (aegis) {
+  return function (controller) {
     /**
      *
      * @param {"request"|"response"} type
@@ -39,7 +39,7 @@ exports.makeServerlessAdapter = function (getParsers) {
 
     return async function handle (...args) {
       const { req, res } = await parseMessage('request', ...args)
-      const response = await aegis(req.path, req.method, req, res)
+      const response = await controller(req.path, req.method, req, res)
       return parseMessage('response', response)
     }
   }

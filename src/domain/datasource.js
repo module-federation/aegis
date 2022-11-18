@@ -65,7 +65,6 @@ export default class DataSource {
    *
    * @param {*} id
    * @param {*} data
-   * @returns {Promise<object>}
    */
   async save (id, data) {
     throw new Error('abstract method not implemented')
