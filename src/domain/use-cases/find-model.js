@@ -37,18 +37,20 @@ export default function makeFindModel ({
       const model = await repository.find(id)
 
       if (!model) {
-        throw new Error('no such id')
+        throw new Error('Not Found')
       }
 
       console.log({ fn: findModel.name, model })
       // Only send to app thread if data must be enriched
       if (!query.relation && !query.command) return model
 
-      return await threadpool.runJob(findModel.name, {
-        id,
-        query,
-        model
-      },
+      return await threadpool.runJob(
+        findModel.name,
+        {
+          id,
+          query,
+          model
+        },
         modelName
       )
     } else {

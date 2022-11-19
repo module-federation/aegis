@@ -26,7 +26,7 @@ export default function patchModelFactory (editModel) {
     } catch (e) {
       console.error(e)
 
-      if (e.message === 'no such id') {
+      if (e.message === 'Not Found') {
         return {
           headers: {
             'Content-Type': 'application/json'
