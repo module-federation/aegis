@@ -190,9 +190,12 @@ export default function makePorts (ports, adapters, broker, datasource) {
       const disabled = portConf.disabled || !adapters[port]
 
       // Listen for event that will invoke this port
-      const rememberPort = disabled
-        ? false
-        : addPortListener(portName, portConf, broker, datasource)
+      const rememberPort = addPortListener(
+        portName,
+        portConf,
+        broker,
+        datasource
+      )
 
       /**
        *
@@ -223,7 +226,7 @@ export default function makePorts (ports, adapters, broker, datasource) {
         }
 
         try {
-          // call the inbound or oubound adapter and wait
+          // call the inbound or oubound adapte
           const result = await adapters[port]({ model: this, port, args })
 
           // Stop the timer

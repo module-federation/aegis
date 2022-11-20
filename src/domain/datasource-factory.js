@@ -90,9 +90,9 @@ const DsCoreExtensions = superclass =>
       return new Transform({
         objectMode: true,
 
-        transform (chunk, _encoding, callback) {
+        transform (chunk, _encoding, next) {
           this.push(ModelFactory.loadModel(broker, ctx, chunk, ctx.name))
-          callback()
+          next()
         }
       })
     }
@@ -101,7 +101,7 @@ const DsCoreExtensions = superclass =>
       if (options?.writable)
         return isMainThread
           ? super.list(options)
-          : super.list({ ...options, transfrom: this.transform() })
+          : super.list({ ...options, transform: this.transform() })
 
       const arr = await super.list(options)
 
