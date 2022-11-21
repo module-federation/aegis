@@ -52,15 +52,20 @@ export default function makeInvokePort ({
         if(!port) {
           const specPorts = service.getPorts();
           const path = context['requestContext'].getStore().get('path');
-          const [ [ portName ] ] = Object.entries(specPorts).filter((port) => match(port[1].path || "", { encode: encodeURI })(path) !== false);
-          if(!portName) {
-            throw new Error('no port specified');
+          for(const p of Object.entries(specPorts)) {
+            if(!p[1].path) {
+              continue;
+            }
+            if (pathsMatch(p[1].path, path)) {
+              if(!p[0]) {
+                throw new Error('no port specified');
+              }
+              if(!service[p[0]]) {
+                throw new Error('no port found');
+              }
+              return await service[p[0]](input);
+            }
           }
-          if(!service[portName]) {
-            throw new Error('no port found');
-          }
-
-          return await service[portName](input);
         }
 
         return await service[port](input)
@@ -69,4 +74,37 @@ export default function makeInvokePort ({
       }
     }
   }
+}
+
+// Performant way of checking if paths are the same
+// given one path with params and one with the param pattern
+function pathsMatch(pathWithParamRegex, pathWithParams) {
+  const splitPathWithParams = pathWithParams.split('/');
+  const splitPathWithParamRegex = pathWithParamRegex.split('/');
+
+  // We know if the length is different, the paths are different
+  if(splitPathWithParams.length !== splitPathWithParamRegex.length) {
+    return false;
+  }
+
+  // we loop through the path with params and check if the path with param regex and the called path match
+  // if they do not match, we return false
+  // if we get to a segment with a route param we continue
+  // if we get to the end of the loop and all segments match, we return true
+  for (let index = 0; index < splitPathWithParams.length; index++) {
+    const param = splitPathWithParams[index];
+    const paramRegex = splitPathWithParamRegex[index];
+
+    // regex path includes colon meaning route param so we continue
+    if(paramRegex.includes(':')) {
+      continue;
+    }
+
+    // if not equal, we return false the paths don't match
+    if(param !== paramRegex) {
+      return false;
+    }
+  }
+
+  return true;
 }
