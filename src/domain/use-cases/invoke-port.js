@@ -78,6 +78,9 @@ export default function makeInvokePort ({
 
 // Performant way of checking if paths are the same
 // given one path with params and one with the param pattern
+// this accounts for route params
+// since a route param can be anything, we can just compare 
+/// each path segment skipping over the param field
 function pathsMatch(pathWithParamRegex, pathWithParams) {
   const splitPathWithParams = pathWithParams.split('/');
   const splitPathWithParamRegex = pathWithParamRegex.split('/');
