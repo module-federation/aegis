@@ -1,7 +1,6 @@
 'use strict'
 
 import { isMainThread } from 'worker_threads'
-import { match } from 'path-to-regexp'
 import { AppError } from '../util/app-error'
 
 /**
