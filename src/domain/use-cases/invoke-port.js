@@ -43,9 +43,8 @@ export default function makeInvokePort ({
       try {
         let { id = null, port = null} = input;
         const service = await findModelService(id)
-
         if (!service) {
-          throw new Error('could not find service')
+          throw new Error('could not find a service associated with given id')
         } 
         
         if(!port) {
