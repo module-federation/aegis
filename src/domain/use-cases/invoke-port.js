@@ -41,13 +41,13 @@ export default function makeInvokePort ({
       return threadpool.runJob(invokePort.name, input, modelName)
     } else {
       try {
-        const { id = null, port = null} = input;
+        let { id = null, port = null} = input;
         const service = await findModelService(id)
 
         if (!service) {
           throw new Error('could not find service')
         } 
-
+        
         if(!port) {
           const specPorts = service.getPorts();
           const path = context['requestContext'].getStore().get('path');
@@ -56,15 +56,17 @@ export default function makeInvokePort ({
               continue;
             }
             if (pathsMatch(p[1].path, path)) {
-              if(!p[0]) {
-                throw new Error('no port specified');
-              }
-              if(!service[p[0]]) {
-                throw new Error('no port found');
-              }
-              return await service[p[0]](input);
+              port = p[0];
+              break;
             }
           }
+        }
+
+        if(!port) {
+          throw new Error('the port is undefined')
+        }
+        if(!service[port]) {
+          throw new Error('the port or record ID is invalid')
         }
 
         return await service[port](input)
