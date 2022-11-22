@@ -270,7 +270,7 @@ export class DataSourceMongoDb extends DataSource {
 
   processOptions (param) {
     const { options = {}, query = {} } = param
-    return { ...options, ...processQuery(query) }
+    return { ...processQuery(query), ...options } // options must overwite the query not otherwise
   }
 
   /**
