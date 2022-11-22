@@ -97,6 +97,11 @@ const DsCoreExtensions = superclass =>
       })
     }
 
+    /**
+     * @override
+     * @param {*} options
+     * @returns
+     */
     async list (options) {
       if (options?.writable)
         return isMainThread
@@ -111,6 +116,22 @@ const DsCoreExtensions = superclass =>
           : arr.map(model =>
               ModelFactory.loadModel(broker, this, model, this.name)
             )
+    }
+
+    /**
+     * @override
+     * @param {*} id
+     * @returns
+     */
+    async delete (id) {
+      try {
+        await super.delete(id)
+      } catch (error) {
+        console.error(error)
+        return
+      }
+      // only if super succeeds
+      this.deleteSync(id)
     }
   }
 

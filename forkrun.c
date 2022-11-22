@@ -13,6 +13,9 @@ char arg[BUFSIZE];
 int main (void) {
     pid_t pid;    
 
+
+
+
     if ((pid = fork()) == 0) {
         snprintf(cmd, BUFSIZE, "%s", getenv(envvar_cmd));
         snprintf(arg, BUFSIZE, "%s", getenv(envvar_arg));
@@ -28,4 +31,8 @@ int main (void) {
     }
 
     return EXIT_FAILURE;
+}
+
+int modelFactory(int i) {
+    return 56;
 }

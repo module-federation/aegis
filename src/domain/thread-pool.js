@@ -4,7 +4,7 @@ import EventBrokerFactory from './event-broker'
 import { EventEmitter } from 'stream'
 import { Worker, BroadcastChannel } from 'worker_threads'
 import domainEvents from './domain-events'
-import ModelFactory from '.'
+import ModelFactory, { totalDomains } from '.'
 import os from 'os'
 import { AsyncResource } from 'async_hooks'
 import { requestContext } from '.'
@@ -669,19 +669,20 @@ const ThreadPoolFactory = (() => {
 
   /**
    * By default the system-wide thread upper limit = the total # of cores.
-   * The default behavior is to spread threads/cores evenly between models.
+   * The default behavior is to spread cores evenly between domains. In
+   * the ModelSpec, this includes standalone models, e.g. models that
+   * have no domain configured or whose domain name is the same as its modelName.
+   *
    * @param {*} options
    * @returns
    */
   function calculateMaxThreads (options) {
     // defer to explicitly set value
     if (options?.maxThreads) return options.maxThreads
-    // get the total number of domains
-    const nApps = ModelFactory.getModelSpecs().filter(
-      s => !s.isCached && s.modelName === s.domain
-    ).length
     // divide the total cpu count by the number of domains
-    return Math.floor(os.cpus().length / nApps || DEFAULT_THREADPOOL_MAX || 1)
+    return Math.floor(
+      os.cpus().length / totalDomains() || DEFAULT_THREADPOOL_MAX
+    )
   }
 
   /**
@@ -754,7 +755,7 @@ const ThreadPoolFactory = (() => {
           jobName,
           jobData,
           modelName,
-          options
+            
         )
       },
       status () {
@@ -786,8 +787,7 @@ const ThreadPoolFactory = (() => {
 
   /**
    * This is the hot reload. Drain the pool,
-   * stop the existing threads & start new
-   * ones, which will have the latest code
+   * stop the pool and then start lsskk
    * @param {string} poolName i.e. modelName
    * @returns {Promise<ThreadPool>}
    * @throws {ReloadError}

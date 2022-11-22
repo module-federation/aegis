@@ -34,25 +34,18 @@ export default function makeFindModel ({
   return async function findModel ({ id, query, model }) {
     if (isMainThread) {
       // Main thread performs read operations
-      const model = await repository.find(id)
+      const modelInst = await repository.find(id)
 
-      if (!model) {
+      if (!modelInst) {
         throw new Error('Not Found')
       }
 
-      console.log({ fn: findModel.name, model })
+      console.log({ fn: findModel.name, model: modelInst })
       // Only send to app thread if data must be enriched
-      if (!query.relation && !query.command) return model
+      if (!query.relation && !query.command) return modelInst
 
-      return await threadpool.runJob(
-        findModel.name,
-        {
-          id,
-          query,
-          model
-        },
-        modelName
-      )
+      const input = { id, query, model: modelInst }
+      return await threadpool.runJob(findModel.name, input, modelName)
     } else {
       try {
         const hydrateModel = model =>

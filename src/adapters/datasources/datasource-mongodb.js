@@ -194,11 +194,7 @@ export class DataSourceMongoDb extends DataSource {
    */
 
   async mongoFind ({ filter, sort, limit, aggregate, skip } = {}) {
-    console.log({
-      ctor: this.constructor.name,
-      fn: this.mongoFind.name,
-      filter
-    })
+    console.log({ fn: this.mongoFind.name, filter })
     let cursor = (await this.collection()).find(filter)
     if (sort) cursor = cursor.sort(sort)
     if (aggregate) cursor = cursor.aggregate(aggregate)
@@ -232,14 +228,14 @@ export class DataSourceMongoDb extends DataSource {
         },
 
         // each chunk is a record
-        transform (chunk, _encoding, callback) {
+        transform (chunk, _encoding, next) {
           // comma-separate
           if (first) first = false
           else this.push(',')
 
           // serialize record
           this.push(JSON.stringify(chunk))
-          callback()
+          next()
         },
 
         // end of array

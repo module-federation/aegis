@@ -27,7 +27,7 @@ export const relationType = {
     const filter = { [rel.foreignKey]: model.getId() }
     // retrieve from memory
     const memory = ds.listSync(filter)
-    // call datasource interface to fetch from external storage
+    // retrieve from from external storage
     const externalMedia = await ds.list({ query: filter })
     // return all
     if (memory.length > 0)
@@ -50,7 +50,7 @@ export const relationType = {
     // return if found
     if (memory) return memory
     // if not, call ds interface to search external storage
-    return ds.find({ id: model[rel.foreignKey] })
+    return ds.find(model[rel.foreignKey])
   },
 
   /**
