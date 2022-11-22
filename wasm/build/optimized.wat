@@ -4428,7 +4428,7 @@
   call $~lib/builtins/abort
   unreachable
  )
- (func $~lib/date/Date#toUTCString (param $0 i32) (result i32)
+ (func $~lib/date/Date#toISOString (param $0 i32) (result i32)
   (local $1 i32)
   (local $2 i32)
   (local $3 i64)
@@ -5113,7 +5113,7 @@
    local.get $2
    i32.const 1
    local.get $6
-   call $~lib/date/Date#toUTCString
+   call $~lib/date/Date#toISOString
    call $~lib/array/Array<~lib/string/String>#__uset
    local.get $3
    i32.const 0

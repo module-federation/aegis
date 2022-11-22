@@ -17,7 +17,7 @@ export default function makeLiveRollout (hotDeploy) {
       return {
         headers: {
           'Content-Type': 'application/json',
-          'Last-Modified': new Date().toUTCString()
+          'Last-Modified': new Date().toISOString()
         },
         statusCode: 200,
         body: { result }

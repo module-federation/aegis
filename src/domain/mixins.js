@@ -77,7 +77,7 @@ export const toSymbol = keyMap => o => {
  * @param {"utc"|"iso"} format
  */
 export const fromTimestamp = (timestamps, format = 'utc') => o => {
-  const formats = { utc: 'toUTCString', iso: 'toISOString' }
+  const formats = { utc: 'toISOString', iso: 'toISOString' }
   const fn = formats[format]
 
   if (!fn) {

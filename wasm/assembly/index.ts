@@ -156,7 +156,7 @@ export function portEx (keys: string[], vals: string[]): void {
 }
 
 export function onUpdate (keys: string[], vals: string[]): string[][] {
-  return [['updatedByWasm', new Date(Date.now()).toUTCString()]]
+  return [['updatedByWasm', new Date(Date.now()).toISOString()]]
 }
 
 export function onDelete (keys: string[], vals: string[]): i8 {

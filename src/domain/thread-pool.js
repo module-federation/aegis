@@ -466,7 +466,7 @@ export class ThreadPool extends EventEmitter {
       errorRateTolerance: this.errorRateThreshold(),
       errors: this.errorCount(),
       deployments: this.deploymentCount(),
-      since: new Date(this.startTime).toUTCString()
+      since: new Date(this.startTime).toISOString()
     }
   }
 
@@ -751,12 +751,7 @@ const ThreadPoolFactory = (() => {
 
     const facade = {
       async runJob (jobName, jobData, modelName) {
-        return getPool(poolName, options).runJob(
-          jobName,
-          jobData,
-          modelName,
-            
-        )
+        return getPool(poolName, options).runJob(jobName, jobData, modelName)
       },
       status () {
         return getPool(poolName, options).status()

@@ -19,7 +19,7 @@ export default function anyInvokePortFactory (invokePort) {
       return {
         headers: {
           'Content-Type': 'application/json',
-          'Last-Modified': new Date().toUTCString()
+          'Last-Modified': new Date().toISOString()
         },
         statusCode: 201,
         body: { ...result }
