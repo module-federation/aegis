@@ -5,6 +5,8 @@
  */
 
 import domainEvents from './domain-events'
+import { importRemoteCache } from './import-remotes'
+
 const {
   internalCacheRequest,
   internalCacheResponse,
@@ -12,15 +14,6 @@ const {
 } = domainEvents
 
 const maxwait = process.env.REMOTE_OBJECT_MAXWAIT || 6000
-
-function hydrateModel (model, ds, rel) {
-  return require('.').default.loadModel(
-    require('.').EventBrokerFactory.getInstance(),
-    ds,
-    model,
-    rel.modelName
-  )
-}
 
 export const relationType = {
   /**
@@ -34,7 +27,7 @@ export const relationType = {
     const filter = { [rel.foreignKey]: model.getId() }
     // retrieve from memory
     const memory = ds.listSync(filter)
-    // call datasource interface to fetch from external storage
+    // retrieve from from external storage
     const externalMedia = await ds.list({ query: filter })
     // return all
     if (memory.length > 0)
@@ -57,7 +50,7 @@ export const relationType = {
     // return if found
     if (memory) return memory
     // if not, call ds interface to search external storage
-    return ds.find({ id: model[rel.foreignKey] })
+    return ds.find(model[rel.foreignKey])
   },
 
   /**
@@ -101,7 +94,7 @@ export const relationType = {
     })
 
     // if relRds is in the same domain but is remote, this fails
-    if (rds.domain !== relRds.domain) return null
+    if (rds.namespace !== relRds.namespace) return null
 
     return rds[rel.name]({ args, model, ds: relRds, relation: rel })
   }
@@ -163,7 +156,7 @@ const updateForeignKeys = {
  */
 async function createNewModels (args, fromModel, relation, ds) {
   if (args.length > 0) {
-    const { UseCaseService } = require('.')
+    const { UseCaseService, importRemoteCache } = require('.')
     const service = UseCaseService(relation.modelName.toUpperCase())
     const newModels = await Promise.all(
       args.map(arg => service.createModel(arg))
@@ -187,7 +180,7 @@ export function requireRemoteObject (model, relation, broker, ...args) {
   const request = internalCacheRequest(relation.modelName)
   const response = internalCacheResponse(relation.modelName)
 
-  console.debug({ fn: requireRemoteObject.name })
+  console.debug({ fn: requireRemoteObject.name, relation })
 
   const name = (model ? model.getName() : relation.modelName).toUpperCase()
   const id = model ? model.getId() : relation.id
@@ -223,8 +216,8 @@ function isRelatedModelLocal (relation) {
   return require('.')
     .default.getModelSpecs()
     .filter(spec => !spec.isCached)
-    .map(spec => spec.modelName.toUpperCase())
-    .includes(relation.modelName.toUpperCase())
+    .map(spec => spec.modelName)
+    .includes(relation.modelName)
 }
 
 /**
@@ -257,15 +250,17 @@ export default function makeRelations (relations, datasource, broker) {
             const local = isRelatedModelLocal(rel)
             const createNew = args?.length > 0
 
-            let ds = datasource.factory.getDataSource(
-              rel.modelName,
-              'tempns',
-              local ? {} : { isCached: true, ephemeral: true }
-            )
-
-            // args mean create related model instances
-            if (createNew && local && rel.type !== 'custom')
+            if (!local) {
+              // the ds is for a remote object, fetch the code for it.
+              await importRemoteCache(rel.modelName)
+            } else if (createNew && rel.type !== 'custom') {
+              // fetch the local ds and create the models
+              const ds = datasource.factory.getDataSource(rel.modelName)
               return await createNewModels(args, this, rel, ds)
+            }
+
+            // if the object is remote, we now have its code
+            const ds = datasource.factory.getDataSource(rel.modelName)
 
             const models = await relationType[rel.type](this, ds, rel, args)
 
@@ -277,9 +272,6 @@ export default function makeRelations (relations, datasource, broker) {
                 broker,
                 ...args
               )
-
-              // we now have the code, so get the real ds
-              ds = ds.factory.getDataSource(rel.modelName)
 
               if (createNew)
                 updateForeignKeys[rel.type](this, event.model, rel, ds)

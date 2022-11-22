@@ -27,6 +27,14 @@ const defaultAdapter = configRoot.hostConfig.adapters.defaultDatasource
 const DefaultDataSource =
   adapters[defaultAdapter] || dsClasses['DataSourceMemory']
 
+/**
+ * Core extensions include object caching, marshalling and serialization.
+ * Using this compositional mixin, these extensions are applied transparently
+ * to any {@link DataSource} class in the hierarchy.
+ *
+ * @param {*} superclass
+ * @returns
+ */
 const DsCoreExtensions = superclass =>
   class extends superclass {
     set factory (value) {
@@ -42,17 +50,33 @@ const DsCoreExtensions = superclass =>
       return JSON.stringify(data)
     }
 
+    /**
+     * Override the super class, adding cache and serialization functions.
+     * @override
+     * @param {string} id
+     * @param {Model} data
+     */
     async save (id, data) {
       this.saveSync(id, data)
       const clone = JSON.parse(this.serialize(data))
       super.save(id, clone)
     }
 
+    /**
+     * Retrieve the {@link Model} with the specified `id`.
+     * Searches cache first. Hydrates result if in a worker thread.
+     * @override
+     * @param {string} id
+     * @returns {Promise<Model>|undefined}
+     */
     async find (id) {
       const cached = this.findSync(id)
       if (cached) return cached
+
       const model = await super.find(id)
+
       if (model) {
+        // save to cache
         this.saveSync(id, model)
         return isMainThread
           ? model
@@ -62,19 +86,27 @@ const DsCoreExtensions = superclass =>
 
     transform () {
       const ctx = this
+
       return new Transform({
         objectMode: true,
 
-        transform (chunk, _encoding, callback) {
+        transform (chunk, _encoding, next) {
           this.push(ModelFactory.loadModel(broker, ctx, chunk, ctx.name))
-          callback()
+          next()
         }
       })
     }
 
+    /**
+     * @override
+     * @param {*} options
+     * @returns
+     */
     async list (options) {
-      if (options?.writable && !isMainThread)
-        return super.list({ ...options, transform: this.transform() })
+      if (options?.writable)
+        return isMainThread
+          ? super.list(options)
+          : super.list({ ...options, transform: this.transform() })
 
       const arr = await super.list(options)
 
@@ -84,6 +116,22 @@ const DsCoreExtensions = superclass =>
           : arr.map(model =>
               ModelFactory.loadModel(broker, this, model, this.name)
             )
+    }
+
+    /**
+     * @override
+     * @param {*} id
+     * @returns
+     */
+    async delete (id) {
+      try {
+        await super.delete(id)
+      } catch (error) {
+        console.error(error)
+        return
+      }
+      // only if super succeeds
+      this.deleteSync(id)
     }
   }
 
@@ -191,8 +239,7 @@ const DataSourceFactory = (() => {
 
     if (!options.ephemeral) dataSources.set(name, newDs)
 
-    //debug &&
-    console.debug({ newDs })
+    debug && console.debug({ newDs })
     return newDs
   }
 
@@ -205,8 +252,11 @@ const DataSourceFactory = (() => {
    */
   function getDataSource (name, namespace = null, options = {}) {
     if (!dataSources) dataSources = new Map()
+
     if (!namespace) return dataSources.get(name)
+
     if (dataSources.has(name)) return dataSources.get(name)
+
     return createDataSource(name, namespace, options)
   }
 
@@ -218,10 +268,13 @@ const DataSourceFactory = (() => {
    * @param {dsOpts} [options]
    * @returns
    */
-  function getSharedDataSource (name, namespace, options) {
+  function getSharedDataSource (name, namespace = null, options = {}) {
     if (!dataSources) dataSources = new Map()
+
     if (!namespace) return dataSources.get(name)
+
     if (dataSources.has(name)) return dataSources.get(name)
+
     return withSharedMemory(createDataSource, this, name, namespace, options)
   }
 

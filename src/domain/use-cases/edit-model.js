@@ -44,7 +44,7 @@ export default function makeEditModel ({
     if (isMainThread) {
       const model = await repository.find(input.id)
 
-      if (!model) throw new Error('no such id')
+      if (!model) throw new Error('Not Found')
 
       return threadpool.runJob(editModel.name, input, modelName)
     } else {

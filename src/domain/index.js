@@ -126,17 +126,14 @@
  */
 
 /**
- * @typedef {object} datasource
+ * @typedef datasourceConfig
+ * @property {import('./datasource').default} datasource
  * @property {string} url - physical storage location: e.g. database url, file path
- * @property {function()} adapterFactory - factory function to construct datasource adapter
- * @property {string} baseClass - name of base class to extend
+ * @property {function({DataSource}):DataSourcelw4l} adapterFactory - factory function to construct datasource adapter
+ * @property {string} baseClass - name owkllllllllllllllf base class to extend
  * @property {number} [cacheSize] - maxium number of cached instances before purging
  * @property {number} [cacheSizeKb] - maximum size in kilobytes of cached instances before cache purge
  * @property {boolean} [cachedWrite] - allow cached instances of an object to write to persistent storage
- * @property {()=>[]} list
- * @property {(id)=>{}} find
- * @property {(id,data)=>data} save
- * @property {import('.').ports} factory
  */
 
 /**
@@ -173,7 +170,7 @@
  * URL parameter or query of the auto-generated REST API
  * @property {accessControlList} [accessControlList] - configure authorization
  * @property {number} [start] - create `start` instances of the model
- * @property {datasource} [datasource] - define custom datasource
+ * @property {datasourceConfig} [datasource] - define custom datasource
  * @property {Array<{ [method:string]: function(), path: string }>} [routes] - custom routes
  */
 
@@ -430,6 +427,24 @@ export async function importRemoteCache (name) {
     console.error(importRemoteCache.name, e)
   }
 }
+
+/**
+ * The total number of domains deployed to a host.
+ * A domain consists of one or more models.
+ * Each model represents a domain unless it specifies
+ * the name of another model in `ModelSpecification.domain`,
+ * in which case it is a subdomain within the bounded context
+ * of that domain or simply a supporting entity. Such models
+ * run in the same threadpool and share the same storage
+ * namespace (e.g. collections or tables in the same database)
+ *
+ *
+ * @returns {number} sum of domains deployed to host
+ */
+export const totalDomains = () =>
+  ModelFactory.getModelSpecs().filter(
+    s => !s.isCached && (!s.domain || s.modelName === s.domain)
+  ).length
 
 export { UseCaseService } from './use-cases'
 

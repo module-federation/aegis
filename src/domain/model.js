@@ -34,7 +34,7 @@
  * @property {function():string} getName - model name
  * @property {function():string} getId - model instance id
  * @property {function():import(".").ModelSpecification} getSpec - get ModelSpec
- * @property {function():string[]} getPortFlow - get port history
+ * @property {function():string[]} getPortFlow - get port invocation history
  * @property {function():import(".").ports} getPorts - get port config
  * @property {function():string} getName - model name
  * @property {function(string):{arg0:string,symbol:Symbol}} getKey
@@ -263,12 +263,12 @@ const Model = (() => {
 
       /**
        * Concurrency strategy is to merge changes with
-       * last saved copy; so {@link changes} should include
+       * zthe current instance; so {@link changes} should include
        * only the subset of properties that are changing.
        * Concomitant strategy is to use `Symbol`s to
-       * avoid conflict, which requires a custom
+       * avoid conflict, which may require a custom
        * {@link Serializer} for network and storage
-       * transmission. If conflict does occur , last
+       * handling. If conflict does occur, last
        * one in wins.
        *
        * @param {object} changes - object containing updated props
@@ -276,11 +276,9 @@ const Model = (() => {
        * @returns {Promise<Model>}
        */
       async update (changes, validate = true) {
-        const lastsaved = datasource.findSync(this[ID]) || {}
-        const mergedata = { ...lastsaved, ...this }
-        const validated = validateUpdates(mergedata, changes, validate)
+        const validated = validateUpdates(this, changes, validate)
         const timestamp = { ...validated, [UPDATETIME]: Date.now() }
-        
+
         await datasource.save(this[ID], timestamp)
         const rehydrated = rehydrate(timestamp, model)
         queueNotice(rehydrated)
@@ -291,18 +289,7 @@ const Model = (() => {
       /**
        * Synchronous version of {@link Model.update}.
        * Only updates cache. External storage is
-       * not updated and no event is sent.
-       *
-       * Useful for:
-       * - immediate cache update
-       * - controlling when/if event is sent
-       * - calling external storage with custom adapter
-       *
-       * Consider situations in which the point is not
-       * to persist data, but to share it with other
-       * application components, as is done in workflow
-       * or between local related model threads, which
-       * use shared memory.
+       * not updated
        *
        * @param {*} changes
        * @param {boolean} validate
@@ -335,6 +322,11 @@ const Model = (() => {
       async find (id) {
         if (!id) throw new Error('missing id')
         return datasource.find(id)
+      },
+
+      findSync (id) {
+        if (!id) throw new Error('missing id')
+        return datasource.findSync(id)
       },
 
       /**

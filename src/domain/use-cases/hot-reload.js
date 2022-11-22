@@ -60,15 +60,13 @@ export default function makeHotReload ({ models, broker } = {}) {
 
     try {
       if (modelName && modelName !== '*') {
-        const spec = models.getModelSpec(modelName.toUpperCase())
+        const spec = models.getModelSpec(modelName)
         if (!spec) throw new Error(`model not found ${modelName}`)
         const poolName = spec.domain || modelName
-        // compile()
         console.log('reloading pool', poolName)
         await ThreadPoolFactory.reload(poolName)
         return ThreadPoolFactory.status(poolName)
       } else {
-        // compile()
         console.log('reloading all pools')
         await ThreadPoolFactory.reloadPools()
         return ThreadPoolFactory.status()

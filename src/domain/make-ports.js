@@ -13,7 +13,7 @@ const TIMEOUTSECONDS = 10
 const MAXRETRY = 5
 
 function getTimerArgs (args = null) {
-  const timerArg = { calledByTimer: new Date().toUTCString() }
+  const timerArg = { calledByTimer: new Date().toISOString() }
   if (args) return [...args, timerArg]
   return [timerArg]
 }
@@ -155,7 +155,7 @@ async function updatePortFlow (model, port) {
   const updateModel = this.equals(model) ? model : this
   return updateModel.update(
     {
-      [updateModel.getKey('portFlow')]: [...updateModel.getPortFlow(), port]
+      [updateModel.getKey('portFlow')]: [...this.getPortFlow(), port]
     },
     false
   )
@@ -189,7 +189,7 @@ export default function makePorts (ports, adapters, broker, datasource) {
       const portConf = ports[port]
       const disabled = portConf.disabled || !adapters[port]
 
-      // Listen for event that will invoke this port
+      // dont listen on a disabled port
       const rememberPort = disabled
         ? false
         : addPortListener(portName, portConf, broker, datasource)
@@ -223,7 +223,7 @@ export default function makePorts (ports, adapters, broker, datasource) {
         }
 
         try {
-          // call the inbound or oubound adapter and wait
+          // call the inbound or oubound adapte
           const result = await adapters[port]({ model: this, port, args })
 
           // Stop the timer
@@ -261,7 +261,9 @@ export default function makePorts (ports, adapters, broker, datasource) {
           // check if the port defines breaker thresholds
           const thresholds = portConf.circuitBreaker
 
+          // call port without breaker (normal for inbound)
           if (!thresholds) return portFn.apply(this, args)
+
           /**
            * the circuit breaker instance
            * @type {import('./circuit-breaker').breaker}

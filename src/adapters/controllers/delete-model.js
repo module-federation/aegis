@@ -12,7 +12,7 @@ export default function deleteModelFactory (removeModel) {
       return {
         headers: {
           'Content-Type': 'application/json',
-          'Last-Modified': new Date().toUTCString()
+          'Last-Modified': new Date().toISOString()
         },
         statusCode: 201,
         body: { modelId: model.id }
@@ -20,7 +20,7 @@ export default function deleteModelFactory (removeModel) {
     } catch (e) {
       console.error(e)
 
-      if (e.message === 'no such id') {
+      if (e.message === 'Not Found') {
         return {
           headers: {
             'Content-Type': 'application/json'
