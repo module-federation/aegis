@@ -8,11 +8,15 @@ const mongodb = require('mongodb')
 const { MongoClient } = mongodb
 const { Transform, Writable } = require('stream')
 const qpm = require('query-params-mongo')
-const processQuery = qpm()
-// const processQuery = qpm({
-//   autoDetect: [{ fieldPattern: /_id$/, dataType: 'objectId' }],
-//   converters: { objectId: mongodb.ObjectId }
-// })
+//const processQuery = qpm();
+const processQuery = qpm({
+  autoDetect: [
+    { valuePattern: /^null$/i, dataType: 'nullstring' }
+  ],
+  converters: { 
+    nullstring: val=>{ return { $type: 10 } }  // reference BSON datatypes https://www.mongodb.com/docs/manual/reference/bson-types/
+  }
+})
 
 const url = process.env.MONGODB_URL || 'mongodb://localhost:27017'
 const configRoot = require('../../config').hostConfig
