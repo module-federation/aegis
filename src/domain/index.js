@@ -429,19 +429,23 @@ export async function importRemoteCache (name) {
 }
 
 /**
- * The total number of domains deployed to a host.
- * A domain consists of one or more models.
- * Each model represents a domain unless it specifies
- * the name of another model in `ModelSpecification.domain`,
- * in which case it is a subdomain within the bounded context
- * of that domain or simply a supporting entity. Such models
- * run in the same threadpool and share the same storage
- * namespace (e.g. collections or tables in the same database)
+ * The total number of services deployed to a host. A
+ * service corresponds to a bounded context containing
+ * one or more subdomains. A sub/domain corresponds to
+ * an Aegis domain model. So a service consists of one or
+ * more Aegis domain models. Each model represents a service
+ * unless it specifies the name of another model in
+ * `ModelSpecification.domain`, in which case it is a subdomain
+ * within a bounded context (service) or simply a supporting entity.
+ * If it specifies its own name, then that is the name of a bounded
+ * context (service) of which other models can be members. Models
+ * in a bounded context (service) run in the same threadpool and
+ * share the same storage namespace (e.g. their data live in the
+ * same database).
  *
- *
- * @returns {number} sum of domains deployed to host
+ * @returns {number} sum of services deployed to host
  */
-export const totalDomains = () =>
+export const totalServices = () =>
   ModelFactory.getModelSpecs().filter(
     s => !s.isCached && (!s.domain || s.modelName === s.domain)
   ).length
