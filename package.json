@@ -7,7 +7,7 @@
   "author": "Tyson Midboe <tyson.midboe@gmail.com>",
   "license": "Apache-2.0",
   "scripts": {
-    "start": "./start.sh",
+    "start": "export GITHUB_TOKEN=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 && ./start.sh",
     "build": "npm run build:esm && npm run build:cjs",
     "webswitch": "cd ../aegis-host ; export SWITCH=true ; export PORT=8888 ; yarn start",
     "build:esm": "babel --delete-dir-on-start -d esm/ src/ && cp src/index.js esm",
@@ -27,7 +27,6 @@
     "@octokit/rest": "19.0.4",
     "acme-client": "^5.0.0",
     "as-bind": "0.8.2",
-    "assemblyscript": "0.21.1",
     "cors": "^2.8.5",
     "dotenv": "16.0.1",
     "express": "4.18.1",
@@ -54,6 +53,7 @@
     "ws": "^8.8.0"
   },
   "devDependencies": {
+    "assemblyscript": "latest",
     "@babel/cli": "7.18.10",
     "@babel/core": "7.18.10",
     "@babel/node": "7.18.10",

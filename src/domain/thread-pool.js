@@ -4,7 +4,7 @@ import EventBrokerFactory from './event-broker'
 import { EventEmitter } from 'stream'
 import { Worker, BroadcastChannel } from 'worker_threads'
 import domainEvents from './domain-events'
-import ModelFactory, { totalDomains } from '.'
+import ModelFactory, { totalServices } from '.'
 import os from 'os'
 import { AsyncResource } from 'async_hooks'
 import { requestContext } from '.'
@@ -561,41 +561,36 @@ export class ThreadPool extends EventEmitter {
     return this
   }
 
+  /**
+   * Fire event with the given scope (host, pool, thread)
+   * @param {{
+   *   scope:'host'|'pool'|'thread'|'response',
+   *   data:string,
+   *   name:string
+   * }} event
+   * @returns
+   */
   async fireEvent (event) {
-    // send to all pools, all threads
-    if (event.scope === 'host') {
-      broker.notify('to_worker', { ...event, eventSource: this.name })
-      return
+    const eventScopes = {
+      host: event =>
+        broker.notify('to_worker', { ...event, eventSource: this.name }),
+
+      pool: event => this.broadcastEvent(event),
+
+      thread: event => {
+        const thread = this.freeThreads[0] || this.threads[0]
+        thread.eventChannel.postMessage(event)
+      },
+
+      response: event =>
+        this.runJob(event.eventName, event, this.name, {
+          channel: EVENTCHANNEL
+        })
     }
 
-    // send to all threads in this pool
-    if (event.scope === 'pool') {
-      this.broadcastEvent(event)
-      return
-    }
+    const res = eventScopes[event.scope](event)
 
-    // send to one thread in this pool
-    if (event.scope === 'thread') {
-      const thread = this.freeThreads[0] || this.threads[0]
-      if (thread) thread.eventChannel.postMessage(event)
-      return
-    }
-
-    // use if a response is required
-    if (event.scope === 'response') {
-      // this is the only scope that will start a thread
-      return this.runJob(event.eventName, event, this.name, {
-        channel: EVENTCHANNEL
-      })
-    }
-
-    const err = {
-      fn: this.fireEvent.name,
-      msg: 'event not fired, no scope specified'
-    }
-
-    console.warn(err)
-    this.emit('malformedEvent', err)
+    return event.scope === 'response' ? await res : this
   }
 
   /**
@@ -629,6 +624,37 @@ export class ThreadPool extends EventEmitter {
           resolve(this)
         })
       }
+    })
+  }
+
+  reload (pool = this) {
+    return new Promise((resolve, reject) => {
+      pool
+        .close()
+        .notify(poolClose)
+        .drain()
+        .then(pool => pool.stopThreads('reload'))
+        .then(pool => pool.startThreads())
+        .then(pool =>
+          pool
+            .open()
+            .bumpDeployCount()
+            .notify(poolOpen)
+        )
+        .catch(reject)
+        .then(resolve)
+    })
+  }
+
+  destroy (pool = this) {
+    return new Promise((resolve, reject) => {
+      pool
+        .close()
+        .notify(poolClose)
+        .drain()
+        .then(pool => pool.stopThreads('destroy'))
+        .catch(reject)
+        .then(resolve)
     })
   }
 
@@ -681,17 +707,17 @@ const ThreadPoolFactory = (() => {
     if (options?.maxThreads) return options.maxThreads
     // divide the total cpu count by the number of domains
     return Math.floor(
-      os.cpus().length / totalDomains() || DEFAULT_THREADPOOL_MAX
+      os.cpus().length / totalServices() || DEFAULT_THREADPOOL_MAX
     )
   }
 
   /**
    * @typedef threadOptions
    * @property {string} file path of file containing worker code
-   * @property {string} eval
+   * @property {string} evals
    */
 
-  /**
+  /**saas
    * Creates a pool for use by one or more {@link Model}s of a domain.
    * Provides shared memory {@link Map}s accessible from other authorized pools.
    * @param {string} poolName use {@link Model.getName()}
@@ -787,26 +813,10 @@ const ThreadPoolFactory = (() => {
    * @returns {Promise<ThreadPool>}
    * @throws {ReloadError}
    */
-  function reload (poolName) {
-    return new Promise((resolve, reject) => {
-      const pool = threadPools.get(poolName.toUpperCase())
-      if (!pool) reject(`no such pool ${pool}`)
-
-      pool
-        .close()
-        .notify(poolClose)
-        .drain()
-        .then(pool => pool.stopThreads('reload'))
-        .then(pool => pool.startThreads())
-        .then(pool =>
-          pool
-            .open()
-            .bumpDeployCount()
-            .notify(poolOpen)
-        )
-        .catch(reject)
-        .then(resolve)
-    })
+  function reload (poolName = null) {
+    const pool = threadPools.get(poolName.toUpperCase())
+    if (!pool) reject(`no such pool ${pool}`)
+    return pool.reload()
   }
 
   async function reloadPools () {
@@ -827,18 +837,9 @@ const ThreadPoolFactory = (() => {
     )
   }
 
-  function destroy (pool) {
-    return new Promise((resolve, reject) => {
-      console.debug('dispose pool', pool.name)
-      return pool
-        .close()
-        .notify(poolClose)
-        .drain()
-        .then(pool => pool.stopThreads('destroy'))
-        .then(() => threadPools.delete(pool.name))
-        .catch(reject)
-        .then(resolve)
-    })
+  function destroy (pool = this) {
+    pool.destroy()
+    threadPools.delete(pool.name)
   }
 
   async function destroyPools () {

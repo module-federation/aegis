@@ -1,14 +1,14 @@
 {
   "targets": {
     "debug": {
-      "binaryFile": "build/untouched.wasm",
-      "textFile": "build/untouched.wat",
+      "outFile": "build/debug.wasm",
+      "textFile": "build/debug.wat",
       "sourceMap": true,
       "debug": true
     },
     "release": {
-      "binaryFile": "build/optimized.wasm",
-      "textFile": "build/optimized.wat",
+      "outFile": "build/release.wasm",
+      "textFile": "build/release.wat",
       "sourceMap": true,
       "optimizeLevel": 3,
       "shrinkLevel": 0,
@@ -16,5 +16,7 @@
       "noAssert": false
     }
   },
-  "options": {}
+  "options": {
+    "bindings": "esm"
+  }
 }

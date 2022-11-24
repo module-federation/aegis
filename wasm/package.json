@@ -1,13 +1,19 @@
 {
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./build/release.js",
+      "types": "./build/release.d.ts"
+    }
+  },
   "scripts": {
-    "asbuild:untouched": "asc assembly/index.ts --exportRuntime --explicitStart --target debug",
-    "asbuild:optimized": "asc assembly/index.ts --exportRuntime --explicitStart --target release",
-    "asbuild": "npm run asbuild:untouched && npm run asbuild:optimized",
-    "test": "node tests"
+    "asbuild:debug": "asc assembly/index.ts --target debug",
+    "asbuild:release": "asc assembly/index.ts --target release",
+    "asbuild": "yarn asbuild:debug && yarn asbuild:release",
+    "test": "node tests",
+    "start": "npx serve ."
   },
   "devDependencies": {
-    "@assemblyscript/loader": "0.21.1",
-    "as-bind": "0.8.2",
-    "assemblyscript": "0.21.1"
+    "assemblyscript": "^0.24.1"
   }
 }

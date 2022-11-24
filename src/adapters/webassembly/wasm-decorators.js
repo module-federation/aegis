@@ -17,8 +17,9 @@ exports.wrapWasmModelSpec = function (instance) {
     __unpin,
     __pin,
     __getString,
-    ModelSpec,
-    getModelSpec,
+    __newString,
+    getEndpoint,
+    getModelName,
     modelFactory,
     validate,
     onUpdate,
@@ -26,13 +27,13 @@ exports.wrapWasmModelSpec = function (instance) {
   } = instance.exports
 
   const interop = WasmInterop(instance)
-  const specPtr = __pin(getModelSpec())
-  const modelSpec = ModelSpec.wrap(specPtr)
+  //const specPtr = __pin(getModelSpec())
+  //const modelSpec = ModelSpec.wrap(specPtr)
 
   // wrapped model spec
   const wrappedSpec = {
-    modelName: __getString(modelSpec.modelName),
-    endpoint: __getString(modelSpec.endpoint),
+    modelName: __newString(getModelName()),
+    endpoint: 'wasm',
 
     /**
      * Pass any dependencies, return factory function that creates model
@@ -56,10 +57,7 @@ exports.wrapWasmModelSpec = function (instance) {
 
     ports: {
       ...interop.importWasmPorts()
-    },
-
-    // call to dispose of spec memory
-    dispose: () => __unpin(specPtr)
+    }
   }
   console.debug(wrappedSpec)
 

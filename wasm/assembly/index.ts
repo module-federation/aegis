@@ -1,25 +1,17 @@
 import * as aegis from './aegis'
-import * as nn from './neural-net'
+//import * as nn from './neural-net'
 //import * as nn from "./neural-net";
 //import * as tst from "./test";
 
-const key: i32 = 0
-const val: i32 = 1
-
-class ModelSpec {
-  modelName: string
-  endpoint: string
-  constructor (name: string, endpoint: string) {
-    this.modelName = name
-    this.endpoint = endpoint
-  }
-}
-
-export function getModelSpec (): ModelSpec {
-  return new ModelSpec('wasm', 'wasm')
-}
-
 export const ArrayOfStrings_ID = idof<string[]>()
+
+export function getModelName (): string {
+  return 'wasm'.toString()
+}
+
+export function getEndpoint (): string {
+  return 'wasm'.toString()
+}
 
 function findVal (key: string, keys: string[], vals: string[]): string {
   for (let i: i32 = 0; i < keys.length; i++) {
@@ -39,10 +31,10 @@ export function modelFactory (keys: string[], values: string[]): string[][] {
 }
 
 export function getPorts (keys: string[], vals: string[]): string[][] {
-  //aegis.log("getPorts called  " + keys[0] + ":" + vals[0]);
+  //aegis.log('getPorts called  ' + keys[0] + ':' + vals[0])
   const ports = new Array<string[]>(2)
   //service,type,consumesEvent,producesEvent,callback,undo
-  ports[0] = ['port1', 'dFlow,outbound,dFlow_start,port1_done,port1Cb,1']
+  ports[0] = ['port1', 'dFlow,inbound,dFlow_start,port1_done,port1Cb,1']
   ports[1] = ['port2', 'dFlow,outbound,port1_done,port2_done,port2Cb,1']
   return ports
 }
@@ -159,10 +151,9 @@ export function onUpdate (keys: string[], vals: string[]): string[][] {
   return [['updatedByWasm', new Date(Date.now()).toISOString()]]
 }
 
-export function onDelete (keys: string[], vals: string[]): i8 {
+export function onDelete (keys: string[], vals: string[]): void {
   // return negative to stop the action
   aegis.log('onDelete called')
-  return -1
 }
 
 export function validate (keys: string[], vals: string[]): void {
