@@ -42,12 +42,6 @@ export class DataSourceMongoDb extends DataSource {
     this.mongoOpts = mongoOpts
     this.runOffline = dsOptions.runOffline
     this.url = url
-
-
-    console.log("MAP:::", map);
-    console.log("NAME:::", name);
-    console.log("NAMESPACE:::", namespace);
-    console.log("OPTIONS:::", options);
   }
 
   async connection () {
@@ -62,9 +56,17 @@ export class DataSourceMongoDb extends DataSource {
       }
       const client = connections.shift()
       connections.push(client)
-      
-      // run indexing operations
-      await this.createIndexes();
+
+      if(!this.connOpts.ranIndexes && this.connOpts.indexes) {
+        console.info(`running indexes for datasource ${this.name} with index values`, this.connOpts.indexes)
+        await this.#createIndexes(client).catch((err) => {
+          // ignore if duplicate key error
+          if(err.code === 11000) {
+            return
+          }
+          throw err;
+        })
+      }
 
       return client
     } catch (error) {
@@ -76,19 +78,19 @@ export class DataSourceMongoDb extends DataSource {
     return (await this.connection()).db(this.namespace).collection(this.name)
   }
 
-  async createIndexes(indexes) {
-    try {
-      const indexOperations = indexes.map((index) => {
+  async #createIndexes(client) {
+      const indexOperations = this.connOpts.indexes.map((index) => {
         return {
           name: index.fields.join("_"),
           key:  index.fields.reduce((a, v) => ({ ...a, [v]: 1 }), {}),
           ...index.options,
         }
       });
-      return (await this.collection()).createIndexes(indexOperations);
-    } catch(error) {
-      console.error(error);
-    }
+
+      const returnValue = await client.db(this.namespace).collection(this.name).createIndexes(indexOperations);
+      this.connOpts.ranIndexes = true;
+
+      return returnValue;
   }
 
   /**

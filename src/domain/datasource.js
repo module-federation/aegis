@@ -100,7 +100,7 @@ export default class DataSource {
   * @returns {Promise<boolean>} result
   */
  
-  async createIndexes(indexes) {
+  async #createIndexes(indexes) {
     throw new Error('abstract method not implemented')
   }
 

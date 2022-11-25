@@ -174,7 +174,7 @@ const DataSourceFactory = (() => {
 
     if (adapterName) return adapters[adapterName] || DefaultDataSource
 
-    if (spec?.datasource) {
+    if (spec?.datasource?.factory) {
       const url = spec.datasource.url
       const cacheSize = spec.datasource.cacheSize
       const adapterFactory = spec.datasource.factory
@@ -213,9 +213,10 @@ const DataSourceFactory = (() => {
     const DsClass = createDataSourceClass(spec, options)
     const DsExtendedClass = extendDataSourceClass(DsClass, options)
 
+  
     const newDs = new DsExtendedClass(dsMap, name, namespace, options)
     newDs.factory = this // setter to avoid exposing in ctor
-
+    if(spec.datasource) newDs.connOpts = {...spec.datasource}
     if (!options.ephemeral) dataSources.set(name, newDs)
 
     debug && console.debug({ newDs })
