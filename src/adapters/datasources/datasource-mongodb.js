@@ -59,7 +59,7 @@ export class DataSourceMongoDb extends DataSource {
 
       if(!this.connOpts.indexesHaveBeenRun && this.connOpts.indexes) {
         console.info(`running indexes for datasource ${this.name} with index values`, this.connOpts.indexes)
-        await this.createIndexes(client).catch((err) => {
+        await this.#createIndexes(client).catch((err) => {
           // ignore if duplicate key error
           if(err.code === 11000) {
             this.connOpts.indexesHaveBeenRun = true
@@ -79,7 +79,7 @@ export class DataSourceMongoDb extends DataSource {
     return (await this.connection()).db(this.namespace).collection(this.name)
   }
 
-  async createIndexes(client) {
+  async #createIndexes(client) {
       const indexOperations = this.connOpts.indexes.map((index) => {
         return {
           name: index.fields.join("_"),
