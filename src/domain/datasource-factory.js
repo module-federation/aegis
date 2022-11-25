@@ -216,7 +216,7 @@ const DataSourceFactory = (() => {
   
     const newDs = new DsExtendedClass(dsMap, name, namespace, options)
     newDs.factory = this // setter to avoid exposing in ctor
-    if(spec.datasource) newDs.connOpts = {...spec.datasource}
+    if(spec.datasource) newDs.connOpts = {...spec.datasource} // options object is destroyed when being passed in to new DsExtendedClass
     if (!options.ephemeral) dataSources.set(name, newDs)
 
     debug && console.debug({ newDs })
