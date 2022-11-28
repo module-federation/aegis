@@ -13,7 +13,7 @@ const processQuery = qpm({
 const url = process.env.MONGODB_URL || 'mongodb://localhost:27017'
 const configRoot = require('../../config').hostConfig
 const dsOptions = configRoot.adapters.datasources.DataSourceMongoDb.options || {
-  runOffline: true,
+  runOffline: false,
   numConns: 2
 }
 
@@ -40,8 +40,9 @@ export class DataSourceMongoDb extends DataSource {
     super(map, name, namespace, options)
     this.cacheSize = cacheSize
     this.mongoOpts = mongoOpts
+    this.options = options
     this.runOffline = dsOptions.runOffline
-    this.url = url
+    this.url = url;
   }
 
   async connection () {
@@ -57,10 +58,10 @@ export class DataSourceMongoDb extends DataSource {
       const client = connections.shift()
       connections.push(client)
 
-      if(!this.connOpts.indexesHaveBeenRun && this.connOpts.indexes) {
-        console.info(`running indexes for datasource ${this.name} with index values`, this.connOpts.indexes)
-        await this.#createIndexes(client)
-        this.connOpts.indexesHaveBeenRun = true;
+      if(!this.options?.connOpts?.indexesHaveBeenRun && this.options?.connOpts?.indexes) {
+        console.info(`running indexes for datasource ${this.name} with index values`, this.options.connOpts.indexes)
+        await this.createIndexes(client)
+        this.options.connOpts.indexesHaveBeenRun = true;
       }
 
       return client
@@ -73,17 +74,16 @@ export class DataSourceMongoDb extends DataSource {
     return (await this.connection()).db(this.namespace).collection(this.name)
   }
 
-  async #createIndexes(client) {
-      const indexOperations = this.connOpts.indexes.map((index) => {
+  async createIndexes(client) {
+      const indexOperations = this.options.connOpts.indexes.map((index) => {
         return {
           name: index.fields.join("_"),
           key:  index.fields.reduce((a, v) => ({ ...a, [v]: 1 }), {}),
           ...index.options,
         }
       });
-
-      const returnValue = await client.db(this.namespace).collection(this.name).createIndexes(indexOperations);
-      return returnValue;
+      
+      return await client.db(this.namespace).collection(this.name).createIndexes(indexOperations);
   }
 
   /**
@@ -116,7 +116,7 @@ export class DataSourceMongoDb extends DataSource {
     try {
       return (await this.collection()).findOne({ _id: id })
     } catch (error) {
-      console.error({ fn: this.findDb.name, error })
+      console.error({ fn: this.find.name, error })
     }
   }
 
@@ -132,12 +132,11 @@ export class DataSourceMongoDb extends DataSource {
    */
   async save (id, data) {
     try {
-      const col = await this.collection()
-      col.replaceOne({ _id: id }, { ...data, _id: id }, { upsert: true })
+      await (await this.collection()).replaceOne({ _id: id }, { ...data, _id: id }, { upsert: true })
     } catch (error) {
       // default is true
       if (!this.runOffline) {
-        throw new Error('db trans failed,', error)
+        throw new Error(`DB Transaction failed ${error.message}, stack: ${error.stack}`)
       }
       // run while db is down - cache will be ahead
       console.error('db trans failed, sync it later', error)

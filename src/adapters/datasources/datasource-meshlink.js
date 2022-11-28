@@ -14,8 +14,8 @@ async function fetchSharedObject (name) {
 }
 
 export class DataSourceMeshLink extends DataSource {
-  constructor (dataSource, name, options = {}) {
-    super(dataSource, name, options)
+  constructor (map, name, namespace, options = {}) {
+    super(map, name, namespace, options)
   }
 
   /**
