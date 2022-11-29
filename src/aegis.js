@@ -96,13 +96,11 @@ const router = {
           if (ctrl.ports) {
             for (const portName in ctrl.ports) {
               const port = ctrl.ports[portName]
-              const specPortMethods = (port?.methods || "").join('|')
-
               if (port.path) {
                 routeOverrides.set(port.path, portName)
               }
 
-              if (checkAllowedMethods(ctrl, method) && (!port.methods || (specPortMethods.includes(method.toLowerCase()))) ) {
+              if (checkAllowedMethods(ctrl, method)) {
                 routes.set(port.path || path(ctrl.endpoint), {
                   [method]: adapter(ctrl.fn)
                 })
@@ -133,8 +131,6 @@ const router = {
 }
 
 function makeRoutes () {
-  router.adminRoute(getConfig, http)
-  router.userRoutes(getRoutes)
   router.autoRoutes(endpoint, 'get', liveUpdate, http)
   router.autoRoutes(endpoint, 'get', getModels, http)
   router.autoRoutes(endpoint, 'post', postModels, http)
@@ -150,6 +146,8 @@ function makeRoutes () {
   router.autoRoutes(endpointPortId, 'patch', anyInvokePorts, http, true)
   router.autoRoutes(endpointPortId, 'delete', anyInvokePorts, http, true)
   router.autoRoutes(endpointPortId, 'get', anyInvokePorts, http, true)
+  router.adminRoute(getConfig, http)
+  router.userRoutes(getRoutes)
   console.log(routes)
 }
 
