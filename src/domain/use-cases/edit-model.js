@@ -44,9 +44,7 @@ export default function makeEditModel ({
     if (isMainThread) {
       const model = await repository.find(input.id)
 
-      if (!model) {
-        throw new Error('no such id')
-      }
+      if (!model) throw new Error('Not Found')
 
       return threadpool.runJob(editModel.name, input, modelName)
     } else {
@@ -56,9 +54,12 @@ export default function makeEditModel ({
 
         // get model
         const model = await repository.find(id)
+        console.debug({ model })
 
         // only the worker does the update
         const updated = await models.updateModel(model, changes)
+
+        console.debug({ updated })
         await repository.save(id, updated)
 
         const event = models.createEvent(eventType, modelName, {

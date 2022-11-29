@@ -1,5 +1,7 @@
 'use strict'
 
+import { Transform } from 'stream'
+import { isMainThread } from 'worker_threads'
 /** @typedef {import('.').Model} Model */
 
 /**
@@ -10,44 +12,148 @@
  */
 
 import ModelFactory from '.'
+import EventBrokerFactory from './event-broker'
 import * as adapters from '../adapters/datasources'
 import { dsClasses } from '../adapters/datasources'
-import sysconf from '../config'
+import configRoot from '../config'
 import DataSource from './datasource'
 import { withSharedMemory } from './shared-memory'
 import compose from './util/compose'
 
-const defaultAdapter = sysconf.hostConfig.adapters.defaultDatasource
-const DefaultDataSource = adapters[defaultAdapter]
+const debug = /\*|datasource/i.test(process.env.DEBUG)
+const broker = EventBrokerFactory.getInstance()
+const FACTORY = Symbol('factory')
+const defaultAdapter = configRoot.hostConfig.adapters.defaultDatasource
+const DefaultDataSource =
+  adapters[defaultAdapter] || dsClasses['DataSourceMemory']
 
-if (!DefaultDataSource) throw new Error('no default datasource')
+/**
+ * Core extensions include object caching, marshalling and serialization.
+ * Using this compositional mixin, these extensions are applied transparently
+ * to any {@link DataSource} class in the hierarchy.
+ *
+ * @param {*} superclass
+ * @returns
+ */
+const DsCoreExtensions = superclass =>
+  class extends superclass {
+    set factory (value) {
+      this[FACTORY] = value
+    }
 
-const RestrictedDsMixin = superclass => class extends superclass {
-  getFactory () {
-    throw new Error('unauthorized')
+    get factory () {
+      return this[FACTORY]
+    }
+
+    serialize (data, options) {
+      if (options?.serializers) return options.serializers['serialize'](data)
+      return JSON.stringify(data)
+    }
+
+    /**
+     * Override the super class, adding cache and serialization functions.
+     * @override
+     * @param {string} id
+     * @param {Model} data
+     */
+    async save (id, data) {
+      this.saveSync(id, data)
+      const clone = JSON.parse(this.serialize(data))
+      super.save(id, clone)
+    }
+
+    /**
+     * Retrieve the {@link Model} with the specified `id`.
+     * Searches cache first. Hydrates result if in a worker thread.
+     * @override
+     * @param {string} id
+     * @returns {Promise<Model>|undefined}
+     */
+    async find (id) {
+      const cached = this.findSync(id)
+      if (cached) return cached
+
+      const model = await super.find(id)
+
+      if (model) {
+        // save to cache
+        this.saveSync(id, model)
+        return isMainThread
+          ? model
+          : ModelFactory.loadModel(broker, this, model, this.name)
+      }
+    }
+
+    transform () {
+      const ctx = this
+
+      return new Transform({
+        objectMode: true,
+
+        transform (chunk, _encoding, next) {
+          this.push(ModelFactory.loadModel(broker, ctx, chunk, ctx.name))
+          next()
+        }
+      })
+    }
+
+    /**
+     * @override
+     * @param {*} options
+     * @returns
+     */
+    async list (options) {
+      if (options?.writable)
+        return isMainThread
+          ? super.list(options)
+          : super.list({ ...options, transform: this.transform() })
+
+      const arr = await super.list(options)
+
+      if (Array.isArray(arr))
+        return isMainThread
+          ? arr
+          : arr.map(model =>
+              ModelFactory.loadModel(broker, this, model, this.name)
+            )
+    }
+
+    /**
+     * @override
+     * @param {*} id
+     * @returns
+     */
+    async delete (id) {
+      try {
+        await super.delete(id)
+      } catch (error) {
+        console.error(error)
+        return
+      }
+      // only if super succeeds
+      this.deleteSync(id)
+    }
   }
-}
 
-const restrictDs = dsClass => class RestrictedDs extends RestrictedDsMixin(dsClass) { }
-
-function createRestrictedDs (DsClass, map, factory, name, options) {
-  const RestrictedDs = restrictDs(DsClass)
-  return new RestrictedDs(map, factory, name, options)
-}
+const extendClass = DsClass => class extends DsCoreExtensions(DsClass) {}
 
 /**
  * Manages each domain model's dedicated datasource.
  * @todo handle all state same way
  * @typedef {{
- *  getDataSource:function(string):import("./datasource").default,
+ *  getDataSource:function(string): import("./datasource").default,
+ *  getSharedDataSource(string): import("./datasource").default,
+ *  getRestrictedDataSource(string): import("./datasource").default,
  *  listDataSources:Map[]
  * }} DataSourceFactory
  * @type {DataSourceFactory}
  */
 const DataSourceFactory = (() => {
-  // References all DSes
+  /**
+   * Contains the datasource of every model
+   * @type {Map<string, DataSource>}
+   */
   let dataSources
-  let restrictedDatasources
 
   /**
    * @param {*} name
@@ -73,6 +179,10 @@ const DataSourceFactory = (() => {
    */
 
   /**
+   * Create the class based on the options passed in,
+   * customizations defined in the ModelSpec, or, if no
+   * configuration is provided, use the default adapter
+   * for the host instance.
    *
    * @param {import('.').ModelSpecification} spec
    * @param {dsOpts} options
@@ -81,9 +191,7 @@ const DataSourceFactory = (() => {
   function createDataSourceClass (spec, options) {
     const { memoryOnly, ephemeral, adapterName } = options
 
-    if (memoryOnly || ephemeral) {
-      return dsClasses['DataSourceMemory']
-    }
+    if (memoryOnly || ephemeral) return dsClasses['DataSourceMemory']
 
     if (adapterName) return adapters[adapterName] || DefaultDataSource
 
@@ -91,11 +199,26 @@ const DataSourceFactory = (() => {
       const url = spec.datasource.url
       const cacheSize = spec.datasource.cacheSize
       const adapterFactory = spec.datasource.factory
-      const BaseClass = dsClasses[spec.datasource.baseClass]
+      const BaseClass = dsClasses[spec.datasource.baseClass] || DataSource
       return adapterFactory(url, cacheSize, BaseClass)
     }
 
     return DefaultDataSource
+  }
+
+  /**
+   * Apply core compositional mixins and any extensions specifed in
+   * {@link options}. Compostion allows us to observe the open/closed
+   * principle and add new feature/functions arbitrarily to any
+   * datasource class in the hierarchy without having to modify it.
+   *
+   * @param {typeof DataSource} DsClass
+   * @param {dsOpts} options
+   * @returns {typeof DataSource}
+   */
+  function extendDataSourceClass (DsClass, options = {}) {
+    const mixins = [extendClass].concat(options.mixins || [])
+    return compose(...mixins)(DsClass)
   }
 
   /**
@@ -104,77 +227,76 @@ const DataSourceFactory = (() => {
    * @param {dsOpts} [options]
    * @returns {DataSource}
    */
-  function createDataSource (name, options) {
-    if (!name) throw new Error('missing name', { fn: createDataSource.name, options })
-
+  function createDataSource (name, namespace, options) {
     const spec = ModelFactory.getModelSpec(name)
-    if (!spec) return
-
     const dsMap = options.dsMap || new Map()
 
     const DsClass = createDataSourceClass(spec, options)
+    const DsExtendedClass = extendDataSourceClass(DsClass, options)
 
-    const DsMixinsClass = options.mixins?.length > 0
-      ? compose(...options.mixins)(DsClass)
-      : DsClass
+    const newDs = new DsExtendedClass(dsMap, name, namespace, options)
+    newDs.factory = this // setter to avoid exposing in ctor
 
-    const newDs = new DsMixinsClass(dsMap, this, name, options)
-    const restrictedDs = createRestrictedDs(DsMixinsClass, dsMap, null, name, options)
+    if (!options.ephemeral) dataSources.set(name, newDs)
 
-    if (!options.ephemeral) {
-      dataSources.set(name, newDs)
-      restrictedDatasources.set(name, restrictedDs)
-    }
+    debug && console.debug({ newDs })
     return newDs
   }
 
   /**
    * Get the datasource for each model.
+   *
    * @param {string} name - model name
    * @param {dsOpts} options
    * @returns {import('./datasource').default}
    */
-  function getDataSource (name, options = {}) {
-    const upperName = name.toUpperCase()
+  function getDataSource (name, namespace = null, options = {}) {
+    if (!dataSources) dataSources = new Map()
 
-    if (!dataSources) {
-      dataSources = new Map()
-      restrictedDatasources = new Map()
-    }
+    if (!namespace) return dataSources.get(name)
 
-    if (dataSources.has(upperName)) {
-      return dataSources.get(upperName)
-    }
+    if (dataSources.has(name)) return dataSources.get(name)
 
-    return createDataSource(upperName, options)
+    return createDataSource(name, namespace, options)
   }
 
   /**
+   * Create a datasource based on {@link SharedArrayBuffer} that will live in
+   * shared memory to be accessed in parallel by multiple coordinating threads.
    *
    * @param {string} name
    * @param {dsOpts} [options]
    * @returns
    */
-  function getSharedDataSource (name, options) {
-    const upperName = name.toUpperCase()
-    let opts = options
-    if (!opts) opts = {}
-    if (!opts.mixins) opts.mixins = []
+  function getSharedDataSource (name, namespace = null, options = {}) {
+    if (!dataSources) dataSources = new Map()
 
-    if (!dataSources) {
-      dataSources = new Map()
-      restrictedDatasources = new Map()
-    }
+    if (!namespace) return dataSources.get(name)
 
-    if (dataSources.has(upperName)) {
-      return dataSources.get(upperName)
-    }
+    if (dataSources.has(name)) return dataSources.get(name)
 
-    return withSharedMemory(createDataSource, this, upperName, options)
+    return withSharedMemory(createDataSource, this, name, namespace, options)
   }
 
-  function getRestrictedDataSource (name) {
-    if (restrictedDatasources) return restrictedDatasources.get(name)
+  /**
+   * Return a {@link Proxy} of the ds that traps calls to any functions
+   * that could have security or privacy implications if accessed by
+   * hosted code.
+   *
+   * @param {string} name
+   * @returns {ProxyHandler<DataSource>}
+   */
+  function getRestrictedDataSource (name, namespace, options) {
+    return new Proxy(getDataSource(name, namespace, options), {
+      get (target, key) {
+        if (key === 'factory') {
+          throw new Error('unauthorized')
+        }
+      },
+      ownKeys (target) {
+        return []
+      }
+    })
   }
 
   function close () {
@@ -196,4 +318,5 @@ const DataSourceFactory = (() => {
   })
 })()
 
+/** @type {DataSourceFactory}*/
 export default DataSourceFactory

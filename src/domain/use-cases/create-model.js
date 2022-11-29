@@ -29,11 +29,11 @@ export default function makeCreateModel ({
   threadpool,
   idempotent,
   broker,
-  handlers = [],
+  handlers = []
 } = {}) {
   const eventType = models.EventTypes.CREATE
   const eventName = models.getEventName(eventType, modelName)
-  handlers.forEach((handler) => broker.on(eventName, handler))
+  handlers.forEach(handler => broker.on(eventName, handler))
   // Add an event whose callback invokes this factory.
   broker.on(domainEvents.createModel(modelName), createModel)
 
@@ -46,10 +46,8 @@ export default function makeCreateModel ({
       return threadpool.runJob(createModel.name, input, modelName)
     } else {
       try {
-
         const model = models.createModel(broker, repository, modelName, input)
         await repository.save(model.getId(), model)
-        console.debug({ fn: createModel.name, model })
         try {
           const event = models.createEvent(eventType, modelName, model)
           broker.notify(eventName, event)

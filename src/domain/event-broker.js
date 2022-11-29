@@ -93,10 +93,8 @@ const handleError = error => {
  * @param {eventHandler} handle
  * @param {boolean} forward
  */
-function runHandler (eventName, eventData = {}, handle) {
-  const abort = eventData ? false : true
-
-  if (abort) {
+function runHandler (eventName, eventData, handle) {
+  if (!eventData) {
     console.warn('no data provided, abort')
     return
   }
@@ -134,19 +132,13 @@ function notify (eventName, eventData = {}, options = {}) {
   try {
     if (handlers.has(eventName)) {
       match = true
-      // await Promise.allSettled(
-      //   handlers.get(eventName).map(async fn => {
-      //     await run(eventName, formattedEvent, fn)
-      //   })
-      // )
       handlers.get(eventName).forEach(fn => run(eventName, formattedEvent, fn))
     }
 
-    if (options.regexOff && match) return //await Promise.allSettled(
+    if (options.regexOff && match) return
     ;[...handlers]
       .filter(([k]) => k instanceof RegExp && k.test(eventName))
       .forEach(([, v]) => v.f(fn => run(eventName, formattedEvent, fn)))
-    //)
   } catch (error) {
     handleError(notify.name, error)
   }
@@ -240,20 +232,9 @@ class EventBrokerImpl extends EventBroker {
 
       if (
         Object.keys(conditions).every(key => {
-          const result =
-            !conditions[key].applies || conditions[key].satisfied(eventData)
-
-          // debug &&
-          //   console.debug({
-          //     fn: notify.name,
-          //     condition: key,
-          //     applies: conditions[key].applies,
-          //     eventName,
-          //     eventDataEventName: eventData.eventName,
-          //     satisfied: result
-          //   })
-
-          return result
+          return (
+            (!conditions[key].applies || conditions[key].satisfied(eventData))
+          )
         })
       ) {
         if (once) this.off(eventName, eventCallbackWrapper)

@@ -10,7 +10,6 @@ export default function anyInvokePortFactory (invokePort) {
   return async function anyInvokePort (httpRequest) {
     try {
       httpRequest.log(anyInvokePort.name)
-
       const result = await invokePort({
         port: httpRequest.params.port,
         args: httpRequest.body,
@@ -20,7 +19,7 @@ export default function anyInvokePortFactory (invokePort) {
       return {
         headers: {
           'Content-Type': 'application/json',
-          'Last-Modified': new Date().toUTCString()
+          'Last-Modified': new Date().toISOString()
         },
         statusCode: 201,
         body: { ...result }

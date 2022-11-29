@@ -1,7 +1,7 @@
 'use strict'
 
 import mlink, { sharedObject } from 'mesh-link'
-import { DataSourceMemory } from '.'
+import DataSource from '../../domain/datasource'
 
 async function createSharedObject (name) {
   mlink.sharedObject.create({ name: { value: name }, modelId: { value: null } })
@@ -13,9 +13,9 @@ async function fetchSharedObject (name) {
   return rv
 }
 
-export class DataSourceMeshLink extends DataSourceMemory {
-  constructor (dataSource, factory, name) {
-    super(dataSource, factory, name)
+export class DataSourceMeshLink extends DataSource {
+  constructor (dataSource, name, options = {}) {
+    super(dataSource, name, options)
   }
 
   /**

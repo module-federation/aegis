@@ -18,7 +18,7 @@ export default function patchModelFactory (editModel) {
       return {
         headers: {
           'Content-Type': 'application/json',
-          'Last-Modified': new Date().toUTCString()
+          'Last-Modified': new Date().toISOString()
         },
         statusCode: 201,
         body: { modelId: model.id }
@@ -26,7 +26,7 @@ export default function patchModelFactory (editModel) {
     } catch (e) {
       console.error(e)
 
-      if (e.message === 'no such id') {
+      if (e.message === 'Not Found') {
         return {
           headers: {
             'Content-Type': 'application/json'

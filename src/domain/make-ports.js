@@ -13,7 +13,7 @@ const TIMEOUTSECONDS = 10
 const MAXRETRY = 5
 
 function getTimerArgs (args = null) {
-  const timerArg = { calledByTimer: new Date().toUTCString() }
+  const timerArg = { calledByTimer: new Date().toISOString() }
   if (args) return [...args, timerArg]
   return [timerArg]
 }
@@ -93,11 +93,9 @@ function getPortCallback (cb) {
 /**
  * Are we compensating for a canceled transaction?
  * @param {import(".").Model} model
- * @returns {Promise<boolean>}
  */
-async function isUndoRunning (model) {
-  const latest = await model.find(model.getId())
-  return latest.compensate
+function isUndoRunning (model) {
+  return model.findSync(model.getId()).compensate
 }
 
 function hydrate (broker, datasource, eventInfo) {
@@ -125,13 +123,14 @@ function addPortListener (portName, portConf, broker, datasource) {
       portConf.consumesEvent,
       async function (eventInfo) {
         const model = hydrate(broker, datasource, eventInfo)
-        // Don't call any more ports if undoing.
-       
-        console.info(
-        // if (await isUndoRunning(model)) {
-        //   console.log('undo running, canceling port operation')
-        //   return
-        // }   `event ${eventInfo.eventName} fired: calling port ${portName}`,
+
+        if (isUndoRunning(model)) {
+          console.log('undo running, canceling port operation')
+          return
+        }
+
+        console.log(
+          `event ${eventInfo.eventName} fired: calling port ${portName}`,
           eventInfo
         )
         // invoke this port
@@ -156,7 +155,7 @@ async function updatePortFlow (model, port) {
   const updateModel = this.equals(model) ? model : this
   return updateModel.update(
     {
-      [updateModel.getKey('portFlow')]: [...updateModel.getPortFlow(), port]
+      [updateModel.getKey('portFlow')]: [...this.getPortFlow(), port]
     },
     false
   )
@@ -190,7 +189,7 @@ export default function makePorts (ports, adapters, broker, datasource) {
       const portConf = ports[port]
       const disabled = portConf.disabled || !adapters[port]
 
-      // Listen for event that will invoke this port
+      // dont listen on a disabled port
       const rememberPort = disabled
         ? false
         : addPortListener(portName, portConf, broker, datasource)
@@ -224,7 +223,7 @@ export default function makePorts (ports, adapters, broker, datasource) {
         }
 
         try {
-          // call the inbound or oubound adapter and wait
+          // call the inbound or oubound adapte
           const result = await adapters[port]({ model: this, port, args })
 
           // Stop the timer
@@ -262,7 +261,9 @@ export default function makePorts (ports, adapters, broker, datasource) {
           // check if the port defines breaker thresholds
           const thresholds = portConf.circuitBreaker
 
+          // call port without breaker (normal for inbound)
           if (!thresholds) return portFn.apply(this, args)
+
           /**
            * the circuit breaker instance
            * @type {import('./circuit-breaker').breaker}

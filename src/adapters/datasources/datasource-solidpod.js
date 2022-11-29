@@ -25,8 +25,8 @@ async function login () {
  */
 export class DataSourceSolidPod extends DataSourceFile {
   // ... import statement for authentication, which includes the fetch function, is omitted for brevity.
-  constructor (map, factory, name) {
-    super(map, factory, name)
+  constructor (map, name, options) {
+    super(map, name, options)
     // this.file = PODURL + name + ".json";
     // console.log(this.file);
     // login().then(() => console.log(`logged into pod ${PODURL}`));

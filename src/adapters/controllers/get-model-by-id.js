@@ -9,9 +9,10 @@ export default function getModelByIdFactory (findModel) {
     try {
       httpRequest.log(getModelById.name)
 
-      const id = httpRequest.params.id
-      const query = httpRequest.query
-      const model = await findModel({ id, query })
+      const model = await findModel({
+        id: httpRequest.params.id,
+        query: httpRequest.query
+      })
 
       const { content, contentType } = getContent(
         httpRequest,
@@ -29,7 +30,7 @@ export default function getModelByIdFactory (findModel) {
     } catch (e) {
       console.error(e.message)
 
-      if (e.message === 'no such id') {
+      if (e.message === 'Not Found') {
         return {
           headers: {
             'Content-Type': 'application/json'

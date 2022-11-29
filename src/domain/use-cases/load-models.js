@@ -3,6 +3,7 @@
 import Serializer from '../serializer'
 import { resumeWorkflow } from '../orchestrator'
 import { isMainThread } from 'worker_threads'
+import { modelsInDomain } from '.'
 
 /**
  * @param {function(import("..").Model)} loadModel
@@ -36,6 +37,7 @@ function hydrateModels (loadModel, broker, repository) {
 function handleError (e) {
   console.error(e)
 }
+
 /**
  *
  * @param {{
@@ -44,17 +46,17 @@ function handleError (e) {
  * }}
  */
 function handleRestart (repository, eventName) {
-  // console.log("resuming workflow", repository.name);
-
   if (process.env.RESUME_WORKFLOW_DISABLED) return
 
+  const writable = {}
+
   repository
-    .list()
+    .list({ writable })
     .then(resumeWorkflow)
     .catch(handleError)
 
   repository
-    .list()
+    .listSync()
     .then(list => list.forEach(model => model.emit(eventName, model)))
     .catch(handleError)
 }
@@ -70,40 +72,22 @@ function handleRestart (repository, eventName) {
  * }} options
  * @returns {function():Promise<void>}
  */
-export default function ({
-  modelName,
-  repository,
-  broker,
-  models,
-  handlers = []
-}) {
+export default function ({ modelName, repository, broker, models }) {
   // main thread only
-  if (isMainThread) {
-    const eventType = models.EventTypes.ONLOAD
-    const eventName = models.getEventName(eventType, modelName)
-    handlers.forEach(handler => broker.on(eventName, handler))
-
+  if (!isMainThread) {
     /**
      * Loads persited data from datd cc x
      */
     return async function loadModels () {
-      const spec = models.getModelSpec(modelName)
-
-      // if (isMainThread) {
-      const eventType = models.EventTypes.ONLOAD
-      const eventName = models.getEventName(eventType, modelName)
-      handlers.forEach(handler => broker.on(eventName, handler))
-
-      return async function loadModels () {
-        const spec = models.getModelSpec(modelName)
-
-        setTimeout(handleRestart, 30000, repository, eventName)
-
-        return repository.load({
-          hydrate: hydrateModels(models.loadModel, broker, repository),
-          serializer: Serializer.addSerializer(spec.serializers)
-        })
-      }
+      // const domainModels = modelsInDomain(modelName)
+      // for await (const model of domainModels) {
+      //   const spec = models.getModelSpec(model)
+      //   setTimeout(handleRestart, 30000, repository, eventName)
+      //   return repository.load({
+      //     hydrate: hydrateModels(models.loadModel, broker, repository),
+      //     serializer: Serializer.addSerializer(spec.serializers),
+      //   })
+      // }
     }
   }
 }

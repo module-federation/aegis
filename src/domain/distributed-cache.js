@@ -5,7 +5,7 @@ import { importRemoteCache } from '.'
 import domainEvents from '../domain/domain-events'
 import asyncPipe from './util/async-pipe'
 import { workerData } from 'worker_threads'
-import { UseCaseService } from './use-cases'
+import { modelsInDomain, UseCaseService } from './use-cases'
 const {
   internalCacheRequest,
   internalCacheResponse,
@@ -288,7 +288,7 @@ export default function DistributedCache ({
         // find the requested object or objects
         const relatedModels = await relationType[relation.type](
           model,
-          datasources.getDataSource(relation.modelName.toUpperCase()),
+          datasources.getDataSource(relation.modelName),
           relation
         )
 
@@ -366,7 +366,7 @@ export default function DistributedCache ({
       publish({ ...event, eventName: externalCrudEvent(eventName) })
     )
 
-  function handlecrudeEvent (modelSpecs) { }
+  function handlecrudeEvent (modelSpecs) {}
   /**
    * Subcribe to external CRUD events for related models.
    * Also listen for request and response events for locally
@@ -374,7 +374,21 @@ export default function DistributedCache ({
    */
   function listen () {
     const modelSpecs = models.getModelSpecs()
-    const localModels = [workerData.poolName.toUpperCase()]
+    const localModels = modelsInDomain(workerData.poolName)
+    const relatedModels = [
+      ...modelSpecs
+        .filter(spec => spec.relations)
+        .map(spec => Object.values(spec.relations))
+        .flat(2)
+        .map(relation => relation.modelName)
+        .reduce((unique, modelName) => unique.add(modelName), new Set())
+    ]
+
+    console.debug({ relatedModels })
+    const remoteRelated = relatedModels.filter(
+      related => !localModels.includes(related)
+    )
+
     const remoteModels = [
       ...new Set( // deduplicate
         modelSpecs
@@ -406,12 +420,13 @@ export default function DistributedCache ({
         externalCacheResponse(modelName),
         internalCacheResponse(modelName)
       )
+      //
+      ;[
         // listen for CRUD events from related, external models
-        ;[
-          models.getEventName(models.EventTypes.UPDATE, modelName),
-          models.getEventName(models.EventTypes.CREATE, modelName),
-          models.getEventName(models.EventTypes.DELETE, modelName)
-        ].forEach(receiveCrudBroadcast)
+        models.getEventName(models.EventTypes.UPDATE, modelName),
+        models.getEventName(models.EventTypes.CREATE, modelName),
+        models.getEventName(models.EventTypes.DELETE, modelName)
+      ].forEach(receiveCrudBroadcast)
     })
 
     // Respond to external search requests and broadcast local CRUD events
@@ -422,17 +437,17 @@ export default function DistributedCache ({
         externalCacheResponse(modelName)
       )
 
-        // fulfillDeploymentRequest(
-        //   externalDeploymentRequest(modelName),
-        //   externalDeploymentResponse(modelName)
-        // )
+      // fulfillDeploymentRequest(
+      //   externalDeploymentRequest(modelName),
+      //   externalDeploymentResponse(modelName)
+      // )
 
-        // Listen for local CRUD events and forward externally
-        ;[
-          models.getEventName(models.EventTypes.UPDATE, modelName),
-          models.getEventName(models.EventTypes.CREATE, modelName),
-          models.getEventName(models.EventTypes.DELETE, modelName)
-        ].forEach(broadcastCrudEvent)
+      // Listen for local CRUD events and forward externally
+      ;[
+        models.getEventName(models.EventTypes.UPDATE, modelName),
+        models.getEventName(models.EventTypes.CREATE, modelName),
+        models.getEventName(models.EventTypes.DELETE, modelName)
+      ].forEach(broadcastCrudEvent)
     })
   }
 
