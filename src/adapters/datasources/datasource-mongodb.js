@@ -42,7 +42,7 @@ export class DataSourceMongoDb extends DataSource {
     this.mongoOpts = mongoOpts
     this.options = options
     this.runOffline = dsOptions.runOffline
-    this.url = url;
+    this.url = url
   }
 
   async connection () {
