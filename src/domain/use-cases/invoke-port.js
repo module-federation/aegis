@@ -33,7 +33,7 @@ export default function makeInvokePort ({
   }
   /**
    *
-   * @param {{id:string,model:import('..').Model,args:string[],port:string}} input
+   * @param {{id:String,model:import('..').Model,args:String[],port:String,method:String,headers:Array}} input
    * @returns
    */
   return async function invokePort (input) {
@@ -41,15 +41,14 @@ export default function makeInvokePort ({
       return threadpool.runJob(invokePort.name, input, modelName)
     } else {
       try {
-        let { id = null, port = null} = input;
+        let { id = null, port = null, method, path } = input;
         const service = await findModelService(id)
         if (!service) {
           throw new Error('could not find a service associated with given id')
         } 
         
+        const specPorts = service.getPorts();
         if(!port) {
-          const specPorts = service.getPorts();
-          const path = context['requestContext'].getStore().get('path');
           for(const p of Object.entries(specPorts)) {
             if(!p[1].path) {
               continue;
@@ -66,6 +65,14 @@ export default function makeInvokePort ({
         }
         if(!service[port]) {
           throw new Error('the port or record ID is invalid')
+        }
+
+        const specPortMethods = specPorts[port]?.methods.join('|').toLowerCase();
+        if (specPortMethods && !(specPortMethods.includes(method.toLowerCase()))) {
+          throw new Error('invalid method for given port');
+        }
+        if (specPorts[port]?.path && !pathsMatch(specPorts[port].path, path)) {
+          throw new Error('invalid path for given port');
         }
 
         return await service[port](input)
