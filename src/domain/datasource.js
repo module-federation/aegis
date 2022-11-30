@@ -133,30 +133,34 @@ export default class DataSource {
    * @returns {Promise<any[]>}
    */
   async list (options) {
-    throw new Error('abstract method not implemented')
+    const count = options.filter.__count || options.query.__count
+    if (count) return handleCount(count)
   }
 
   /**
    *
-   * @param {object} query
+   * @param {object} qsssuery
    * @returns
    */
   listSync (query) {
-    if (query?.__count) {
-      const [key = null, value = null] = query.__count.split(':')
-
-      if (key && value) {
-        return {
-          [key]: value,
-          total: this.filterList({ [key]: value }, this.generateList()).length
-        }
-      }
-
-      return this.count()
-    }
+    const count = query.__count
+    if (count) return handleCount(count)
 
     const list = this.generateList()
     return query ? this.filterList(query, list) : list
+  }
+
+  handleCount (count) {
+    const [key = null, value = null] = count.split(':')
+
+    if (key && value) {
+      return {
+        [key]: value,
+        total: this.filterList({ [key]: value }, this.generateList()).length
+      }
+    }
+
+    return this.count()
   }
 
   count () {
@@ -183,10 +187,10 @@ export default class DataSource {
    * @param {*} query
    * @returns
    */
-  filterList (query, listOfObjects) {
+  filterList (query, list) {
     if (query) {
       if (typeof query.__limit === 'number') {
-        return listOfObjects.splice(0, query.__limit)
+        return list.splice(0, query.__limit)
       }
 
       const operands = {
@@ -203,16 +207,16 @@ export default class DataSource {
       )
 
       if (keys.length > 0) {
-        const loo = listOfObjects.filter(obj =>
+        const filteredList = list.filter(obj =>
           operands[operand](
             keys,
             key => obj[key] && new RegExp(query[key]).test(obj[key])
           )
         )
-        return loo
+        return filteredList
       }
     }
-    return listOfObjects
+    return list
   }
 
   /**

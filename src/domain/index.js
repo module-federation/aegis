@@ -431,15 +431,13 @@ export async function importRemoteCache (name) {
 /**
  * The total number of services deployed to a host. A
  * service corresponds to a bounded context containing
- * one or more subdomains. A sub/domain corresponds to
- * an Aegis domain model. So a service consists of one or
- * more Aegis domain models. Each model represents a service
- * unless it specifies the name of another model in
+ * one or more subdomains. Each Aegis domain model represents
+ * a service unless it specifies the name of another model in
  * `ModelSpecification.domain`, in which case it is a subdomain
- * within a bounded context (service) or simply a supporting entity.
+ * within a bounded context or simply a supporting entity or utility.
  * If it specifies its own name, then that is the name of a bounded
  * context (service) of which other models can be members. Models
- * in a bounded context (service) run in the same threadpool and
+ * in a bounded context run in the same threadpool and
  * share the same storage namespace (e.g. their data live in the
  * same database).
  *

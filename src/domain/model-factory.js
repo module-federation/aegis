@@ -21,7 +21,7 @@ import Event from './event'
 /**
  * @typedef {Object} ModelFactory Low-level port functions for creating, updating, deleting domain models. To be called by
  * application use-case functions, which in turn are called by driving/primary adapters.
- * @property {function(broker,Datasource,string,...args):Promise<Readonly<Model>>} createModel Create a new model instance
+ * @property {function(broker,Datasource,string,...args):Readonly<Model>} createModel Create a new model instance
  * @property {function(string,string,*):Readonly<Event>} createEvent
  * @property {function(Model,object):Model} updateModel
  * @property {function(Model):Model} deleteModel
@@ -135,7 +135,7 @@ const ModelFactory = {
    * @param {*[]} args - input sent in the request
    * @param {import('./event-broker').EventBroker} broker - send & receive events
    * @param {import('./datasource').default} datasource - persistence/cache
-   * @returns {Promise<Readonly<Model>>} the model instance
+   * @returns {<Readonly<Model>} the model instance
    */
   createModel: function (broker, datasource, modelName, ...args) {
     const name = checkModelName(modelName)

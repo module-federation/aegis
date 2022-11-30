@@ -1,5 +1,7 @@
 'use strict'
 
+const { DefaultDeserializer } = require('v8')
+
 /**@typedef {import("../../domain").ModelSpecification} ModelSpecification */
 /**@typedef {import("../../domain").Model} Model */
 /**@typedef {{[x:string]:()=>void}} Service */
@@ -15,18 +17,20 @@
  * @param {WebAssembly.Instance} instance
  * @returns adapter functions
  */
-exports.WasmInterop = function (instance) {
+exports.WasmInterop = function (wasmExports) {
   const {
     getCommands,
     getPorts,
+    __callWasmFunction,
     ArrayOfStrings_ID,
     __pin,
     __unpin,
-    __getString,
-    __newString,
-    __newArray,
-    __getArray
-  } = instance.exports
+    liftString,
+    lowerString,
+    lowerArray,
+    liftArray,
+    __exports
+  } = wasmExports
 
   /**
    * only strings and numbers in the object are supported for the moment.
@@ -34,12 +38,13 @@ exports.WasmInterop = function (instance) {
    * @param {object} args input object
    * @returns {{keys:string[],vals:string[]}} pointer arrays
    */
-  function parseArguments (args) {
+  function parseArgumentsOld (args) {
     const filtered = Object.entries(args).filter(([, v]) =>
       ['string', 'number'].includes(typeof v)
     )
-    const keyPtrs = filtered.map(([k]) => __pin(__newString(k)))
-    const valPtrs = filtered.map(([, v]) => __pin(__newString(v.toString())))
+
+    const keyPtrs = filtered.map(([k]) => __pin(lowerString(k)))
+    const valPtrs = filtered.map(([, v]) => __pin(lowerString(v.toString())))
 
     return {
       keys: keyPtrs,
@@ -47,9 +52,20 @@ exports.WasmInterop = function (instance) {
     }
   }
 
+  function parseArguments (args) {
+    const filtered = Object.entries(args).filter(([, v]) =>
+      ['string', 'number'].includes(typeof v)
+    )
+
+    return filtered.map(([k, v]) => [
+      __pin(lowerString(k)),
+      __pin(lowerString(v.toString()))
+    ])
+  }
+
   /**
    * Call the exported function {@link wasmFn} with
-   * two string arrays, one for keys {@link keyPtrs},
+   * two string arrays, one for keys {@link keyVal},
    * the other for values {@link valPtrs} of a
    * deconstructed object, or a number {@link num}
    * or neither.
@@ -62,23 +78,18 @@ exports.WasmInterop = function (instance) {
    * }} param0
    * @returns {string[][]|number|void}
    */
-  function callExportedFunction ({
-    fn: wasmFn,
-    keys: keyPtrs = [],
-    vals: valPtrs = [],
-    num = null
-  }) {
+  function callExportedFunction ({ fn: wasmFn, entries = [], num = null }) {
     if (typeof num === 'number') {
       return __pin(wasmFn(num))
     }
 
-    if (keyPtrs.length > 0) {
-      const keyArrayPtr = __pin(__newArray(ArrayOfStrings_ID, keyPtrs))
-      const valArrayPtr = __pin(__newArray(ArrayOfStrings_ID, valPtrs))
+    if (keys.length > 0) {
+      const keyArrayPtr = __pin(lowerArray(ArrayOfStrings_ID, keys))
+      const valArrayPtr = __pin(lowerArray(ArrayOfStrings_ID, vals))
 
       // The arrays keep values alive from now on
-      keyPtrs.forEach(__unpin)
-      valPtrs.forEach(__unpin)
+      keys.forEach(__unpin)
+      vals.forEach(__unpin)
 
       // Provide input as two arrays of strings, one for keys, other for values
       const ptr = __pin(wasmFn(keyArrayPtr, valArrayPtr))
@@ -104,9 +115,9 @@ exports.WasmInterop = function (instance) {
     }
 
     try {
-      const obj = __getArray(ptr)
-        .map(inner => __getArray(inner))
-        .map(tuple => ({ [__getString(tuple[0])]: __getString(tuple[1]) }))
+      const obj = liftArray(ptr)
+        .map(inner => liftArray(inner))
+        .map(tuple => ({ [liftString(tuple[0])]: liftString(tuple[1]) }))
         .reduce((obj1, obj2) => ({ ...obj1, ...obj2 }))
 
       const immutableClone = Object.freeze({ ...obj })
@@ -184,18 +195,24 @@ exports.WasmInterop = function (instance) {
       return constructObject(ptr)
     },
 
-    /**
-     * Find a function called `name` in the {@link instance.exports}
-     * and return it.
-     *
-     * @param {string} name
-     * @returns {function()} exported function
-     */
-    findWasmFunction (name) {
-      const fn = Object.keys(instance.exports).find(
-        k => typeof instance.exports[k] === 'function' && k === name
-      )
-      if (fn) return instance.exports[fn]
+    importWasmCommands () {
+      const commandNames = getCommands()
+      return Object.keys(commandNames)
+        .map(command => {
+          console.log({ command })
+          return {
+            [command]: {
+              command: model =>
+                __callWasmFunction(__exports[command], {
+                  ...model,
+                  modelId: model.getId(),
+                  modelName: model.getName()
+                }),
+              acl: ['read', 'write']
+            }
+          }
+        })
+        .reduce((p, c) => ({ ...p, ...c }), {})
     },
 
     /**
@@ -203,33 +220,8 @@ exports.WasmInterop = function (instance) {
      * `command` entry that will invoke the specified
      *  exported function
      */
-    importWasmCommands () {
-      const commandNames = this.callWasmFunction(getCommands)
-      return Object.keys(commandNames)
-        .map(command => {
-          const cmdFn = this.findWasmFunction(command)
-          if (cmdFn) {
-            return {
-              [command]: {
-                command: model =>
-                  this.callWasmFunction(cmdFn, {
-                    ...model,
-                    modelId: model.getId(),
-                    modelName: model.getName()
-                  }),
-                acl: ['read', 'write']
-              }
-            }
-          }
-        })
-        .reduce((p, c) => ({ ...p, ...c }))
-    },
-
-    /**
-     * Generate port entries. Calls {@link getPorts}.
-     */
     importWasmPorts () {
-      const ports = this.callWasmFunction(getPorts)
+      const ports = getPorts()
       return Object.keys(ports)
         .map(port => {
           const [
@@ -241,8 +233,8 @@ exports.WasmInterop = function (instance) {
             undo,
             forward
           ] = ports[port].split(',')
-          const cb = this.findWasmFunction(callback)
-          const undoCb = this.findWasmFunction(undo)
+          const cb = __exports[callback]
+          const undoCb = __exports[undo]
           return {
             /**@type {import("../../domain").ports[x]} */
             [port]: {
@@ -250,15 +242,16 @@ exports.WasmInterop = function (instance) {
               type,
               consumesEvent,
               producesEvent,
-              callback: data => this.callWasmFunction(cb, data),
-              undo: data => this.callWasmFunction(undoCb, data),
+              callback: data => __callWasmFunction(cb, data),
+              undo: data => __callWasmFunction(undoCb, data),
               forward
             }
           }
         })
         .reduce((p, c) => ({ ...p, ...c }))
     },
-
-    constructObject: ptr => constructObject(ptr, false)
+    constructObject (ptr) {
+      return constructObject(ptr, false)
+    }
   })
 }

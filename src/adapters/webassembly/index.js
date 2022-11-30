@@ -3,9 +3,10 @@ import {
   wrapWasmModelSpec,
   wrapWasmService
 } from './wasm-decorators'
-export * from './wasm-import'
+//export * from './wasm-import-old'
 export * from './wasm-interop'
 export * from './repo-client'
+export * from './wasm-import'
 
 /** @typedef  {'adapter'|'service'|'model'} adapterType */
 
