@@ -136,7 +136,7 @@ export class DataSourceMongoDb extends DataSource {
     } catch (error) {
       // default is true
       if (!this.runOffline) {
-        throw new Error(`DB Transaction failed ${error.message}, stack: ${error.stack}`)
+        throw new Error(`DB Transaction failed: ${error.message}`)
       }
       // run while db is down - cache will be ahead
       console.error('db trans failed, sync it later', error)
