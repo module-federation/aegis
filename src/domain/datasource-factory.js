@@ -63,7 +63,7 @@ const DsCoreExtensions = superclass =>
     async save (id, data) {
       this.saveSync(id, data)
       const clone = JSON.parse(this.serialize(data))
-      super.save(id, clone)
+      await super.save(id, clone)
     }
 
     /**
