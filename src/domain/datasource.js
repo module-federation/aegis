@@ -134,7 +134,7 @@ export default class DataSource {
    */
   async list (options) {
     const count = options.filter.__count || options.query.__count
-    if (count) return handleCount(count)
+    if (count) return this.handleCount(count)
   }
 
   /**
@@ -144,7 +144,7 @@ export default class DataSource {
    */
   listSync (query) {
     const count = query.__count
-    if (count) return handleCount(count)
+    if (count) return this.handleCount(count)
 
     const list = this.generateList()
     return query ? this.filterList(query, list) : list

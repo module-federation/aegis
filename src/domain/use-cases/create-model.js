@@ -1,7 +1,5 @@
 'use strict'
 
-import { isMainThread } from 'worker_threads'
-
 /**
  * @typedef {Object} injectedDependencies injected dependencies
  * @property {String} modelName - name of the domain model
@@ -26,6 +24,7 @@ export default function makeCreateModel ({
   enforceIdempotency,
   broker,
   handlers = [],
+  isMainThread,
   domainEvents,
   AppError
 } = {}) {

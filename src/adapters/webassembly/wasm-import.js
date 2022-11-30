@@ -31,6 +31,14 @@ exports.importWebAssembly = function (remoteEntry) {
 
     const adaptedExports = Object.setPrototypeOf(
       {
+        lowerString: __lowerString,
+        liftString: __liftString,
+        lowerArray: __lowerArray,
+        liftArray: __liftArray,
+        notnull: __notnull,
+        store_ref: __store_ref,
+        memory,
+
         getModelName () {
           // assembly/index/getModelName() => ~lib/string/String
           return __liftString(exports.getModelName() >>> 0)
@@ -44,6 +52,10 @@ exports.importWebAssembly = function (remoteEntry) {
         getDomain () {
           // assembly/index/getDomain() => ~lib/string/String
           return __liftString(exports.getDomain() >>> 0)
+        },
+
+        callExportedFn (fn, kv) {
+          return exports[fn](kv)
         },
 
         ArrayOfStrings_ID: {
@@ -166,30 +178,9 @@ exports.importWebAssembly = function (remoteEntry) {
             .reduce((a, b) => ({ ...a, ...b }))
         },
 
-        /**
-         * Parse the input object into a multidimensional array of key-value pairs
-         * and pass it as an argument to the exported wasm function. Do the reverse for
-         * the response. Consequently, any wasm port or command function must accept a
-         * multidemensional array of strings (numbers are converted to strings) and return
-         * a multidimensional array of strings.
-         *
-         * Before they can be called, they must be registered in the wasm modelspec,
-         * that is getPorts() and getCommands() must return appropria metadata.
-         *
-         * Notes:
-         *
-         * - for the moment, we only support strings and numbers in the input
-         * and output objects.
-         *
-         * - {@link args} can also be a number, in which case, so is the return value.
-         *
-         * @param {string} fn exported wasm function name
-         * @param {object|number} [args] object or number, see above
-         * @returns {object|number} object or number, see above
-         */
-        __callWasmFunction (fn, obj) {
-          const entries = Object.entries(obj)
-          const kv =
+        onUpdate (kv) {
+          // assembly/index/onUpdate(~lib/array/Array<~lib/array/Array<~lib/string/String>>) => ~lib/array/Array<~lib/array/Array<~lib/string/String>>
+          kv =
             __lowerArray(
               (pointer, value) => {
                 __store_ref(
@@ -200,43 +191,6 @@ exports.importWebAssembly = function (remoteEntry) {
                         pointer,
                         __lowerString(value.toString()) || __notnull()
                       )
-                    },
-                    4,
-                    2,
-                    value
-                  ) || __notnull()
-                )
-              },
-              5,
-              2,
-              entries
-            ) || __notnull()
-
-          return __liftArray(
-            pointer =>
-              __liftArray(
-                pointer =>
-                  __liftString(new Uint32Array(memory.buffer)[pointer >>> 2]),
-                2,
-                new Uint32Array(memory.buffer)[pointer >>> 2]
-              ),
-            2,
-            exports[fn](kv) >>> 0
-          )
-            .map(([k, v]) => ({ [k]: v }))
-            .reduce((a, b) => ({ ...a, ...b }))
-        },
-
-        onUpdate (kv) {
-          // assembly/index/onUpdate(~lib/array/Array<~lib/array/Array<~lib/string/String>>) => ~lib/array/Array<~lib/array/Array<~lib/string/String>>
-          kv =
-            __lowerArray(
-              (pointer, value) => {
-                __store_ref(
-                  pointer,
-                  __lowerArray(
-                    (pointer, value) => {
-                      __store_ref(pointer, __lowerString(value) || __notnull())
                     },
                     4,
                     2,

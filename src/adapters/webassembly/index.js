@@ -24,15 +24,15 @@ export const adapterTypes = {
 
 export const wasmAdapters = {
   /**
-   * @param {WebAssembly.Instance} wasm
+   * @param {WebAssembly.Exports} wasm
    */
   model: wasm => wrapWasmModelSpec(wasm),
   /**
-   * @param {WebAssembly.Instance} wasm
+   * @param {WebAssembly.Exports} wasm
    */
   adapter: wasm => wrapWasmAdapter(wasm),
   /**
-   * @param {WebAssembly.Instance} wasm
+   * @param {WebAssembly.Exports} wasm
    */
   service: wasm => wrapWasmService(wasm)
 }
