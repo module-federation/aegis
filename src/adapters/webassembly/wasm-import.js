@@ -31,16 +31,6 @@ exports.importWebAssembly = function (remoteEntry) {
 
     const adaptedExports = Object.setPrototypeOf(
       {
-        liftString: __lowerString,
-
-        lowerString: __lowerString,
-
-        liftArray: __liftArray,
-
-        lowerArray: __lowerArray,
-
-        __exports: exports,
-
         getModelName () {
           // assembly/index/getModelName() => ~lib/string/String
           return __liftString(exports.getModelName() >>> 0)
@@ -176,6 +166,27 @@ exports.importWebAssembly = function (remoteEntry) {
             .reduce((a, b) => ({ ...a, ...b }))
         },
 
+        /**
+         * Parse the input object into a multidimensional array of key-value pairs
+         * and pass it as an argument to the exported wasm function. Do the reverse for
+         * the response. Consequently, any wasm port or command function must accept a
+         * multidemensional array of strings (numbers are converted to strings) and return
+         * a multidimensional array of strings.
+         *
+         * Before they can be called, they must be registered in the wasm modelspec,
+         * that is getPorts() and getCommands() must return appropria metadata.
+         *
+         * Notes:
+         *
+         * - for the moment, we only support strings and numbers in the input
+         * and output objects.
+         *
+         * - {@link args} can also be a number, in which case, so is the return value.
+         *
+         * @param {string} fn exported wasm function name
+         * @param {object|number} [args] object or number, see above
+         * @returns {object|number} object or number, see above
+         */
         __callWasmFunction (fn, obj) {
           const entries = Object.entries(obj)
           const kv =
@@ -210,7 +221,7 @@ exports.importWebAssembly = function (remoteEntry) {
                 new Uint32Array(memory.buffer)[pointer >>> 2]
               ),
             2,
-            fn(kv) >>> 0
+            exports[fn](kv) >>> 0
           )
             .map(([k, v]) => ({ [k]: v }))
             .reduce((a, b) => ({ ...a, ...b }))
