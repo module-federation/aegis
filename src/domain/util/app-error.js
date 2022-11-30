@@ -5,8 +5,8 @@
  * @returns
  */
 export function AppError (error, code = 400, cause = null) {
-  if(code > 500) {
-    code = 400
+  if(error.code > 500) {
+    error.code = 400
   }
 
   return {
