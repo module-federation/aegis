@@ -9,6 +9,9 @@ module.exports = {
   parserOptions: {
     ecmaVersion: 11,
     sourceType: 'module',
+    ecmaFeatures: {
+      modules: true,
+    },
   },
   extends: ['eslint:recommended', 'plugin:prettier/recommended'],
   rules: {},
