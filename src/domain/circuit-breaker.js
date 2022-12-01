@@ -38,6 +38,9 @@ const DefaultThreshold = {
  */
 const logs = new Map()
 
+/** @type {{[x: string]: number[]}} */
+let counters = {}
+
 /**
  *
  * @param {*} id
@@ -226,7 +229,7 @@ const Switch = function (id, thresholds) {
     /**
      * Check error-specific threshold.
      * If none found, use default threshold
-     * @param {Error} error
+     * @param {Error} errorx
      * @returns {boolean}
      */
     wasThresholdBreached (error) {
@@ -251,6 +254,12 @@ const Switch = function (id, thresholds) {
         testDelay: getThreshold(error, thresholds).retryDelay,
         error
       })
+    },
+
+    incrementInvocationCounter () {
+      if (!counters[id]) counters[id] = [Date.Now()]
+      else counters[id].push(Date.now())
+      counters[id].filter(time => time > Date.now() - 5000).length > 999
     },
 
     async fallbackFn (error, arg) {
@@ -310,7 +319,7 @@ const CircuitBreaker = function (id, protectedCall, thresholds) {
     async invoke (...args) {
       const breaker = Switch(id, thresholds)
       errorEvents.forEach(monitorErrors.bind(this))
-      breaker.appendLog()
+      breaker.incrementInvocationCounter()
 
       // check breaker status
       if (breaker.closed()) {

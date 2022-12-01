@@ -132,6 +132,12 @@ const DsCoreExtensions = superclass =>
       }
     }
 
+    listSync (options) {
+      const count = options?.query?.__count
+      if (count) return this.handleCount(count)
+      return super.listSync(options)
+    }
+
     /**
      * @override
      * @param {*} id

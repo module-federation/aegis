@@ -1,4 +1,10 @@
+import { callbackify } from 'node:util'
 import { wasmAdapters } from '.'
+
+import { EventBrokerFactory } from '../../../lib/domain'
+
+/**@type {import('../../domain/event-broker').EventBroker} */
+const broker = EventBrokerFactory.getInstance()
 
 exports.importWebAssembly = function (remoteEntry) {
   async function instantiate (module, imports = {}) {
@@ -19,7 +25,13 @@ exports.importWebAssembly = function (remoteEntry) {
         },
         'Date.now':
           // ~lib/bindings/dom/Date.now() => f64
-          Date.now
+          Date.now,
+
+        'console.log' (text) {
+          // ~lib/bindings/dom/console.log(~lib/string/String) => void
+          text = __liftString(text >>> 0)
+          console.log(text)
+        }
       })
     }
 
@@ -27,7 +39,6 @@ exports.importWebAssembly = function (remoteEntry) {
     console.log({ exports })
 
     const memory = exports.memory || imports.env.memory
-    console.log({ memory })
 
     const adaptedExports = Object.setPrototypeOf(
       {

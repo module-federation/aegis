@@ -143,9 +143,6 @@ export default class DataSource {
    * @returns
    */
   listSync (query) {
-    const count = query.__count
-    if (count) return this.handleCount(count)
-
     const list = this.generateList()
     return query ? this.filterList(query, list) : list
   }

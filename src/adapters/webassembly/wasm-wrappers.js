@@ -15,7 +15,6 @@ const { WasmInterop } = require('./wasm-interop')
  */
 exports.wrapWasmModelSpec = function (wasmExports) {
   const {
-    __callWasmFunction,
     getModelName,
     getEndpoint,
     getDomain,
@@ -27,12 +26,6 @@ exports.wrapWasmModelSpec = function (wasmExports) {
 
   const interop = WasmInterop(wasmExports)
 
-  function entries (obj) {
-    return Object.entries(obj).filter(([k, v]) =>
-      ['number', 'string'].includes(typeof v)
-    )
-  }
-
   // wrapped model spec
   const wrappedSpec = {
     modelName: getModelName(),
@@ -43,7 +36,7 @@ exports.wrapWasmModelSpec = function (wasmExports) {
      * @param {*} dependencies
      * @returns {({...arg} => Model)} factory function to generate model
      */
-    factory: dependencies => input => modelFactory(entries(input)),
+    factory: dependencies => input => modelFactory(input),
     //validate: (model, changes) => validate(model, changes),
     onUpdate: (model, changes) => onUpdate(model, changes),
     onDelete: model => onDelete(model),
@@ -52,6 +45,9 @@ exports.wrapWasmModelSpec = function (wasmExports) {
     },
     ports: {
       ...interop.importWasmPorts()
+    },
+    getInboundPortFunctions () {
+      return Object.values(this.ports).flatMap(p => p.inboundFn)
     }
   }
   console.debug(wrappedSpec)

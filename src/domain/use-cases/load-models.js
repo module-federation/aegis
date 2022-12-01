@@ -3,40 +3,6 @@
 import { isMainThread } from 'worker_threads'
 import { Writable, Transform } from 'node:stream'
 import Serializer from '../serializer'
-import { Deserializer } from 'v8'
-
-/**
- * @param {function(import("..").Model)} loadModel
- * @param {import("../event-broker").EventBroker} broker
- * @param {import("../datasource").default} repository
- * @returns {function(Map<string,Model>|Model)}
- */
-function hydrateModels (loadModel, broker, repository) {
-  return function (saved) {
-    if (!saved) return
-
-    try {
-      if (saved instanceof Map) {
-        return new Map(
-          [...saved].map(function ([k, v]) {
-            const model = loadModel(broker, repository, v, v.modelName)
-            return [k, model]
-          })
-        )
-      }
-
-      if (Object.getOwnPropertyNames(saved).includes('modelName')) {
-        return loadModel(broker, repository, saved, saved.modelName)
-      }
-    } catch (error) {
-      console.warn(hydrateModels.name, error.message)
-    }
-  }
-}
-
-function handleError (e) {
-  console.error(e)
-}
 
 function startWorkflow (model) {
   const history = model.getPortFlow()

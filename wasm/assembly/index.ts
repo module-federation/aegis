@@ -1,14 +1,25 @@
-// The entry file of your WebAssembly module.
+// The entry file of your WebAssembly modul
 
-//import * as aegis from './aegis'
+@external('env', 'console.log')
+declare function consoleLog (s: string): void
+@external('aegis', 'update')
+declare function update (changes: object, runValidation: boolean): void
+
 export function getModelName (): string {
   return 'wasm'
 }
+
 export function getEndpoint (): string {
   return 'wasm'
 }
+
 export function getDomain (): string {
   return 'wasm'
+}
+
+export function update (changes: string[][]): void {
+  const runValidation: boolean = true
+  update(changes, true)
 }
 
 export const ArrayOfStrings_ID = idof<string[]>()
@@ -23,18 +34,22 @@ function findVal (key: string, kv: string[][]): string {
 }
 
 export function modelFactory (kv: string[][]): string[][] {
-  const arr = new Array<string[]>(2)
-  arr[0] = ['key1', findVal('key1', kv)]
-  arr[1] = ['fibonacci', findVal('fibonacci', kv)]
-  arr
+  const arr = new Array<string[]>(4)
+  arr[0] = ['wasm', 'AssemblyScript']
+  arr[1] = ['fibonacci', '20']
+  arr[2] = ['result', '0']
+  arr[3] = ['time', '0']
   return arr
 }
 
 export function getPorts (): string[][] {
   const ports = new Array<string[]>(2)
-  //service,type,consumesEvent,producesEvent,callback,undo
-  ports[0] = ['runFibonacci', 'test,inbound,null,null,runFibonacci,1']
-  ports[1] = ['emitEvent', 'test,outbound,null,null,emitEvent,1']
+  //port,service,type,consumesEvent,producesEvent,callback,undo
+  ports[0] = [
+    'runFibonacci',
+    'fibonacciService,inbound,fibonacciBegin,fibonacciEnd,runFibonacci,'
+  ]
+  ports[1] = ['emitEvent', 'test,outbound,null,null,emitEvent,']
   return ports
 }
 
@@ -44,7 +59,7 @@ export function emitEvent (kv: string[][]): string[][] {
 
 export function getCommands (): string[][] {
   const commands = new Array<string[]>(2)
-  commands[0] = ['runFibonacci', 'remote calculate fibonacci']
+  commands[0] = ['runFibonacci', 'fibonacci port']
   commands[1] = ['deployModule', 'request deployment of a module']
   return commands
 }
@@ -60,33 +75,36 @@ function fibonacci (x: number): number {
 }
 
 export function runFibonacci (kv: string[][]): string[][] {
-  let val: number = 0
+  let fibonacciNumber: number = 0
   let startTime: i64 = Date.now()
 
   for (let i = 0; i < kv.length; i++) {
+    consoleLog(`${kv[i][0]}: ${kv[i][1]}`)
     if ('fibonacci' === kv[i][0]) {
-      val = parseInt(kv[i][1])
+      if (isNaN(kv[i][1]))) fibonacciNumber = 20
+      else fibonacciNumber = parseInt(kv[i][1])
       break
-    }
+    }            
   }
-  const sum = fibonacci(val)
-  const ret = new Array<string[]>(2)
-  ret[0] = ['result', sum.toString()]
-  ret[1] = ['time', (Date.now() - startTime).toString()]
-  return ret
+  const sum = fibonacci(fibonacciNumber)
+  const rv = new Array<string[]>(3)
+  rv[0] = ['fibonacci', findVal('fibonacci', kv)]
+  rv[1] = ['result', sum.toString()]
+  rv[2] = ['time', (Date.now() - startTime).toString()]
+  return rv
 }
 
 export function onUpdate (kv: string[][]): string[][] {
   return [['updatedByWasm', new Date(Date.now()).toISOString()]]
 }
 
-export function onDelete (kv: string[][]): i8 {
+export function onDelete (kv: string[][]): string[][] {
   // return negative to stop the action
   //aegis.log('onDelete called')
-  return -1
+  return [['status', 'ok']]
 }
 
-export function validate (kv: string[][]): void {
+export function validate (kv: string[][]): string[][] {
   //aegis.log('onUpdate called')
-  return
+  return [['status', 'ok']]
 }

@@ -12,7 +12,7 @@
  * - import command configuration
  * - import port configuration
  * - decode memory addresses
- * @param {WebAssembly.Instance} instance
+ * @param {WebAssembly.Exports} wasmExports
  * @returns adapter functions
  */
 exports.WasmInterop = function (wasmExports) {
@@ -29,6 +29,12 @@ exports.WasmInterop = function (wasmExports) {
     callExportedFn
   } = wasmExports
 
+  /**
+   *
+   * @param {string} fn function name
+   * @param {string[][]} kv key-value pairs
+   * @returns
+   */
   function lift (fn, kv) {
     return liftArray(
       pointer =>
@@ -44,7 +50,12 @@ exports.WasmInterop = function (wasmExports) {
       .reduce((a, b) => ({ ...a, ...b }))
   }
 
-  function lower (entries) {
+  /**
+   *
+   * @param {string[][]} kv key-value pairs in a 2 dimensional string array
+   * @returns
+   */
+  function lower (kv) {
     return (
       lowerArray(
         (pointer, value) => {
@@ -52,7 +63,7 @@ exports.WasmInterop = function (wasmExports) {
             pointer,
             lowerArray(
               (pointer, value) => {
-                store_ref(pointer, lowerString(value.toString()) || notnull())
+                store_ref(pointer, lowerString(value?.toString()) || notnull())
               },
               4,
               2,
@@ -62,7 +73,7 @@ exports.WasmInterop = function (wasmExports) {
         },
         5,
         2,
-        entries
+        kv
       ) || notnull()
     )
   }
@@ -72,21 +83,13 @@ exports.WasmInterop = function (wasmExports) {
    * and pass it as an argument to the exported wasm function. Do the reverse for
    * the response. Consequently, any wasm port or command function must accept a
    * multidemensional array of strings (numbers are converted to strings) and return
-   * a multidimensional array of strings.
-   *
-   * Before they can be called, they must be registered in the wasm modelspec,
-   * that is getPorts() and getCommands() must return appropria metadata.
-   *
-   * Notes:
-   *
-   * - for the moment, we only support strings and numbers in the input
-   * and output objects.
-   *
-   * - {@link args} can also be a number, in which case, so is the return value.
-   *
+   * a multidimensional array of strings. Before they can be called, they must be 
+   * registered in a modelspec, i.e. getPorts() and getCommands() must return 
+   * appropria metadata.
+
    * @param {string} fn exported wasm function name
-   * @param {object|number} [obj] object or number, see above
-   * @returns {object|number} object or number, see above
+   * @param {object|number} [obj] object, see above
+   * @returns {object|number} object
    */
   function callWasmFunction (fn, obj) {
     const entries = Object.entries(obj)
@@ -95,6 +98,11 @@ exports.WasmInterop = function (wasmExports) {
   }
 
   return Object.freeze({
+    /**
+     * For every command in {@link getCommands} create a
+     * an entry that will invoke one or more of the exported
+     * wasm functions.
+     */
     importWasmCommands () {
       const commandNames = getCommands()
       return Object.keys(commandNames)
@@ -115,11 +123,13 @@ exports.WasmInterop = function (wasmExports) {
     },
 
     /**
-     * For every command in {@link getCommands} create a
-     * `command` entry that will invoke the specified
-     *  exported function
+     * For every port in {@link getPorts} create a
+     * an entry that in the {@link ModelSpecification.ports}
+     * that will invoke one or more of the exported
+     * wasm function.
      */
     importWasmPorts () {
+      /** @type {import("../../domain").ports} */
       const ports = getPorts()
       return Object.keys(ports)
         .map(port => {
@@ -130,10 +140,10 @@ exports.WasmInterop = function (wasmExports) {
             producesEvent,
             callback,
             undo,
-            forward
+            inbound
           ] = ports[port].split(',')
           return {
-            /**@type {import("../../domain").ports[x]} */
+            /** @type {import("../../domain").ports[x]} */
             [port]: {
               service,
               type,
@@ -141,7 +151,8 @@ exports.WasmInterop = function (wasmExports) {
               producesEvent,
               callback: data => callWasmFunction(callback, data),
               undo: data => callWasmFunction(undo, data),
-              forward
+              inbound: (port, args, id) =>
+                callWasmFunction(inbound, { port, ...args, id })
             }
           }
         })
@@ -153,30 +164,3 @@ exports.WasmInterop = function (wasmExports) {
     }
   })
 }
-
-/**
- * Construct an object from the key-value pairs in the multidimensional array
- * @param {number} ptr - pointer to the address of the array of string arrays
- * @returns {Readonly<{object}>}
- */
-// function constructObject (ptr, unpin = true) {
-//   if (!ptr) {
-//     console.debug(constructObject.name, 'null pointer', ptr)
-//     return
-//   }
-
-//   try {
-//     const obj = liftArray(ptr)
-//       .map(inner => liftArray(inner))
-//       .map(tuple => ({ [liftString(tuple[0])]: liftString(tuple[1]) }))
-//       .reduce((obj1, obj2) => ({ ...obj1, ...obj2 }))
-
-//     const immutableClone = Object.freeze({ ...obj })
-//     !unpin || __unpin(ptr)
-//     console.debug(constructObject.name, ptr)
-//     return immutableClone
-//   } catch (e) {
-//     console.error(constructObject.name, 'error:', e.message)
-//     return {}
-//   }
-// }

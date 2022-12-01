@@ -214,16 +214,16 @@ export default function makePorts (ports, adapters, broker, datasource) {
           args
         })
 
-        if (timer.expired()) {
-          // This means we hit max retries
-          console.warn('max retries reached', port)
-          // fire event for circuit breaker / instrumentation
-          this.emit(portRetryFailed(this.getName(), port))
-          // Try to back out
-          return this.undo()
-        }
-
         try {
+          if (timer.expired()) {
+            // This means we hit max retries
+            console.warn('max retries reached', port)
+            // fire event for circuit breaker / instrumentation
+            this.emit(portRetryFailed(this.getName(), port))
+            
+            throw new Error(portRetryFailed(this.getName(), port))
+          }
+
           // call the inbound or oubound adapte
           const result = await adapters[port]({ model: this, port, args })
 

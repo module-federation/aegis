@@ -1,5 +1,7 @@
 'use strict'
 
+import ModelFactory from './model-factory'
+
 const debug = /true/i.test(process.env.DEBUG)
 
 function DefaultInboundAdapter (port) {

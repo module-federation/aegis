@@ -44,7 +44,12 @@ function commandAuthorized (spec, command, permission) {
  * @param {command:string} command - name of command
  * @param {string} permission - permission of caller
  */
-export default async function executeCommand (model, command, permission) {
+export default async function executeCommand (
+  model,
+  command,
+  args = {},
+  permission
+) {
   const spec = model.getSpec()
 
   console.debug('executing command:', command)
@@ -53,7 +58,9 @@ export default async function executeCommand (model, command, permission) {
     const cmd = spec.commands[command].command
 
     if (typeof cmd === 'function' || model[cmd]) {
-      const result = await async(commandType[typeof cmd](cmd, model))
+      const result = await async(
+        commandType[typeof cmd](cmd, { ...model, ...args })
+      )
 
       if (result.ok) {
         return { ...model, ...result.data }

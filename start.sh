@@ -7,10 +7,15 @@
 # nvm use --lts
 
 # export FORKRUN_CMD=$NVM_BIN/node
-# export FORKRUN_ARG=$PWD/repo.js
+# export FORKRUN_ARG=../aegis/repo.js
 
 # gcc forkrun.c -o forkrun
 # ./forkrun
+
+# export FORKRUN_ARG=../aegis-app/repo.js
+
+# ./forkrun
+
 yarn link
 cd ../aegis-host
 yarn link @module-federation/aegis
