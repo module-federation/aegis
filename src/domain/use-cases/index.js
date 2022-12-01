@@ -19,10 +19,12 @@ import makeHotReload from './hot-reload'
 import brokerEvents from './broker-events'
 import DistributedCache from '../distributed-cache'
 import makeServiceMesh from './create-service-mesh.js'
+import domainEvents from '../domain-events'
 import { PortEventRouter } from '../event-router'
 import { isMainThread } from 'worker_threads'
 import { hostConfig } from '../../config'
-import { requestContext } from '../util/async-context'
+import { AppError } from '../util/app-error'
+
 import * as context from '../util/async-context'
 
 export const serviceMeshPlugin =
@@ -121,7 +123,10 @@ function buildOptions (spec, options) {
     models: ModelFactory,
     broker: EventBrokerFactory.getInstance(),
     handlers: spec.eventHandlers,
-    context
+    context,
+    isMainThread,
+    domainEvents,
+    AppError
   }
 
   if (isMainThread) {
@@ -133,8 +138,15 @@ function buildOptions (spec, options) {
       // only main thread knows about thread pools (no nesting)
       threadpool: getThreadPool(spec, ds, options),
       // if caller provides id, use it as key for idempotency
-      async idempotent () {
-        return ds.find(context.requestContext.getStore().get('id'))
+      async enforceIdempotency () {
+        const duplicateRequest = await ds.find(
+          context.requestContext.getStore().get('id')
+        )
+        console.info(
+          'check idempotency-key: is this a duplicate?',
+          duplicateRequest ? 'yes' : 'no'
+        )
+        return duplicateRequest
       }
     }
   } else {

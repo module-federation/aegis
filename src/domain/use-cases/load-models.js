@@ -1,9 +1,9 @@
 'use strict'
 
-import Serializer from '../serializer'
-import { resumeWorkflow } from '../orchestrator'
 import { isMainThread } from 'worker_threads'
-import { modelsInDomain } from '.'
+import { Writable, Transform } from 'node:stream'
+import Serializer from '../serializer'
+import { Deserializer } from 'v8'
 
 /**
  * @param {function(import("..").Model)} loadModel
@@ -38,31 +38,22 @@ function handleError (e) {
   console.error(e)
 }
 
-/**
- *
- * @param {{
- *  repository:{import("../datasource").default}
- *  models:import('../model-factory').ModelFactory
- * }}
- */
-function handleRestart (repository, eventName) {
-  if (process.env.RESUME_WORKFLOW_DISABLED) return
+function startWorkflow (model) {
+  const history = model.getPortFlow()
+  const ports = model.getSpec().ports
 
-  const writable = {}
+  if (history?.length > 0 && !model.compensate) {
+    const lastPort = history.length - 1
+    const nextPort = ports[history[lastPort]].producesEvent
 
-  repository
-    .list({ writable })
-    .then(resumeWorkflow)
-    .catch(handleError)
-
-  repository
-    .listSync()
-    .then(list => list.forEach(model => model.emit(eventName, model)))
-    .catch(handleError)
+    if (nextPort && history[lastPort] !== 'workflowComplete') {
+      model.emit(nextPort, startWorkflow.name)
+    }
+  }
 }
 
 /**
- * Returns factory function to unmarshal deserialized models.
+ * deserialize and unmarshall from stream.
  * @typedef {import('..').Model}
  * @param {{
  *  models:import('../model-factory').ModelFactory,
@@ -75,19 +66,39 @@ function handleRestart (repository, eventName) {
 export default function ({ modelName, repository, broker, models }) {
   // main thread only
   if (!isMainThread) {
-    /**
-     * Loads persited data from datd cc x
-     */
-    return async function loadModels () {
-      // const domainModels = modelsInDomain(modelName)
-      // for await (const model of domainModels) {
-      //   const spec = models.getModelSpec(model)
-      //   setTimeout(handleRestart, 30000, repository, eventName)
-      //   return repository.load({
-      //     hydrate: hydrateModels(models.loadModel, broker, repository),
-      //     serializer: Serializer.addSerializer(spec.serializers),
-      //   })
-      // }
-    }
+    console.log('loading cache ', modelName)
+    const serializers = models.getModelSpec(modelName).serializers
+
+    const deserializers = serializers
+      ? serializers.filter(s => !s.disabled && s.on === 'deserialize')
+      : null
+
+    if (deserializers)
+      deserializers.forEach(des => Serializer.addSerializer(des))
+
+    const rehydrate = new Transform({
+      transform (chunk, _endcoding, next) {
+        const model = models.loadModel(broker, repository, chunk, modelName)
+        repository.saveSync(model.getId(), model)
+        this.push(model)
+        next()
+      }
+    })
+
+    const resumeWorkflow = new Writable({
+      objectMode: true,
+
+      write (chunk, _encoding, next) {
+        startWorkflow(chunk)
+        next()
+      },
+
+      end (chunk, _encoding, done) {
+        startWorkflow(chunk)
+        done()
+      }
+    })
+
+    repository.list({ transform: rehydrate, writable: resumeWorkflow })
   }
 }

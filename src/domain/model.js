@@ -79,20 +79,24 @@ const Model = (() => {
   const MODELNAME = Symbol('modelName')
   const CREATETIME = Symbol('createTime')
   const UPDATETIME = Symbol('updateTime')
+  const ENDPOINT = Symbol('endpoint')
   const ONUPDATE = Symbol('onUpdate')
   const ONDELETE = Symbol('onDelete')
   const VALIDATE = Symbol('validate')
   const PORTFLOW = Symbol('portFlow')
+  const DOMAIN = Symbol('domain')
 
   const keyMap = {
     id: ID,
     modelName: MODELNAME,
     createTime: CREATETIME,
     updateTime: UPDATETIME,
+    endpoint: ENDPOINT,
     onUpdate: ONUPDATE,
     onDelete: ONDELETE,
     validate: VALIDATE,
-    portFlow: PORTFLOW
+    portFlow: PORTFLOW,
+    domain: DOMAIN
   }
 
   /**
@@ -108,15 +112,6 @@ const Model = (() => {
   const defaultOnUpdate = (model, changes) => ({ ...model, ...changes })
   const defaultOnDelete = model => withTimestamp('deleteTime')(model)
   const defaultValidate = (model, changes) => defaultOnUpdate(model, changes)
-
-  // caller can skip vadlidation, which is on by default
-  const validateUpdates = (model, changes, option = true) => {
-    if (option) return model[VALIDATE](changes, eventMask.update)
-    return {
-      ...model,
-      ...changes
-    }
-  }
 
   function queueNotice (model) {
     console.debug(queueNotice.name, 'disabled')
@@ -155,7 +150,9 @@ const Model = (() => {
         onDelete = defaultOnDelete,
         validate = defaultValidate,
         ports,
+        domain,
         broker,
+        endpoint,
         modelName,
         datasource,
         mixins = [],
@@ -180,6 +177,12 @@ const Model = (() => {
       // model class name
       [MODELNAME]: modelName,
 
+      // URI: plural of modelName
+      [ENDPOINT]: endpoint,
+
+      // model belongs to
+      [DOMAIN]: domain || modelName,
+
       // this fn injected into dependencies
       [ID]: dependencies.getUniqueId(),
 
@@ -188,7 +191,7 @@ const Model = (() => {
         return onUpdate(this, changes)
       },
 
-      // Called before edelte is committed
+      // Called before delete is committed
       [ONDELETE] () {
         return onDelete(this)
       },
@@ -275,36 +278,44 @@ const Model = (() => {
        * @param {boolean} validate - run validation by default
        * @returns {Promise<Model>}
        */
-      async update (changes, validate = true) {
-        const validated = validateUpdates(this, changes, validate)
-        const timestamp = { ...validated, [UPDATETIME]: Date.now() }
+      async update (changes, runValidation = true) {
+        // merge changes and optionally validate
+        const mergedModel = runValidation
+          ? this[VALIDATE](changes, eventMask.update)
+          : { ...this, ...changes }
 
-        await datasource.save(this[ID], timestamp)
-        const rehydrated = rehydrate(timestamp, model)
-        queueNotice(rehydrated)
+        const timestampedModel = { ...mergedModel, [UPDATETIME]: Date.now() }
 
-        return rehydrated
+        await datasource.save(this[ID], timestampedModel)
+
+        return timestampedModel
       },
 
       /**
        * Synchronous version of {@link Model.update}.
        * Only updates cache. External storage is
-       * not updated
+       * not updated. Use to efficiently communicate
+       * state that does not require persistence, e.g.
+       * properties that are only needed at runtime.
        *
        * @param {*} changes
        * @param {boolean} validate
        * @returns {Model}
        */
-      updateSync (changes, validate = true) {
-        // merge changes with lastest copy and optionally validate
-        const validated = validateUpdates(this, changes, validate)
-        // update timestamp
-        const timestamp = { ...validated, [UPDATETIME]: Date.now() }
+      updateSync (changes, runValidation = true) {
+        // merge changes and optionally validate
+        const mergedModel = runValidation
+          ? this[VALIDATE](changes, eventMask.update)
+          : { ...this, ...changes }
 
-        datasource.saveSync(this[ID], timestamp)
+        // update timestamp
+        const timestampedModel = { ...mergedModel, [UPDATETIME]: Date.now() }
+
+        // only update the cache
+        datasource.saveSync(this[ID], timestampedModel)
 
         // restore prototype if used
-        return rehydrate(timestamp, model)
+        return timestampedModel
       },
 
       /**
@@ -332,6 +343,7 @@ const Model = (() => {
       /**
        * Search existing model instances (synchronously).
        * Only searches the cache. Does not search persistent storage.
+       * Useful for getting state that does not require persistence.
        *
        * @param {{key1, keyN}} filter - list of required matching key-values
        * @returns {Model[]}
@@ -340,36 +352,51 @@ const Model = (() => {
         return datasource.listSync(filter)
       },
 
+      /** @typedef {import('./datasource').default} DataSource */
+
       /**
-       * Search existing model instances (asynchronously).
-       * Searches cache first, then persistent storage if not found.
+       * Retrieve existing model instances (asynchronously).
+       * See {@link DataSource.list}.
        *
-       * @param {modelName:string} modelName related model to query
        * @param {listOptions} options
-       * @returns {Model[]}
+       * @returns {Promise<Model[]>}
        */
       async list (options) {
         return datasource.list(options)
       },
 
+      /**
+       * Availability depends on {@link DataSource} adapter.
+       * E.g. the Aegis MongoDB adapter enables streaming upserts.
+       * @returns {Writable}
+       */
       createWriteStream () {
         return datasource.createWriteStream()
       },
 
       /**
-       * Original request passed in by caller
-       * @returns arguments passed by caller
+       * Payload of the request that created this model instance.
+       * @returns request payload
        */
       getArgs () {
         return modelInfo.args ? modelInfo.args : []
       },
 
+      /** @typedef {import('.').ModelSpecification} ModelSpec */
+
+      /**
+       * The object returned contains the dependencies this
+       * model requires. Dependencies are injected through
+       * the {@link ModelSpec}
+       *
+       * @returns {{any}}
+       */
       getDependencies () {
         return dependencies
       },
 
       /**
-       * Identify events types.
+       * Use to identify event types.
        * @returns {eventMask}
        */
       getEventMask () {
@@ -385,12 +412,18 @@ const Model = (() => {
         return modelInfo.spec
       },
 
+      /**
+       * Was this object created from a remote source
+       * in the distributed cache?
+       *
+       * @returns {boolean}
+       */
       isCached () {
         return modelInfo.spec.isCached
       },
 
       /**
-       * Returns the `ports` for this model.
+       * Returns the `ports` exposed by this domain model.
        *
        * @returns {import(".").ports}
        */
@@ -435,6 +468,11 @@ const Model = (() => {
         return keyMap[key]
       },
 
+      /**
+       * Is this the same model instance as `model`?
+       * @param {*} model
+       * @returns {boolean}
+       */
       equals (model) {
         return (
           model &&
@@ -448,32 +486,46 @@ const Model = (() => {
       },
 
       /**
-       * Returns service of related domain provided
-       * this domain is related to it via modelspec.
-       * If not, we won't be able to access the
-       * domain's memory. Every domain model employs
-       * this capability-based security measure.
-       * @returns
+       * Returns service of model related via ModelSpec or
+       * belonging to the same domain.
+       *
+       * Note: relation or domain membership must be defined
+       * in ModelSpec; otherwise, we won't be able to access
+       * the model's memory. Every domain model employs this
+       * capability-based security measure.
+       *
+       * @returns {Model}
        */
-      fetchRelatedModel (modelName) {
-        const rel = Object.values(relations).find(
-          v => v.modelName.toUpperCase() === modelName.toUpperCase()
-        )
-
-        if (!rel) throw new Error('no relation found')
+      fetchRelatedDomainService (modelName) {
+        const upperName = modelName
 
         if (
-          !datasource.factory
-            .listDataSources()
-            .includes(modelName.toUpperCase())
+          require('.').default.getModelSpec(upperName).domain ===
+            this[DOMAIN] ||
+          Object.values(relations).find(
+            v => v.modelName.toUpperCase() === upperName
+          )
+        ) {
+          throw new Error('no relation or domain membership found')
+        }
+
+        const ds = datasource.factory.getDataSource(upperName)
+
+        if (!ds) throw new Error('no datasource found')
+
+        return require('.').default.getService(upperName, ds, broker)
+      },
+
+      /**
+       * Returns this model's {@link DataSource}.
+       * @returns {DataSource}
+       */
+      getDataSource () {
+        // prevents access to ds of other models
+        return datasource.factory.getRestrictedDataSource(
+          this[MODELNAME],
+          this[DOMAIN]
         )
-          throw new Error('no datasource found')
-
-        const ds = datasource.factory.getDataSource(modelName.toUpperCase())
-
-        if (!ds) throw new Error('no datasoure found')
-
-        return require('.').default.getService(modelName, ds, broker)
       }
     }
   }
@@ -531,17 +583,20 @@ const Model = (() => {
   )
 
   /**
-   * Return an object with all the methods for
-   * the specified model, but none of the properties
-   * from its factory function.
-   *
+   * Return an object with all the methods/ports of
+   * the specified model, but none of its properties;
+   * namely those that come from its factory function.
    * This object functions as the model's service
-   * implementation. Methods that rely on factory-
-   * generated instance properties will not work;
-   * so only static methods, or instance methods
-   * created by the framework, are useable.
+   * implementation.
    *
-   * @param {import('.').ModelSpecification} spec
+   * Methods that rely on factory-generated
+   * properties will not work; only static- and
+   * framework-generated methods are available.
+   *
+   * Useful for invoking port methods that do not
+   * rely on model state.
+   *
+   * @param {import('.').ModelSpecification} spec model spec
    * @returns {Model}
    */
   const makeService = spec => make({ spec })
@@ -558,7 +613,7 @@ const Model = (() => {
     create: modelInfo => makeModel(modelInfo),
 
     /**
-     * Load a saved model
+     * Rehydrate a deserialized model instance.
      * @param {Model} savedModel deserialized model
      * @param {import('.').ModelSpecification}
      */
@@ -577,7 +632,7 @@ const Model = (() => {
     },
 
     /**
-     *
+     * Run the model's validation functions.
      * @param {Model} model
      * @param {*} changes
      */

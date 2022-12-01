@@ -9,7 +9,7 @@ import CircuitBreaker from './circuit-breaker'
 import domainEvents from './domain-events'
 
 const { portRetryFailed, portRetryWorked, portTimeout } = domainEvents
-const TIMEOUTSECONDS = 10
+const TIMEOUT_MILLISEC = 6000
 const MAXRETRY = 5
 
 function getTimerArgs (args = null) {
@@ -54,27 +54,31 @@ function setPortTimeout (options) {
   }
 
   const handler = portConf.timeoutCallback
-  const timeout = (portConf.timeout || TIMEOUTSECONDS) * 1000
+  const timeout = portConf.timeout || TIMEOUT_MILLISEC
   const maxRetry = portConf.maxRetry || MAXRETRY
   const timerArgs = getRetries(args)
   const expired = () => timerArgs.count > maxRetry
 
   // Retry the port on timeout
-  const timerId = setTimeout(async () => {
+  const retry = async () => {
     // Notify interested parties
     model.emit(portTimeout(model.getName(), portName), timerArgs)
     // Invoke optional custom handler
     if (handler) handler(options)
     // Count retries by passing `timerArgs` to ourselves on the stack
     await async(model[portName](...timerArgs.nextArg))
-  }, timeout)
+  }
+
+  const timerId = expired() ? null : setTimeout(retry, timeout)
 
   return {
     expired,
     stopTimer: () => {
       clearTimeout(timerId)
       if (timerArgs.count > 1) {
-        model.emit(portRetryWorked(model.getName(), portName), options)
+        const msg = portRetryWorked(model.getName(), portName)
+        console.log(msg)
+        model.emit(msg, options)
       }
     }
   }
@@ -118,26 +122,23 @@ function addPortListener (portName, portConf, broker, datasource) {
   if (portConf.consumesEvent) {
     const callback = getPortCallback(portConf.callback)
 
-    // listen for triggering event
-    broker.on(
-      portConf.consumesEvent,
-      async function (eventInfo) {
-        const model = hydrate(broker, datasource, eventInfo)
+    async function listen (eventInfo) {
+      const model = hydrate(broker, datasource, eventInfo)
 
-        if (isUndoRunning(model)) {
-          console.log('undo running, canceling port operation')
-          return
-        }
+      if (isUndoRunning(model)) {
+        console.log('undo running, canceling port operation')
+        return
+      }
 
-        console.log(
-          `event ${eventInfo.eventName} fired: calling port ${portName}`,
-          eventInfo
-        )
-        // invoke this port
-        await async(model[portName](callback))
-      },
-      { singleton: true }
-    )
+      console.log(
+        `event ${eventInfo.eventName} fired: calling port ${portName}`,
+        eventInfo
+      )
+      // invoke this port
+      await async(model[portName](callback))
+    }
+
+    broker.on(portConf.consumesEvent, listen)
 
     return true
   }

@@ -17,8 +17,8 @@ import * as adapters from '../adapters/datasources'
 import { dsClasses } from '../adapters/datasources'
 import configRoot from '../config'
 import DataSource from './datasource'
-import { withSharedMemory } from './shared-memory'
 import compose from './util/compose'
+import { withSharedMemory } from './shared-memory'
 
 const debug = /\*|datasource/i.test(process.env.DEBUG)
 const broker = EventBrokerFactory.getInstance()
@@ -45,10 +45,10 @@ const DsCoreExtensions = superclass =>
       return this[FACTORY]
     }
 
-    serialize (data, options) {
-      if (options?.serializers) return options.serializers['serialize'](data)
-      return JSON.stringify(data)
-    }
+    // serialize (data, options) {
+    //   if (options?.serializers) return options.serializers['serialize'](data)
+    //   return JSON.stringify(data)
+    // }
 
     /**
      * Override the super class, adding cache and serialization functions.
@@ -57,9 +57,13 @@ const DsCoreExtensions = superclass =>
      * @param {Model} data
      */
     async save (id, data) {
-      this.saveSync(id, data)
-      const clone = JSON.parse(this.serialize(data))
-      super.save(id, clone)
+      try {
+        this.saveSync(id, data)
+        await super.save(id, JSON.parse(JSON.stringify(data)))
+      } catch (error) {
+        console.error({ fn: this.save.name, error })
+        throw error
+      }
     }
 
     /**
@@ -70,17 +74,22 @@ const DsCoreExtensions = superclass =>
      * @returns {Promise<Model>|undefined}
      */
     async find (id) {
-      const cached = this.findSync(id)
-      if (cached) return cached
+      try {
+        const cached = this.findSync(id)
+        if (cached) return cached
 
-      const model = await super.find(id)
+        const model = await super.find(id)
 
-      if (model) {
-        // save to cache
-        this.saveSync(id, model)
-        return isMainThread
-          ? model
-          : ModelFactory.loadModel(broker, this, model, this.name)
+        if (model) {
+          // save to cache
+          this.saveSync(id, model)
+          return isMainThread
+            ? model
+            : ModelFactory.loadModel(broker, this, model, this.name)
+        }
+      } catch (error) {
+        console.error({ fn: this.find.name, error })
+        throw error
       }
     }
 
@@ -103,19 +112,24 @@ const DsCoreExtensions = superclass =>
      * @returns
      */
     async list (options) {
-      if (options?.writable)
-        return isMainThread
-          ? super.list(options)
-          : super.list({ ...options, transform: this.transform() })
+      try {
+        if (options?.writable)
+          return isMainThread
+            ? super.list(options)
+            : super.list({ ...options, transform: this.transform() })
 
-      const arr = await super.list(options)
+        const arr = await super.list(options)
 
-      if (Array.isArray(arr))
-        return isMainThread
-          ? arr
-          : arr.map(model =>
-              ModelFactory.loadModel(broker, this, model, this.name)
-            )
+        if (Array.isArray(arr))
+          return isMainThread
+            ? arr
+            : arr.map(model =>
+                ModelFactory.loadModel(broker, this, model, this.name)
+              )
+      } catch (error) {
+        console.error({ fn: this.list.name })
+        throw error
+      }
     }
 
     /**
@@ -128,10 +142,11 @@ const DsCoreExtensions = superclass =>
         await super.delete(id)
       } catch (error) {
         console.error(error)
-        return
+        throw error
+      } finally {
+        // only if super succeeds
+        this.deleteSync(id)
       }
-      // only if super succeeds
-      this.deleteSync(id)
     }
   }
 
@@ -252,11 +267,8 @@ const DataSourceFactory = (() => {
    */
   function getDataSource (name, namespace = null, options = {}) {
     if (!dataSources) dataSources = new Map()
-
     if (!namespace) return dataSources.get(name)
-
     if (dataSources.has(name)) return dataSources.get(name)
-
     return createDataSource(name, namespace, options)
   }
 
@@ -270,11 +282,8 @@ const DataSourceFactory = (() => {
    */
   function getSharedDataSource (name, namespace = null, options = {}) {
     if (!dataSources) dataSources = new Map()
-
     if (!namespace) return dataSources.get(name)
-
     if (dataSources.has(name)) return dataSources.get(name)
-
     return withSharedMemory(createDataSource, this, name, namespace, options)
   }
 
