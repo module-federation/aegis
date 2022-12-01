@@ -134,7 +134,7 @@ export class DataSourceMongoDb extends DataSource {
     try {
       await (await this.collection()).replaceOne({ _id: id }, { ...data, _id: id }, { upsert: true })
     } catch (error) {
-      // default is true
+      // default is
       if (!this.runOffline) {
         throw new Error(`DB Transaction failed: ${error.message}`)
       }
@@ -173,7 +173,9 @@ export class DataSourceMongoDb extends DataSource {
             const result = await col.bulkWrite(operations)
             console.log(result.getRawResponse())
             objects = []
-          } catch (error) {}
+          } catch (error) {
+            console.error({ fn: upsert.name, error })
+          }
         }
       }
 
@@ -211,11 +213,7 @@ export class DataSourceMongoDb extends DataSource {
    */
 
   async mongoFind ({ filter, sort, limit, aggregate, skip } = {}) {
-    console.log({
-      ctor: this.constructor.name,
-      fn: this.mongoFind.name,
-      filter
-    })
+    console.log({ fn: this.mongoFind.name, filter })
     let cursor = (await this.collection()).find(filter)
     if (sort) cursor = cursor.sort(sort)
     if (aggregate) cursor = cursor.aggregate(aggregate)
@@ -249,14 +247,14 @@ export class DataSourceMongoDb extends DataSource {
         },
 
         // each chunk is a record
-        transform (chunk, _encoding, callback) {
+        transform (chunk, _encoding, next) {
           // comma-separate
           if (first) first = false
           else this.push(',')
 
           // serialize record
           this.push(JSON.stringify(chunk))
-          callback()
+          next()
         },
 
         // end of array
@@ -351,7 +349,7 @@ export class DataSourceMongoDb extends DataSource {
    * @returns
    */
   async countDb () {
-    return await (await this.collection()).countDocuments()
+    return (await this.collection()).countDocuments()
   }
 
   /**

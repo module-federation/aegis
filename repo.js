@@ -2,7 +2,7 @@
 
 const express = require('express')
 const app = express()
-const port = 8000
+const port = 8880
 
 app.use(express.json())
 app.use(express.static('dist'))

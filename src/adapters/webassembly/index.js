@@ -3,9 +3,10 @@ import {
   wrapWasmModelSpec,
   wrapWasmService
 } from './wasm-decorators'
-export * from './wasm-import'
+//export * from './wasm-import-old'
 export * from './wasm-interop'
 export * from './repo-client'
+export * from './wasm-import'
 
 /** @typedef  {'adapter'|'service'|'model'} adapterType */
 
@@ -23,15 +24,15 @@ export const adapterTypes = {
 
 export const wasmAdapters = {
   /**
-   * @param {WebAssembly.Instance} wasm
+   * @param {WebAssembly.Exports} wasm
    */
   model: wasm => wrapWasmModelSpec(wasm),
   /**
-   * @param {WebAssembly.Instance} wasm
+   * @param {WebAssembly.Exports} wasm
    */
   adapter: wasm => wrapWasmAdapter(wasm),
   /**
-   * @param {WebAssembly.Instance} wasm
+   * @param {WebAssembly.Exports} wasm
    */
   service: wasm => wrapWasmService(wasm)
 }

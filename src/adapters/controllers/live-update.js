@@ -16,7 +16,7 @@ export default function makeLiveUpdate (hotReload) {
       return {
         headers: {
           'Content-Type': 'application/json',
-          'Last-Modified': new Date().toUTCString()
+          'Last-Modified': new Date().toISOString()
         },
         statusCode: 200,
         body: { fn: liveUpdate.name, result }
