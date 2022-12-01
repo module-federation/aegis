@@ -13,6 +13,9 @@ export default function anyInvokePortFactory (invokePort) {
       const result = await invokePort({
         port: httpRequest.params.port,
         args: httpRequest.body,
+        method: httpRequest.method,
+        headers: httpRequest.headers,
+        path: httpRequest.path,
         id: httpRequest.params.id || null
       })
 

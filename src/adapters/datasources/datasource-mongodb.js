@@ -6,12 +6,20 @@ const HIGHWATERMARK = 50
 
 const mongodb = require('mongodb')
 const { MongoClient } = mongodb
-const { Transform, Writable } = require('stream')
-const qpm = require('query-params-mongo')
-const processQuery = qpm()
+const { DataSourceMemory } = require("./datasource-memory")
+const { Transform, Writable } = require("stream")
+const qpm = require("query-params-mongo")
+const processQuery = qpm({
+  autoDetect: [
+    { valuePattern: /^null$/i, dataType: 'nullstring' }
+  ],
+  converters: { 
+    nullstring: val=>{ return { $type: 10 } }  // reference BSON datatypes https://www.mongodb.com/docs/manual/reference/bson-types/
+  }
+})
 
-const url = process.env.MONGODB_URL || 'mongodb://localhost:27017'
-const configRoot = require('../../config').hostConfig
+const url = process.env.MONGODB_URL || "mongodb://localhost:27017"
+const configRoot = require("../../config").hostConfig
 const dsOptions = configRoot.adapters.datasources.DataSourceMongoDb.options || {
   runOffline: true,
   numConns: 2
@@ -238,7 +246,7 @@ export class DataSourceMongoDb extends DataSource {
 
   processOptions (param) {
     const { options = {}, query = {} } = param
-    return { ...options, ...processQuery(query) }
+    return { ...processQuery(query), ...options } // options must overwite the query not otherwise
   }
 
   /**
