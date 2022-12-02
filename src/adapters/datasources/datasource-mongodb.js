@@ -6,7 +6,6 @@ const HIGHWATERMARK = 50
 
 const mongodb = require('mongodb')
 const { MongoClient } = mongodb
-const { DataSourceMemory } = require("./datasource-memory")
 const { Transform, Writable } = require("stream")
 const qpm = require("query-params-mongo")
 const processQuery = qpm({
@@ -197,14 +196,31 @@ export class DataSourceMongoDb extends DataSource {
    * @returns
    */
 
-  async mongoFind ({ filter, sort, limit, aggregate, skip } = {}) {
+  async mongoFind ({ filter, sort, limit, skip } = {}) {
     console.log({ fn: this.mongoFind.name, filter })
     let cursor = (await this.collection()).find(filter)
+
     if (sort) cursor = cursor.sort(sort)
-    if (aggregate) cursor = cursor.aggregate(aggregate)
     if (skip) cursor = cursor.skip(skip)
     if (limit) cursor = cursor.limit(limit)
+
     return cursor
+  }
+
+
+  
+  /**
+   *
+   * @param {Object} options Options for function conditionals...
+   * @param {Object} options.filter Supposed to be a valid Mongo Filter
+   *
+   * @returns
+   */
+  
+  async mongoCount({
+    filter = {}
+  } = {}) {
+    return filter == {} ? await this.countDb() : (await this.collection()).count(filter);
   }
 
   /**
@@ -220,34 +236,58 @@ export class DataSourceMongoDb extends DataSource {
    */
   streamList ({ writable, serialize, transform, options }) {
     try {
-      let first = true
+      let pipeArgs = [];
 
       const serializer = new Transform({
         writableObjectMode: true,
 
         // start of array
-        construct (callback) {
-          this.push('[')
-          callback()
+        construct(callback) {
+          this.first = true;
+          this.push('[');
+          callback();
         },
 
         // each chunk is a record
-        transform (chunk, _encoding, next) {
+        transform(chunk, _encoding, next) {
           // comma-separate
-          if (first) first = false
-          else this.push(',')
-
+          if (this.first) this.first = false; 
+          else this.push(','); 
+          
           // serialize record
-          this.push(JSON.stringify(chunk))
-          next()
+          this.push(JSON.stringify(chunk));
+          next();
         },
 
         // end of array
-        flush (callback) {
-          this.push(']')
-          callback()
+        flush(callback) {
+          this.push(']');
+          callback();
         }
       })
+
+      const paginate = new Transform({
+        writableObjectMode: true,
+
+        // start of array
+        construct(callback) {
+          this.push('{ ');
+          callback();
+        },
+
+        // first chunk is the pagination data, rest is result
+        transform(chunk, _encoding, next) {
+          this.push(chunk);
+          next();
+        },
+
+        // end of array
+        flush(callback) {
+          this.push('}');
+          callback();
+        }
+
+      });
 
       return new Promise(async (resolve, reject) => {
         const readable = (await this.mongoFind(options)).stream()
@@ -256,20 +296,28 @@ export class DataSourceMongoDb extends DataSource {
         readable.on('end', resolve)
 
         // optionally transform db stream then pipe to output
-        if (transform && serialize)
-          readable
-            .pipe(transform)
-            .pipe(serializer)
-            .pipe(writable)
-        else if (transform) readable.pipe(transform).pipe(writable)
-        else if (serialize) readable.pipe(serializer).pipe(writable)
-        else readable.pipe(writable)
+        pipeArgs.push(readable);
+        if (transform) pipeArgs.push(transform)
+        if (serialize) pipeArgs.push(serializer)
+        if (options.page){
+          const count = ~~(await this.mongoCount(options.filter));
+          pipeArgs.push(paginate)
+          paginate._transform(`"count":${count}, "total":${Math.ceil(count/options.limit)}, ${JSON.stringify(options).slice(1,-1)}, "data":`, 'utf8', ()=>console.log('paginated query', options));
+        }
+        pipeArgs.push(writable)
+        
+        // perform pipe operations
+        pipeArgs.reduce((prevVal, currVal)=>prevVal.pipe(currVal))
       })
-    } catch (error) {}
+    } catch (error) {
+      console.error({
+        fn: this.streamList.name,
+        error
+      });
+    }
   }
 
-  processOptions (param) {
-    const { options = {}, query = {} } = param
+  processOptions ({ options = {}, query = {} }) {
     return { ...processQuery(query), ...options } // options must overwite the query not otherwise
   }
 
@@ -303,19 +351,31 @@ export class DataSourceMongoDb extends DataSource {
       serialize = false,
       query = {}
     } = param
-
+    let result;
     try {
       if (query.__cached) return super.listSync(query)
       if (query.__count) return this.count()
 
       const options = this.processOptions(param)
+      if (0 < ~~query.__page){ 
+        options.page = ~~query.__page
+        options.skip = ((options.page-1) * options.limit) || 0
+      }
       console.log({ options })
-
-      if (writable) {
-        return this.streamList({ writable, serialize, transform, options })
+      
+      if(writable && !query.__json) this.streamList({ writable, serialize, transform, options })
+      else{
+        const data = (await this.mongoFind(options)).toArray()
+        const count = data.length
+        result = {
+          ...options,
+          data,
+          count,
+          total: Math.ceil(count/options.limit)
+        }
       }
 
-      return (await this.mongoFind(options)).toArray()
+      return options.page ? result : result.data;
     } catch (error) {
       console.error({ fn: this.list.name, error })
     }
