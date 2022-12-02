@@ -67,7 +67,7 @@ export default function makeInvokePort ({
           throw new Error('the port or record ID is invalid')
         }
 
-        const specPortMethods = specPorts[port]?.methods.join('|').toLowerCase();
+        const specPortMethods = specPorts[port]?.methods?.join('|')?.toLowerCase();
         if (specPortMethods && !(specPortMethods.includes(method.toLowerCase()))) {
           throw new Error('invalid method for given port');
         }
