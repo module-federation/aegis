@@ -46,8 +46,8 @@ exports.wrapWasmModelSpec = function (wasmExports) {
     ports: {
       ...interop.importWasmPorts()
     },
-    getInboundPortFunctions () {
-      return Object.values(this.ports).flatMap(p => p.inboundFn)
+    portFunctions: {
+      ...interop.importWasmPortFunctions()
     }
   }
   console.debug(wrappedSpec)

@@ -36,10 +36,14 @@ function roughSizeOfObject (...objects) {
   return bytes
 }
 
-/**
- * Data source base class
- */
 export default class DataSource {
+  /**
+   * Data source base class
+   * @param {Map} map
+   * @param {string} name
+   * @param {string} namespace
+   * @param {*} options
+   */
   constructor (map, name, namespace, options = {}) {
     this.dsMap = map
     this.name = name
@@ -133,8 +137,7 @@ export default class DataSource {
    * @returns {Promise<any[]>}
    */
   async list (options) {
-    const count = options.filter.__count || options.query.__count
-    if (count) return this.handleCount(count)
+    throw new Error('unimplemented abstract method')
   }
 
   /**
@@ -143,6 +146,7 @@ export default class DataSource {
    * @returns
    */
   listSync (query) {
+    if (query?.__count) return this.handleCount(query.__count)
     const list = this.generateList()
     return query ? this.filterList(query, list) : list
   }
@@ -196,6 +200,7 @@ export default class DataSource {
       }
 
       const operand = query.__operand ? query.__operand.toLowerCase() : 'and'
+
       if (typeof operands[operand] !== 'function')
         throw new Error('invalid query')
 

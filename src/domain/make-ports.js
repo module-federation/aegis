@@ -59,17 +59,26 @@ function setPortTimeout (options) {
   const timerArgs = getRetries(args)
   const expired = () => timerArgs.count > maxRetry
 
+  if (expired()) {
+    // This means we hit max retries
+    console.warn('max retries reached', portName)
+    model.emit(portRetryFailed(model.getName(), portName), options)
+    throw new Error(portRetryFailed(model.getName(), portName))
+  }
+
   // Retry the port on timeout
   const retry = async () => {
+    // undo running
+    if (model.compensate) return
     // Notify interested parties
     model.emit(portTimeout(model.getName(), portName), timerArgs)
-    // Invoke optional custom handler
+    // Invoke optional custom handlerdw
     if (handler) handler(options)
     // Count retries by passing `timerArgs` to ourselves on the stack
     await async(model[portName](...timerArgs.nextArg))
   }
 
-  const timerId = expired() ? null : setTimeout(retry, timeout)
+  const timerId = setTimeout(retry, timeout)
 
   return {
     expired,
@@ -88,18 +97,8 @@ function setPortTimeout (options) {
  * @param {function({model:Model,port:string},{*})} cb
  */
 function getPortCallback (cb) {
-  if (typeof cb === 'function') {
-    return cb
-  }
+  if (typeof cb === 'function') return cb
   return portHandler
-}
-
-/**
- * Are we compensating for a canceled transaction?
- * @param {import(".").Model} model
- */
-function isUndoRunning (model) {
-  return model.findSync(model.getId()).compensate
 }
 
 function hydrate (broker, datasource, eventInfo) {
@@ -125,11 +124,6 @@ function addPortListener (portName, portConf, broker, datasource) {
     async function listen (eventInfo) {
       const model = hydrate(broker, datasource, eventInfo)
 
-      if (isUndoRunning(model)) {
-        console.log('undo running, canceling port operation')
-        return
-      }
-
       console.log(
         `event ${eventInfo.eventName} fired: calling port ${portName}`,
         eventInfo
@@ -137,9 +131,7 @@ function addPortListener (portName, portConf, broker, datasource) {
       // invoke this port
       await async(model[portName](callback))
     }
-
-    broker.on(portConf.consumesEvent, listen)
-
+    broker.on(portConf.consumesEvent, listen, { singleton: true })
     return true
   }
   return false
@@ -205,24 +197,16 @@ export default function makePorts (ports, adapters, broker, datasource) {
         if (disabled) {
           return this
         }
-
-        // Handle port timeouts
-        const timer = setPortTimeout({
-          portName,
-          portConf,
-          model: this,
-          args
-        })
+        let timer
 
         try {
-          if (timer.expired()) {
-            // This means we hit max retries
-            console.warn('max retries reached', port)
-            // fire event for circuit breaker / instrumentation
-            this.emit(portRetryFailed(this.getName(), port))
-            
-            throw new Error(portRetryFailed(this.getName(), port))
-          }
+          // Handle port timeouts
+          timer = setPortTimeout({
+            portName,
+            portConf,
+            model: this,
+            args
+          })
 
           // call the inbound or oubound adapte
           const result = await adapters[port]({ model: this, port, args })
@@ -247,7 +231,7 @@ export default function makePorts (ports, adapters, broker, datasource) {
           console.error({ func: port, args, error })
 
           // Timer still running?
-          if (timer.expired()) {
+          if (timer?.expired()) {
             // Try to back out.
             return this.undo()
           }

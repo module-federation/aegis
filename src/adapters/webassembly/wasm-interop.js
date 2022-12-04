@@ -26,7 +26,7 @@ exports.WasmInterop = function (wasmExports) {
     store_ref,
     notnull,
     memory,
-    callExportedFn
+    _exports
   } = wasmExports
 
   /**
@@ -44,7 +44,7 @@ exports.WasmInterop = function (wasmExports) {
           new Uint32Array(memory.buffer)[pointer >>> 2]
         ),
       2,
-      callExportedFn(fn, kv) >>> 0
+      _exports[fn](kv) >>> 0
     )
       .map(([k, v]) => ({ [k]: v }))
       .reduce((a, b) => ({ ...a, ...b }))
@@ -78,6 +78,12 @@ exports.WasmInterop = function (wasmExports) {
     )
   }
 
+  function cleanse (obj) {
+    return Object.entries(obj)
+      .filter(([k, v]) => ['string', 'number', 'boolean'].includes(typeof v))
+      .map(([k, v]) => [k, v.toString()])
+  }
+
   /**
    * Parse the input object into a multidimensional array of key-value pairs
    * and pass it as an argument to the exported wasm function. Do the reverse for
@@ -92,8 +98,8 @@ exports.WasmInterop = function (wasmExports) {
    * @returns {object|number} object
    */
   function callWasmFunction (fn, obj) {
-    const entries = Object.entries(obj)
-    const kv = lower(entries)
+    const props = cleanse(obj)
+    const kv = lower(props)
     return lift(fn, kv)
   }
 
@@ -151,12 +157,20 @@ exports.WasmInterop = function (wasmExports) {
               producesEvent,
               callback: data => callWasmFunction(callback, data),
               undo: data => callWasmFunction(undo, data),
-              inbound: (port, args, id) =>
+              inbound: function inbound (port, args, id) {
                 callWasmFunction(inbound, { port, ...args, id })
+              }
             }
           }
         })
         .reduce((p, c) => ({ ...p, ...c }))
+    },
+
+    importWasmPortFunctions () {
+      const ports = getPorts()
+      return Object.values(ports)
+        .filter(v => v.inbound)
+        .reduce((a, b) => [...a, ...b], [])
     },
 
     constructObject (ptr) {

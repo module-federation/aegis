@@ -109,6 +109,13 @@ const Model = (() => {
     onload: 1 << 2 //  0100 Load
   }
 
+  function approveChanges (changes, approvedChanges) {
+    return Object.entries(changes)
+      .filter(([k, v]) => approvedChanges.includes(k))
+      .map(([k, v]) => ({ [k]: v }))
+      .reduce((a, b) => ({ ...a, ...b }, {}))
+  }
+
   const defaultOnUpdate = (model, changes) => ({ ...model, ...changes })
   const defaultOnDelete = model => withTimestamp('deleteTime')(model)
   const defaultValidate = (model, changes) => defaultOnUpdate(model, changes)
@@ -135,7 +142,7 @@ const Model = (() => {
 
   /**
    * Add data and functions that support framework services.
-   * @paramn {{
+   * @param {{
    *  model:Model,
    *  args:*,
    *  spec:import('./index').ModelSpecification
@@ -157,7 +164,8 @@ const Model = (() => {
         datasource,
         mixins = [],
         dependencies,
-        relations = {}
+        relations = {},
+        approvedChanges
       }
     } = modelInfo
 
@@ -279,16 +287,28 @@ const Model = (() => {
        * @returns {Promise<Model>}
        */
       async update (changes, runValidation = true) {
+        const approved = approvedChanges
+          ? approveChanges(approvedChanges)
+          : changes
+
         // merge changes and optionally validate
         const mergedModel = runValidation
-          ? this[VALIDATE](changes, eventMask.update)
-          : { ...this, ...changes }
+          ? this[VALIDATE](approved, eventMask.update)
+          : { ...this, ...approved }
 
         const timestampedModel = { ...mergedModel, [UPDATETIME]: Date.now() }
 
         await datasource.save(this[ID], timestampedModel)
 
         return timestampedModel
+      },
+
+      setApprovedChanges (propKeys) {
+        approvedChanges.concat(propKeys)
+      },
+
+      getApprovedChanges () {
+        return approvedChanges
       },
 
       /**
@@ -303,10 +323,14 @@ const Model = (() => {
        * @returns {Model}
        */
       updateSync (changes, runValidation = true) {
+        const approved = approvedChanges
+          ? approveChanges(approvedChanges)
+          : changes
+
         // merge changes and optionally validate
         const mergedModel = runValidation
-          ? this[VALIDATE](changes, eventMask.update)
-          : { ...this, ...changes }
+          ? this[VALIDATE](approved, eventMask.update)
+          : { ...this, ...approved }
 
         // update timestamp
         const timestampedModel = { ...mergedModel, [UPDATETIME]: Date.now() }
@@ -314,7 +338,6 @@ const Model = (() => {
         // only update the cache
         datasource.saveSync(this[ID], timestampedModel)
 
-        // restore prototype if used
         return timestampedModel
       },
 
@@ -345,7 +368,7 @@ const Model = (() => {
        * Only searches the cache. Does not search persistent storage.
        * Useful for getting state that does not require persistence.
        *
-       * @param {{key1, keyN}} filter - list of required matching key-values
+       * @param {import('./datasource').dsOpts} filter - list of required matching key-values
        * @returns {Model[]}
        */
       listSync (filter) {
@@ -486,8 +509,8 @@ const Model = (() => {
       },
 
       /**
-       * Returns service of model related via ModelSpec or
-       * belonging to the same domain.
+       * Returns related model service, where the two models are
+       * related via ModelSpec.relation or belong to the same domain.
        *
        * Note: relation or domain membership must be defined
        * in ModelSpec; otherwise, we won't be able to access
@@ -496,23 +519,10 @@ const Model = (() => {
        *
        * @returns {Model}
        */
-      fetchRelatedDomainService (modelName) {
-        const upperName = modelName
-
-        if (
-          require('.').default.getModelSpec(upperName).domain ===
-            this[DOMAIN] ||
-          Object.values(relations).find(
-            v => v.modelName.toUpperCase() === upperName
-          )
-        ) {
-          throw new Error('no relation or domain membership found')
-        }
-
+      fetchRelatedService (modelName) {
+        const upperName = modelName.toUpperCase()
         const ds = datasource.factory.getDataSource(upperName)
-
         if (!ds) throw new Error('no datasource found')
-
         return require('.').default.getService(upperName, ds, broker)
       },
 
@@ -627,9 +637,7 @@ const Model = (() => {
      * @returns {Model} updated model
      *
      */
-    async update (model, changes) {
-      return model.update(changes)
-    },
+    update: (model, changes) => model.updateSync(changes),
 
     /**
      * Run the model's validation functions.

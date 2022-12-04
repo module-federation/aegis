@@ -9,6 +9,7 @@ import { isMainThread } from 'worker_threads'
  * @property {boolean} memoryOnly - if true returns memory adapter and caches it
  * @property {boolean} ephemeral - if true returns memory adapter but doesn't cache it
  * @property {string} adapterName - name of adapter to use
+ * @property {Array<function():typeof import('./datasource').default>} mixins
  */
 
 import ModelFactory from '.'
@@ -132,12 +133,6 @@ const DsCoreExtensions = superclass =>
       }
     }
 
-    listSync (options) {
-      const count = options?.query?.__count
-      if (count) return this.handleCount(count)
-      return super.listSync(options)
-    }
-
     /**
      * @override
      * @param {*} id
@@ -146,12 +141,11 @@ const DsCoreExtensions = superclass =>
     async delete (id) {
       try {
         await super.delete(id)
+        // only if super succeeds
+        this.deleteSync(id)
       } catch (error) {
         console.error(error)
         throw error
-      } finally {
-        // only if super succeeds
-        this.deleteSync(id)
       }
     }
   }
@@ -260,7 +254,8 @@ const DataSourceFactory = (() => {
 
     if (!options.ephemeral) dataSources.set(name, newDs)
 
-    debug && console.debug({ newDs })
+    //debug &&
+    console.debug({ newDs })
     return newDs
   }
 

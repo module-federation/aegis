@@ -2,8 +2,6 @@
 
 @external('env', 'console.log')
 declare function consoleLog (s: string): void
-@external('aegis', 'update')
-declare function update (changes: object, runValidation: boolean): void
 
 export function getModelName (): string {
   return 'wasm'
@@ -19,7 +17,6 @@ export function getDomain (): string {
 
 export function update (changes: string[][]): void {
   const runValidation: boolean = true
-  update(changes, true)
 }
 
 export const ArrayOfStrings_ID = idof<string[]>()
@@ -36,7 +33,7 @@ function findVal (key: string, kv: string[][]): string {
 export function modelFactory (kv: string[][]): string[][] {
   const arr = new Array<string[]>(4)
   arr[0] = ['wasm', 'AssemblyScript']
-  arr[1] = ['fibonacci', '20']
+  arr[1] = ['fibonacci', findVal('fibonacci', kv) || '20']
   arr[2] = ['result', '0']
   arr[3] = ['time', '0']
   return arr
@@ -75,20 +72,11 @@ function fibonacci (x: number): number {
 }
 
 export function runFibonacci (kv: string[][]): string[][] {
-  let fibonacciNumber: number = 0
+  let fibonacciNumber: number = parseInt(findVal('fibonacci', kv))
   let startTime: i64 = Date.now()
-
-  for (let i = 0; i < kv.length; i++) {
-    consoleLog(`${kv[i][0]}: ${kv[i][1]}`)
-    if ('fibonacci' === kv[i][0]) {
-      if (isNaN(kv[i][1]))) fibonacciNumber = 20
-      else fibonacciNumber = parseInt(kv[i][1])
-      break
-    }            
-  }
-  const sum = fibonacci(fibonacciNumber)
+  const sum = fibonacci(fibonacciNumber || 20)
   const rv = new Array<string[]>(3)
-  rv[0] = ['fibonacci', findVal('fibonacci', kv)]
+  rv[0] = ['fibonacci', fibonacciNumber.toString()]
   rv[1] = ['result', sum.toString()]
   rv[2] = ['time', (Date.now() - startTime).toString()]
   return rv

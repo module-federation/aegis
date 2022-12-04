@@ -319,7 +319,7 @@ const CircuitBreaker = function (id, protectedCall, thresholds) {
     async invoke (...args) {
       const breaker = Switch(id, thresholds)
       errorEvents.forEach(monitorErrors.bind(this))
-      breaker.incrementInvocationCounter()
+      breaker.appendLog()
 
       // check breaker status
       if (breaker.closed()) {

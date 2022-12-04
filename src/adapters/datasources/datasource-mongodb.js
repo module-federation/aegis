@@ -315,29 +315,8 @@ export class DataSourceMongoDb extends DataSource {
   async delete (id) {
     try {
       await (await this.collection()).deleteOne({ _id: id })
-      this.deleteSync(id)
     } catch (error) {
       console.error(error)
     }
-  }
-
-  /**
-   * Flush the cache to disk.
-   * @override
-   */
-  flush () {
-    try {
-      this.dsMap.reduce((a, b) => a.then(() => this.saveDb(b.getId(), b)), {})
-    } catch (error) {
-      console.error(error)
-    }
-  }
-
-  /**
-   * Process terminating, flush cache, close connections.
-   * @override
-   */
-  close () {
-    this.flush()
   }
 }

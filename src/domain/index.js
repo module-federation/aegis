@@ -260,9 +260,9 @@ function register ({
 
   const bindings = bindAdapters({
     portSpec: model.ports,
+    ports: { ...model.portFunctions, ...ports },
     adapters,
-    services,
-    ports
+    services
   })
 
   const dependencies = {
