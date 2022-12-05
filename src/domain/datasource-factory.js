@@ -128,7 +128,7 @@ const DsCoreExtensions = superclass =>
                 ModelFactory.loadModel(broker, this, model, this.name)
               )
       } catch (error) {
-        console.error({ fn: this.list.name })
+        console.error({ fn: this.list.name, error })
         throw error
       }
     }
@@ -254,8 +254,7 @@ const DataSourceFactory = (() => {
 
     if (!options.ephemeral) dataSources.set(name, newDs)
 
-    //debug &&
-    console.debug({ newDs })
+    debug && console.debug({ newDs })
     return newDs
   }
 

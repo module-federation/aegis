@@ -349,8 +349,8 @@ export class ThreadPool extends EventEmitter {
   }
 
   async stopThreads (reason) {
-    for (const thread of this.threads)
-      console.warn(await this.stopThread(thread, reason))
+    for await (const thread of this.threads)
+      console.warn(this.stopThread(thread, reason))
     this.freeThreads.splice(0, this.freeThreads.length)
     return this
   }

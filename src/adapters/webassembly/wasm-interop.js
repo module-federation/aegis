@@ -7,11 +7,11 @@
 
 /**
  * WASM interop functions
- * - find exported functions
- * - call exported functions
- * - import command configuration
+ * - call any exported function
+ *   (no js glue code required)
  * - import port configuration
- * - decode memory addresses
+ * - import inbound port functions
+ * - import commands
  * @param {WebAssembly.Exports} wasmExports
  * @returns adapter functions
  */
@@ -29,11 +29,23 @@ exports.WasmInterop = function (wasmExports) {
     _exports
   } = wasmExports
 
+  function parse (v) {
+    return !isNaN(parseInt(v))
+      ? parseInt(v)
+      : !isNaN(parseFloat(v))
+      ? parseFloat(v)
+      : /true/i.test(v)
+      ? true
+      : /false/i.test(v)
+      ? false
+      : v
+  }
+
   /**
    *
    * @param {string} fn function name
    * @param {string[][]} kv key-value pairs
-   * @returns
+   * @returns {object}
    */
   function lift (fn, kv) {
     return liftArray(
@@ -46,14 +58,14 @@ exports.WasmInterop = function (wasmExports) {
       2,
       _exports[fn](kv) >>> 0
     )
-      .map(([k, v]) => ({ [k]: v }))
+      .map(([k, v]) => ({ [k]: parse(v) }))
       .reduce((a, b) => ({ ...a, ...b }))
   }
 
   /**
    *
    * @param {string[][]} kv key-value pairs in a 2 dimensional string array
-   * @returns
+   * @returns {string[][]}
    */
   function lower (kv) {
     return (
@@ -63,7 +75,7 @@ exports.WasmInterop = function (wasmExports) {
             pointer,
             lowerArray(
               (pointer, value) => {
-                store_ref(pointer, lowerString(value?.toString()) || notnull())
+                store_ref(pointer, lowerString(value) || notnull())
               },
               4,
               2,
@@ -78,10 +90,15 @@ exports.WasmInterop = function (wasmExports) {
     )
   }
 
-  function cleanse (obj) {
-    return Object.entries(obj)
-      .filter(([k, v]) => ['string', 'number', 'boolean'].includes(typeof v))
-      .map(([k, v]) => [k, v.toString()])
+  function clean (obj) {
+    const convert = obj =>
+      Object.entries(obj)
+        .filter(([k, v]) => ['string', 'number', 'boolean'].includes(typeof v))
+        .map(([k, v]) => [k, v.toString()])
+
+    // handle custom port format
+    if (obj.port && obj.args) return convert(obj.args)
+    return convert(obj)
   }
 
   /**
@@ -98,9 +115,7 @@ exports.WasmInterop = function (wasmExports) {
    * @returns {object|number} object
    */
   function callWasmFunction (fn, obj) {
-    const props = cleanse(obj)
-    const kv = lower(props)
-    return lift(fn, kv)
+    return lift(fn, lower(clean(obj)))
   }
 
   return Object.freeze({
@@ -135,7 +150,6 @@ exports.WasmInterop = function (wasmExports) {
      * wasm function.
      */
     importWasmPorts () {
-      /** @type {import("../../domain").ports} */
       const ports = getPorts()
       return Object.keys(ports)
         .map(port => {
@@ -149,7 +163,6 @@ exports.WasmInterop = function (wasmExports) {
             inbound
           ] = ports[port].split(',')
           return {
-            /** @type {import("../../domain").ports[x]} */
             [port]: {
               service,
               type,
@@ -157,24 +170,27 @@ exports.WasmInterop = function (wasmExports) {
               producesEvent,
               callback: data => callWasmFunction(callback, data),
               undo: data => callWasmFunction(undo, data),
-              inbound: function inbound (port, args, id) {
+              inbound (port, args, id) {
                 callWasmFunction(inbound, { port, ...args, id })
               }
             }
           }
         })
-        .reduce((p, c) => ({ ...p, ...c }))
+        .reduce((p, c) => ({ ...p, ...c }), {})
     },
 
+    /**
+     *
+     * @returns {{[x: string]:(x) => any}}
+     */
     importWasmPortFunctions () {
-      const ports = getPorts()
-      return Object.values(ports)
-        .filter(v => v.inbound)
-        .reduce((a, b) => [...a, ...b], [])
+      return Object.entries(getPorts())
+        .map(([k, v]) => [k, v.split(',')[1]])
+        .filter(([k, v]) => v === 'inbound')
+        .map(([k, v]) => ({ [k]: x => callWasmFunction(k, x) }))
+        .reduce((a, b) => ({ ...a, ...b }), {})
     },
 
-    constructObject (ptr) {
-      return constructObject(ptr, false)
-    }
+    callWasmFunction
   })
 }

@@ -40,10 +40,10 @@ export const RepoClient = {
           })
         })
         .then(function (rest) {
-          const buf = Buffer.from(rest.data.content, 'base64')
+          const buf = Buffer.from(rest.data.content)
           resolve({
             toString: () => buf.toString('utf-8'),
-            asBase64Buffer: () => buf,
+            toArrayBuffer: () => buf,
             toUint16Array: () =>
               new Uint16Array(
                 buf.buffer,

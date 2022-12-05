@@ -1,7 +1,6 @@
-import { callbackify } from 'node:util'
 import { wasmAdapters } from '.'
-
 import { EventBrokerFactory } from '../../../lib/domain'
+import { RepoClient } from './repo-client'
 
 /**@type {import('../../domain/event-broker').EventBroker} */
 const broker = EventBrokerFactory.getInstance()
@@ -366,19 +365,19 @@ exports.importWebAssembly = function (remoteEntry) {
     return adaptedExports
   }
 
-  async function compileStream (url) {
+  async function compileStream (remoteEntry) {
     try {
       return await globalThis.WebAssembly.compileStreaming(
-        globalThis.fetch(url)
+        globalThis.fetch(remoteEntry.url)
       )
     } catch {
       return globalThis.WebAssembly.compile(
-        await (await import('node:fs/promises')).readFile(url)
+        (await RepoClient.fetch(remoteEntry)).toArrayBuffer()
       )
     }
   }
 
-  const initWasm = async () => instantiate(await compileStream(remoteEntry.url))
+  const initWasm = async () => instantiate(await compileStream(remoteEntry))
 
   return initWasm().then(wasmExports =>
     wasmAdapters[remoteEntry.type](wasmExports)

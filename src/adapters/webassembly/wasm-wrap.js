@@ -1,6 +1,6 @@
 'use strict'
 
-const { dependencies } = require('webpack')
+const exports = require('webpack')
 const { WasmInterop } = require('./wasm-interop')
 
 /**@typedef {import("../../domain").ModelSpecification} ModelSpecification */
@@ -57,31 +57,33 @@ exports.wrapWasmModelSpec = function (wasmExports) {
 
 /**
  *
- * @param {WebAssembly.Instance} instance
+ * @param {WebAssembly.Exports} exports
  * @returns {Adapter}
  */
-exports.wrapWasmAdapter = function (instance) {
-  const { invoke } = instance.exports
-  const interop = WasmInterop(instance)
+exports.wrapWasmAdapter = function (exports) {
+  const interop = WasmInterop(exports)
 
-  return function (service) {
-    return async function (options) {
-      const { model } = options
-      const adapter = interop.callWasmFunction(invoke, model)
-
-      if (service) {
-        interop.callWasmFunction(service[adapter.serviceFn], model)
-      }
-    }
-  }
+  return Object.keys(exports)
+    .filter(k => typeof exports[k] === 'function' && /adapter/i.test(k))
+    .map(k => ({
+      [k.replace('adapter', '')]: service => (model, args = []) =>
+        service
+          ? interop.callWasmFunction(service[k], args[0] || model)
+          : interop.callWasmFunction(k, args[0] || model)
+    }))
+    .reduce((a, b) => ({ ...a, ...b }))
 }
 
 /**
  *
- * @param {WebAssembly.Instance} instance
- * @returns {Service}ww w
+ * @param {WebAssembly.Exports} exports
+ * @returns {Service}
  */
-exports.wrapWasmService = function (instance) {
-  const { makeService } = instance.exports
-  return WasmInterop(instance).callWasmFunction(makeService)
+exports.wrapWasmService = function (exports) {
+  return {
+    [exports.getName()]: Object.keys(exports)
+      .filter(k => typeof exports[k] === 'function' && /service/i.test(k))
+      .map(k => ({ [k]: x => callWasmFunction(k, x) }))
+      .reduce((a, b) => ({ ...a, ...b }))
+  }
 }

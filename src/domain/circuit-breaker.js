@@ -38,9 +38,6 @@ const DefaultThreshold = {
  */
 const logs = new Map()
 
-/** @type {{[x: string]: number[]}} */
-let counters = {}
-
 /**
  *
  * @param {*} id
@@ -255,13 +252,12 @@ const Switch = function (id, thresholds) {
         error
       })
     },
-
-    incrementInvocationCounter () {
-      if (!counters[id]) counters[id] = [Date.Now()]
-      else counters[id].push(Date.now())
-      counters[id].filter(time => time > Date.now() - 5000).length > 999
-    },
-
+    /**
+     *
+     * @param {*} error
+     * @param {*} arg
+     * @returns
+     */
     async fallbackFn (error, arg) {
       try {
         return getThreshold(error, thresholds).fallbackFn.apply(this, arg)
