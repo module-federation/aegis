@@ -25,6 +25,7 @@ const {
   patchModels,
   postModels,
   liveUpdate,
+  postEntry,
   anyInvokePorts
 } = adapters.controllers
 
@@ -124,8 +125,8 @@ const router = {
     }
   },
 
-  adminRoute (controller, adapter) {
-    const adminPath = `${apiRoot}/config`
+  adminRoute (controller, adapter, path) {
+    const adminPath = `${apiRoot}/${path}`
     routes.set(adminPath, { get: adapter(controller()) })
   }
 }
@@ -146,7 +147,8 @@ function makeRoutes () {
   router.autoRoutes(endpointPortId, 'patch', anyInvokePorts, http, true)
   router.autoRoutes(endpointPortId, 'delete', anyInvokePorts, http, true)
   router.autoRoutes(endpointPortId, 'get', anyInvokePorts, http, true)
-  router.adminRoute(getConfig, http)
+  router.adminRoute(getConfig, http, 'config')
+  router.adminRoute(postEntry, http, 'deploy')
   router.userRoutes(getRoutes)
   console.log(routes)
 }

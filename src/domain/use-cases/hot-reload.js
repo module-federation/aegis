@@ -52,7 +52,7 @@ export default function makeHotReload ({ models, broker } = {}) {
 
   /**
    */
-  async function hotReload (modelName) {
+  async function hotReload (remoteEntry) {
     if (inProgress) {
       return { status: 'reload already in progress' }
     }

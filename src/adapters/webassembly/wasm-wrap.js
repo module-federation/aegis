@@ -1,6 +1,5 @@
 'use strict'
 
-const exports = require('webpack')
 const { WasmInterop } = require('./wasm-interop')
 
 /**@typedef {import("../../domain").ModelSpecification} ModelSpecification */

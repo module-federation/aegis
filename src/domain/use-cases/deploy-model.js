@@ -1,62 +1,51 @@
 import { importRemoteCache } from '../index.js'
 import path from 'path'
+import { cmd } from '../util/cmd.js'
 
-const config = '' // require(path.join(process.cwd(), 'wepack.config.js'))
-const webpack = require('webpack')
-const fs = require('fs')
-
-//.const compiler = webpack(config)
-
-// `compiler.run()` doesn't support promises yet, only callbacks
-async function compile () {
-  // await new Promise((resolve, reject) => {
-  //   compiler.run((err, res) => {
-  //     if (err) {
-  //       return reject(err)
-  //     }
-  //     resolve(res)
-  //   })
-  // })
+//
+async function compileAndReload () {
+  cmd('yarn build && yarn reload')
 }
 
-export function makeRegisterRemote () {
-  /**
-   * Process new remote entry.
-   * @param {import('../../../webpack/remote-entries-type.js').remoteEntry} remoteEntry
-   */
-  return async function registerRemote (remoteEntry) {
-    if (!remoteEntry?.name) throw new Error('no remote entry provided')
+/**
+ * Process new remote entry.
+ * @param {import('../../../webpack/remote-entries-type.js').remoteEntry} remoteEntry
+ */
+async function registerRemote (remoteEntry) {
+  if (!remoteEntry?.name) throw new Error('no remote entry provided')
 
-    const newFile = remoteEntry.name.concat('.js')
+  const newFile = remoteEntry.name.concat('.js')
 
-    if (fs.existsSync(newFile))
-      throw new Error('remote entry file already exists' + newFile)
+  if (fs.existsSync(newFile))
+    console.log('overritting remote entry file' + newFile)
 
-    try {
-      fs.writeFileSync(
-        path.resolve(process.cwd(), 'webpack/remote-entries', newFile),
-        JSON.stringify(remoteEntry),
-        { encoding: 'utf-8' }
-      )
+  try {
+    const fileContents =
+      `const {importWebAssembly} = require('@module-federation/aegis').adapters.webassembly\n` +
+      `const ${remoteEntry.name} = [${JSON.stringify(remoteEntry, 2, null) +
+        `\nimportRemote() { return importWebAssembly(this) }`}]`
 
-      const indexFile = path.resolve(
-        process.cwd(),
-        'webpack/remote-entries',
-        'index.js'
-      )
+    fs.writeFileSync(
+      path.resolve(process.cwd(), 'webpack/remote-entries', newFile),
+      fileContents
+    )
 
-      const remoteExports = fs.readFileSync(indexFile, { encoding: 'utf-8' })
+    const indexFile = path.resolve(
+      process.cwd(),
+      'webpack/remote-entries',
+      'index.js'
+    )
 
-      fs.writeFileSync(
-        indexFile,
-        remoteExports.concat(`export * from './${newFile}'\n`),
-        { encoding: 'utf-8' }
-      )
+    const remoteExports = fs.readFileSync(indexFile)
 
-      await compile()
-    } catch (error) {
-      console.error({ fn: registerRemote.name, error })
-    }
+    fs.writeFileSync(
+      indexFile,
+      remoteExports.concat(`\nexport  from './${newFile}'`)
+    )
+
+    await compileAndReload()
+  } catch (error) {
+    console.error({ fn: registerRemote.name, error })
   }
 }
 
@@ -65,7 +54,7 @@ export function makeRegisterRemote () {
  * @param {{models:import('../model-factory.js').ModelFactory}} param0
  * @returns
  */
-export default function makeDeployModel ({ models }) {
+export default function makeDeployModel () {
   /**
    * Handle deployment request.
    *
@@ -75,15 +64,15 @@ export default function makeDeployModel ({ models }) {
    *
    * @param {*} modelName
    */
-  return function deployModel (modelName) {
-    if (!modelName) throw new Error('missing modelName')
-    const modelNameUpper = modelName.toUpperCase()
+  return async function deployModel (input) {
+    console.log(input)
+    await registerRemote(input)
 
-    if (models.getModelSpec(modelNameUpper)) return
+    // if (models.getModelSpec(modelNameUpper)) return
 
-    importRemoteCache(modelNameUpper)
+    // importRemoteCache(modelNameUpper)
 
-    if (!models.getModelSpec(modelNameUpper))
-      throw new Error('model could not be loaded')
+    // if (!models.getModelSpec(modelNameUpper))
+    // throw new Error('model could not be loaded')
   }
 }

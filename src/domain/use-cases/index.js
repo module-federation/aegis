@@ -192,7 +192,6 @@ const findModels = () => make(makeFindModel)
 const removeModels = () => make(makeRemoveModel)
 const loadModels = () => make(makeLoadModels)
 const emitEvents = () => make(makeEmitEvent)
-const deployModels = () => make(makeDeployModel)
 const invokePorts = () => make(makeInvokePort)
 const hotReload = () => [
   {
@@ -203,6 +202,8 @@ const hotReload = () => [
     })
   }
 ]
+const deployModel = () => makeDeployModel()
+
 const listConfigs = () =>
   makeListConfig({
     models: ModelFactory,
@@ -283,7 +284,7 @@ export const UseCases = {
   hotReload,
   registerEvents,
   emitEvents,
-  deployModels,
+  deployModel,
   invokePorts
 }
 
@@ -306,7 +307,6 @@ export function UseCaseService (modelName) {
       removeModel: makeOne(modelNameUpper, makeRemoveModel),
       loadModels: makeOne(modelNameUpper, makeLoadModels),
       emitEvent: makeOne(modelNameUpper, makeEmitEvent),
-      deployModel: makeOne(modelNameUpper, makeDeployModel),
       invokePort: makeOne(modelNameUpper, makeInvokePort),
       listConfigs: listConfigs()
     }
