@@ -46,8 +46,8 @@ const dataType = {
  */
 const SharedMemoryMixin = superclass =>
   class extends superclass {
-    constructor (map, name, options) {
-      super(map, name, options)
+    constructor (map, name, namespace, options) {
+      super(map, name, namespace, options)
     }
 
     /**

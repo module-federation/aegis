@@ -37,6 +37,10 @@ const DefaultDataSource =
  */
 const DsCoreExtensions = superclass =>
   class extends superclass {
+    constructor(map, name, namespace, options)  {
+      super(map, name, namespace, options)
+    }
+    
     set factory (value) {
       this[FACTORY] = value
     }
@@ -64,6 +68,7 @@ const DsCoreExtensions = superclass =>
         console.error({ fn: this.save.name, error })
         throw error
       }
+
     }
 
     /**
@@ -210,7 +215,7 @@ const DataSourceFactory = (() => {
 
     if (adapterName) return adapters[adapterName] || DefaultDataSource
 
-    if (spec?.datasource?.adapterFactory) {
+    if (spec?.datasource?.factory) {
       const url = spec.datasource.url
       const cacheSize = spec.datasource.cacheSize
       const adapterFactory = spec.datasource.factory
@@ -249,9 +254,12 @@ const DataSourceFactory = (() => {
     const DsClass = createDataSourceClass(spec, options)
     const DsExtendedClass = extendDataSourceClass(DsClass, options)
 
+    if(spec.datasource) {
+      options = {...options, connOpts: {...spec.datasource}}
+    }
+
     const newDs = new DsExtendedClass(dsMap, name, namespace, options)
     newDs.factory = this // setter to avoid exposing in ctor
-
     if (!options.ephemeral) dataSources.set(name, newDs)
 
     debug && console.debug({ newDs })
