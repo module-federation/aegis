@@ -13,7 +13,7 @@ const {
   externalCacheRequest
 } = domainEvents
 
-const maxwait = process.env.REMOTE_OBJECT_MAXWAIT || 6000
+const maxwait = process.env.REMOTE_OBJECT_MAXWAIT || 2000
 
 export const relationType = {
   /**

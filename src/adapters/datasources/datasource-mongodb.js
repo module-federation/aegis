@@ -71,32 +71,6 @@ export class DataSourceMongoDb extends DataSource {
     return (await this.connection()).db(this.namespace).collection(this.name)
   }
 
-  /**
-   * @override
-   * @param {{
-   *  hydrate:function(Map<string,import("../../domain").Model>),
-   *  seriali zer:import("../../lib/serializer").Serializer
-   * }} options
-   */
-  load ({ hydrate, serializer }) {
-    try {
-      this.hydrate = hydrate
-      this.serializer = serializer
-      this.loadModels()
-    } catch (error) {
-      console.error(error)
-    }
-  }
-
-  async loadModels () {
-    try {
-      const cursor = (await this.collection()).find().limit(this.cacheSize)
-      cursor.forEach(model => super.saveSync(model.id, model))
-    } catch (error) {
-      console.error({ fn: this.loadModels.name, error })
-    }
-  }
-
   async find (id) {
     try {
       return (await this.collection()).findOne({ _id: id })
@@ -120,7 +94,7 @@ export class DataSourceMongoDb extends DataSource {
       const col = await this.collection()
       col.replaceOne({ _id: id }, { ...data, _id: id }, { upsert: true })
     } catch (error) {
-      // default is true
+      // default is
       if (!this.runOffline) {
         throw new Error('db trans failed,', error)
       }
@@ -159,7 +133,9 @@ export class DataSourceMongoDb extends DataSource {
             const result = await col.bulkWrite(operations)
             console.log(result.getRawResponse())
             objects = []
-          } catch (error) {}
+          } catch (error) {
+            console.error({ fn: upsert.name, error })
+          }
         }
       }
 
@@ -394,7 +370,7 @@ export class DataSourceMongoDb extends DataSource {
    * @returns
    */
   async countDb () {
-    return await (await this.collection()).countDocuments()
+    return (await this.collection()).countDocuments()
   }
 
   /**
@@ -407,7 +383,6 @@ export class DataSourceMongoDb extends DataSource {
   async delete (id) {
     try {
       await (await this.collection()).deleteOne({ _id: id })
-      this.deleteSync(id)
     } catch (error) {
       console.error(error)
     }

@@ -1,6 +1,7 @@
 /**
- * Wrap {@link Error}'s for quick identification as
- * errors after deserialization crossing thread boundary
+ * Do not through unhandled exceptions in workers and kill the thread.
+ * Instead wrap {@link Error} and return it in the response to main.
+ *
  * @param {Error} error
  * @returns
  */

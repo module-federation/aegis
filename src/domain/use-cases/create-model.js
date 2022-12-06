@@ -1,11 +1,5 @@
 'use strict'
 
-import { isMainThread } from 'worker_threads'
-import domainEvents from '../domain-events'
-import { AppError } from '../util/app-error'
-
-/** @todo abstract away thread library */
-
 /**
  * @typedef {Object} injectedDependencies injected dependencies
  * @property {String} modelName - name of the domain model
@@ -27,9 +21,12 @@ export default function makeCreateModel ({
   models,
   repository,
   threadpool,
-  idempotent,
+  enforceIdempotency,
   broker,
-  handlers = []
+  handlers = [],
+  isMainThread,
+  domainEvents,
+  AppError
 } = {}) {
   const eventType = models.EventTypes.CREATE
   const eventName = models.getEventName(eventType, modelName)
@@ -40,14 +37,15 @@ export default function makeCreateModel ({
   /** @type {createModel} */
   async function createModel (input) {
     if (isMainThread) {
-      const existingRecord = await idempotent()
-      if (existingRecord) return existingRecord
+      const existingModel = await enforceIdempotency()
+      if (existingModel) return existingModel
 
       return threadpool.runJob(createModel.name, input, modelName)
     } else {
       try {
         const model = models.createModel(broker, repository, modelName, input)
         await repository.save(model.getId(), model)
+
         try {
           const event = models.createEvent(eventType, modelName, model)
           broker.notify(eventName, event)
