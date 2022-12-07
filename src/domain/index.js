@@ -445,7 +445,7 @@ export async function importRemoteCache (name) {
  */
 export const totalServices = () =>
   ModelFactory.getModelSpecs().filter(
-    s => !s.isCached && (!s.domain || s.modelName === s.domain)
+    s => !s.isCached && (!s.domain || s.modelName === s.domain.toUpperCase())
   ).length
 
 export { UseCaseService } from './use-cases'
