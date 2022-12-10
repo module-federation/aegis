@@ -30,7 +30,25 @@ exports.importWebAssembly = function (remoteEntry) {
           // ~lib/bindings/dom/console.log(~lib/string/String) => void
           text = __liftString(text >>> 0)
           console.log(text)
+        },
+
+        callJsFunction (kv) {
+         __liftArray(
+            pointer =>
+              __liftArray(
+                pointer =>
+                  __liftString(new Uint32Array(memory.buffer)[pointer >>> 2]),
+                2,
+                new Uint32Array(memory.buffer)[pointer >>> 2]
+              ),
+            2,
+            kv
+          )
+          const fn = kv.filter(([k, v]) => k === 'fn').map(([k, v]) => v)[0]
+          const args = kv.filter(([k, v]) => k === 'arg').map(([k, v]) => v)
         }
+
+        
       })
     }
 

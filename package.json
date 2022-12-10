@@ -9,6 +9,7 @@
   "scripts": {
     "start": "./start.sh",
     "build": "npm run build:esm && npm run build:cjs",
+    "watch": "node watch.mjs",
     "webswitch": "cd ../aegis-host ; export SWITCH=true ; export PORT=8888 ; yarn start",
     "build:esm": "babel --delete-dir-on-start -d esm/ src/ && cp src/index.js esm",
     "build:cjs": "babel --delete-dir-on-start --env-name cjs -d lib/ src/ && cp src/index.js lib",

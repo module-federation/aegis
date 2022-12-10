@@ -147,7 +147,7 @@ exports.WasmInterop = function (wasmExports) {
      * For every port in {@link getPorts} create a
      * an entry that in the {@link ModelSpecification.ports}
      * that will invoke one or more of the exported
-     * wasm function.
+     * wasm functions.
      */
     importWasmPorts () {
       const ports = getPorts()
