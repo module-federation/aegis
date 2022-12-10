@@ -3,7 +3,6 @@ import { exec } from 'node:child_process'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import os from 'node:os'
-import { Duplex, Readable } from 'node:stream'
 
 const cmd = './watch.sh'
 const dir = './src'
