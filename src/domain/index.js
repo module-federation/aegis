@@ -321,6 +321,7 @@ async function importModels ({
   ports
 } = {}) {
   const models = await importRemoteModels(remoteEntries)
+
   models.forEach(model =>
     register({ model, services, adapters, ports, workers })
   )
@@ -445,8 +446,8 @@ export async function importRemoteCache (name) {
  */
 export const totalServices = () =>
   ModelFactory.getModelSpecs().filter(
-    s => !s.isCached && (!s.domain || s.modelName === s.domain.toUpperCase())
-  ).length
+    s => !s.isCached && (!s.domain || s.domain.toUpperCase() === s.modelName)
+  ).length || 1
 
 export { UseCaseService } from './use-cases'
 
