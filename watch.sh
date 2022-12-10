@@ -1,3 +1,3 @@
 cd ../aegis
 yarn build
-curl -s http://locatlhost/reload
+curl -s http://localhost/reload
