@@ -1,10 +1,38 @@
-import { importRemoteCache } from '../index.js'
-import path from 'path'
-import { cmd } from '../util/cmd.js'
+'use strict'
 
-//
+import path from 'path'
+import { exec } from 'node:child_process'
+import fs from 'node:fs/promises'
+import { AppError } from '../util/app-error'
+import model from '../../../lib/domain/model'
+
 async function compileAndReload () {
-  cmd('yarn build && yarn reload')
+  exec('cd ../aegis-host yarn build && yarn reload', (stderr, stdout, stdin) =>
+    console.log(stderr || stdout || stdin)
+  )
+}
+
+function createFileContents (remoteEntry) {
+  const CURLYBRACKET = '}'
+  const COMMA = ','
+  const reString = JSON.stringify(remoteEntry, null, 2)
+  const WASMIMPORT = `const { importWebAssembly } = require('@module-federation/aegis').adapters.webassembly\n\n`
+  const WASMENTRY = `exports.${remoteEntry.name} = [\n ${reString}\n  importRemote () {\n   return importWebAssembly(this)\n  }\n }\n]`
+  const JSENTRY = `exports.${remoteEntry.name} = [\n ${reString}\n  importRemote: () =>  import("${remoteEntry.name}/models")\n }\n]`
+
+  return remoteEntry.wasm
+    ? WASMIMPORT + WASMENTRY.replace(CURLYBRACKET, COMMA)
+    : JSENTRY.replace(CURLYBRACKET, COMMA)
+}
+
+async function resolveWebpackPath (remoteEntry) {
+  const p = path.resolve(process.cwd(), 'webpack/remote-entries')
+  try {
+    await fs.stat(p)
+    return p
+  } catch (error) {
+    return remoteEntry.path
+  }
 }
 
 /**
@@ -12,41 +40,29 @@ async function compileAndReload () {
  * @param {import('../../../webpack/remote-entries-type.js').remoteEntry} remoteEntry
  */
 async function registerRemote (remoteEntry) {
+  console.debug({ remoteEntry })
+
   if (!remoteEntry?.name) throw new Error('no remote entry provided')
 
   const newFile = remoteEntry.name.concat('.js')
+  const webpackDir = await resolveWebpackPath(remoteEntry)
+  const fileContents = createFileContents(remoteEntry)
+  console.debug({ webpackDir, newFile, fileContents })
 
-  if (fs.existsSync(newFile))
-    console.log('overritting remote entry file' + newFile)
+  await fs.writeFile(path.resolve(webpackDir, newFile), fileContents)
 
-  try {
-    const fileContents =
-      `const {importWebAssembly} = require('@module-federation/aegis').adapters.webassembly\n` +
-      `const ${remoteEntry.name} = [${JSON.stringify(remoteEntry, 2, null) +
-        `\nimportRemote() { return importWebAssembly(this) }`}]`
+  const indexFile = path.resolve(webpackDir, 'index.js')
+  console.debug(indexFile)
 
-    fs.writeFileSync(
-      path.resolve(process.cwd(), 'webpack/remote-entries', newFile),
-      fileContents
-    )
+  const remoteExports = await fs.readFile(indexFile)
 
-    const indexFile = path.resolve(
-      process.cwd(),
-      'webpack/remote-entries',
-      'index.js'
-    )
-
-    const remoteExports = fs.readFileSync(indexFile)
-
-    fs.writeFileSync(
-      indexFile,
-      remoteExports.concat(`\nexport  from './${newFile}'`)
-    )
-
-    await compileAndReload()
-  } catch (error) {
-    console.error({ fn: registerRemote.name, error })
-  }
+  await fs.writeFile(
+    indexFile,
+    remoteExports
+      .toString()
+      .concat(`exports.${remoteEntry.name} = require('./${newFile}')\n`)
+  )
+  return fileContents
 }
 
 /**
@@ -65,14 +81,20 @@ export default function makeDeployModel () {
    * @param {*} modelName
    */
   return async function deployModel (input) {
-    console.log(input)
-    await registerRemote(input)
-
-    // if (models.getModelSpec(modelNameUpper)) return
-
-    // importRemoteCache(modelNameUpper)
-
-    // if (!models.getModelSpec(modelNameUpper))
-    // throw new Error('model could not be loaded')
+    try {
+      const remotEntry = await registerRemote(input)
+      await compileAndReload()
+      return { status: 'ok', msg: 'created new remote entry', remotEntry }
+    } catch (error) {
+      console.error({ fn: deployModel.name, error })
+      return AppError(error)
+    }
   }
 }
+
+// registerRemote({
+//   name: 'test',
+//   url: 'http',
+//   wasm: false,
+//   path: '/Users/tysonmidboe/'
+// }).then(i => console.log(i))

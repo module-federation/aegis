@@ -24,7 +24,6 @@ import { PortEventRouter } from '../event-router'
 import { isMainThread } from 'worker_threads'
 import { hostConfig } from '../../config'
 import { AppError } from '../util/app-error'
-
 import * as context from '../util/async-context'
 
 export const serviceMeshPlugin =
@@ -139,9 +138,14 @@ function buildOptions (spec, options) {
       threadpool: getThreadPool(spec, ds, options),
       // if caller provides id, use it as key for idempotency
       async enforceIdempotency () {
-        const duplicateRequest = await ds.find(
-          context.requestContext.getStore().get('id')
-        )
+        const store = context.requestContext.getStore()
+
+        if (!store.get('checkIdempotency')) {
+          console.log('no idempotency check')
+          return false
+        }
+
+        const duplicateRequest = await ds.find(store.get('id'))
         console.info(
           'check idempotency-key: is this a duplicate?',
           duplicateRequest ? 'yes' : 'no'
@@ -313,6 +317,12 @@ export function UseCaseService (modelName) {
   }
 }
 
+/**
+ * Contains all the use case functions (inbound ports)
+ * for all models that are part of this domain (bounded context).
+ * @param {string} domain see {@link ModelFactory.domain}
+ * @returns
+ */
 export function makeDomain (domain) {
   if (!domain) throw new Error('no domain provided')
   return modelsInDomain(domain.toUpperCase())

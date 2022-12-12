@@ -16,15 +16,15 @@ const {
 
 const { initCache } = adapters.controllers
 
-/** @type {import('@module-federation/aegis/lib/domain/event-broker').EventBroker} */
+/** @type {import('./event-broker').EventBroker} */
 const broker = EventBrokerFactory.getInstance()
 
-/** @type {Promise<import('../webpack/remote-entries-type').remoteEntry[]>} */
+/** @type {Promise<import('./').remoteEntry[]>} */
 const remoteEntries = remote.get('./remoteEntries').then(factory => factory())
 
 /**
  * Import and bind remote modules: i.e. models, adapters and services
- * @param {import('../webpack/remote-entries-type.js').remoteEntry[]} remotes
+ * @param {import('./').remoteEntry[]} remotes
  * @returns
  */
 async function init (remotes) {
@@ -40,17 +40,19 @@ async function init (remotes) {
 
 /**
  * Create a subchannel between this thread and the main thread that is dedicated
- * to events, both inter-thread (raised by one thread and handled by another) and
- * inter-process (remotely generated and locally handled or vice versa). Inter-process
- * events (event from another host instance) are transmitted over the service mesh.
+ * to events, both in-process (e.g. raised by one thread and handled by another) and
+ * inter-process (events from or to a remote event source or sink) . Inter-process
+ * events (e.g. events from another host instance) are transmitted over the service mesh.
  *
  * Connect both ends of the channel to the thread-local {@link broker} via pub & sub events.
  *
- * Unlike the main channel, the event channel is not meant to return a response to the caller.
- * If a response is needed, call `ThreadPool.run` as shown below.
+ * Unlike the main channel, the event channel is not meant to return a response to the caller,
+ * it just fires and forgets, relying on the underlying thread implemntation to handle execution.
+ *
+ * If a response is needed, call `ThreadPool.runJob` as shown below.
  *
  * ```js
- * ThreadPool.runJob(jobName, jobData, { channel: EVENTCHANNEL })
+ * threadpool.runJob(jobName, jobData, { channel: EVENTCHANNEL })
  * ```
  *
  * @param {MessagePort} eventPort
@@ -74,7 +76,7 @@ remoteEntries.then(remotes => {
   init(remotes).then(domainPorts => {
     console.info('aegis worker thread running')
     // dont wait for cache to load
-    //initCache().load()
+    initCache().load()
 
     // handle API requests from main
     parentPort.on('message', async msg => {
@@ -127,5 +129,8 @@ remoteEntries.then(remotes => {
         parentPort.postMessage(AppError(error, error.code))
       }
     })
+
+    // tell the main thread we are ready
+    parentPort.postMessage({ status: 'online' })
   })
 })

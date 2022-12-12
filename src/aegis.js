@@ -125,9 +125,9 @@ const router = {
     }
   },
 
-  adminRoute (controller, adapter, path) {
+  adminRoute (controller, adapter, method, path) {
     const adminPath = `${apiRoot}/${path}`
-    routes.set(adminPath, { get: adapter(controller()) })
+    routes.set(adminPath, { [method]: adapter(controller()) })
   }
 }
 
@@ -147,8 +147,8 @@ function makeRoutes () {
   router.autoRoutes(endpointPortId, 'patch', anyInvokePorts, http, true)
   router.autoRoutes(endpointPortId, 'delete', anyInvokePorts, http, true)
   router.autoRoutes(endpointPortId, 'get', anyInvokePorts, http, true)
-  router.adminRoute(getConfig, http, 'config')
-  router.adminRoute(postEntry, http, 'deploy')
+  router.adminRoute(getConfig, http, 'get', 'config')
+  router.adminRoute(postEntry, http, 'post', 'deploy')
   router.userRoutes(getRoutes)
   console.log(routes)
 }
@@ -187,6 +187,7 @@ async function handle (path, method, req, res) {
     requestContext.enterWith(
       new Map([
         ['id', req.headers['idempotency-key'] || nanoid()],
+        ['checkIdempotency', req.headers['idempotency-key'] ? true : false],
         ['begin', Date.now()],
         ['user', req.user],
         ['res', res],

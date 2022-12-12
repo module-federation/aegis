@@ -211,7 +211,7 @@ export class ThreadPool extends EventEmitter {
         eventChannel: eventChannel.port1,
 
         once (event, callback) {
-          worker.on(event, callback)
+          worker.once(event, callback)
         },
 
         async stop () {
@@ -283,7 +283,13 @@ export class ThreadPool extends EventEmitter {
         }
       }
 
-      worker.once('online', () => {
+      worker.once('message', msg => {
+        if (msg?.status !== 'online') {
+          const error = new Error('thread init failed')
+          console.error(error.message)
+          return reject(error)
+        }
+        console.log('aegis up', msg)
         pool.connectEventChannel(worker, eventChannel)
         pool.threads.push(thread)
         resolve(thread)

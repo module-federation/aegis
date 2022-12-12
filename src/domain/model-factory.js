@@ -38,6 +38,8 @@ import Event from './event'
  * function. This object functions as the model's service implementation. Methods that rely
  * on factory-generated instance properties will not work; so only static methods, or
  * instance methods created by the framework, are useable.
+ * @property {string} domain indicates a group of {@link Model}s that are part of a bounded context.
+ * Models that share the same domain name run in the same threadpool and live in the same database
  */
 
 /**
