@@ -77,6 +77,6 @@ export default function ({ modelName, repository, broker, models }) {
       }
     })
 
-    repository.list({ transform: rehydrate, writable: resumeWorkflow })
+    //repository.list({ transform: rehydrate, writable: resumeWorkflow })
   }
 }
