@@ -18,6 +18,7 @@ const { initCache } = adapters.controllers
 
 /** @type {import('./event-broker').EventBroker} */
 const broker = EventBrokerFactory.getInstance()
+const broadcast = new BroadcastChannel(workerData.poolName)
 
 /** @type {Promise<import('./').remoteEntry[]>} */
 const remoteEntries = remote.get('./remoteEntries').then(factory => factory())
@@ -44,12 +45,14 @@ async function init (remotes) {
  * inter-process (events from or to a remote event source or sink) . Inter-process
  * events (e.g. events from another host instance) are transmitted over the service mesh.
  *
- * Connect both ends of the channel to the thread-local {@link broker} via pub & sub events.
+ * Connect both ends of the channel to the thread-local {@link broker} via pub/sub events.
+ * Do the same for broadcast events. By convention, broadcast events never leave the host,
+ * while messages sent over the event channel are forwarded to the service mesh.
  *
  * Unlike the main channel, the event channel is not meant to return a response to the caller,
  * it just fires and forgets, relying on the underlying thread implemntation to handle execution.
  *
- * If a response is needed, call `ThreadPool.runJob` as shown below.
+ * If a response is needed, call `ThreadPool.runJob` as shown below
  *
  * ```js
  * threadpool.runJob(jobName, jobData, { channel: EVENTCHANNEL })
@@ -57,18 +60,23 @@ async function init (remotes) {
  *
  * @param {MessagePort} eventPort
  */
-function connectEventChannel (eventPort) {
+function connectSubChannels (eventPort) {
   try {
     // fire events from main
-    eventPort.onmessage = msgEvent =>
-      broker.notify(msgEvent.data.eventName, msgEvent.data)
+    eventPort.onmessage = ev => broker.notify(ev.data.eventName, ev.data)
+    // listen for broadcasts
+    broadcast.onmessage = ev => broker.notify(ev.data.eventName, ev.data)
 
     // forward events to main
-    broker.on('to_main', event =>
-      eventPort.postMessage(JSON.parse(JSON.stringify(event)))
+    broker.on('to_main', ev =>
+      eventPort.postMessage(JSON.parse(JSON.stringify(ev)))
+    )
+    // forward to any thread listening on channel `poolName`
+    broker.on('broadcast', ev =>
+      broadcast.postMessage(JSON.parse(JSON.stringify(ev)))
     )
   } catch (error) {
-    console.error({ fn: connectEventChannel.name, error })
+    console.error({ fn: connectSubChannels.name, error })
   }
 }
 
@@ -115,7 +123,7 @@ remoteEntries.then(remotes => {
 
         if (msg.eventPort instanceof MessagePort) {
           // send/recv broker events to/from main thread
-          connectEventChannel(msg.eventPort)
+          connectSubChannels(msg.eventPort)
           // no response to parent port expected
           return
         }
