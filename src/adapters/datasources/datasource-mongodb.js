@@ -193,9 +193,9 @@ export class DataSourceMongoDb extends DataSource {
    * @returns
    */
 
-  async mongoFind ({ filter, sort, limit, skip } = {}) {
+  async mongoFind ({ filter, sort, limit, skip, aggregate } = {}) {
     console.log({ fn: this.mongoFind.name, filter })
-    let cursor = (await this.collection()).find(filter)
+    let cursor = aggregate ? (await this.collection()).aggregate(aggregate) : (await this.collection()).find(filter)
 
     if (sort) cursor = cursor.sort(sort)
     if (skip) cursor = cursor.skip(skip)
@@ -354,16 +354,24 @@ export class DataSourceMongoDb extends DataSource {
       if (query.__count) return this.count()
 
       const options = this.processOptions(param)
-      if (0 < ~~query.__page){ 
+      if (0 < ~~query.__page){  // qpm > processOptions weeds out __page - add it back properly as an integer
         options.page = ~~query.__page
         options.skip = ((options.page-1) * options.limit) || 0
+      }
+      if (query.__aggregate){ // qpm > processOptions weeds out __aggregate - add it back properly as parsed json
+        try{
+          const aggregateQuery = JSON.parse(query.__aggregate);
+          options.aggregate = aggregateQuery;
+        } catch (e) {
+          console.error(e, 'invalid Aggregate')
+        }
       }
       console.log({ options })
       
       if(writable && !query.__json) this.streamList({ writable, serialize, transform, options })
       else{
         const data = (await this.mongoFind(options)).toArray()
-        const count = data.length
+        const count = data?.length
         result = {
           ...options,
           data,
@@ -372,7 +380,7 @@ export class DataSourceMongoDb extends DataSource {
         }
       }
 
-      return options.page ? result : result.data;
+      return options?.page ? result : result?.data;
     } catch (error) {
       console.error({ fn: this.list.name, error })
     }
