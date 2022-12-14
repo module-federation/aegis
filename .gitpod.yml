@@ -34,14 +34,15 @@ tasks:
       yarn link @module-federation/aegis
     command: |
       nvm install --lts
-      nvm use --lts
       cd ../aegis
       nohup node watch.js &
       cd ../aegis-app
+      nvm use --lts
       nohup node watch.js &
       nohup node repo.js 8000 dist &
       nohup node repo.js 8001 cache &
       cd ../aegis-host
+      nvm use --lts
       yarn build
       gp sync-done start
       node --title aegis src/bootstrap.js | tee public/aegis.log
@@ -57,6 +58,7 @@ tasks:
       PORT: 8888
       SWITCH: true
     command: |
+      nvm use --lts
       gp sync-await start
       cd ../aegis-host
       node --title webswitch src/bootstrap.js | tee public/webswitch.log
