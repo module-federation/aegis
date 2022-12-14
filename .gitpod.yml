@@ -33,6 +33,8 @@ tasks:
       yarn
       yarn link @module-federation/aegis
     command: |
+      nvm install --lts
+      nvm use --lts
       cd ../aegis
       nohup node watch.js &
       cd ../aegis-app
