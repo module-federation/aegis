@@ -30,7 +30,7 @@ tasks:
       cd ..
       git clone https://github.com/module-federation/aegis-host
       cd aegis-host
-      npm install
+      yarn
       yarn link @module-federation/aegis
     command: |
       cd ../aegis-app
