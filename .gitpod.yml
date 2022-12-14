@@ -35,7 +35,7 @@ tasks:
       yarn link @module-federation/aegis
     command: |
       cd ../aegis-app
-      nohup node repo.js 8003 dist &
+      nohup node repo.js 8000 dist &
       nohup node repo.js 8001 cache &
       cd ../aegis-host
       yarn build
