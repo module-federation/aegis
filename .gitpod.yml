@@ -13,7 +13,6 @@ github:
 
 tasks:
   - name: install & run
-    openIn: main
     env:
       NODE_OPTIONS: --openssl-legacy-provider
     init: |
@@ -31,7 +30,7 @@ tasks:
       cd ..
       git clone https://github.com/module-federation/aegis-host
       cd aegis-host
-      yarn
+      npm install
       yarn link @module-federation/aegis
     command: |
       cd ../aegis-app
@@ -58,13 +57,11 @@ tasks:
       node --title webswitch src/bootstrap.js | tee public/webswitch.log
 
   - name: watch aegis-app
-    openMode: split-right
     command: |
       cd ../aegis-app
       yarn watch
 
   - name: watch aegis
-    openMode: split-right
     command: |
       cd ../aegis
       yarn watch
