@@ -4,7 +4,6 @@ import path from 'path'
 import { exec } from 'node:child_process'
 import fs from 'node:fs/promises'
 import { AppError } from '../util/app-error'
-import model from '../../../lib/domain/model'
 
 async function compileAndReload () {
   exec('cd ../aegis-host yarn build && yarn reload', (stderr, stdout, stdin) =>

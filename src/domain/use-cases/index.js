@@ -225,7 +225,7 @@ const domainPorts = modelName => ({
   ...UseCaseService(modelName),
   eventBroker: EventBrokerFactory.getInstance(),
   modelSpec: ModelFactory.getModelSpec(modelName),
-  dataSource: DataSourceFactory.getDataSource(modelName)
+  dataSource: DataSourceFactory.getRestrictedDataSource(modelName)
 })
 
 /**
