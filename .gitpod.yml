@@ -33,7 +33,10 @@ tasks:
       yarn
       yarn link @module-federation/aegis
     command: |
+      cd ../aegis
+      nohup node watch.js &
       cd ../aegis-app
+      nohup node watch.js &
       nohup node repo.js 8000 dist &
       nohup node repo.js 8001 cache &
       cd ../aegis-host
@@ -47,24 +50,14 @@ tasks:
       ./mongo.sh
 
   - name: service mesh
-    openMode: split-right
     env:
+      NODE_OPTIONS: --openssl-legacy-provider
       PORT: 8888
       SWITCH: true
     command: |
       gp sync-await start
       cd ../aegis-host
       node --title webswitch src/bootstrap.js | tee public/webswitch.log
-
-  - name: watch aegis-app
-    command: |
-      cd ../aegis-app
-      yarn watch
-
-  - name: watch aegis
-    command: |
-      cd ../aegis
-      yarn watch
 
 ports:
   - port: 8000
