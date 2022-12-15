@@ -16,10 +16,13 @@ tasks:
     env:
       NODE_OPTIONS: --openssl-legacy-provider
       PORT: 8080
+    before: |
+      nvm install --lts
+      nvm set default node.js version --lts
     init: |
       cd ..
       git clone https://github.com/module-federation/aegis-app
-      cd aegis-app
+      cd aegis-appf/
       yarn
       yarn build
       cd ../aegis
@@ -35,23 +38,22 @@ tasks:
       cd ../aegis
       nohup node watch.js &
       cd ../aegis-app
-      nvm install --lts
-      nvm use --lts
       nohup node watch.js &
       nohup node repo.js 8000 dist &
       nohup node repo.js 8001 cache &
       cd ../aegis-host
-      nvm install --lts
-      nvm use --lts
       yarn build
       gp sync-done start
       node --title aegis src/bootstrap.js | tee public/aegis.log
 
-  - name: service mesh
+  - name: service meshww
     env:
       NODE_OPTIONS: --openssl-legacy-provider
       PORT: 8888
       SWITCH: true
+    before: |
+      nvm install --lts
+      nvm set default node.js version --lts
     command: |
       cd ../aegis-host
       nvm install --lts
