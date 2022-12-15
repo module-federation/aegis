@@ -27,19 +27,18 @@ tasks:
       cd ../aegis
       yarn
       yarn build
-      yarn link
       cd ..
       git clone https://github.com/module-federation/aegis-host
       cd aegis-host
       nvm install --lts
       nvm use --lts
       yarn
-      yarn link @module-federation/aegis
     command: |
       cd ../aegis
       nvm install --lts
       nvm use --lts
       nohup node watch.js &
+      yarn link
       cd ../aegis-app
       nohup node watch.js &
       nohup node repo.js 8000 dist &
@@ -47,6 +46,8 @@ tasks:
       cd ../aegis-host
       nvm install --lts
       nvm use --lts
+      yarn link @module-federation/aegis
+      yarn
       yarn build
       gp sync-done start
       node --title aegis src/bootstrap.js | tee public/aegis.log
