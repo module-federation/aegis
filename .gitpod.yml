@@ -15,9 +15,8 @@ tasks:
   - name: install & run
     env:
       NODE_OPTIONS: --openssl-legacy-provider
+      PORT: 8080
     init: |
-      nvm install --lts
-      nvm use --lts
       cd ..
       git clone https://github.com/module-federation/aegis-app
       cd aegis-app
@@ -33,24 +32,20 @@ tasks:
       yarn
       yarn link @module-federation/aegis
     command: |
-      nvm install --lts
       cd ../aegis
       nohup node watch.js &
       cd ../aegis-app
+      nvm install --lts
       nvm use --lts
       nohup node watch.js &
       nohup node repo.js 8000 dist &
       nohup node repo.js 8001 cache &
       cd ../aegis-host
+      nvm install --lts
       nvm use --lts
       yarn build
       gp sync-done start
       node --title aegis src/bootstrap.js | tee public/aegis.log
-
-  - name: mongodb
-    command: |
-      cd ../aegis
-      ./mongo.sh
 
   - name: service mesh
     env:
@@ -58,10 +53,16 @@ tasks:
       PORT: 8888
       SWITCH: true
     command: |
+      cd ../aegis-host
+      nvm install --lts
       nvm use --lts
       gp sync-await start
-      cd ../aegis-host
       node --title webswitch src/bootstrap.js | tee public/webswitch.log
+
+  - name: mongodb
+    command: |
+      cd ../aegis
+      ./mongo.sh
 
 ports:
   - port: 8000
