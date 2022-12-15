@@ -30,12 +30,10 @@ tasks:
       cd ..
       git clone https://github.com/module-federation/aegis-host
       cd aegis-host
-      nvm install --lts
       nvm use --lts
       yarn
     command: |
       cd ../aegis
-      nvm install --lts
       nvm use --lts
       nohup node watch.js &
       yarn link
@@ -43,11 +41,10 @@ tasks:
       nohup node watch.js &
       nohup node repo.js 8000 dist &
       nohup node repo.js 8001 cache &
+      yarn build
       cd ../aegis-host
-      nvm install --lts
       nvm use --lts
       yarn link @module-federation/aegis
-      yarn
       yarn build
       gp sync-done start
       node --title aegis src/bootstrap.js | tee public/aegis.log
@@ -59,7 +56,6 @@ tasks:
       SWITCH: true
     command: |
       cd ../aegis-host
-      nvm install --lts
       nvm use --lts
       gp sync-await start
       node --title webswitch src/bootstrap.js | tee public/webswitch.log
