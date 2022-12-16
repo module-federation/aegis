@@ -38,6 +38,7 @@ tasks:
       nohup node watch.js &
       yarn link
       cd ../aegis-app
+      nvm use --lts
       nohup node watch.js &
       nohup node repo.js 8000 dist &
       nohup node repo.js 8001 cache &
@@ -55,9 +56,9 @@ tasks:
       PORT: 8888
       SWITCH: true
     command: |
+      gp sync-await start
       cd ../aegis-host
       nvm use --lts
-      gp sync-await start
       node --title webswitch src/bootstrap.js | tee public/webswitch.log
 
   - name: mongodb
