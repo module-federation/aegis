@@ -1,5 +1,6 @@
 'use strict'
 
+import CircuitBreaker from '../../domain/circuit-breaker'
 import DataSource from '../../domain/datasource'
 
 const HIGHWATERMARK = 50
@@ -29,7 +30,7 @@ const mongoOpts = {
 }
 
 /**
- * MongoDB adapter extends in-memory datasource to support caching.
+ * MongoDB adapter extends in-memory
  * The cache is always updated first, which allows the system to run
  * even when the database is offline.
  */
@@ -42,11 +43,37 @@ export class DataSourceMongoDb extends DataSource {
     this.url = url
   }
 
+  connect (client) {
+    return async function () {
+      let timeout = false
+      const timerId = setTimeout(() => {
+        timeout = true
+      }, 500)
+      await client.connect()
+      clearTimeout(timerId)
+      if (timeout) throw new Error('mongo conn timeout')
+    }
+  }
+
   async connection () {
     try {
       while (connections.length < (dsOptions.numConns || 1)) {
         const client = new MongoClient(this.url, this.mongoOpts)
-        await client.connect()
+        const thresholds = {
+          default: {
+            errorRate: 1,
+            callVolume: 1,
+            intervalMs: 1000,
+            testDelay: 60000
+            //fallbackFn: () => client.emit('connectionClosed')
+          }
+        }
+        const breaker = CircuitBreaker(
+          'mongo.conn',
+          this.connect(client),
+          thresholds
+        )
+        await breaker.invoke()
         connections.push(client)
         client.on('connectionClosed', () =>
           connections.splice(connections.indexOf(client), 1)
@@ -61,7 +88,9 @@ export class DataSourceMongoDb extends DataSource {
   }
 
   async collection () {
-    return (await this.connection()).db(this.namespace).collection(this.name)
+    try {
+      return (await this.connection()).db(this.namespace).collection(this.name)
+    } catch {}
   }
 
   async find (id) {

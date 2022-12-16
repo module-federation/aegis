@@ -32,15 +32,19 @@ export class DataSourceMemory extends DataSource {
         id
       })
     }
-    this.saveSync(id, data)
   }
 
+  /**
+   * This method is meant for external storage.
+   * @param {*} id
+   * @returns
+   */
   find (id) {
-    return this.findSync(id)
+    return null
   }
 
   list (options) {
-    return this.listSync(options)
+    return null
   }
 
   /**
@@ -55,6 +59,5 @@ export class DataSourceMemory extends DataSource {
         id
       })
     }
-    return this.deleteSync(id)
   }
 }
