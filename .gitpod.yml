@@ -16,6 +16,10 @@ tasks:
     env:
       NODE_OPTIONS: --openssl-legacy-provider
       PORT: 8080
+    before: |
+      [ -d ../aegis ] || ( cd ../aegis && nvm install --lts )
+      [ -d ../aegis-host ] || ( cd ../aegis-host && nvm install --lts )
+      [ -d ../aegis-app ] || ( cd ../aegis-app && nvm install --lts )
     init: |
       cd ..
       git clone https://github.com/module-federation/aegis-app
@@ -25,21 +29,22 @@ tasks:
       yarn
       yarn build
       cd ../aegis
+      nvm install --lts
+      nvm use --lts
       yarn
       yarn build
       cd ..
       git clone https://github.com/module-federation/aegis-host
       cd aegis-host
+      nvm install --lts
       nvm use --lts
       yarn
     command: |
       cd ../aegis
       nvm use --lts
-      nohup node watch.js &
       yarn link
       cd ../aegis-app
       nvm use --lts
-      nohup node watch.js &
       nohup node repo.js 8000 dist &
       nohup node repo.js 8001 cache &
       yarn build
@@ -55,9 +60,12 @@ tasks:
       NODE_OPTIONS: --openssl-legacy-provider
       PORT: 8888
       SWITCH: true
+    before: |
+      [ -d ../aegis-host ] || ( cd ../aegis-host && nvm install --lts )
     command: |
       gp sync-await start
       cd ../aegis-host
+      nvm install --lts
       nvm use --lts
       node --title webswitch src/bootstrap.js | tee public/webswitch.log
 
@@ -65,6 +73,18 @@ tasks:
     command: |
       cd ../aegis
       ./mongo.sh
+
+  - name: watch core
+    command: |
+      gp sync-await start
+      cd ../aegis
+      node watch.mjs
+
+  - name: watch app
+    command: |
+      gp sync-await start
+      cd ../aegis-app
+      node watch.mjs
 
 ports:
   - port: 8000

@@ -63,8 +63,8 @@ export class DataSourceMongoDb extends DataSource {
           default: {
             errorRate: 1,
             callVolume: 1,
-            intervalMs: 1000,
-            testDelay: 60000
+            intervalMs: 10000,
+            testDelay: 300000
             //fallbackFn: () => client.emit('connectionClosed')
           }
         }
