@@ -49,7 +49,7 @@ tasks:
       PORT: 8888
       SWITCH: true
     command: |
-      gp ports await 8080
+      gp sync-await start
       cd ../aegis-host
       node --title webswitch src/bootstrap.js | tee public/webswitch.log
 
