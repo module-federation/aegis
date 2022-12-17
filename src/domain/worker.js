@@ -3,7 +3,7 @@
 require('regenerator-runtime')
 const { domain, adapters } = require('..')
 const path = require('path')
-const { workerData, parentPort } = require('worker_threads')
+const { workerData, parentPort, BroadcastChannel } = require('worker_threads')
 const remote = require(path.resolve(process.cwd(), 'dist/remoteEntry'))
 
 const {
