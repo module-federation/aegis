@@ -1,3 +1,5 @@
+image: gitpod/workspace-node-lts
+
 github:
   prebuilds:
     # enable for the master/default branch (defaults to true)
@@ -16,40 +18,26 @@ tasks:
     env:
       NODE_OPTIONS: --openssl-legacy-provider
       PORT: 8080
-    before: |
-      [ -d ../aegis ] && cd ../aegis && nvm install --lts
-      [ -d ../aegis-host ] && cd ../aegis-host && nvm install --lts 
-      [ -d ../aegis-app ] &&  cd ../aegis-app && nvm install --lts
     init: |
+      cd ../aegis
+      yarn
+      yarn build
       cd ..
       git clone https://github.com/module-federation/aegis-app
       cd aegis-app
-      nvm install --lts
-      nvm use --lts
-      yarn
-      yarn build
-      cd ../aegis
-      nvm install --lts
-      nvm use --lts
       yarn
       yarn build
       cd ..
       git clone https://github.com/module-federation/aegis-host
       cd aegis-host
-      nvm install --lts
-      nvm use --lts
       yarn
     command: |
       cd ../aegis
-      nvm use --lts
       yarn link
       cd ../aegis-app
-      nvm use --lts
       nohup node repo.js 8000 dist &
       nohup node repo.js 8001 cache &
-      yarn build
       cd ../aegis-host
-      nvm use --lts
       yarn link @module-federation/aegis
       yarn build
       gp sync-done start
@@ -60,13 +48,9 @@ tasks:
       NODE_OPTIONS: --openssl-legacy-provider
       PORT: 8888
       SWITCH: true
-    before: |
-      [ -d ../aegis-host ] && cd ../aegis-host && nvm install --lts
     command: |
-      gp sync-await start
+      gp ports await 8080
       cd ../aegis-host
-      nvm install --lts
-      nvm use --lts
       node --title webswitch src/bootstrap.js | tee public/webswitch.log
 
   - name: mongodb
@@ -76,17 +60,15 @@ tasks:
 
   - name: watch core
     command: |
-      gp sync-await start
+      gp ports await 8080
       cd ../aegis
       node watch.mjs
 
   - name: watch app
     command: |
-      gp sync-await start
+      gp ports await 8080
       cd ../aegis-app
       node watch.mjs
-
-workspaceLocation: aegis.aegis-work
 
 ports:
   - port: 8000
