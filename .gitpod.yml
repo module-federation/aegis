@@ -17,9 +17,9 @@ tasks:
       NODE_OPTIONS: --openssl-legacy-provider
       PORT: 8080
     before: |
-      [ -d ../aegis ] || ( cd ../aegis && nvm install --lts )
-      [ -d ../aegis-host ] || ( cd ../aegis-host && nvm install --lts )
-      [ -d ../aegis-app ] || ( cd ../aegis-app && nvm install --lts )
+      [ -d ../aegis ] && cd ../aegis && nvm install --lts
+      [ -d ../aegis-host ] && cd ../aegis-host && nvm install --lts 
+      [ -d ../aegis-app ] &&  cd ../aegis-app && nvm install --lts
     init: |
       cd ..
       git clone https://github.com/module-federation/aegis-app
@@ -61,7 +61,7 @@ tasks:
       PORT: 8888
       SWITCH: true
     before: |
-      [ -d ../aegis-host ] || ( cd ../aegis-host && nvm install --lts )
+      [ -d ../aegis-host ] && cd ../aegis-host && nvm install --lts
     command: |
       gp sync-await start
       cd ../aegis-host
@@ -85,6 +85,8 @@ tasks:
       gp sync-await start
       cd ../aegis-app
       node watch.mjs
+
+workspaceLocation: aegis.aegis-work
 
 ports:
   - port: 8000
