@@ -11,7 +11,8 @@ const delay = 500
 function buildCommand () {
   const tasks = process.env.GIPOD_TASKS
   const port = tasks ? tasks[0]?.env?.PORT || 8080 : 80
-  return `./watch ${port}`
+  const switchPort = tasks ? tasks[1]?.env?.PORT || 8888 : 8888
+  return `./watch.sh ${port} ${switchPort}\n`
 }
 
 /**
