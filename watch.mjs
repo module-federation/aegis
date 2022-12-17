@@ -4,13 +4,19 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import os from 'node:os'
 
-const cmd = './watch.sh'
+const cmd = buildCommand()
 const dir = './src'
 const delay = 500
 
+function buildCommand () {
+  const tasks = process.env.GIPOD_TASKS
+  const port = tasks ? tasks[0]?.env?.PORT || 8080 : 80
+  return `./watch ${port}`
+}
+
 /**
  * Get all files in `dir` and in all of its subdirectories and in all of their
- * subdirectories, and so on...
+ * subdirectories, an                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 d so on...
  * @param {string} dir directory to read
  * @returns
  */
