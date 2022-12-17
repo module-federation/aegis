@@ -66,6 +66,8 @@ tasks:
       cd ../aegis-app
       node watch.mjs
 
+workspaceLocation: aegis/aegis.code-workspace
+
 ports:
   - port: 8000
     description: local repo
