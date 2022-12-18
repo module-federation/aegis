@@ -9,9 +9,12 @@ const dir = './src'
 const delay = 500
 
 function buildCommand () {
-  const tasks = JSON.parse(process.env.GIPOD_TASKS)
-  const port = tasks ? tasks[0]?.env?.PORT || 8080 : 80
-  const switchPort = tasks ? tasks[1]?.env?.PORT || 8888 : 8888
+  // below fails randomly😡
+  // const tasks = JSON.parse(process.env.GITPOD_TASKS.trim())
+  // const port = tasks ? tasks[0]?.env?.PORT || 8080 : 80
+  // const switchPort = tasks ? tasks[1]?.env?.PORT || 8888 : 8888
+  const port = /linux/i.test(os.platform()) ? 8080 : 80
+  const switchPort = 8888
   return `./watch.sh ${port} ${switchPort}`
 }
 
