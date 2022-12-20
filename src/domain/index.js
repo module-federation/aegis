@@ -212,9 +212,11 @@
  *    "./models": "./src/domain",
  *    "./adapters": "./src/adapters",
  *    "./services": "./src/services",
- *   },
- * }),
+ *    "./ports": "./src/domain/ports"
+ *   }
+ * })
  * ```
+ * 
  * @property {string} [repo] if using github, name of the github repo
  * @property {string} [owner] if using gitbub, owner of the repo
  * @property {string} [filedir] if using gitub, path to the remoteEntry.js file
@@ -223,7 +225,7 @@
  * @property {string} [serviceName] optional name of the service to which the module belongs
  * - use to group model, adapaters and services together
  * at startup instead of waiting until a request for the model has been received
- * model, adapter or service
+ * modor serviceel, adapter 
  * @property {string} [worker] Creates a model that is controlled by a custom worker
  * instead of the system default worker. Developers can do whatever they want with the worker
  * and needn't use the associated model at all. That said, developers may want to make use of

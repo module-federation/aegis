@@ -29,18 +29,6 @@ exports.WasmInterop = function (wasmExports) {
     _exports
   } = wasmExports
 
-  function parse (v) {
-    return !isNaN(parseInt(v))
-      ? parseInt(v)
-      : !isNaN(parseFloat(v))
-      ? parseFloat(v)
-      : /true/i.test(v)
-      ? true
-      : /false/i.test(v)
-      ? false
-      : v
-  }
-
   /**
    *
    * @param {string} fn function name
@@ -58,8 +46,6 @@ exports.WasmInterop = function (wasmExports) {
       2,
       _exports[fn](kv) >>> 0
     )
-      .map(([k, v]) => ({ [k]: parse(v) }))
-      .reduce((a, b) => ({ ...a, ...b }))
   }
 
   /**
@@ -90,39 +76,81 @@ exports.WasmInterop = function (wasmExports) {
     )
   }
 
-  function clean (obj) {
-    const convert = obj =>
-      Object.entries(obj)
-        .filter(([k, v]) => ['string', 'number', 'boolean'].includes(typeof v))
-        .map(([k, v]) => [k, v.toString()])
-
-    // handle custom port format
-    if (obj.port && obj.args) return convert(obj.args)
-    return convert(obj)
+  /**
+   * 
+   * @param {string} v - value
+   * @returns {string|number|boolean}
+   */
+  function parseString (v) {
+    return !isNaN(parseFloat(v))
+      ? parseFloat(v)
+      : /^true$/i.test(v)
+      ? true
+      : /^false$/i.test(v)
+      ? false
+      : v
   }
 
   /**
-   * Parse the input object into a multidimensional array of key-value pairs
-   * and pass it as an argument to the exported wasm function. Do the reverse for
-   * the response. Consequently, any wasm port or command function must accept a
-   * multidemensional array of strings (numbers are converted to strings) and return
-   * a multidimensional array of strings. Before they can be called, they must be 
-   * registered in a modelspec, i.e. getPorts() and getCommands() must return 
-   * appropria metadata.
+   * 
+   * @param {object} o 
+   * @returns {string[][]}
+   */
+  function parseObject (o) {
+    return Object.entries(o)
+      .filter(([k, v]) => ['string', 'number', 'boolean'].includes(typeof v))
+      .map(([k, v]) => [k, v.toString()])
+  }
 
-   * @param {string} fn exported wasm function name
-   * @param {object|number} [obj] object, see above
-   * @returns {object|number} object
+  /**
+   *
+   * @param {object} obj
+   * @returns {string[][]}
+   */
+  function toKeyValueArray (obj) {
+    // handle custom port format
+    if (obj.port && obj.args) return parseObject(obj.args)
+    return parseObject(obj)
+  }
+
+  /**
+   * 
+   * @param {string[][]} kv 
+   * @returns {object}
+   */
+  function fromKeyValueArray (kv) {
+    return kv
+      .map(([k, v]) => ({ [k]: parseString(v) }))
+      .reduce((a, b) => ({ ...a, ...b }))
+  }
+
+  /**
+   * Parse the input object into a multidimensional array of key-value string pairs
+   * and pass it as an argument to the exported wasm function. Do the reverse for
+   * the return value. The interface requires that any wasm port or command function 
+   * accept a multidemensional array of strings (numbers and booleans are converted 
+   * to strings) and return a multidimensional array of strings. These functions must 
+   * be defined in the ModelSpec, i.e. `getPorts()` and `getCommands()` list the names
+   * of functions to be exported from the wasm module that implement the interface, 
+   * ```js
+   * (string[][]) => string[][] 
+   * ```
+   * or
+   * ```js 
+   * () => string[][]
+   *```
+   * @param {string} fn name of exported function
+   * @param {object} [obj] object; see above
+   * @returns {object} object
    */
   function callWasmFunction (fn, obj) {
-    return lift(fn, lower(clean(obj)))
+    return fromKeyValueArray(lift(fn, lower(toKeyValueArray(obj))))
   }
 
   return Object.freeze({
     /**
      * For every command in {@link getCommands} create a
-     * an entry that will invoke one or more of the exported
-     * wasm functions.
+     * an entry that will invoke the exported wasm function.
      */
     importWasmCommands () {
       const commandNames = getCommands()
@@ -144,10 +172,9 @@ exports.WasmInterop = function (wasmExports) {
     },
 
     /**
-     * For every port in {@link getPorts} create a
-     * an entry that in the {@link ModelSpecification.ports}
-     * that will invoke one or more of the exported
-     * wasm functions.
+     * For every `port` in {@link getPorts} create a
+     * an entry in {@link ModelSpecification.ports}
+     * that will invoke the exported wasm function.
      */
     importWasmPorts () {
       const ports = getPorts()
