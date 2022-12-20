@@ -1,2 +1,109 @@
+github:
+  prebuilds:
+    # enable for the master/default branch (defaults to true)
+    master: true
+    # enable for all branches in this repo (defaults to false)
+    branches: true
+    # enable for pull requests coming from this repo (defaults to true)
+    pullRequests: true
+    # add a check to pull requests (defaults to true)
+    addCheck: true
+    # add a "Review in Gitpod" button as a comment to pull requests (defaults to false)
+    addComment: true
 
-mainConfiguration: https://github.com/module-federation/aegis-host
+tasks:
+  - name: install & run
+    env:
+      NODE_OPTIONS: --openssl-legacy-provider
+      PORT: 8080
+    before: |
+      [ -d ../aegis ] || ( cd ../aegis && nvm install --lts )
+      [ -d ../aegis-host ] || ( cd ../aegis-host && nvm install --lts )
+      [ -d ../aegis-app ] || ( cd ../aegis-app && nvm install --lts )
+    init: |
+      cd ..
+      git clone https://github.com/module-federation/aegis-app
+      cd aegis-app
+      nvm install --lts
+      nvm use --lts
+      yarn
+      yarn build
+      cd ../aegis
+      nvm install --lts
+      nvm use --lts
+      yarn
+      yarn build
+      cd ..
+      git clone https://github.com/module-federation/aegis-host
+      cd aegis-host
+      nvm install --lts
+      nvm use --lts
+      yarn
+    command: |
+      cd ../aegis
+      nvm use --lts
+      yarn link
+      cd ../aegis-app
+      nvm use --lts
+      nohup node repo.js 8000 dist &
+      nohup node repo.js 8001 cache &
+      yarn build
+      cd ../aegis-host
+      nvm use --lts
+      yarn link @module-federation/aegis
+      yarn build
+      gp sync-done start
+      node --title aegis src/bootstrap.js | tee public/aegis.log
+
+  - name: service mesh
+    env:
+      NODE_OPTIONS: --openssl-legacy-provider
+      PORT: 8888
+      SWITCH: true
+    before: |
+      [ -d ../aegis-host ] || ( cd ../aegis-host && nvm install --lts )
+    command: |
+      gp sync-await start
+      cd ../aegis-host
+      nvm install --lts
+      nvm use --lts
+      node --title webswitch src/bootstrap.js | tee public/webswitch.log
+
+  - name: mongodb
+    command: |
+      cd ../aegis
+      ./mongo.sh
+
+  - name: watch core
+    command: |
+      gp sync-await start
+      cd ../aegis
+      node watch.mjs
+
+  - name: watch app
+    command: |
+      gp sync-await start
+      cd ../aegis-app
+      node watch.mjs
+
+ports:
+  - port: 8000
+    description: local repo
+    visibility: public
+    onOpen: ignore
+  - port: 8080
+    description: http api
+    visibility: public
+    onOpen: open-preview
+  - port: 8888
+    description: webswitch
+    visibility: public
+    onOpen: open-browser
+  - port: 27017
+    description: mongodb
+    visibility: public
+    onOpen: ignore
+  - port: 5353
+    description: multicast dns
+    visibility: public
+    onOpen: ignore

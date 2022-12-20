@@ -9,6 +9,7 @@ import { isMainThread } from 'worker_threads'
  * @property {boolean} memoryOnly - if true returns memory adapter and caches it
  * @property {boolean} ephemeral - if true returns memory adapter but doesn't cache it
  * @property {string} adapterName - name of adapter to use
+ * @property {Array<function():typeof import('./datasource').default>} mixins
  */
 
 import ModelFactory from '.'
@@ -37,15 +38,15 @@ const DefaultDataSource =
  */
 const DsCoreExtensions = superclass =>
   class extends superclass {
-    constructor(map, name, namespace, options)  {
+    constructor(map, name, namespace, options) {
       super(map, name, namespace, options)
     }
-    
-    set factory (value) {
+
+    set factory(value) {
       this[FACTORY] = value
     }
 
-    get factory () {
+    get factory() {
       return this[FACTORY]
     }
 
@@ -60,15 +61,14 @@ const DsCoreExtensions = superclass =>
      * @param {string} id
      * @param {Model} data
      */
-    async save (id, data) {
+    async save(id, data) {
       try {
-        await super.save(id, JSON.parse(JSON.stringify(data)))
         this.saveSync(id, data)
+        await super.save(id, JSON.parse(JSON.stringify(data)))
       } catch (error) {
         console.error({ fn: this.save.name, error })
         throw error
       }
-
     }
 
     /**
@@ -78,7 +78,7 @@ const DsCoreExtensions = superclass =>
      * @param {string} id
      * @returns {Promise<Model>|undefined}
      */
-    async find (id) {
+    async find(id) {
       try {
         const cached = this.findSync(id)
         if (cached) return cached
@@ -98,16 +98,16 @@ const DsCoreExtensions = superclass =>
       }
     }
 
-    transform () {
+    transform() {
       const ctx = this
 
       return new Transform({
         objectMode: true,
 
-        transform (chunk, _encoding, next) {
+        transform(chunk, _encoding, next) {
           this.push(ModelFactory.loadModel(broker, ctx, chunk, ctx.name))
           next()
-        }
+        },
       })
     }
 
@@ -116,7 +116,7 @@ const DsCoreExtensions = superclass =>
      * @param {*} options
      * @returns
      */
-    async list (options) {
+    async list(options) {
       try {
         if (options?.writable)
           return isMainThread
@@ -132,7 +132,7 @@ const DsCoreExtensions = superclass =>
                 ModelFactory.loadModel(broker, this, model, this.name)
               )
       } catch (error) {
-        console.error({ fn: this.list.name })
+        console.error({ fn: this.list.name, error })
         throw error
       }
     }
@@ -142,15 +142,14 @@ const DsCoreExtensions = superclass =>
      * @param {*} id
      * @returns
      */
-    async delete (id) {
+    async delete(id) {
       try {
         await super.delete(id)
+        // only if super succeeds
+        this.deleteSync(id)
       } catch (error) {
         console.error(error)
         throw error
-      } finally {
-        // only if super succeeds
-        this.deleteSync(id)
       }
     }
   }
@@ -179,11 +178,11 @@ const DataSourceFactory = (() => {
    * @param {*} name
    * @returns
    */
-  function hasDataSource (name) {
+  function hasDataSource(name) {
     return dataSources.has(name)
   }
 
-  function listDataSources () {
+  function listDataSources() {
     return [...dataSources.keys()]
   }
 
@@ -208,7 +207,7 @@ const DataSourceFactory = (() => {
    * @param {dsOpts} options
    * @returns {typeof DataSource}
    */
-  function createDataSourceClass (spec, options) {
+  function createDataSourceClass(spec, options) {
     const { memoryOnly, ephemeral, adapterName } = options
 
     if (memoryOnly || ephemeral) return dsClasses['DataSourceMemory']
@@ -236,7 +235,7 @@ const DataSourceFactory = (() => {
    * @param {dsOpts} options
    * @returns {typeof DataSource}
    */
-  function extendDataSourceClass (DsClass, options = {}) {
+  function extendDataSourceClass(DsClass, options = {}) {
     const mixins = [extendClass].concat(options.mixins || [])
     return compose(...mixins)(DsClass)
   }
@@ -247,15 +246,15 @@ const DataSourceFactory = (() => {
    * @param {dsOpts} [options]
    * @returns {DataSource}
    */
-  function createDataSource (name, namespace, options) {
+  function createDataSource(name, namespace, options) {
     const spec = ModelFactory.getModelSpec(name)
     const dsMap = options.dsMap || new Map()
 
     const DsClass = createDataSourceClass(spec, options)
     const DsExtendedClass = extendDataSourceClass(DsClass, options)
 
-    if(spec.datasource) {
-      options = {...options, connOpts: {...spec.datasource}}
+    if (spec.datasource) {
+      options = { ...options, connOpts: { ...spec.datasource } }
     }
 
     const newDs = new DsExtendedClass(dsMap, name, namespace, options)
@@ -273,7 +272,7 @@ const DataSourceFactory = (() => {
    * @param {dsOpts} options
    * @returns {import('./datasource').default}
    */
-  function getDataSource (name, namespace = null, options = {}) {
+  function getDataSource(name, namespace = null, options = {}) {
     if (!dataSources) dataSources = new Map()
     if (!namespace) return dataSources.get(name)
     if (dataSources.has(name)) return dataSources.get(name)
@@ -288,7 +287,7 @@ const DataSourceFactory = (() => {
    * @param {dsOpts} [options]
    * @returns
    */
-  function getSharedDataSource (name, namespace = null, options = {}) {
+  function getSharedDataSource(name, namespace = null, options = {}) {
     if (!dataSources) dataSources = new Map()
     if (!namespace) return dataSources.get(name)
     if (dataSources.has(name)) return dataSources.get(name)
@@ -303,20 +302,20 @@ const DataSourceFactory = (() => {
    * @param {string} name
    * @returns {ProxyHandler<DataSource>}
    */
-  function getRestrictedDataSource (name, namespace, options) {
+  function getRestrictedDataSource(name, namespace, options) {
     return new Proxy(getDataSource(name, namespace, options), {
-      get (target, key) {
+      get(target, key) {
         if (key === 'factory') {
           throw new Error('unauthorized')
         }
       },
-      ownKeys (target) {
+      ownKeys(target) {
         return []
-      }
+      },
     })
   }
 
-  function close () {
+  function close() {
     dataSources.forEach(ds => ds.close())
   }
 
@@ -331,7 +330,7 @@ const DataSourceFactory = (() => {
     getRestrictedDataSource,
     hasDataSource,
     listDataSources,
-    close
+    close,
   })
 })()
 

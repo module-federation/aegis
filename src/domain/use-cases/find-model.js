@@ -67,7 +67,12 @@ export default function makeFindModel ({
 
         if (query.command) {
           const result = await async(
-            executeCommand(hydratedModel, query.command, 'read')
+            executeCommand(
+              hydratedModel,
+              query.command,
+              { args: query.args },
+              'read'
+            )
           )
           if (result.ok) {
             return result.data

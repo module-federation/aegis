@@ -6,12 +6,12 @@
  * @param {function():string} hash
  * @returns {import("./http-adapter").httpController}
  */
-export default function makeLiveRollout (hotDeploy) {
+export default function makeLiveRollout (deployModel) {
   return async function liveRollout (httpRequest) {
     try {
       httpRequest.log(liveRollout.name)
 
-      const result = await hotDeploy(httpRequest.query.remoteEntry)
+      const result = await deployModel(httpRequest.body)
 
       console.debug({ fn: liveRollout.name, result })
       return {

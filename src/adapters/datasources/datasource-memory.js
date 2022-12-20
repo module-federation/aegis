@@ -4,6 +4,11 @@ import DataSource from '../../domain/datasource'
 
 /**
  * Temporary in-memory storage.
+ *
+ * These methods represent calls to external storage, which doesnt
+ * exist in this case. Because the system extends and overrides these
+ * methods to implement caching, there's nothing for them to do, except
+ * to emit cache sync events when running in cluster mode.
  */
 export class DataSourceMemory extends DataSource {
   constructor (map, name, namespace, options) {
@@ -13,7 +18,7 @@ export class DataSourceMemory extends DataSource {
   /**
    * @override
    *
-   * Update cache and datasource. Sync cache of other
+   * Handles cluster cache sync. Sync cache of other
    * cluster members if running in cluster mode.
    *
    * @param {*} id
@@ -28,22 +33,25 @@ export class DataSourceMemory extends DataSource {
         cmd: 'saveBroadcast',
         pid: process.pid,
         name: this.name,
+        namespace: this.namespace,
         data,
         id
       })
     }
-    this.saveSync(id, data)
-  }
-
-  find (id) {
-    return this.findSync(id)
-  }
-
-  list (options) {
-    return this.listSync(options)
   }
 
   /**
+   * @param {*} id
+   * @returns
+   */
+  find (id) {}
+
+  list (options) {}
+
+  /**
+   * Handles cluster cache sync. Sync cache of other
+   * cluster members if running in cluster mode.
+   *
    * @override
    */
   delete (id, sync = true) {
@@ -52,9 +60,9 @@ export class DataSourceMemory extends DataSource {
         cmd: 'deleteBroadcast',
         pid: process.pid,
         name: this.name,
+        namespace: this.namespace,
         id
       })
     }
-    return this.deleteSync(id)
   }
 }

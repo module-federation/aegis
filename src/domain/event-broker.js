@@ -325,6 +325,9 @@ const EventBrokerFactory = (() => {
 
   return Object.freeze({
     /**
+     * @typedef {import('./model-factory').ModelFactory} ModelFactory
+     * While not needed to implement a singleton (see {@link ModelFactory }),
+     * this more strongly indicates to devs that the broker is a singleton
      * @returns {EventBroker} singleton
      */
     getInstance: function () {

@@ -1,3 +1,0 @@
-/**
- * support etherium blockchain
- */

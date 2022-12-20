@@ -6,3 +6,5 @@ node_modules
 .DS_Store
 tst-rtry.js
 .VSCodeCounter/
+esm
+lib

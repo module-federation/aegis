@@ -5,7 +5,7 @@ import { changeDataCapture } from './util/change-data-capture'
 /** change data capture */
 const cdcEnabled = false // /true/i.test('CHANGE_DATA_CAPTURE')
 
-function roughSizeOfObject (...objects) {
+function roughSizeOfObject(...objects) {
   let bytes = 0
 
   objects.forEach(object => {
@@ -36,20 +36,24 @@ function roughSizeOfObject (...objects) {
   return bytes
 }
 
-/**
- * Data source base class
- */
 export default class DataSource {
-  constructor (map, name, namespace, options = {}) {
+  /**
+   * Data source base class
+   * @param {Map} map
+   * @param {string} name
+   * @param {string} namespace
+   * @param {*} options
+   */
+  constructor(map, name, namespace, options = {}) {
     this.dsMap = map
     this.name = name
     this.namespace = namespace
     this.options = options
   }
 
-  changeHandlers () {}
+  changeHandlers() {}
 
-  handleChanges (id, data) {
+  handleChanges(id, data) {
     if (!cdcEnabled) return data
 
     const prev = this.findSync(id)
@@ -66,7 +70,7 @@ export default class DataSource {
    * @param {*} id
    * @param {*} data
    */
-  async save (id, data) {
+  async save(id, data) {
     throw new Error('abstract method not implemented')
   }
 
@@ -79,7 +83,7 @@ export default class DataSource {
    * @param {import(".").Model} data
    * @returns
    */
-  saveSync (id, data) {
+  saveSync(id, data) {
     return this.mapSet(id, this.handleChanges(id, data))
   }
 
@@ -90,16 +94,16 @@ export default class DataSource {
    * @param {*} data
    * @returns
    */
-  mapSet (id, data) {
+  mapSet(id, data) {
     return this.dsMap.set(id, data)
   }
 
-  /** 
-  * Create indexes as defined in the datasource object in the model
-  * @param {Array<object>}
-  * @returns {Promise<boolean>} result
-  */
- 
+  /**
+   * Create indexes as defined in the datasource object in the model
+   * @param {Array<object>}
+   * @returns {Promise<boolean>} result
+   */
+
   async createIndexes(indexes) {
     throw new Error('abstract method not implemented')
   }
@@ -109,7 +113,7 @@ export default class DataSource {
    * @param {*} id record id
    * @returns {Promise<any>} record
    */
-  async find (id) {
+  async find(id) {
     throw new Error('abstract method not implemented')
   }
 
@@ -118,11 +122,11 @@ export default class DataSource {
    * @param {string} id
    * @returns {import(".").Model}
    */
-  findSync (id) {
+  findSync(id) {
     return this.mapGet(id)
   }
 
-  mapGet (id) {
+  mapGet(id) {
     return this.dsMap.get(id)
   }
 
@@ -142,9 +146,8 @@ export default class DataSource {
    *    - `writable` writable stream for output
    * @returns {Promise<any[]>}
    */
-  async list (options) {
-    const count = options.filter.__count || options.query.__count
-    if (count) return this.handleCount(count)
+  async list(options) {
+    throw new Error('unimplemented abstract method')
   }
 
   /**
@@ -152,35 +155,33 @@ export default class DataSource {
    * @param {object} qsssuery
    * @returns
    */
-  listSync (query) {
-    const count = query.__count
-    if (count) return this.handleCount(count)
-
+  listSync(query) {
+    if (query?.__count) return this.handleCount(query.__count)
     const list = this.generateList()
     return query ? this.filterList(query, list) : list
   }
 
-  handleCount (count) {
+  handleCount(count) {
     const [key = null, value = null] = count.split(':')
 
     if (key && value) {
       return {
         [key]: value,
-        total: this.filterList({ [key]: value }, this.generateList()).length
+        total: this.filterList({ [key]: value }, this.generateList()).length,
       }
     }
 
     return this.count()
   }
 
-  count () {
+  count() {
     return {
       cached: this.getCacheSize(),
-      bytes: this.getCacheSizeBytes()
+      bytes: this.getCacheSizeBytes(),
     }
   }
 
-  generateList () {
+  generateList() {
     return this.mapToArray()
   }
 
@@ -188,7 +189,7 @@ export default class DataSource {
    *
    * @returns
    */
-  mapToArray () {
+  mapToArray() {
     return [...this.dsMap.values()]
   }
 
@@ -197,7 +198,7 @@ export default class DataSource {
    * @param {*} query
    * @returns
    */
-  filterList (query, list) {
+  filterList(query, list) {
     if (query) {
       if (typeof query.__limit === 'number') {
         return list.splice(0, query.__limit)
@@ -205,10 +206,11 @@ export default class DataSource {
 
       const operands = {
         and: (keys, cb) => keys.every(cb),
-        or: (keys, cb) => keys.some(cb)
+        or: (keys, cb) => keys.some(cb),
       }
 
       const operand = query.__operand ? query.__operand.toLowerCase() : 'and'
+
       if (typeof operands[operand] !== 'function')
         throw new Error('invalid query')
 
@@ -234,39 +236,32 @@ export default class DataSource {
    * @param {*} id
    * @param {boolean} sync sync cluster nodes, true by default
    */
-  async delete (id, sync = true) {
+  async delete(id, sync = true) {
     throw new Error('abstract method not implemented')
   }
 
-  deleteSync (id) {
+  deleteSync(id) {
     return this.mapDelete(id)
   }
 
-  mapDelete (id) {
+  mapDelete(id) {
     return this.dsMap.delete(id)
   }
   /**
    *
    * @param {*} options
    */
-  async load (options) {}
-
-  /**
-   *
-   */
-  async count () {
-    return this.countSync()
-  }
+  async load(options) {}
 
   /**
    *
    * @returns
    */
-  countSync () {
+  countSync() {
     return this.mapCount()
   }
 
-  mapCount () {
+  mapCount() {
     return this.dsMap.size()
   }
 
@@ -274,7 +269,7 @@ export default class DataSource {
    *
    * @returns
    */
-  getCacheSize () {
+  getCacheSize() {
     return this.countSync()
   }
 
@@ -282,38 +277,38 @@ export default class DataSource {
    *
    * @returns
    */
-  getCacheSizeBytes () {
+  getCacheSizeBytes() {
     return this.countSync() * roughSizeOfObject(this.listSync({ __limit: 1 }))
   }
 
   /**
    * called when a related model attempts to save
    */
-  requestSave () {
+  requestSave() {
     throw new Error('requestSave not implemented')
   }
 
   /**
    * called when a related model attempts to delete
    */
-  requestDelete () {
+  requestDelete() {
     throw new Error('requestDelete not implemented')
   }
 
-  getWritableStream () {
+  getWritableStream() {
     throw new Error('getWritableStream not implemented')
   }
 
-  getReadableStream () {
+  getReadableStream() {
     throw new Error('getReadableStream not implemented')
   }
 
-  requestWritableStream () {
+  requestWritableStream() {
     throw new Error('getWritableStream not implemented')
   }
 
   /**
    *
    */
-  close () {}
+  close() {}
 }

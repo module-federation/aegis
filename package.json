@@ -1,6 +1,6 @@
 {
   "name": "@module-federation/aegis",
-  "version": "1.4.2-beta",
+  "version": "1.5.0-beta",
   "module": "lib/index.js",
   "main": "lib/index.js",
   "repository": "git@github.com:module-federation/aegis.git",
@@ -9,6 +9,7 @@
   "scripts": {
     "start": "./start.sh",
     "build": "npm run build:esm && npm run build:cjs",
+    "watch": "node watch.mjs",
     "webswitch": "cd ../aegis-host ; export SWITCH=true ; export PORT=8888 ; yarn start",
     "build:esm": "babel --delete-dir-on-start -d esm/ src/ && cp src/index.js esm",
     "build:cjs": "babel --delete-dir-on-start --env-name cjs -d lib/ src/ && cp src/index.js lib",
@@ -37,7 +38,7 @@
     "ipfs": "^0.63.0",
     "jwks-rsa": "2.1.4",
     "mesh-link": "0.13.6",
-    "mongodb": "4.9.0",
+    "mongodb": "^4.12.1",
     "multicast-dns": "7.2.5",
     "nanoid": "3.3.2",
     "nats": "2.7.1",

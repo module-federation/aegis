@@ -226,7 +226,7 @@ const Switch = function (id, thresholds) {
     /**
      * Check error-specific threshold.
      * If none found, use default threshold
-     * @param {Error} error
+     * @param {Error} errorx
      * @returns {boolean}
      */
     wasThresholdBreached (error) {
@@ -252,7 +252,12 @@ const Switch = function (id, thresholds) {
         error
       })
     },
-
+    /**
+     *
+     * @param {*} error
+     * @param {*} arg
+     * @returns
+     */
     async fallbackFn (error, arg) {
       try {
         return getThreshold(error, thresholds).fallbackFn.apply(this, arg)

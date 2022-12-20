@@ -18,13 +18,12 @@ import makeInvokePort from './invoke-port'
 import makeHotReload from './hot-reload'
 import brokerEvents from './broker-events'
 import DistributedCache from '../distributed-cache'
-import makeServiceMesh from './create-service-mesh.js'
+import makeServiceMesh from './create-mesh.js'
 import domainEvents from '../domain-events'
 import { PortEventRouter } from '../event-router'
 import { isMainThread } from 'worker_threads'
 import { hostConfig } from '../../config'
 import { AppError } from '../util/app-error'
-
 import * as context from '../util/async-context'
 
 export const serviceMeshPlugin =
@@ -139,9 +138,14 @@ function buildOptions (spec, options) {
       threadpool: getThreadPool(spec, ds, options),
       // if caller provides id, use it as key for idempotency
       async enforceIdempotency () {
-        const duplicateRequest = await ds.find(
-          context.requestContext.getStore().get('id')
-        )
+        const store = context.requestContext.getStore()
+
+        if (!store.get('checkIdempotency')) {
+          console.log('no idempotency check')
+          return false
+        }
+
+        const duplicateRequest = await ds.find(store.get('id'))
         console.info(
           'check idempotency-key: is this a duplicate?',
           duplicateRequest ? 'yes' : 'no'
@@ -192,7 +196,6 @@ const findModels = () => make(makeFindModel)
 const removeModels = () => make(makeRemoveModel)
 const loadModels = () => make(makeLoadModels)
 const emitEvents = () => make(makeEmitEvent)
-const deployModels = () => make(makeDeployModel)
 const invokePorts = () => make(makeInvokePort)
 const hotReload = () => [
   {
@@ -203,6 +206,8 @@ const hotReload = () => [
     })
   }
 ]
+const deployModel = () => makeDeployModel()
+
 const listConfigs = () =>
   makeListConfig({
     models: ModelFactory,
@@ -220,7 +225,7 @@ const domainPorts = modelName => ({
   ...UseCaseService(modelName),
   eventBroker: EventBrokerFactory.getInstance(),
   modelSpec: ModelFactory.getModelSpec(modelName),
-  dataSource: DataSourceFactory.getDataSource(modelName)
+  dataSource: DataSourceFactory.getRestrictedDataSource(modelName)
 })
 
 /**
@@ -283,7 +288,7 @@ export const UseCases = {
   hotReload,
   registerEvents,
   emitEvents,
-  deployModels,
+  deployModel,
   invokePorts
 }
 
@@ -306,13 +311,18 @@ export function UseCaseService (modelName) {
       removeModel: makeOne(modelNameUpper, makeRemoveModel),
       loadModels: makeOne(modelNameUpper, makeLoadModels),
       emitEvent: makeOne(modelNameUpper, makeEmitEvent),
-      deployModel: makeOne(modelNameUpper, makeDeployModel),
       invokePort: makeOne(modelNameUpper, makeInvokePort),
       listConfigs: listConfigs()
     }
   }
 }
 
+/**
+ * Contains all the use case functions (inbound ports)
+ * for all models that are part of this domain (bounded context).
+ * @param {string} domain see {@link ModelFactory.domain}
+ * @returns
+ */
 export function makeDomain (domain) {
   if (!domain) throw new Error('no domain provided')
   return modelsInDomain(domain.toUpperCase())

@@ -55,8 +55,8 @@ export default function makeCreateModel ({
           return AppError(error)
         }
 
-        // Return the latest changes
-        return repository.find(model.getId())
+        // Return model from cache to capture any updates
+        return repository.findSync(model.getId())
       } catch (error) {
         return AppError(error)
       }
