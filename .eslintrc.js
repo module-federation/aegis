@@ -12,7 +12,7 @@ module.exports = {
     sourceType: 'module',
     ecmaFeatures: {
       modules: true,
-    }
+    },
   },
   extends: ['eslint:recommended', 'plugin:prettier/recommended'],
   rules: {},
