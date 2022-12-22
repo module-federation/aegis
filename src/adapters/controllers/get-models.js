@@ -1,4 +1,5 @@
 'use strict'
+import { Readable, Transform } from 'stream'
 import getContent from './get-content'
 
 /**
@@ -16,7 +17,10 @@ export default function getModelsFactory (listModels) {
         writable: httpRequest.res
       })
 
-      if (!models) {
+      if (
+        models?.length > 0 &&
+        (models[0] instanceof Readable || models[0] instanceof Transform)
+      ) {
         httpRequest.stream = true
         return
       }
