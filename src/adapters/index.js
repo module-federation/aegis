@@ -61,7 +61,7 @@ import { ServiceMeshPlugin } from '../services'
 export const ServiceMeshAdapter = {
   ...Object.keys(ServiceMeshServerImpl)
     .map(port => ({
-      [port]: ServiceMeshServerImpl[port](ServiceMeshPlugin)
+      [port]: ServiceMeshServerImpl[port](ServiceMeshPlugin),
     }))
-    .reduce((a, b) => ({ ...a, ...b }))
+    .reduce((a, b) => ({ ...a, ...b })),
 }

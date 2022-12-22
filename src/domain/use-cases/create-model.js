@@ -16,7 +16,7 @@
  * @param {injectedDependencies} param0
  * @returns {createModel}
  */
-export default function makeCreateModel ({
+export default function makeCreateModel({
   modelName,
   models,
   repository,
@@ -26,7 +26,7 @@ export default function makeCreateModel ({
   handlers = [],
   isMainThread,
   domainEvents,
-  AppError
+  AppError,
 } = {}) {
   const eventType = models.EventTypes.CREATE
   const eventName = models.getEventName(eventType, modelName)
@@ -35,7 +35,7 @@ export default function makeCreateModel ({
   broker.on(domainEvents.createModel(modelName), createModel)
 
   /** @type {createModel} */
-  async function createModel (input) {
+  async function createModel(input) {
     if (isMainThread) {
       const existingModel = await enforceIdempotency()
       if (existingModel) return existingModel

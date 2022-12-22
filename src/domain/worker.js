@@ -11,7 +11,7 @@ const {
   makeDomain,
   AppError,
   EventBrokerFactory,
-  requestContext
+  requestContext,
 } = domain
 
 const { initCache } = adapters.controllers
@@ -28,7 +28,7 @@ const remoteEntries = remote.get('./remoteEntries').then(factory => factory())
  * @param {import('./').remoteEntry[]} remotes
  * @returns
  */
-async function init (remotes) {
+async function init(remotes) {
   try {
     // import federated modules; override as needed
     await importRemotes(remotes)
@@ -60,7 +60,7 @@ async function init (remotes) {
  *
  * @param {MessagePort} eventPort
  */
-function connectSubChannels (eventPort) {
+function connectSubChannels(eventPort) {
   try {
     // fire events from main
     eventPort.onmessage = ev => broker.notify(ev.data.eventName, ev.data)

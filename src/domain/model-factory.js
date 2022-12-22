@@ -50,13 +50,13 @@ const EventTypes = {
   CREATE: 'CREATE',
   UPDATE: 'UPDATE',
   DELETE: 'DELETE',
-  ONLOAD: 'ONLOAD'
+  ONLOAD: 'ONLOAD',
 }
 
 /**
  * @param {String} modelName
  */
-function checkModelName (modelName) {
+function checkModelName(modelName) {
   if (typeof modelName === 'string') {
     return String(modelName).toUpperCase()
   }
@@ -67,7 +67,7 @@ function checkModelName (modelName) {
  *
  * @param {EventType} eventType
  */
-function checkEventType (eventType) {
+function checkEventType(eventType) {
   return eventType
 }
 
@@ -76,7 +76,7 @@ function checkEventType (eventType) {
  * @param {EventType} eventType
  * @param {String} modelName
  */
-function createEventName (eventType, modelName) {
+function createEventName(eventType, modelName) {
   return checkEventType(eventType) + String(modelName).toUpperCase() // create for non-loaded
 }
 
@@ -93,7 +93,7 @@ const eventFactories = {
   [EventTypes.CREATE]: new Map(),
   [EventTypes.UPDATE]: new Map(),
   [EventTypes.DELETE]: new Map(),
-  [EventTypes.ONLOAD]: new Map()
+  [EventTypes.ONLOAD]: new Map(),
 }
 
 /**
@@ -149,8 +149,8 @@ const ModelFactory = {
         spec: {
           ...spec,
           broker,
-          datasource
-        }
+          datasource,
+        },
       })
     }
     throw new Error('unregistered model')
@@ -171,8 +171,8 @@ const ModelFactory = {
         spec: {
           ...spec,
           broker,
-          datasource
-        }
+          datasource,
+        },
       })
     }
     throw new Error('unregistered model', modelName)
@@ -195,7 +195,7 @@ const ModelFactory = {
         args,
         factory,
         eventType: type,
-        modelName: name
+        modelName: name,
       })
     }
     throw new Error('unregistered model event')
@@ -233,7 +233,7 @@ const ModelFactory = {
   getEvents: () =>
     Object.keys(eventFactories).map(k => ({
       type: k,
-      events: [...eventFactories[k].keys()]
+      events: [...eventFactories[k].keys()],
     })),
 
   /**
@@ -284,8 +284,8 @@ const ModelFactory = {
       ...modelFactories.get(modelName),
       modelName,
       datasource,
-      broker
-    })
+      broker,
+    }),
 }
 
 Object.freeze(modelFactories)

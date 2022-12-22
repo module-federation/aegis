@@ -1,10 +1,10 @@
 import fs from 'fs'
 
-export function writeFile (_service) {
+export function writeFile(_service) {
   return async function (options) {
     const {
       model,
-      args: [callback]
+      args: [callback],
     } = options
 
     try {

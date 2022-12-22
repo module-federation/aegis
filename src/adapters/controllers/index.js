@@ -13,7 +13,7 @@ const {
   hotReload,
   registerEvents,
   invokePorts,
-  deployModel
+  deployModel,
 } = UseCases
 
 import postModelFactory from './post-model'
@@ -26,12 +26,12 @@ import anyInvokePortFactory from './post-invoke-port'
 import makeLiveUpdate from './live-update'
 import makeLiveRollout from './live-rollout'
 
-function make (useCases, controllerFactory) {
+function make(useCases, controllerFactory) {
   return useCases().map(uc => ({
     endpoint: uc.endpoint,
     path: uc.path,
     ports: uc.ports,
-    fn: controllerFactory(uc.fn)
+    fn: controllerFactory(uc.fn),
   }))
 }
 
@@ -51,14 +51,14 @@ export const initCache = () => {
   const specs = loadModels()
   registerEvents()
 
-  async function loadModelInstances () {
+  async function loadModelInstances() {
     console.time(label)
     await Promise.allSettled(specs.map(async m => (m && m.fn ? m.fn() : false)))
     console.timeEnd(label)
   }
 
   return {
-    load: () => loadModelInstances()
+    load: () => loadModelInstances(),
   }
 }
 

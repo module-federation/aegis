@@ -13,7 +13,7 @@ export const RepoClient = {
    * @param {import('../../../webpack/remote-entries-type').remoteEntry} entry
    * @returns {Buffer|String|Uint16Array}
    */
-  octoGet (entry) {
+  octoGet(entry) {
     console.info('github url', entry.url)
     const owner = entry.owner
     const repo = entry.repo
@@ -26,7 +26,7 @@ export const RepoClient = {
           owner,
           repo,
           filedir,
-          branch
+          branch,
         })
         .then(function (rest) {
           const file = rest.data.find(datum => /\.wasm$/.test(datum.name))
@@ -36,7 +36,7 @@ export const RepoClient = {
           return octokit.request('GET /repos/{owner}/{repo}/git/blobs/{sha}', {
             owner,
             repo,
-            sha
+            sha,
           })
         })
         .then(function (rest) {
@@ -49,7 +49,7 @@ export const RepoClient = {
                 buf.buffer,
                 buf.byteOffset,
                 buf.length / Uint16Array.BYTES_PER_ELEMENT
-              )
+              ),
           })
         })
         .catch(err => reject(err))
@@ -61,7 +61,7 @@ export const RepoClient = {
    * @param {*} params
    * @returns
    */
-  httpGet (params) {
+  httpGet(params) {
     return new Promise(function (resolve, reject) {
       var req = require(params.protocol.slice(
         0,
@@ -95,9 +95,9 @@ export const RepoClient = {
    * @param {import('../../../webpack/remote-entries-type').remoteEntry} entry
    * @returns
    */
-  async fetch (entry) {
+  async fetch(entry) {
     if (/^https:\/\/api.github.com.*/i.test(entry.url))
       return this.octoGet(entry)
     return this.httpGet(entry.url)
-  }
+  },
 }

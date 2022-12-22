@@ -21,7 +21,7 @@ const isPrimary =
 const headers = {
   host: 'x-webswitch-host',
   role: 'x-webswitch-role',
-  pid: 'x-webswitch-pid'
+  pid: 'x-webswitch-pid',
 }
 let messagesSent = 0
 let backupSwitch
@@ -36,7 +36,7 @@ let backupSwitch
  * @param {tls.SecureContext} [secureCtx] if ssl enabled
  * @returns {import('ws').server}
  */
-export function attachServer (httpServer, secureCtx = {}) {
+export function attachServer(httpServer, secureCtx = {}) {
   const info = Symbol('webswitch')
   /**
    * list of client connections (federation hosts, browsers, etc)
@@ -50,24 +50,24 @@ export function attachServer (httpServer, secureCtx = {}) {
   const server = new Server({
     ...secureCtx,
     clientTracking: false,
-    server: httpServer
+    server: httpServer,
   })
 
   server.binaryType = 'arraybuffer'
 
-  function verifySignature (signature, data) {
+  function verifySignature(signature, data) {
     return verify(
       'sha256',
       Buffer.from(data),
       {
         key: publicKey,
-        padding: constants.RSA_PKCS1_PSS_PADDING
+        padding: constants.RSA_PKCS1_PSS_PADDING,
       },
       Buffer.from(signature.toString('base64'), 'base64')
     )
   }
 
-  function signatureVerified (request) {
+  function signatureVerified(request) {
     //verifySignature(header, publicKey)
     return true
   }
@@ -77,7 +77,7 @@ export function attachServer (httpServer, secureCtx = {}) {
    * @param {IncomingMessage} request
    * @returns
    */
-  function foundHeaders (request) {
+  function foundHeaders(request) {
     const list = Object.values(headers)
     const node = list.filter(h => request.headers[h]).length === list.length
     const browser = request.headers['sec-websocket-protocol'] === 'webswitch'
@@ -90,7 +90,7 @@ export function attachServer (httpServer, secureCtx = {}) {
     return accept
   }
 
-  function withinRateLimits (request) {
+  function withinRateLimits(request) {
     return true
   }
 
@@ -117,7 +117,7 @@ export function attachServer (httpServer, secureCtx = {}) {
       console.error({
         fn: 'client.on(error)',
         client: client[info],
-        error
+        error,
       })
 
       if (client[info].errors > CLIENT_MAX_ERRORS) {
@@ -150,7 +150,7 @@ export function attachServer (httpServer, secureCtx = {}) {
         msg: 'client closing',
         code,
         reason: reason.toString(),
-        client: client[info]
+        client: client[info],
       })
       clients.delete(client[info]?.uniqueName)
       reassignBackup(client)
@@ -158,7 +158,7 @@ export function attachServer (httpServer, secureCtx = {}) {
     })
   })
 
-  function setClientInfo (client, request) {
+  function setClientInfo(client, request) {
     client[info] = {}
     client[info].id = nanoid()
     client[info].pid =
@@ -169,7 +169,7 @@ export function attachServer (httpServer, secureCtx = {}) {
     client[info].uniqueName = client[info].host + client[info].pid
   }
 
-  function initClient (client, request) {
+  function initClient(client, request) {
     setClientInfo(client, request)
 
     if (clients.has(client[info].uniqueName)) {
@@ -191,7 +191,7 @@ export function attachServer (httpServer, secureCtx = {}) {
     if (client[info].role === 'node') broadcast(encode(statusReport()), client)
   }
 
-  function handleEvent (client, message) {
+  function handleEvent(client, message) {
     const event = decode(message)
     debug && console.debug('client received', message, event)
 
@@ -207,7 +207,7 @@ export function attachServer (httpServer, secureCtx = {}) {
     broadcast(message, client)
   }
 
-  function broadcast (data, sender) {
+  function broadcast(data, sender) {
     clients.forEach(function (client) {
       if (client[info]?.uniqueName !== sender[info]?.uniqueName) {
         debug && console.debug('sending client', client[info], decode(data))
@@ -222,15 +222,15 @@ export function attachServer (httpServer, secureCtx = {}) {
     }
   }
 
-  function encode (message) {
+  function encode(message) {
     return Buffer.from(JSON.stringify(message))
   }
 
-  function decode (message) {
+  function decode(message) {
     return JSON.parse(Buffer.from(message).toString())
   }
 
-  function sendClient (client, message, retries = 0) {
+  function sendClient(client, message, retries = 0) {
     if (client.readyState === WebSocket.OPEN) {
       client.send(message)
       return
@@ -239,7 +239,7 @@ export function attachServer (httpServer, secureCtx = {}) {
       setTimeout(sendClient, 2000, client, message, ++retries)
   }
 
-  function assignBackup (client) {
+  function assignBackup(client) {
     if (
       isPrimary &&
       // is there a backup already?
@@ -254,7 +254,7 @@ export function attachServer (httpServer, secureCtx = {}) {
     }
   }
 
-  function reassignBackup (client) {
+  function reassignBackup(client) {
     if (client[info]?.id === backupSwitch) {
       for (let c of clients) {
         if (
@@ -270,7 +270,7 @@ export function attachServer (httpServer, secureCtx = {}) {
     }
   }
 
-  function statusReport () {
+  function statusReport() {
     return {
       eventName: 'meshStatusReport',
       servicePlugin: SERVICENAME,
@@ -281,8 +281,8 @@ export function attachServer (httpServer, secureCtx = {}) {
       isPrimarySwitch: isPrimary,
       clients: [...clients.values()].map(v => ({
         ...v[info],
-        state: v.readyState
-      }))
+        state: v.readyState,
+      })),
     }
   }
 
@@ -291,12 +291,12 @@ export function attachServer (httpServer, secureCtx = {}) {
    * @param {WebSocket} client
    */
 
-  function sendStatus (client) {
+  function sendStatus(client) {
     console.debug('sending client status')
     sendClient(client, encode(statusReport()))
   }
 
-  function updateTelemetry (client, msg) {
+  function updateTelemetry(client, msg) {
     if (!client[info]) return
     if (msg?.telemetry && client[info]) client[info].telemetry = msg.telemetry
     if (msg?.services && client[info]) client[info].services = msg.services

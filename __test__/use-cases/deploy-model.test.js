@@ -1,6 +1,6 @@
 const assert = require('assert')
 const {
-  default: makeDeployModel
+  default: makeDeployModel,
 } = require('../../src/domain/use-cases/deploy-model')
 
 describe('Use-Cases', function () {
@@ -11,7 +11,7 @@ describe('Use-Cases', function () {
         name: 'test',
         url: 'http://localhost:8000/remmoteEntry.js',
         path: __dirname,
-        type: 'model'
+        type: 'model',
       })
       console.log(status)
       assert.equal(status, status)

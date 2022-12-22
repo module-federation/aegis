@@ -12,7 +12,7 @@ const { portRetryFailed, portRetryWorked, portTimeout } = domainEvents
 const TIMEOUT_MILLISEC = 6000
 const MAXRETRY = 5
 
-function getTimerArgs (args = null) {
+function getTimerArgs(args = null) {
   const timerArg = { calledByTimer: new Date().toISOString() }
   if (args) return [...args, timerArg]
   return [timerArg]
@@ -23,12 +23,12 @@ function getTimerArgs (args = null) {
  * @param {*} args
  * @returns
  */
-function getRetries (args = null) {
+function getRetries(args = null) {
   const timerArgs = getTimerArgs(args)
   const retries = timerArgs.filter(arg => arg.calledByTimer)
   return {
     count: retries.length,
-    nextArg: timerArgs
+    nextArg: timerArgs,
   }
 }
 
@@ -42,14 +42,14 @@ function getRetries (args = null) {
  *  portConf: import('.').ports,
  * }} options
  */
-function setPortTimeout (options) {
+function setPortTimeout(options) {
   const { portConf, portName, model, args } = options
   const noTimer = portConf.timeout === 0
 
   if (noTimer) {
     return {
       expired: () => false,
-      stopTimer: () => void 0
+      stopTimer: () => void 0,
     }
   }
 
@@ -89,19 +89,19 @@ function setPortTimeout (options) {
         console.log(msg)
         model.emit(msg, options)
       }
-    }
+    },
   }
 }
 
 /**
  * @param {function({model:Model,port:string},{*})} cb
  */
-function getPortCallback (cb) {
+function getPortCallback(cb) {
   if (typeof cb === 'function') return cb
   return portHandler
 }
 
-function hydrate (broker, datasource, eventInfo) {
+function hydrate(broker, datasource, eventInfo) {
   const model = eventInfo.model
   const modelName = eventInfo.model.modelName
   if (!modelName) return eventInfo.model
@@ -117,11 +117,11 @@ function hydrate (broker, datasource, eventInfo) {
  * @returns {boolean} whether or not to remember this port
  * for compensation and restart
  */
-function addPortListener (portName, portConf, broker, datasource) {
+function addPortListener(portName, portConf, broker, datasource) {
   if (portConf.consumesEvent) {
     const callback = getPortCallback(portConf.callback)
 
-    async function listen (eventInfo) {
+    async function listen(eventInfo) {
       const model = hydrate(broker, datasource, eventInfo)
 
       console.log(
@@ -144,11 +144,11 @@ function addPortListener (portName, portConf, broker, datasource) {
  * @param {*} remember
  * @returns {Promise<import(".").Model>}
  */
-async function updatePortFlow (model, port) {
+async function updatePortFlow(model, port) {
   const updateModel = this.equals(model) ? model : this
   return updateModel.update(
     {
-      [updateModel.getKey('portFlow')]: [...this.getPortFlow(), port]
+      [updateModel.getKey('portFlow')]: [...this.getPortFlow(), port],
     },
     false
   )
@@ -171,7 +171,7 @@ async function updatePortFlow (model, port) {
  * @param {object} adapters - dependencies object containing adapters and ports
  * @param {import('./event-broker').EventBroker} broker
  */
-export default function makePorts (ports, adapters, broker, datasource) {
+export default function makePorts(ports, adapters, broker, datasource) {
   if (!ports || !adapters) {
     return
   }
@@ -192,7 +192,7 @@ export default function makePorts (ports, adapters, broker, datasource) {
        * @param  {...any} args
        * @returns
        */
-      async function portFn (...args) {
+      async function portFn(...args) {
         // Don't run if port is disabled
         if (disabled) {
           return this
@@ -205,7 +205,7 @@ export default function makePorts (ports, adapters, broker, datasource) {
             portName,
             portConf,
             model: this,
-            args
+            args,
           })
 
           // call the inbound or oubound adapte
@@ -242,7 +242,7 @@ export default function makePorts (ports, adapters, broker, datasource) {
 
       return {
         // The port function
-        async [port] (...args) {
+        async [port](...args) {
           // check if the port defines breaker thresholds
           const thresholds = portConf.circuitBreaker
 
@@ -258,12 +258,12 @@ export default function makePorts (ports, adapters, broker, datasource) {
           // Listen for errors
           breaker.detectErrors([
             portRetryFailed(this.getName(), port),
-            portTimeout(this.getName(), port)
+            portTimeout(this.getName(), port),
           ])
 
           // invoke port with circuit breaker failsafe
           return breaker.invoke.apply(this, args)
-        }
+        },
       }
     })
     .reduce((p, c) => ({ ...p, ...c }))

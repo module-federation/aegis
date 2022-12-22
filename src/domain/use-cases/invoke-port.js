@@ -19,18 +19,18 @@ import { AppError } from '../util/app-error'
  * @returns {function():Promise<im`port("../domain/model").Model>}
  *
  */
-export default function makeInvokePort ({
+export default function makeInvokePort({
   broker,
   repository,
   threadpool,
   modelName,
   models,
   context,
-  authorize = async x => await x()
+  authorize = async x => await x(),
 } = {}) {
   //const inboundPorts = models.getModelSpec(modelName).getInboundPortFunctions()
 
-  async function findModelService (id = null) {
+  async function findModelService(id = null) {
     if (id) return repository.find(id)
     return models.getService(modelName, repository, broker)
   }
@@ -41,7 +41,7 @@ export default function makeInvokePort ({
    *
    * @returns
    */
-  return async function invokePort (input) {
+  return async function invokePort(input) {
     if (isMainThread) {
       return threadpool.runJob(invokePort.name, input, modelName)
     } else {

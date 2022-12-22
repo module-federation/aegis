@@ -15,7 +15,7 @@ describe('ModelFactory', function () {
         modelName,
         factory: () => ({ a: fn, b: 'c' }),
         endpoint: 'abcs',
-        dependencies: { uuid: () => Math.random(), fn }
+        dependencies: { uuid: () => Math.random(), fn },
       })
 
       const spec = ModelFactory.getModelSpec(modelName)
@@ -25,7 +25,7 @@ describe('ModelFactory', function () {
         broker: BrokerSingleton.getInstance(),
         datasource: DataSourceFactory.getDataSource(modelName),
         modelName,
-        b: 'cccc'
+        b: 'cccc',
       })
       console.log(model.a('model'))
     })

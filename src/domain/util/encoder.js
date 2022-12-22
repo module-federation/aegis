@@ -1,10 +1,10 @@
 'use strict'
 
-function bytesToHex (bytes) {
+function bytesToHex(bytes) {
   return Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('')
 }
 
-function hexToBytes (hex) {
+function hexToBytes(hex) {
   const bytes = new Uint8Array(hex.length / 2)
   for (let i = 0; i !== bytes.length; i++) {
     bytes[i] = parseInt(hex.substr(i * 2, 2), 16)
@@ -24,7 +24,7 @@ const StringEncoder = {
    * @param {number} num previously encoded value
    * @returns
    */
-  decode: num => new TextDecoder().decode(hexToBytes(num.toString(16)))
+  decode: num => new TextDecoder().decode(hexToBytes(num.toString(16))),
 }
 
 module.exports = StringEncoder

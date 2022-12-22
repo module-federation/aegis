@@ -3,7 +3,7 @@ const {
   isMainThread,
   parentPort,
   workerData,
-  BroadcastChannel
+  BroadcastChannel,
 } = require('worker_threads')
 
 from_main = 'from_main'

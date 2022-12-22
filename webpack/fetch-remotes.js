@@ -10,13 +10,13 @@ const token = process.env.GITHUB_TOKEN
  * @param {*} url
  * @returns
  */
-function githubPath (entry, url) {
+function githubPath(entry, url) {
   if (entry.owner)
     return `${entry.owner}-${entry.repo}-${entry.filedir.split('/').join('-')}`
   return url.pathname.split('/').join('-')
 }
 
-function generateFilename (entry) {
+function generateFilename(entry) {
   const url = new URL(entry.url)
   const hostpart = url.hostname.split('.').join('-')
   const portpart = url.port ? url.port : 80
@@ -26,7 +26,7 @@ function generateFilename (entry) {
   return `${hostpart}-${portpart}-${pathpart}-remoteEntry.js`
 }
 
-function getPath (entry) {
+function getPath(entry) {
   const filename = generateFilename(entry)
   let basedir = entry.path
   if (entry.path.charAt(entry.path.length - 1) !== '/') {
@@ -45,7 +45,7 @@ const octokit = new Octokit({ auth: token })
  * @param {*} path where to write file contents
  * @returns
  */
-async function githubFetch (entry, path) {
+async function githubFetch(entry, path) {
   return octokit
     .request(
       'GET https://api.github.com/repos/{owner}/{repo}/contents/{filedir}?ref={branch}',
@@ -53,7 +53,7 @@ async function githubFetch (entry, path) {
         owner: entry.owner,
         repo: entry.repo,
         filedir: entry.filedir,
-        branch: entry.branch
+        branch: entry.branch,
       }
     )
     .then(function (rest) {
@@ -64,7 +64,7 @@ async function githubFetch (entry, path) {
       return octokit.request('GET /repos/{owner}/{repo}/git/blobs/{sha}', {
         owner: entry.owner,
         repo: entry.repo,
-        sha
+        sha,
       })
     })
     .then(function (rest) {
@@ -75,7 +75,7 @@ async function githubFetch (entry, path) {
     })
 }
 
-function httpGet (entry, path, done) {
+function httpGet(entry, path, done) {
   const url = new URL(entry.url)
   require(url.protocol.replace(':', '')).get(
     entry.url,
@@ -92,7 +92,7 @@ function httpGet (entry, path, done) {
  * @param {*} entry
  * @returns
  */
-function getUniqueEntry (entry) {
+function getUniqueEntry(entry) {
   return `${entry.url}${entry.owner}${entry.repo}${entry.filedir}`
 }
 
@@ -101,14 +101,14 @@ function getUniqueEntry (entry) {
  * @param {{name:string,path:sting,filedir:string,branch:string,url:string}[]} entries
  * @returns {{[x:string]:{name:string,path:string,url:string}}}
  */
-function deduplicate (entries) {
+function deduplicate(entries) {
   return entries
     .map(function (e) {
       return {
         [getUniqueEntry(e)]: {
           ...e,
-          name: getUniqueEntry(e)
-        }
+          name: getUniqueEntry(e),
+        },
       }
     })
     .reduce((p, c) => ({ ...p, ...c }))
@@ -150,6 +150,6 @@ module.exports = async remoteEntry => {
   )
 
   return entries.map(e => ({
-    [e.name]: remotes.find(r => r[getUniqueEntry(e)])[getUniqueEntry(e)]
+    [e.name]: remotes.find(r => r[getUniqueEntry(e)])[getUniqueEntry(e)],
   }))
 }

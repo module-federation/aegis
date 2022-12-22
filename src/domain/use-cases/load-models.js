@@ -4,7 +4,7 @@ import { isMainThread } from 'worker_threads'
 import { Writable, Transform } from 'node:stream'
 import Serializer from '../serializer'
 
-function nextModelFn (port, mf) {
+function nextModelFn(port, mf) {
   mf
     .getModelSpecs()
     .filter(spec => spec.ports)
@@ -15,7 +15,7 @@ function nextModelFn (port, mf) {
     )[0]
 }
 
-function startWorkflow (model, mf) {
+function startWorkflow(model, mf) {
   const history = model.getPortFlow()
   const ports = model.getPorts()
 
@@ -54,27 +54,27 @@ export default function ({ modelName, repository, broker, models }) {
     const rehydrate = new Transform({
       objectMode: true,
 
-      transform (chunk, _endcoding, next) {
+      transform(chunk, _endcoding, next) {
         const model = models.loadModel(broker, repository, chunk, modelName)
         repository.saveSync(model.getId(), model)
         this.push(model)
         next()
-      }
+      },
     })
 
     const resumeWorkflow = new Writable({
       objectMode: true,
 
-      write (chunk, _encoding, next) {
+      write(chunk, _encoding, next) {
         startWorkflow(chunk)
         next()
         return true
       },
 
-      end (chunk, _encoding, done) {
+      end(chunk, _encoding, done) {
         startWorkflow(chunk)
         done()
-      }
+      },
     })
 
     repository.list({ transform: rehydrate, writable: resumeWorkflow })

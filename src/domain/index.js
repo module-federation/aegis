@@ -216,7 +216,7 @@
  *   }
  * })
  * ```
- * 
+ *
  * @property {string} [repo] if using github, name of the github repo
  * @property {string} [owner] if using gitbub, owner of the repo
  * @property {string} [filedir] if using gitub, path to the remoteEntry.js file
@@ -225,7 +225,7 @@
  * @property {string} [serviceName] optional name of the service to which the module belongs
  * - use to group model, adapaters and services together
  * at startup instead of waiting until a request for the model has been received
- * modor serviceel, adapter 
+ * modor serviceel, adapter
  * @property {string} [worker] Creates a model that is controlled by a custom worker
  * instead of the system default worker. Developers can do whatever they want with the worker
  * and needn't use the associated model at all. That said, developers may want to make use of
@@ -249,7 +249,7 @@ import {
   importAdapterCache,
   importServiceCache,
   importWorkerCache,
-  importPortCache
+  importPortCache,
 } from './import-remotes'
 
 /**
@@ -264,25 +264,25 @@ const createEvent = model => ({ model })
 const updateEvent = ({ updated, changes }) => ({
   model: updated,
   changes: {
-    ...changes
-  }
+    ...changes,
+  },
 })
 
 const deleteEvent = model => ({
   modelId: ModelFactory.getModelId(model),
-  model
+  model,
 })
 
 const onloadEvent = model => ({
   modelId: ModelFactory.getModelId(model),
-  model
+  model,
 })
 
-function getUniqueId () {
+function getUniqueId() {
   return getContextId() || uuid()
 }
 
-function getContextId () {
+function getContextId() {
   const store = requestContext.getStore()
   if (store) return store.get('id')
 }
@@ -297,13 +297,13 @@ function getContextId () {
  * workers:{[x: string]:Function},
  * isCached:boolean}}
  */
-function register ({
+function register({
   model,
   ports,
   services,
   adapters,
   workers,
-  isCached = false
+  isCached = false,
 } = {}) {
   const modelName = model.modelName.toUpperCase()
 
@@ -311,13 +311,13 @@ function register ({
     portSpec: model.ports,
     ports: { ...model.portFunctions, ...ports },
     adapters,
-    services
+    services,
   })
 
   const dependencies = {
     ...model.dependencies,
     ...bindings,
-    getUniqueId
+    getUniqueId,
   }
 
   ModelFactory.registerModel({
@@ -327,7 +327,7 @@ function register ({
     dependencies,
     factory: model.factory(dependencies),
     worker: workers[modelName],
-    isCached
+    isCached,
   })
 
   ModelFactory.registerEvent(
@@ -362,12 +362,12 @@ function register ({
  * @param {*} services - services on which the model depends
  * @param {*} adapters - adapters for talking to the services
  */
-async function importModels ({
+async function importModels({
   remoteEntries,
   services,
   adapters,
   workers,
-  ports
+  ports,
 } = {}) {
   const models = await importRemoteModels(remoteEntries)
 
@@ -384,7 +384,7 @@ let localOverrides = {}
  * @param {import('../../webpack/remote-entries-type.js')} remoteEntries
  * @param {*} overrides - override or add services and adapters
  */
-export async function importRemotes (remoteEntries, overrides = {}) {
+export async function importRemotes(remoteEntries, overrides = {}) {
   const services = await importRemoteServices(remoteEntries)
   const adapters = await importRemoteAdapters(remoteEntries)
   const workers = await importRemoteWorkers(remoteEntries)
@@ -396,17 +396,17 @@ export async function importRemotes (remoteEntries, overrides = {}) {
     remoteEntries,
     services: {
       ...services,
-      ...overrides
+      ...overrides,
     },
     adapters: {
       ...adapters,
-      ...overrides
+      ...overrides,
     },
     ports: {
       ...ports,
-      ...overrides
+      ...overrides,
     },
-    workers
+    workers,
   })
 
   remotesConfig = remoteEntries
@@ -419,7 +419,7 @@ let serviceCache
 let portCache
 let workerCache
 
-export async function importRemoteCache (name) {
+export async function importRemoteCache(name) {
   try {
     if (!remotesConfig) {
       console.warn('distributed cache cannot be initialized')
@@ -433,19 +433,19 @@ export async function importRemoteCache (name) {
       // Check if we have since loaded the model
       adapterCache = {
         ...(await importAdapterCache(remotesConfig)),
-        ...localOverrides
+        ...localOverrides,
       }
       serviceCache = {
         ...(await importServiceCache(remotesConfig)),
-        ...localOverrides
+        ...localOverrides,
       }
       portCache = {
         ...(await importPortCache(remotesConfig)),
-        ...localOverrides
+        ...localOverrides,
       }
       workerCache = {
         ...(await importWorkerCache(remotesConfig)),
-        ...localOverrides
+        ...localOverrides,
       }
     }
 
@@ -471,7 +471,7 @@ export async function importRemoteCache (name) {
       adapters: adapterCache,
       ports: portCache,
       workers: workerCache,
-      isCached: true
+      isCached: true,
     })
   } catch (e) {
     console.error(importRemoteCache.name, e)

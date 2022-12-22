@@ -22,10 +22,10 @@ const commandType = {
    * @param {string} command
    * @param {Model} model
    */
-  string: async (command, model) => model[command]()
+  string: async (command, model) => model[command](),
 }
 
-function commandAuthorized (spec, command, permission) {
+function commandAuthorized(spec, command, permission) {
   return (
     command &&
     spec.commands &&
@@ -44,7 +44,7 @@ function commandAuthorized (spec, command, permission) {
  * @param {command:string} command - name of command
  * @param {string} permission - permission of caller
  */
-export default async function executeCommand (
+export default async function executeCommand(
   model,
   command,
   args = {},

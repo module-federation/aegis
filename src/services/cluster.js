@@ -12,7 +12,7 @@ let workerList = []
  * listen for a reload request from it,
  * add it to `workerList` which is used during the rolling restart.
  */
-function startWorker () {
+function startWorker() {
   const worker = cluster.fork()
 
   worker.on('message', function (message) {
@@ -46,7 +46,7 @@ function startWorker () {
           cluster.workers[id].send({
             ...message,
             pid: process.pid,
-            cmd: message.cmd.replace('Broadcast', 'Command')
+            cmd: message.cmd.replace('Broadcast', 'Command'),
           })
         }
       }
@@ -60,7 +60,7 @@ function startWorker () {
  * @typedef {function()} stopWorker
  * Gracefully stop a worker on the reload list.
  */
-function stopWorker () {
+function stopWorker() {
   const worker = reloadList.pop()
   if (worker) worker.kill('SIGTERM')
   else {
@@ -75,7 +75,7 @@ function stopWorker () {
  * @param {number} waitms - Delay execution by `waitms`
  * milliseconds so your app has time to start
  */
-function handleReload (callback, waitms = 2000) {
+function handleReload(callback, waitms = 2000) {
   const failedWorker =
     !reloading &&
     workerList.length < numCores &&

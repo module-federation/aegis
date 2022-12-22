@@ -6,7 +6,7 @@ import async from '../util/async-error'
  * @param {import("./model").Model} model
  * @param {import('../model').} relation
  */
-export default async function fetchRelatedModels (model, relation) {
+export default async function fetchRelatedModels(model, relation) {
   const spec = model.getSpec()
 
   if (relation && spec.relations && spec.relations[relation]) {

@@ -13,11 +13,11 @@ exports.protectRoutes = function (app, path) {
       cache: keySet.cache,
       rateLimit: keySet.rateLimit,
       jwksRequestsPerMinute: keySet.jwksRequestsPerMinute,
-      jwksUri: keySet.jwksUri
+      jwksUri: keySet.jwksUri,
     }),
     audience: keySet.audience,
     issuer: keySet.issuer,
-    algorithms: keySet.algorithms
+    algorithms: keySet.algorithms,
   })
 
   app.use(path, jwtCheck)

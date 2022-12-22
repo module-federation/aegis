@@ -11,7 +11,7 @@ import DataSource from '../../domain/datasource'
  * to emit cache sync events when running in cluster mode.
  */
 export class DataSourceMemory extends DataSource {
-  constructor (map, name, namespace, options) {
+  constructor(map, name, namespace, options) {
     super(map, name, namespace, options)
   }
 
@@ -26,7 +26,7 @@ export class DataSourceMemory extends DataSource {
    * @param {*} sync - sync cluster nodes, true by default
    * @returns
    */
-  save (id, data, sync = true) {
+  save(id, data, sync = true) {
     if (sync && process.send === 'function') {
       /** send data to cluster members */
       process.send({
@@ -35,7 +35,7 @@ export class DataSourceMemory extends DataSource {
         name: this.name,
         namespace: this.namespace,
         data,
-        id
+        id,
       })
     }
   }
@@ -44,9 +44,9 @@ export class DataSourceMemory extends DataSource {
    * @param {*} id
    * @returns
    */
-  find (id) {}
+  find(id) {}
 
-  list (options) {}
+  list(options) {}
 
   /**
    * Handles cluster cache sync. Sync cache of other
@@ -54,14 +54,14 @@ export class DataSourceMemory extends DataSource {
    *
    * @override
    */
-  delete (id, sync = true) {
+  delete(id, sync = true) {
     if (sync && process.send === 'function') {
       process.send({
         cmd: 'deleteBroadcast',
         pid: process.pid,
         name: this.name,
         namespace: this.namespace,
-        id
+        id,
       })
     }
   }

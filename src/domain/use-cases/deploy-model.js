@@ -5,13 +5,13 @@ import { exec } from 'node:child_process'
 import fs from 'node:fs/promises'
 import { AppError } from '../util/app-error'
 
-async function compileAndReload () {
+async function compileAndReload() {
   exec('cd ../aegis-host yarn build && yarn reload', (stderr, stdout, stdin) =>
     console.log(stderr || stdout || stdin)
   )
 }
 
-function createFileContents (remoteEntry) {
+function createFileContents(remoteEntry) {
   const CURLYBRACKET = '}'
   const COMMA = ','
   const reString = JSON.stringify(remoteEntry, null, 2)
@@ -24,7 +24,7 @@ function createFileContents (remoteEntry) {
     : JSENTRY.replace(CURLYBRACKET, COMMA)
 }
 
-async function resolveWebpackPath (remoteEntry) {
+async function resolveWebpackPath(remoteEntry) {
   const p = path.resolve(process.cwd(), 'webpack/remote-entries')
   try {
     await fs.stat(p)
@@ -38,7 +38,7 @@ async function resolveWebpackPath (remoteEntry) {
  * Process new remote entry.
  * @param {import('../../../webpack/remote-entries-type.js').remoteEntry} remoteEntry
  */
-async function registerRemote (remoteEntry) {
+async function registerRemote(remoteEntry) {
   console.debug({ remoteEntry })
 
   if (!remoteEntry?.name) throw new Error('no remote entry provided')
@@ -69,7 +69,7 @@ async function registerRemote (remoteEntry) {
  * @param {{models:import('../model-factory.js').ModelFactory}} param0
  * @returns
  */
-export default function makeDeployModel () {
+export default function makeDeployModel() {
   /**
    * Handle deployment request.
    *
@@ -79,7 +79,7 @@ export default function makeDeployModel () {
    *
    * @param {*} modelName
    */
-  return async function deployModel (input) {
+  return async function deployModel(input) {
     try {
       const remotEntry = await registerRemote(input)
       await compileAndReload()

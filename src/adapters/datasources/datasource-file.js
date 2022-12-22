@@ -9,13 +9,13 @@ export class DataSourceFile extends DataSource {
   /**
    * @param {Set} map
    */
-  constructor (map, name, options = {}) {
+  constructor(map, name, options = {}) {
     super(map, name, options)
     this.file = this.getFilePath()
     this.className = DataSourceFile.name
   }
 
-  getFilePath () {
+  getFilePath() {
     return path.resolve(process.cwd(), 'public', `${this.name}.json`)
   }
   /**
@@ -25,27 +25,27 @@ export class DataSourceFile extends DataSource {
    *  serializer:import("../../domain/serializer").Serializer,
    * }} param0
    */
-  async load ({ hydrate, serializer }) {
+  async load({ hydrate, serializer }) {
     console.log('path to filesystem storage:', this.file)
     this.serializer = serializer
     this.readFile(hydrate)
   }
 
-  replace (key, value) {
+  replace(key, value) {
     if (value && this.serializer) {
       return this.serializer.serialize(key, value)
     }
     return value
   }
 
-  revive (key, value) {
+  revive(key, value) {
     if (value && this.serializer) {
       return this.serializer.deserialize(key, value)
     }
     return value
   }
 
-  writeFile () {
+  writeFile() {
     try {
       const dataStr = JSON.stringify(
         this.dsMap.map(v => v),
@@ -61,7 +61,7 @@ export class DataSourceFile extends DataSource {
   /**
    *
    */
-  readFile (hydrate) {
+  readFile(hydrate) {
     if (fs.existsSync(this.file)) {
       const models = fs.readFileSync(this.file, 'utf-8')
       if (models) {
@@ -73,7 +73,7 @@ export class DataSourceFile extends DataSource {
     return this.dsMap
   }
 
-  findSync (id) {
+  findSync(id) {
     return super.findSync(id)
   }
 
@@ -81,7 +81,7 @@ export class DataSourceFile extends DataSource {
    * @override
    * @param {*} id
    */
-  async delete (id) {
+  async delete(id) {
     await super.delete(id)
     this.writeFile()
   }
@@ -91,13 +91,13 @@ export class DataSourceFile extends DataSource {
    * @param {*} id
    * @param {*} data
    */
-  async save (id, data) {
+  async save(id, data) {
     const ds = await super.save(id, data)
     this.writeFile()
     return ds
   }
 
-  close () {
+  close() {
     this.writeFile()
   }
 }

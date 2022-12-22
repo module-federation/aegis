@@ -2,7 +2,7 @@
 
 const debug = /true/i.test(process.env.DEBUG)
 
-function DefaultInboundAdapter (port) {
+function DefaultInboundAdapter(port) {
   return async function ({ model, args }) {
     return port.apply(model, args)
   }
@@ -36,11 +36,11 @@ function DefaultInboundAdapter (port) {
  * }}
  *
  */
-export default function bindAdapters ({
+export default function bindAdapters({
   ports,
   adapters,
   services,
-  portSpec
+  portSpec,
 } = {}) {
   if (!portSpec || (!adapters && !ports)) {
     debug && console.debug('missing params')
@@ -49,15 +49,15 @@ export default function bindAdapters ({
 
   const bindings = {
     outbound: (portName, port, adapter, service) => ({
-      [portName]: adapter(service)
+      [portName]: adapter(service),
     }),
 
     inbound: (portName, port, adapter = DefaultInboundAdapter, service) => ({
-      [portName]: adapter(port)
-    })
+      [portName]: adapter(port),
+    }),
   }
 
-  function badPortConfig ({ spec, type, port, adapter }) {
+  function badPortConfig({ spec, type, port, adapter }) {
     return (
       !spec ||
       !type ||

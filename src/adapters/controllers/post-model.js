@@ -6,8 +6,8 @@
  * @param {function():string} hash
  * @returns {import("./http-adapter").httpController}
  */
-export default function postModelFactory (createModel) {
-  return async function postModel (httpRequest) {
+export default function postModelFactory(createModel) {
+  return async function postModel(httpRequest) {
     try {
       httpRequest.log(postModel.name)
 
@@ -18,22 +18,22 @@ export default function postModelFactory (createModel) {
       return {
         headers: {
           'Content-Type': 'application/json',
-          'Last-Modified': new Date().toISOString()
+          'Last-Modified': new Date().toISOString(),
         },
         statusCode: 201,
-        body: { modelId: model.id }
+        body: { modelId: model.id },
       }
     } catch (e) {
       console.error(e)
 
       return {
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
         statusCode: e.code || 400,
         body: {
-          error: e.message
-        }
+          error: e.message,
+        },
       }
     }
   }

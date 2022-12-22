@@ -10,7 +10,7 @@ const {
   deleteModels,
   initCache,
   getConfig,
-  http
+  http,
 } = controllers
 
 const { close, find, save } = storageAdapter
@@ -22,22 +22,13 @@ import ModelFactory from '../../src/domain'
 const apiRoot = process.env.API_ROOT || '/aegis/api'
 const modelPath = `${apiRoot}/models`
 
-const idRoute = route =>
-  route
-    .split('/')
-    .splice(0, 5)
-    .concat([':id'])
-    .join('/')
+const idRoute = route => route.split('/').splice(0, 5).concat([':id']).join('/')
 
 const cmdRoute = route =>
-  route
-    .split('/')
-    .splice(0, 6)
-    .concat([':id', ':command'])
-    .join('/')
+  route.split('/').splice(0, 6).concat([':id', ':command']).join('/')
 
 class RouteMap extends Map {
-  has (route) {
+  has(route) {
     if (!route) {
       console.warn('route is ', typeof route)
       return false
@@ -62,7 +53,7 @@ class RouteMap extends Map {
     return false
   }
 
-  get (route) {
+  get(route) {
     return this.route ? this.route : super.get(route)
   }
 }
@@ -93,7 +84,7 @@ const Server = (() => {
      * @param {*} method
      * @param {*} controllers
      */
-    webserver (path, method, controllers, app) {
+    webserver(path, method, controllers, app) {
       controllers().forEach(ctlr => {
         console.info(ctlr)
         app[method](path(ctlr.endpoint), http(ctlr.fn))
@@ -106,22 +97,22 @@ const Server = (() => {
      * @param {*} method
      * @param {*} controllers
      */
-    serverless (path, method, controllers) {
+    serverless(path, method, controllers) {
       controllers().forEach(ctlr => {
         const route = path(ctlr.endpoint)
         if (routes.has(route)) {
           routes.set(route, {
             ...routes.get(route),
-            [method]: http(ctlr.fn)
+            [method]: http(ctlr.fn),
           })
           return
         }
         routes.set(route, { [method]: http(ctlr.fn) })
       })
-    }
+    },
   }
 
-  function makeAdmin (app, adapter, serverMode) {
+  function makeAdmin(app, adapter, serverMode) {
     if (serverMode === make.webserver.name) {
       app.get(`${apiRoot}/config`, adapter(getConfig()))
     } else if (serverMode === make.serverless.name) {
@@ -132,7 +123,7 @@ const Server = (() => {
   /**
    * Call controllers directly in serverless mode.
    */
-  async function invoke (path, method, req, res) {
+  async function invoke(path, method, req, res) {
     if (routes.has(path)) {
       try {
         console.debug('path match: ', path)
@@ -149,7 +140,7 @@ const Server = (() => {
     console.warn('potential config issue', path, method)
   }
 
-  function shutdown (shutdownTasks) {
+  function shutdown(shutdownTasks) {
     console.warn('Received SIGTERM - system shutdown in progress')
     shutdownTasks()
   }
@@ -161,7 +152,7 @@ const Server = (() => {
    * user code downloaded from the remote. This is
    * the code that needs to be disposed of & reimported.
    */
-  function clear () {
+  function clear() {
     try {
       close()
       routes.clear()
@@ -186,7 +177,7 @@ const Server = (() => {
    * @param {boolean} serverless - set to true if running as a servless function
    * @returns
    */
-  async function start (router, serverless = false) {
+  async function start(router, serverless = false) {
     const serverMode = serverless ? make.serverless.name : make.webserver.name
     const overrides = { save, find, Persistence }
 
@@ -222,7 +213,7 @@ const Server = (() => {
   return {
     clear,
     start,
-    invoke
+    invoke,
   }
 })()
 
