@@ -2,6 +2,13 @@
 import { Readable, Transform } from 'stream'
 import getContent from './get-content'
 
+function isStream (models) {
+  return (
+    models?.length > 0 &&
+    (models[0] instanceof Readable || models[0] instanceof Transform)
+  )
+}
+
 /**
  *
  * @param {import("../use-cases/list-models").listModels} listModels
@@ -17,13 +24,7 @@ export default function getModelsFactory (listModels) {
         writable: httpRequest.res
       })
 
-      if (
-        models?.length > 0 &&
-        (models[0] instanceof Readable || models[0] instanceof Transform)
-      ) {
-        httpRequest.stream = true
-        return
-      }
+      if (isStream()) return
 
       const { content, contentType } = getContent(httpRequest, models)
 

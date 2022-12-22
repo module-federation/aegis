@@ -171,10 +171,10 @@ const DsCoreExtensions = superclass =>
      */
     async list (options) {
       try {
-        if (options?.query.__count) return this.count()
-        if (options?.query.__cached) return this.listSync(options.query)
+        if (options?.query?.__count) return this.count()
+        if (options?.query?.__cached) return this.listSync(options.query)
 
-        const opts = { ...options, streamRequested: options.writable }
+        const opts = { ...options, streamRequested: options?.writable }
         const list = [await super.list(opts)].flat()
 
         if (list.length < 1) return []
