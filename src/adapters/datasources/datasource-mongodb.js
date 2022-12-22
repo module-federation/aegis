@@ -1,7 +1,7 @@
 'use strict'
 
-import CircuitBreaker from '../../domain/circuit-breaker'
-import DataSource from '../../domain/datasource'
+const CircuitBreaker = require('../../domain/circuit-breaker').default
+const DataSource = require('../../domain/datasource').default
 
 const HIGHWATERMARK = 50
 
@@ -55,6 +55,23 @@ export class DataSourceMongoDb extends DataSource {
     }
   }
 
+  async connectionPool () {
+    return new Promise((resolve, reject) => {
+      if (this.db) return resolve(this.db)
+      MongoClient.connect(
+        this.url,
+        {
+          ...this.mongoOpts,
+          poolSize: dsOptions.numConns || 2
+        },
+        (err, database) => {
+          if (err) return reject(err)
+          resolve((this.db = database.db(this.namespace)))
+        }
+      )
+    })
+  }
+
   async connection () {
     try {
       while (connections.length < (dsOptions.numConns || 1)) {
@@ -69,7 +86,7 @@ export class DataSourceMongoDb extends DataSource {
           }
         }
         const breaker = CircuitBreaker(
-          'mongo.conn',
+          'mongodb.connect',
           this.connect(client),
           thresholds
         )
@@ -186,14 +203,12 @@ export class DataSourceMongoDb extends DataSource {
   /**
    *
    * @param {Object} filter Supposed to be a valid Mongo Filter
-   * @param {Object} options Options to sort limit aggregate etc...
-   * @param {Object} options.sort a valid Mongo sort object
-   * @param {Number} options.limit a valid Mongo limit
-   * @param {Object} options.aggregate a valid Mongo aggregate object
+   * @param {Object} sort a valid Mongo sort object
+   * @param {Number} limit a valid Mongo limit
+   * @param {Object} aggregate a valid Mongo aggregate object
    *
-   * @returns
+   * @returns {Promise<import('mongodb').AbstractCursor>}
    */
-
   async mongoFind ({ filter, sort, limit, aggregate, skip } = {}) {
     console.log({ fn: this.mongoFind.name, filter })
     let cursor = (await this.collection()).find(filter)
@@ -204,112 +219,23 @@ export class DataSourceMongoDb extends DataSource {
     return cursor
   }
 
-  /**
-   * Pipes to writable and streams list. List can be filtered. Stream
-   * is serialized by default. Stream can be modified by transform.
-   *
-   * @param  {{
-   *  filter:*
-   *  transform:Transform
-   *  serialize:boolean
-   * }} param0
-   * @returns
-   */
-  streamList ({ writable, serialize, transform, options }) {
-    try {
-      let first = true
-
-      const serializer = new Transform({
-        writableObjectMode: true,
-
-        // start of array
-        construct (callback) {
-          this.push('[')
-          callback()
-        },
-
-        // each chunk is a record
-        transform (chunk, _encoding, next) {
-          // comma-separate
-          if (first) first = false
-          else this.push(',')
-
-          // serialize record
-          this.push(JSON.stringify(chunk))
-          next()
-        },
-
-        // end of array
-        flush (callback) {
-          this.push(']')
-          callback()
-        }
-      })
-
-      return new Promise(async (resolve, reject) => {
-        const readable = (await this.mongoFind(options)).stream()
-
-        readable.on('error', reject)
-        readable.on('end', resolve)
-
-        // optionally transform db stream then pipe to output
-        if (transform && serialize)
-          readable
-            .pipe(transform)
-            .pipe(serializer)
-            .pipe(writable)
-        else if (transform) readable.pipe(transform).pipe(writable)
-        else if (serialize) readable.pipe(serializer).pipe(writable)
-        else readable.pipe(writable)
-      })
-    } catch (error) {}
-  }
-
   processOptions (param) {
     const { options = {}, query = {} } = param
     return { ...options, ...processQuery(query) }
   }
 
   /**
-   * Returns the set of objects satisfying the `filter` if specified;
-   * otherwise returns all objects. If a `writable`stream is provided and `cached`
-   * is false, the list is streamed. Otherwise the list is returned in
-   * an array. A custom transform can be specified to modify the streamed
-   * results. Using {@link createWriteStream} updates can be streamed back
-   * to the db. With streams, we can support queries of very large tables,
-   * with minimal memory overhead on the node server.
    *
    * @override
-   * @param {{key1:string, keyN:string}} filter - e.g. http query
-   * @param {{
-   *  writable: WritableStream,
-   *  cached: boolean,
-   *  serialize: boolean,
-   *  transform: Transform
-   * }} params
-   *    - details
-   *    - `serialize` seriailize input to writable
-   *    - `cached` list cache only
-   *    - `transform` transform stream before writing
-   *    - `writable` writable stream for output
+   * @param {import('../../domain/datasource').listOptions} param
    */
-  async list (param = {}) {
-    const {
-      writable = null,
-      transform = null,
-      serialize = false,
-      query = {}
-    } = param
-
+  async list (param) {
     try {
-      if (query.__cached) return super.listSync(query)
-      if (query.__count) return this.count()
-
       const options = this.processOptions(param)
       console.log({ options })
 
-      if (writable) {
-        return this.streamList({ writable, serialize, transform, options })
+      if (param.streamRequested) {
+        return (await this.mongoFind(options)).stream()
       }
 
       return (await this.mongoFind(options)).toArray()
@@ -318,6 +244,10 @@ export class DataSourceMongoDb extends DataSource {
     }
   }
 
+  /**
+   *
+   * @override
+   */
   async count () {
     return {
       total: await this.countDb(),

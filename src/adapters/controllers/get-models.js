@@ -20,7 +20,7 @@ export default function getModelsFactory (listModels) {
         httpRequest.stream = true
         return
       }
-      
+
       const { content, contentType } = getContent(httpRequest, models)
 
       return {

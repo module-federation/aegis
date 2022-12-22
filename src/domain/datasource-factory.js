@@ -1,6 +1,6 @@
 'use strict'
 
-import { Transform } from 'stream'
+import { Readable, Transform, Writable } from 'node:stream'
 import { isMainThread } from 'worker_threads'
 /** @typedef {import('.').Model} Model */
 
@@ -94,39 +94,99 @@ const DsCoreExtensions = superclass =>
       }
     }
 
-    transform () {
+    hydrate () {
       const ctx = this
 
       return new Transform({
         objectMode: true,
 
-        transform (chunk, _encoding, next) {
+        transform (chunk, encoding, next) {
           this.push(ModelFactory.loadModel(broker, ctx, chunk, ctx.name))
           next()
         }
       })
     }
 
+    serialize () {
+      let first = true
+
+      return new Transform({
+        objectMode: true,
+
+        // start of array
+        construct (callback) {
+          this.push('[')
+          callback()
+        },
+
+        // each chunk is a record
+        transform (chunk, encoding, next) {
+          // comma-separate
+          if (first) first = false
+          else this.push(',')
+
+          // serialize record
+          this.push(JSON.stringify(chunk))
+          next()
+        },
+
+        // end of array
+        flush (callback) {
+          this.push(']')
+          callback()
+        }
+      })
+    }
+
     /**
+     *
+     * @param {Model[]} list
+     * @param {import('./datasource').listOptions} options
+     * @returns {Array<Readable|Transform>}
+     */
+    stream (list, options) {
+      return new Promise((resolve, reject) => {
+        options.writable.on('error', reject)
+        options.writable.on('end', resolve)
+
+        if (!isMainThread) list.push(this.hydrate())
+        if (options.transform) list.concat(options.transform)
+        if (options.serialize) list.push(this.serialize())
+
+        return list.reduce((p, c) => p.pipe(c)).pipe(options.writable)
+      })
+    }
+
+    /**
+     * Returns the set of objects satisfying the `filter` if specified;
+     * otherwise returns all objects. If a `writable` stream is provided and
+     * `cached` is false, the list is streamed. Otherwise the list is returned
+     * in an array. One or more custom transforms can be specified to modify the
+     * streamed results. Using {@link createWriteStream}, updates can be streamed
+     * back to the storage provider. With streams, we can support queries of very
+     * large tables, with minimal memory overhead on the node server.
+     *
      * @override
-     * @param {*} options
-     * @returns
+     * @param {import('../../domain/datasource').listOptions} param
      */
     async list (options) {
       try {
-        if (options?.writable)
-          return isMainThread
-            ? super.list(options)
-            : super.list({ ...options, transform: this.transform() })
+        if (options?.query.__count) return this.count()
+        if (options?.query.__cached) return this.listSync(options.query)
 
-        const arr = await super.list(options)
+        const opts = { ...options, streamRequested: options.writable }
+        const list = [await super.list(opts)].flat()
 
-        if (Array.isArray(arr))
-          return isMainThread
-            ? arr
-            : arr.map(model =>
-                ModelFactory.loadModel(broker, this, model, this.name)
-              )
+        if (list.length < 1) return []
+
+        if (list[0] instanceof Readable || list[0] instanceof Transform)
+          return this.stream(list, options)
+
+        return isMainThread
+          ? list
+          : list.map(model =>
+              ModelFactory.loadModel(broker, this, model, this.name)
+            )
       } catch (error) {
         console.error({ fn: this.list.name, error })
         throw error

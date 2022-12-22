@@ -2,6 +2,38 @@
 
 import { changeDataCapture } from './util/change-data-capture'
 
+/**
+ * @typedef {{
+ *  'some-key': 'some-val',
+ * }} SumOfType
+ */
+
+/**
+ * @typedef {object} QueryType
+ * @property {boolean} [__cached] list cache only
+ * @property {number|SumOfType} [__count] number of object to return
+ * @property {'and'|'or'|'not'} [__operand] operation to use for key-value pairs
+ * @property {string|number|boolean} [key1] key-value pair 1
+ * @property {string|number|boolean} [keyN] key-value pair n
+ */
+
+/**
+ * Query syntax provided by the storage vendor's native API
+ * @typedef {object} VendorType
+ */
+
+/**
+ * @typedef {object} listOptions
+ * @property {QueryType} query url query params
+ * @property {VendorType} options Vendor-specific native query syntax
+ * @property {import('stream').Writable} writable writable stream for output
+ * @property {import('stream').Transform|import('stream').Transform[]} transform
+ * transform stream before writing
+ * @property {boolean} serialize seriailize input to writable
+ * @property {boolean} streamRequested true if caller provided a writable stream -
+ * indicates to the datasource that it should return a readable stream if supported
+ */
+
 /** change data capture */
 const cdcEnabled = false // /true/i.test('CHANGE_DATA_CAPTURE')
 
@@ -122,18 +154,7 @@ export default class DataSource {
 
   /**
    * list model instances
-   * @param {{key1:string, keyN:string}} filter - e.g. http query
-   * @param {{
-   *  writable: WritableStream,
-   *  cached: boolean,
-   *  serialize: boolean,
-   *  transform: Transform
-   * }} options
-   *    - details
-   *    - `serialize` seriailize input to writable
-   *    - `cached` list cache only
-   *    - `transform` transform stream before writing
-   *    - `writable` writable stream for output
+   * @param {listOptions} options
    * @returns {Promise<any[]>}
    */
   async list (options) {
