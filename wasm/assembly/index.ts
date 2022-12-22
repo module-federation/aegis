@@ -2,8 +2,9 @@
 
 @external('env', 'console.log')
 declare function consoleLog (s: string): void
-@external('aegis', 'update')
 declare function update (changes: object, runValidation: boolean): void
+@external('aegis', 'update')
+
 
 export function getModelName (): string {
   return 'wasm'

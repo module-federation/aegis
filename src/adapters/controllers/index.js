@@ -12,7 +12,8 @@ const {
   removeModels,
   hotReload,
   registerEvents,
-  invokePorts
+  invokePorts,
+  deployModel
 } = UseCases
 
 import postModelFactory from './post-model'
@@ -23,6 +24,7 @@ import deleteModelFactory from './delete-model'
 import getConfigFactory from './get-config'
 import anyInvokePortFactory from './post-invoke-port'
 import makeLiveUpdate from './live-update'
+import makeLiveRollout from './live-rollout'
 
 function make (useCases, controllerFactory) {
   return useCases().map(uc => ({
@@ -42,6 +44,7 @@ export const anyInvokePorts = () => make(invokePorts, anyInvokePortFactory)
 export const liveUpdate = () => make(hotReload, makeLiveUpdate)
 export const getConfig = () => getConfigFactory(listConfigs())
 export const getRoutes = () => getUserRoutes()
+export const postEntry = () => makeLiveRollout(deployModel())
 
 export const initCache = () => {
   const label = '\ntime to load cache'

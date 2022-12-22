@@ -1,5 +1,7 @@
 import { callbackify } from 'node:util'
 import { wasmAdapters } from '.'
+import { EventBrokerFactory } from '../../../lib/domain'
+import { RepoClient } from './repo-client'
 
 import { EventBrokerFactory } from '../../../lib/domain'
 

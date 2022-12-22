@@ -7,9 +7,8 @@
 
 /**
  * WASM interop functions
- * - find exported functions
- * - call exported functions
- * - import command configuration
+ * - call any exported function
+ *   (no js glue code required)
  * - import port configuration
  * - decode memory addresses
  * @param {WebAssembly.Exports} wasmExports
@@ -156,7 +155,7 @@ exports.WasmInterop = function (wasmExports) {
             }
           }
         })
-        .reduce((p, c) => ({ ...p, ...c }))
+        .reduce((p, c) => ({ ...p, ...c }), {})
     },
 
     constructObject (ptr) {
@@ -164,3 +163,30 @@ exports.WasmInterop = function (wasmExports) {
     }
   })
 }
+
+/**
+ * Construct an object from the key-value pairs in the multidimensional array
+ * @param {number} ptr - pointer to the address of the array of string arrays
+ * @returns {Readonly<{object}>}
+ */
+// function constructObject (ptr, unpin = true) {
+//   if (!ptr) {
+//     console.debug(constructObject.name, 'null pointer', ptr)
+//     return
+//   }
+
+//   try {
+//     const obj = liftArray(ptr)
+//       .map(inner => liftArray(inner))
+//       .map(tuple => ({ [liftString(tuple[0])]: liftString(tuple[1]) }))
+//       .reduce((obj1, obj2) => ({ ...obj1, ...obj2 }))
+
+//     const immutableClone = Object.freeze({ ...obj })
+//     !unpin || __unpin(ptr)
+//     console.debug(constructObject.name, ptr)
+//     return immutableClone
+//   } catch (e) {
+//     console.error(constructObject.name, 'error:', e.message)
+//     return {}
+//   }
+// }

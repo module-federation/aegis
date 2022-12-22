@@ -25,6 +25,7 @@ const {
   patchModels,
   postModels,
   liveUpdate,
+  postEntry,
   anyInvokePorts
 } = adapters.controllers
 
@@ -96,11 +97,13 @@ const router = {
           if (ctrl.ports) {
             for (const portName in ctrl.ports) {
               const port = ctrl.ports[portName]
+              const specPortMethods = port?.methods?.join('|').toLowerCase() || ""
+
               if (port.path) {
                 routeOverrides.set(port.path, portName)
               }
 
-              if (checkAllowedMethods(ctrl, method)) {
+              if (checkAllowedMethods(ctrl, method) && (!port.methods || (specPortMethods.includes(method.toLowerCase()))) ) {
                 routes.set(port.path || path(ctrl.endpoint), {
                   [method]: adapter(ctrl.fn)
                 })
@@ -124,13 +127,15 @@ const router = {
     }
   },
 
-  adminRoute (controller, adapter) {
-    const adminPath = `${apiRoot}/config`
-    routes.set(adminPath, { get: adapter(controller()) })
+  adminRoute (controller, adapter, method, path) {
+    const adminPath = `${apiRoot}/${path}`
+    routes.set(adminPath, { [method]: adapter(controller()) })
   }
 }
 
 function makeRoutes () {
+  router.adminRoute(getConfig, http)
+  router.userRoutes(getRoutes)
   router.autoRoutes(endpoint, 'get', liveUpdate, http)
   router.autoRoutes(endpoint, 'get', getModels, http)
   router.autoRoutes(endpoint, 'post', postModels, http)
@@ -146,7 +151,8 @@ function makeRoutes () {
   router.autoRoutes(endpointPortId, 'patch', anyInvokePorts, http, true)
   router.autoRoutes(endpointPortId, 'delete', anyInvokePorts, http, true)
   router.autoRoutes(endpointPortId, 'get', anyInvokePorts, http, true)
-  router.adminRoute(getConfig, http)
+  router.adminRoute(getConfig, http, 'get', 'config')
+  router.adminRoute(postEntry, http, 'post', 'deploy')
   router.userRoutes(getRoutes)
   console.log(routes)
 }
@@ -185,6 +191,7 @@ async function handle (path, method, req, res) {
     requestContext.enterWith(
       new Map([
         ['id', req.headers['idempotency-key'] || nanoid()],
+        ['checkIdempotency', req.headers['idempotency-key'] ? true : false],
         ['begin', Date.now()],
         ['user', req.user],
         ['res', res],

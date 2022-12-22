@@ -230,9 +230,12 @@ export default function makeRelations (relations, datasource, broker) {
 
   return Object.keys(relations)
     .map(function (relation) {
+      const relModelName = relations[relation].modelName.toUpperCase()
+
       const rel = {
         ...relations[relation],
-        modelName: relations[relation].modelName.toUpperCase(),
+        modelName: relModelName.toUpperCase(),
+        domain: require('.').default.getModelSpec(relModelName).domain,
         name: relation
       }
 
@@ -260,7 +263,10 @@ export default function makeRelations (relations, datasource, broker) {
             }
 
             // if the object is remote, we now have its code
-            const ds = datasource.factory.getDataSource(rel.modelName)
+            const ds = datasource.factory.getDataSource(
+              rel.modelName,
+              rel.domain
+            )
 
             const models = await relationType[rel.type](this, ds, rel, args)
 

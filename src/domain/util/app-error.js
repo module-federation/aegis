@@ -6,6 +6,10 @@
  * @returns
  */
 export function AppError (error, code = 400, cause = null) {
+  if(error.code > 500) {
+    error.code = 400
+  }
+
   return {
     name: error.name,
     stack: error.stack,

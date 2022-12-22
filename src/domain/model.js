@@ -61,7 +61,7 @@ import {
   withDeserializers,
   fromTimestamp,
   fromSymbol,
-  toSymbol
+  toSymbol,
 } from './mixins'
 import pipe from './util/pipe'
 import makePorts from './make-ports'
@@ -106,7 +106,21 @@ const Model = (() => {
   const eventMask = {
     update: 1, //  0001 Update
     create: 1 << 1, //  0010 Create
-    onload: 1 << 2 //  0100 Load
+    onload: 1 << 2, //  0100 Load
+  }
+
+  function approveChanges(changes, approvedChanges) {
+    return Object.entries(changes)
+      .filter(([k, v]) => approvedChanges.includes(k))
+      .map(([k, v]) => ({ [k]: v }))
+      .reduce((a, b) => ({ ...a, ...b }, {}))
+  }
+
+  function approveChanges (changes, approvedChanges) {
+    return Object.entries(changes)
+      .filter(([k, v]) => approvedChanges.includes(k))
+      .map(([k, v]) => ({ [k]: v }))
+      .reduce((a, b) => ({ ...a, ...b }, {}))
   }
 
   const defaultOnUpdate = (model, changes) => ({ ...model, ...changes })
@@ -127,7 +141,7 @@ const Model = (() => {
    * @param {} clonedModel
    * @returns
    */
-  function rehydrate (clonedModel, model) {
+  function rehydrate(clonedModel, model) {
     return model.prototype
       ? Object.setPrototypeOf(clonedModel, model.prototype)
       : clonedModel
@@ -135,14 +149,14 @@ const Model = (() => {
 
   /**
    * Add data and functions that support framework services.
-   * @paramn {{
+   * @param {{
    *  model:Model,
    *  args:*,
    *  spec:import('./index').ModelSpecification
    * }} modelInfo
    * @returns {Model}
    */
-  function make (modelInfo) {
+  function make(modelInfo) {
     const {
       model = {},
       spec: {
@@ -157,8 +171,9 @@ const Model = (() => {
         datasource,
         mixins = [],
         dependencies,
-        relations = {}
-      }
+        relations = {},
+        approvedChanges,
+      },
     } = modelInfo
 
     return {
@@ -187,12 +202,12 @@ const Model = (() => {
       [ID]: dependencies.getUniqueId(),
 
       // Called before update is committed
-      [ONUPDATE] (changes) {
+      [ONUPDATE](changes) {
         return onUpdate(this, changes)
       },
 
       // Called before delete is committed
-      [ONDELETE] () {
+      [ONDELETE]() {
         return onDelete(this)
       },
 
@@ -202,7 +217,7 @@ const Model = (() => {
        * @param {eventMask} event - event type, see {@link eventMask}.
        * @returns {Model} - updated model
        */
-      [VALIDATE] (changes, event) {
+      [VALIDATE](changes, event) {
         return validate(this, changes, event)
       },
 
@@ -212,7 +227,7 @@ const Model = (() => {
        * @param {number} event
        * @returns {string} key name/s: create, update, onload, delete
        */
-      getEventMaskName (event) {
+      getEventMaskName(event) {
         if (typeof event !== 'number') return
         const key = Object.keys(eventMask).find(k => eventMask[k] & event)
         return key
@@ -222,7 +237,7 @@ const Model = (() => {
        * Compensate for downstream transaction failures.
        * Back out all previous port transactions
        */
-      async undo () {
+      async undo() {
         return compensate(this)
       },
 
@@ -234,7 +249,7 @@ const Model = (() => {
        * @param {boolean} [multi] - allow multiple listeners for event,
        * defaults to `true`
        */
-      addListener (eventName, callback, options) {
+      addListener(eventName, callback, options) {
         broker.on(eventName, callback, options)
       },
 
@@ -246,13 +261,13 @@ const Model = (() => {
        * @param {boolean} [forward] - forward event to service mesh,
        * defaults to `false`
        */
-      emit (eventName, eventData, options) {
+      emit(eventName, eventData, options) {
         broker.notify(
           eventName,
           {
             eventName,
             eventData,
-            model: this
+            model: this,
           },
           options
         )
@@ -260,7 +275,7 @@ const Model = (() => {
 
       /** @typedef {import('./serializer.js').Serializer} Serializer */
 
-      getDataSourceType () {
+      getDataSourceType() {
         return datasource.getClassName()
       },
 
@@ -325,17 +340,17 @@ const Model = (() => {
        * @param {*} data
        * @returns
        */
-      async save (id = null, data = null) {
+      async save(id = null, data = null) {
         if (id && data) return datasource.save(id, data)
         return datasource.save(this[ID], this)
       },
 
-      async find (id) {
+      async find(id) {
         if (!id) throw new Error('missing id')
         return datasource.find(id)
       },
 
-      findSync (id) {
+      findSync(id) {
         if (!id) throw new Error('missing id')
         return datasource.findSync(id)
       },
@@ -345,10 +360,10 @@ const Model = (() => {
        * Only searches the cache. Does not search persistent storage.
        * Useful for getting state that does not require persistence.
        *
-       * @param {{key1, keyN}} filter - list of required matching key-values
+       * @param {import('./datasource').dsOpts} filter - list of required matching key-values
        * @returns {Model[]}
        */
-      listSync (filter) {
+      listSync(filter) {
         return datasource.listSync(filter)
       },
 
@@ -361,7 +376,7 @@ const Model = (() => {
        * @param {listOptions} options
        * @returns {Promise<Model[]>}
        */
-      async list (options) {
+      async list(options) {
         return datasource.list(options)
       },
 
@@ -378,7 +393,7 @@ const Model = (() => {
        * Payload of the request that created this model instance.
        * @returns request payload
        */
-      getArgs () {
+      getArgs() {
         return modelInfo.args ? modelInfo.args : []
       },
 
@@ -399,7 +414,7 @@ const Model = (() => {
        * Use to identify event types.
        * @returns {eventMask}
        */
-      getEventMask () {
+      getEventMask() {
         return eventMask
       },
 
@@ -408,7 +423,7 @@ const Model = (() => {
        *
        * @returns {import(".").ModelSpecification}
        */
-      getSpec () {
+      getSpec() {
         return modelInfo.spec
       },
 
@@ -427,7 +442,7 @@ const Model = (() => {
        *
        * @returns {import(".").ports}
        */
-      getPorts () {
+      getPorts() {
         return modelInfo.spec.ports
       },
 
@@ -436,7 +451,7 @@ const Model = (() => {
        *
        * @returns
        */
-      getName () {
+      getName() {
         return this[MODELNAME]
       },
 
@@ -445,7 +460,7 @@ const Model = (() => {
        *
        * @returns {string}
        */
-      getId () {
+      getId() {
         return this[ID]
       },
 
@@ -454,7 +469,7 @@ const Model = (() => {
        *
        * @returns {string[]} history of ports called by this model instance
        */
-      getPortFlow () {
+      getPortFlow() {
         return this[PORTFLOW]
       },
 
@@ -464,7 +479,7 @@ const Model = (() => {
        * @param {string} key - string representation of Symbol
        * @returns {Symbol}
        */
-      getKey (key) {
+      getKey(key) {
         return keyMap[key]
       },
 
@@ -481,7 +496,7 @@ const Model = (() => {
         )
       },
 
-      getContext (name) {
+      getContext(name) {
         return asyncContext[name]
       },
 
@@ -526,7 +541,7 @@ const Model = (() => {
           this[MODELNAME],
           this[DOMAIN]
         )
-      }
+      },
     }
   }
 
@@ -548,7 +563,7 @@ const Model = (() => {
       // Call factory with data from request payload
       model: modelInfo.spec.factory(...modelInfo.args),
       args: modelInfo.args,
-      spec: modelInfo.spec
+      spec: modelInfo.spec,
     })
 
   const validate = event => model => model[VALIDATE]({}, event)
@@ -627,9 +642,7 @@ const Model = (() => {
      * @returns {Model} updated model
      *
      */
-    async update (model, changes) {
-      return model.update(changes)
-    },
+    update: (model, changes) => model.updateSync(changes),
 
     /**
      * Run the model's validation functions.
@@ -667,7 +680,7 @@ const Model = (() => {
      */
     getId: model => model[ID],
 
-    makeService
+    makeService,
   }
 })()
 
