@@ -42,6 +42,7 @@ export const aws = {
       query: args.queryStringParameters,
       params: args.pathParameters,
       body: handleMultiline(args.body),
+      headers: args.headers,
       all: { ...args }
     },
     res

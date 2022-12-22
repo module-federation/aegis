@@ -16,7 +16,7 @@
 /**
  * @param {httpController} controller
  */
-export default function buildCallback(controller) {
+export default function buildCallback (controller) {
   /**
    */
   return async (req, res) => {
@@ -29,7 +29,7 @@ export default function buildCallback(controller) {
       path: req.path,
       res: res,
       headers: req.headers,
-      log(func) {
+      log (func) {
         console.info({
           function: func,
           ip: httpRequest.ip,
@@ -44,7 +44,6 @@ export default function buildCallback(controller) {
 
     return controller(httpRequest)
       .then(httpResponse => {
-        if (httpRequest.stream) return
         if (httpResponse.headers) {
           res.set(httpResponse.headers)
         }

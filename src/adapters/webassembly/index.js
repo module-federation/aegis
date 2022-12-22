@@ -4,7 +4,7 @@ import {
   wrapWasmAdapter,
   wrapWasmModelSpec,
   wrapWasmService
-} from './wasm-wrappers'
+} from './wasm-wrap'
 
 export * from './wasm-interop'
 export * from './wasm-import'
@@ -22,7 +22,7 @@ export const adapterTypes = {
 export const wasmAdapters = {
   /**
    * @param {WebAssembly.Exports} wasm
-   * @returns {import('./wasm-wrappers').ModelSpecification}
+   * @returns {import('./wasm-wrap').ModelSpecification}
    */
   [adapterTypes.model]: wasm => wrapWasmModelSpec(wasm),
   /**

@@ -123,6 +123,13 @@ const Model = (() => {
       .reduce((a, b) => ({ ...a, ...b }, {}))
   }
 
+  function approveChanges (changes, approvedChanges) {
+    return Object.entries(changes)
+      .filter(([k, v]) => approvedChanges.includes(k))
+      .map(([k, v]) => ({ [k]: v }))
+      .reduce((a, b) => ({ ...a, ...b }, {}))
+  }
+
   const defaultOnUpdate = (model, changes) => ({ ...model, ...changes })
   const defaultOnDelete = model => withTimestamp('deleteTime')(model)
   const defaultValidate = (model, changes) => defaultOnUpdate(model, changes)
@@ -294,16 +301,28 @@ const Model = (() => {
        * @returns {Promise<Model>}
        */
       async update (changes, runValidation = true) {
+        const approved = approvedChanges
+          ? approveChanges(approvedChanges)
+          : changes
+
         // merge changes and optionally validate
         const mergedModel = runValidation
-          ? this[VALIDATE](changes, eventMask.update)
-          : { ...this, ...changes }
+          ? this[VALIDATE](approved, eventMask.update)
+          : { ...this, ...approved }
 
         const timestampedModel = { ...mergedModel, [UPDATETIME]: Date.now() }
 
         await datasource.save(this[ID], timestampedModel)
 
         return timestampedModel
+      },
+
+      setApprovedChanges (propKeys) {
+        approvedChanges.concat(propKeys)
+      },
+
+      getApprovedChanges () {
+        return approvedChanges
       },
 
       /**
@@ -318,10 +337,14 @@ const Model = (() => {
        * @returns {Model}
        */
       updateSync (changes, runValidation = true) {
+        const approved = approvedChanges
+          ? approveChanges(approvedChanges)
+          : changes
+
         // merge changes and optionally validate
         const mergedModel = runValidation
-          ? this[VALIDATE](changes, eventMask.update)
-          : { ...this, ...changes }
+          ? this[VALIDATE](approved, eventMask.update)
+          : { ...this, ...approved }
 
         // update timestamp
         const timestampedModel = { ...mergedModel, [UPDATETIME]: Date.now() }
@@ -329,7 +352,6 @@ const Model = (() => {
         // only update the cache
         datasource.saveSync(this[ID], timestampedModel)
 
-        // restore prototype if used
         return timestampedModel
       },
 
@@ -501,8 +523,8 @@ const Model = (() => {
       },
 
       /**
-       * Returns service of model related via ModelSpec or
-       * belonging to the same domain.
+       * Returns related model service, where the two models are
+       * related via ModelSpec.relation or belong to the same domain.
        *
        * Note: relation or domain membership must be defined
        * in ModelSpec; otherwise, we won't be able to access
@@ -511,23 +533,10 @@ const Model = (() => {
        *
        * @returns {Model}
        */
-      fetchRelatedDomainService (modelName) {
-        const upperName = modelName
-
-        if (
-          require('.').default.getModelSpec(upperName).domain ===
-            this[DOMAIN] ||
-          Object.values(relations).find(
-            v => v.modelName.toUpperCase() === upperName
-          )
-        ) {
-          throw new Error('no relation or domain membership found')
-        }
-
+      fetchRelatedService (modelName) {
+        const upperName = modelName.toUpperCase()
         const ds = datasource.factory.getDataSource(upperName)
-
         if (!ds) throw new Error('no datasource found')
-
         return require('.').default.getService(upperName, ds, broker)
       },
 

@@ -69,10 +69,15 @@ function setPortTimeout(options) {
   // Retry the port on timeout
   const retry = async () => {
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
     // undo running
     if (model.compensate) return
 >>>>>>> 1a3ba16255209b243b8d77032a27c83a376472f7
+=======
+    // undo running
+    if (model.compensate) return
+>>>>>>> 29ccd6b6db2aa3bc99c3a1d2a5e5b263fc49bf79
     // Notify interested parties
     model.emit(portTimeout(model.getName(), portName), timerArgs)
     // Invoke optional custom handlerdw
@@ -82,10 +87,14 @@ function setPortTimeout(options) {
   }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
   const timerId = expired() ? null : setTimeout(retry, timeout)
 =======
   const timerId = setTimeout(retry, timeout)
 >>>>>>> 1a3ba16255209b243b8d77032a27c83a376472f7
+=======
+  const timerId = setTimeout(retry, timeout)
+>>>>>>> 29ccd6b6db2aa3bc99c3a1d2a5e5b263fc49bf79
 
   return {
     expired,
@@ -103,12 +112,20 @@ function setPortTimeout(options) {
 /**
  * @param {function({model:Model,port:string},{*})} cb
  */
+<<<<<<< HEAD
 function getPortCallback(cb) {
+=======
+function getPortCallback (cb) {
+>>>>>>> 29ccd6b6db2aa3bc99c3a1d2a5e5b263fc49bf79
   if (typeof cb === 'function') return cb
   return portHandler
 }
 
+<<<<<<< HEAD
 function hydrate(broker, datasource, eventInfo) {
+=======
+function hydrate (broker, datasource, eventInfo) {
+>>>>>>> 29ccd6b6db2aa3bc99c3a1d2a5e5b263fc49bf79
   const model = eventInfo.model
   const modelName = eventInfo.model.modelName
   if (!modelName) return eventInfo.model
@@ -132,11 +149,6 @@ function addPortListener(portName, portConf, broker, datasource) {
     async function listen (eventInfo) {
       const model = hydrate(broker, datasource, eventInfo)
 
-      if (isUndoRunning(model)) {
-        console.log('undo running, canceling port operation')
-        return
-      }
-
       console.log(
         `event ${eventInfo.eventName} fired: calling port ${portName}`,
         eventInfo
@@ -144,6 +156,7 @@ function addPortListener(portName, portConf, broker, datasource) {
       // invoke this port
       await async(model[portName](callback))
     }
+<<<<<<< HEAD
 
     broker.on(portConf.consumesEvent, listen)
 =======
@@ -158,6 +171,8 @@ function addPortListener(portName, portConf, broker, datasource) {
       // invoke this port
       await async(model[portName](callback))
     }
+=======
+>>>>>>> 29ccd6b6db2aa3bc99c3a1d2a5e5b263fc49bf79
     broker.on(portConf.consumesEvent, listen, { singleton: true })
     return true
   }
@@ -224,24 +239,16 @@ export default function makePorts(ports, adapters, broker, datasource) {
         if (disabled) {
           return this
         }
-
-        // Handle port timeouts
-        const timer = setPortTimeout({
-          portName,
-          portConf,
-          model: this,
-          args
-        })
+        let timer
 
         try {
-          if (timer.expired()) {
-            // This means we hit max retries
-            console.warn('max retries reached', port)
-            // fire event for circuit breaker / instrumentation
-            this.emit(portRetryFailed(this.getName(), port))
-            
-            throw new Error(portRetryFailed(this.getName(), port))
-          }
+          // Handle port timeouts
+          timer = setPortTimeout({
+            portName,
+            portConf,
+            model: this,
+            args
+          })
 
           // call the inbound or oubound adapte
           const result = await adapters[port]({ model: this, port, args })

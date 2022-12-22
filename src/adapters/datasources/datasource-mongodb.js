@@ -34,7 +34,7 @@ const connections = []
 
 const mongoOpts = {
   //useNewUrlParser: true,
-  useUnifiedTopology: true,
+  //useUnifiedTopology: true
 }
 
 /**
@@ -52,7 +52,7 @@ export class DataSourceMongoDb extends DataSource {
     this.url = url
   }
 
-  connect(client) {
+  connect (client) {
     return async function () {
       let timeout = false
       const timerId = setTimeout(() => {
@@ -64,7 +64,24 @@ export class DataSourceMongoDb extends DataSource {
     }
   }
 
-  async connection() {
+  async connectionPool () {
+    return new Promise((resolve, reject) => {
+      if (this.db) return resolve(this.db)
+      MongoClient.connect(
+        this.url,
+        {
+          ...this.mongoOpts,
+          poolSize: dsOptions.numConns || 2
+        },
+        (err, database) => {
+          if (err) return reject(err)
+          resolve((this.db = database.db(this.namespace)))
+        }
+      )
+    })
+  }
+
+  async connection () {
     try {
       while (connections.length < (dsOptions.numConns || 1)) {
         const client = new MongoClient(this.url, this.mongoOpts)
@@ -73,12 +90,12 @@ export class DataSourceMongoDb extends DataSource {
             errorRate: 1,
             callVolume: 1,
             intervalMs: 10000,
-            testDelay: 300000,
+            testDelay: 300000
             //fallbackFn: () => client.emit('connectionClosed')
-          },
+          }
         }
         const breaker = CircuitBreaker(
-          'mongo.conn',
+          'mongodb.connect',
           this.connect(client),
           thresholds
         )
@@ -224,15 +241,13 @@ export class DataSourceMongoDb extends DataSource {
   /**
    *
    * @param {Object} filter Supposed to be a valid Mongo Filter
-   * @param {Object} options Options to sort limit aggregate etc...
-   * @param {Object} options.sort a valid Mongo sort object
-   * @param {Number} options.limit a valid Mongo limit
-   * @param {Object} options.aggregate a valid Mongo aggregate object
+   * @param {Object} sort a valid Mongo sort object
+   * @param {Number} limit a valid Mongo limit
+   * @param {Object} aggregate a valid Mongo aggregate object
    *
-   * @returns
+   * @returns {Promise<import('mongodb').AbstractCursor>}
    */
-
-  async mongoFind({ filter, sort, limit, skip, aggregate } = {}) {
+  async mongoFind ({ filter, sort, limit, aggregate, skip } = {}) {
     console.log({ fn: this.mongoFind.name, filter })
     let cursor = aggregate
       ? (await this.collection()).aggregate(aggregate)
@@ -363,40 +378,12 @@ export class DataSourceMongoDb extends DataSource {
   }
 
   /**
-   * Returns the set of objects satisfying the `filter` if specified;
-   * otherwise returns all objects. If a `writable`stream is provided and `cached`
-   * is false, the list is streamed. Otherwise the list is returned in
-   * an array. A custom transform can be specified to modify the streamed
-   * results. Using {@link createWriteStream} updates can be streamed back
-   * to the db. With streams, we can support queries of very large tables,
-   * with minimal memory overhead on the node server.
    *
    * @override
-   * @param {{key1:string, keyN:string}} filter - e.g. http query
-   * @param {{
-   *  writable: WritableStream,
-   *  cached: boolean,
-   *  serialize: boolean,
-   *  transform: Transform
-   * }} params
-   *    - details
-   *    - `serialize` seriailize input to writable
-   *    - `cached` list cache only
-   *    - `transform` transform stream before writing
-   *    - `writable` writable stream for output
+   * @param {import('../../domain/datasource').listOptions} param
    */
-  async list(param = {}) {
-    const {
-      writable = null,
-      transform = null,
-      serialize = false,
-      query = {},
-    } = param
-    let result
+  async list (param) {
     try {
-      if (query.__cached) return super.listSync(query)
-      if (query.__count) return this.count()
-
       const options = this.processOptions(param)
       if (0 < ~~query.__page) {
         // qpm > processOptions weeds out __page - add it back properly as an integer
@@ -433,7 +420,11 @@ export class DataSourceMongoDb extends DataSource {
     }
   }
 
-  async count() {
+  /**
+   *
+   * @override
+   */
+  async count () {
     return {
       total: await this.countDb(),
       cached: this.getCacheSize(),

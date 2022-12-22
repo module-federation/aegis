@@ -84,7 +84,7 @@ remoteEntries.then(remotes => {
   init(remotes).then(domainPorts => {
     console.info('aegis worker thread running')
     // dont wait for cache to load
-    //initCache().load()
+    initCache().load()
 
     // handle API requests from main
     parentPort.on('message', async msg => {

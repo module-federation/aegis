@@ -75,11 +75,11 @@ function stopWorker () {
  * @param {number} waitms - Delay execution by `waitms`
  * milliseconds so your app has time to start
  */
-function continueReload (callback, waitms) {
+function handleReload (callback, waitms = 2000) {
   const failedWorker =
     !reloading &&
     workerList.length < numCores &&
-    callback.name.includes('start')
+    callback.name === startWorker.name
 
   if (reloading || failedWorker) {
     setTimeout(callback, failedWorker ? 60000 : waitms)
@@ -109,16 +109,16 @@ exports.startCluster = function (startService, waitms = 2000) {
     // Worker stopped. If reloading, start a new one.
     cluster.on('exit', function (worker) {
       console.log('worker down', worker.process.pid)
-      continueReload(startWorker, 0)
+      handleReload(startWorker, 0)
     })
 
     // Worker started. If reloading, stop the next one.
     cluster.on('online', function (worker) {
       console.log('worker up', worker.process.pid)
-      continueReload(stopWorker, waitms)
+      handleReload(stopWorker, waitms)
     })
 
-    setInterval(continueReload, 60000, startWorker, waitms)
+    setInterval(() => handleReload(startWorker, 0), 60000)
 
     console.log(`master starting ${numCores} workers 🌎`)
     // Run a copy of this program on each core

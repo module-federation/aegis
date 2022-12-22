@@ -1,9 +1,6 @@
-import { callbackify } from 'node:util'
 import { wasmAdapters } from '.'
 import { EventBrokerFactory } from '../../../lib/domain'
 import { RepoClient } from './repo-client'
-
-import { EventBrokerFactory } from '../../../lib/domain'
 
 /**@type {import('../../domain/event-broker').EventBroker} */
 const broker = EventBrokerFactory.getInstance()
@@ -33,7 +30,25 @@ exports.importWebAssembly = function (remoteEntry) {
           // ~lib/bindings/dom/console.log(~lib/string/String) => void
           text = __liftString(text >>> 0)
           console.log(text)
+        },
+
+        callJsFunction (kv) {
+         __liftArray(
+            pointer =>
+              __liftArray(
+                pointer =>
+                  __liftString(new Uint32Array(memory.buffer)[pointer >>> 2]),
+                2,
+                new Uint32Array(memory.buffer)[pointer >>> 2]
+              ),
+            2,
+            kv
+          )
+          const fn = kv.filter(([k, v]) => k === 'fn').map(([k, v]) => v)[0]
+          const args = kv.filter(([k, v]) => k === 'arg').map(([k, v]) => v)
         }
+
+        
       })
     }
 
@@ -50,6 +65,7 @@ exports.importWebAssembly = function (remoteEntry) {
         liftArray: __liftArray,
         notnull: __notnull,
         store_ref: __store_ref,
+        _exports: exports,
         memory,
 
         getModelName () {
@@ -67,10 +83,6 @@ exports.importWebAssembly = function (remoteEntry) {
           return __liftString(exports.getDomain() >>> 0)
         },
 
-        callExportedFn (fn, kv) {
-          return exports[fn](kv)
-        },
-
         ArrayOfStrings_ID: {
           // assembly/index/ArrayOfStrings_ID: u32
           valueOf () {
@@ -81,9 +93,14 @@ exports.importWebAssembly = function (remoteEntry) {
           }
         },
 
-        modelFactory (kv) {
-          // assembly/index/modelFactory(~lib/array/Array<~lib/array/Array<~lib/string/String>>) => ~lib/array/Array<~lib/array/Array<~lib/string/String>>
-          kv =
+        modelFactory (obj) {
+          const entries = Object.entries(obj)
+            .filter(([k, v]) =>
+              ['string', 'number', 'boolean'].includes(typeof v)
+            )
+            .map(([k, v]) => [k, v.toString()])
+
+          const kv =
             __lowerArray(
               (pointer, value) => {
                 __store_ref(
@@ -100,7 +117,7 @@ exports.importWebAssembly = function (remoteEntry) {
               },
               5,
               2,
-              kv
+              entries
             ) || __notnull()
 
           return __liftArray(
@@ -131,6 +148,23 @@ exports.importWebAssembly = function (remoteEntry) {
               ),
             2,
             exports.getPorts() >>> 0
+          )
+            .map(([k, v]) => ({ [k]: v }))
+            .reduce((a, b) => ({ ...a, ...b }))
+        },
+
+        getCommands () {
+          // assembly/index/getCommands() => ~lib/array/Array<~lib/array/Array<~lib/string/String>>
+          return __liftArray(
+            pointer =>
+              __liftArray(
+                pointer =>
+                  __liftString(new Uint32Array(memory.buffer)[pointer >>> 2]),
+                2,
+                new Uint32Array(memory.buffer)[pointer >>> 2]
+              ),
+            2,
+            exports.getCommands() >>> 0
           )
             .map(([k, v]) => ({ [k]: v }))
             .reduce((a, b) => ({ ...a, ...b }))
@@ -172,23 +206,6 @@ exports.importWebAssembly = function (remoteEntry) {
             2,
             exports.emitEvent(kv) >>> 0
           )
-        },
-
-        getCommands () {
-          // assembly/index/getCommands() => ~lib/array/Array<~lib/array/Array<~lib/string/String>>
-          return __liftArray(
-            pointer =>
-              __liftArray(
-                pointer =>
-                  __liftString(new Uint32Array(memory.buffer)[pointer >>> 2]),
-                2,
-                new Uint32Array(memory.buffer)[pointer >>> 2]
-              ),
-            2,
-            exports.getCommands() >>> 0
-          )
-            .map(([k, v]) => ({ [k]: v }))
-            .reduce((a, b) => ({ ...a, ...b }))
         },
 
         onUpdate (kv) {
@@ -355,8 +372,8 @@ exports.importWebAssembly = function (remoteEntry) {
       }
     }
 
-    function __notnull () {
-      throw TypeError('value must not be null')
+    function __notnull (key) {
+      throw TypeError(`value must not be null ${key}`)
     }
 
     function __store_ref (pointer, value) {
@@ -366,19 +383,19 @@ exports.importWebAssembly = function (remoteEntry) {
     return adaptedExports
   }
 
-  async function compileStream (url) {
+  async function compileStream (remoteEntry) {
     try {
       return await globalThis.WebAssembly.compileStreaming(
-        globalThis.fetch(url)
+        globalThis.fetch(remoteEntry.url)
       )
     } catch {
       return globalThis.WebAssembly.compile(
-        await (await import('node:fs/promises')).readFile(url)
+        (await RepoClient.fetch(remoteEntry)).toArrayBuffer()
       )
     }
   }
 
-  const initWasm = async () => instantiate(await compileStream(remoteEntry.url))
+  const initWasm = async () => instantiate(await compileStream(remoteEntry))
 
   return initWasm().then(wasmExports =>
     wasmAdapters[remoteEntry.type](wasmExports)

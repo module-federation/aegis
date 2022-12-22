@@ -120,4 +120,6 @@ yarn demo
 [downloads-image]: https://img.shields.io/npm/dm/@module-federation/aegis
 [downloads-url]: https://npmjs.org/package/@module-federation/aegis
 [gitpod-image]: https://img.shields.io/badge/Gitpod-ready--to--code-908a85?logo=gitpod
-[gitpod-url]: https://gitpod.io/github.com/module-federation/aegis
+[gitpod-url]: https://gitpod.io/github.com/module-federation/aegis-app
+
+
