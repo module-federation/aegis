@@ -25,6 +25,8 @@ export default function makeInvokePort({
   threadpool,
   modelName,
   models,
+  context,
+  authorize = async x => await x(),
 } = {}) {
   //const inboundPorts = models.getModelSpec(modelName).getInboundPortFunctions()
 

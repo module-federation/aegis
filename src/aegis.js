@@ -135,8 +135,6 @@ const router = {
 }
 
 function makeRoutes() {
-  router.adminRoute(getConfig, http)
-  router.userRoutes(getRoutes)
   router.autoRoutes(endpoint, 'get', liveUpdate, http)
   router.autoRoutes(endpoint, 'get', getModels, http)
   router.autoRoutes(endpoint, 'post', postModels, http)

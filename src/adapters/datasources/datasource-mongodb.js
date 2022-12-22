@@ -191,7 +191,7 @@ export class DataSourceMongoDb extends DataSource {
       let objects = []
       const ctx = this
 
-      const upsert = async () => {
+      async function upsert() {
         const operations = objects.map(obj => {
           return {
             replaceOne: {

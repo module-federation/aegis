@@ -116,20 +116,6 @@ const Model = (() => {
       .reduce((a, b) => ({ ...a, ...b }, {}))
   }
 
-  function approveChanges(changes, approvedChanges) {
-    return Object.entries(changes)
-      .filter(([k, v]) => approvedChanges.includes(k))
-      .map(([k, v]) => ({ [k]: v }))
-      .reduce((a, b) => ({ ...a, ...b }, {}))
-  }
-
-  function approveChanges(changes, approvedChanges) {
-    return Object.entries(changes)
-      .filter(([k, v]) => approvedChanges.includes(k))
-      .map(([k, v]) => ({ [k]: v }))
-      .reduce((a, b) => ({ ...a, ...b }, {}))
-  }
-
   const defaultOnUpdate = (model, changes) => ({ ...model, ...changes })
   const defaultOnDelete = model => withTimestamp('deleteTime')(model)
   const defaultValidate = (model, changes) => defaultOnUpdate(model, changes)
