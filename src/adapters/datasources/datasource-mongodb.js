@@ -69,7 +69,7 @@ export class DataSourceMongoDb extends DataSource {
           }
         }
         const breaker = CircuitBreaker(
-          'mongo.conn',
+          'mongodb.connect',
           this.connect(client),
           thresholds
         )
@@ -215,55 +215,6 @@ export class DataSourceMongoDb extends DataSource {
    * }} param0
    * @returns
    */
-  streamList ({ writable, serialize, transform, options }) {
-    try {
-      let first = true
-
-      const serializer = new Transform({
-        writableObjectMode: true,
-
-        // start of array
-        construct (callback) {
-          this.push('[')
-          callback()
-        },
-
-        // each chunk is a record
-        transform (chunk, _encoding, next) {
-          // comma-separate
-          if (first) first = false
-          else this.push(',')
-
-          // serialize record
-          this.push(JSON.stringify(chunk))
-          next()
-        },
-
-        // end of array
-        flush (callback) {
-          this.push(']')
-          callback()
-        }
-      })
-
-      return new Promise(async (resolve, reject) => {
-        const readable = (await this.mongoFind(options)).stream()
-
-        readable.on('error', reject)
-        readable.on('end', resolve)
-
-        // optionally transform db stream then pipe to output
-        if (transform && serialize)
-          readable
-            .pipe(transform)
-            .pipe(serializer)
-            .pipe(writable)
-        else if (transform) readable.pipe(transform).pipe(writable)
-        else if (serialize) readable.pipe(serializer).pipe(writable)
-        else readable.pipe(writable)
-      })
-    } catch (error) {}
-  }
 
   processOptions (param) {
     const { options = {}, query = {} } = param
@@ -294,22 +245,14 @@ export class DataSourceMongoDb extends DataSource {
    *    - `writable` writable stream for output
    */
   async list (param = {}) {
-    const {
-      writable = null,
-      transform = null,
-      serialize = false,
-      query = {}
-    } = param
+    const { writable = null, transform = null, serialize = false } = param
 
     try {
-      if (query.__cached) return super.listSync(query)
-      if (query.__count) return this.count()
-
       const options = this.processOptions(param)
       console.log({ options })
 
       if (writable) {
-        return this.streamList({ writable, serialize, transform, options })
+        return (await this.mongoFind(options)).stream()
       }
 
       return (await this.mongoFind(options)).toArray()
