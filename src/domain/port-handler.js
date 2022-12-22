@@ -1,6 +1,6 @@
 'use strict'
 
-function checkPayload (
+function checkPayload(
   key,
   options = {},
   payload = {},
@@ -15,7 +15,7 @@ function checkPayload (
       port,
       error,
       payload,
-      key
+      key,
     })
 
     return
@@ -49,7 +49,7 @@ function checkPayload (
         port,
         error,
         payload,
-        model
+        model,
       })
     })
 }
@@ -63,7 +63,7 @@ function checkPayload (
  * @param {{model:import(".").Model,port:import(".").ports[""]}} options
  * @param {*} payload
  */
-export default async function portHandler (options = {}, payload = {}) {
+export default async function portHandler(options = {}, payload = {}) {
   const { model, port } = options
   const spec = model.getSpec()
 

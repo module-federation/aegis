@@ -8,7 +8,7 @@ const cmd = buildCommand()
 const dir = './src'
 const delay = 500
 
-function buildCommand () {
+function buildCommand() {
   // below fails randomly😡
   // const tasks = JSON.parse(process.env.GITPOD_TASKS.trim())
   // const port = tasks ? tasks[0]?.env?.PORT || 8080 : 80
@@ -24,7 +24,7 @@ function buildCommand () {
  * @param {string} dir directory to read
  * @returns
  */
-async function walk (dir) {
+async function walk(dir) {
   let files = await fs.readdir(dir)
 
   files = await Promise.all(
@@ -48,7 +48,7 @@ let run = true
  * @param {number} ms - milliseconds to wait before executing `cmd`
  * @returns
  */
-function action (cmd, cb, ms) {
+function action(cmd, cb, ms) {
   return function (eventType, filename) {
     console.log(eventType, filename)
     if (ms) {
@@ -61,7 +61,7 @@ function action (cmd, cb, ms) {
   }
 }
 
-function log (stderr, stdout, stdin) {
+function log(stderr, stdout, stdin) {
   console.log(stderr || stdout || stdin)
 }
 
@@ -71,7 +71,7 @@ function log (stderr, stdout, stdin) {
  * @param {(eventType:string,filename:string)=>void} cb - callback, see {@link action}
  * @param {{recursive:boolean}} options - include all subdirectories (not supported on linux)
  */
-function monitor (filePath, cb, options = {}) {
+function monitor(filePath, cb, options = {}) {
   console.debug('watching ', filePath)
   watch(filePath, options, cb)
 }

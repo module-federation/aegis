@@ -3,8 +3,8 @@
  * @param {import("../../domain/use-cases/remove-model").removeModel} removeModel
  * @returns {import("../adapters/http-adapter").httpController}
  */
-export default function deleteModelFactory (removeModel) {
-  return async function deleteModel (httpRequest) {
+export default function deleteModelFactory(removeModel) {
+  return async function deleteModel(httpRequest) {
     httpRequest.log(deleteModel.name)
     try {
       const model = await removeModel({ id: httpRequest.params.id })
@@ -12,13 +12,13 @@ export default function deleteModelFactory (removeModel) {
       return {
         headers: {
           'Content-Type': 'application/json',
-          'Last-Modified': new Date().toISOString()
+          'Last-Modified': new Date().toISOString(),
         },
         statusCode: 201,
-        body: { 
-          status: "ok",
-          modelId: model.id 
-        }
+        body: {
+          status: 'ok',
+          modelId: model.id,
+        },
       }
     } catch (e) {
       console.error(e)
@@ -26,20 +26,20 @@ export default function deleteModelFactory (removeModel) {
       if (e.message === 'Not Found') {
         return {
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
           },
-          statusCode: 404
+          statusCode: 404,
         }
       }
 
       return {
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
         statusCode: e.code || 400,
         body: {
-          error: e.message
-        }
+          error: e.message,
+        },
       }
     }
   }

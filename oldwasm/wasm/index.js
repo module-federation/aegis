@@ -5,7 +5,7 @@ const loader = require('@assemblyscript/loader')
 // const { default: BrokerSingleton } = require('../src/domain/broker')
 // const broker = BrokerSingleton.getInstance()
 
-async function importWebAssembly () {
+async function importWebAssembly() {
   const startTime = Date.now()
 
   // Check if we support streaming instantiation
@@ -24,7 +24,7 @@ async function importWebAssembly () {
          * @param {string} portConsumerEvent - value of `port.consumesEvent`
          * @param {string} portData - data to send through the port
          */
-        invokePort (portName, portConsumerEvent, portData, cb, undo) {
+        invokePort(portName, portConsumerEvent, portData, cb, undo) {
           console.log(
             'js invokePort called by wasm',
             wasm.exports.__getString(portName),
@@ -41,7 +41,7 @@ async function importWebAssembly () {
          * @param {string} methodData
          * @param {string} moduleName
          */
-        invokeMethod (methodName, methodData, moduleName) {
+        invokeMethod(methodName, methodData, moduleName) {
           console.log(
             'js invokeMethod called by wasm',
             wasm.exports.__getString(methodName),
@@ -57,7 +57,7 @@ async function importWebAssembly () {
          * @param {string} eventName - name of event
          * @param {string} callbackName - name of exported function to run when event fires
          */
-        addListener (eventName, callbackName, options) {
+        addListener(eventName, callbackName, options) {
           const { allowMultiple = true, once = true } = options
           console.debug('websocket listen invoked')
           const adapter = WasmInterop(wasm)
@@ -79,7 +79,7 @@ async function importWebAssembly () {
          * @param {string} eventName
          * @param {string} eventData
          */
-        fireEvent (eventName, eventData) {
+        fireEvent(eventName, eventData) {
           const adapter = WasmInterop(wasm)
           const name = adapter.__getString(eventName)
           const data = adapter.constructObject(eventData)
@@ -92,8 +92,8 @@ async function importWebAssembly () {
          * @param {string} remoteEntry - name of remote entry
          */
         requestDeployment: remoteEntry =>
-          console.log('deploy', wasm.exports.__getString(remoteEntry))
-      }
+          console.log('deploy', wasm.exports.__getString(remoteEntry)),
+      },
     }
   )
   console.info('wasm modules took %dms', Date.now() - startTime)

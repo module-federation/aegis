@@ -9,7 +9,7 @@
  * ```
  * @param {...Function} funcs - functions to execute
  */
-export default function compose (...funcs) {
+export default function compose(...funcs) {
   return function (initVal) {
     return funcs.reduceRight(function (val, func) {
       return func(val)

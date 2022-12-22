@@ -52,7 +52,7 @@ export class DataSourceMongoDb extends DataSource {
     this.url = url
   }
 
-  connect (client) {
+  connect(client) {
     return async function () {
       let timeout = false
       const timerId = setTimeout(() => {
@@ -64,14 +64,14 @@ export class DataSourceMongoDb extends DataSource {
     }
   }
 
-  async connectionPool () {
+  async connectionPool() {
     return new Promise((resolve, reject) => {
       if (this.db) return resolve(this.db)
       MongoClient.connect(
         this.url,
         {
           ...this.mongoOpts,
-          poolSize: dsOptions.numConns || 2
+          poolSize: dsOptions.numConns || 2,
         },
         (err, database) => {
           if (err) return reject(err)
@@ -81,7 +81,7 @@ export class DataSourceMongoDb extends DataSource {
     })
   }
 
-  async connection () {
+  async connection() {
     try {
       while (connections.length < (dsOptions.numConns || 1)) {
         const client = new MongoClient(this.url, this.mongoOpts)
@@ -90,9 +90,9 @@ export class DataSourceMongoDb extends DataSource {
             errorRate: 1,
             callVolume: 1,
             intervalMs: 10000,
-            testDelay: 300000
+            testDelay: 300000,
             //fallbackFn: () => client.emit('connectionClosed')
-          }
+          },
         }
         const breaker = CircuitBreaker(
           'mongodb.connect',
@@ -247,7 +247,7 @@ export class DataSourceMongoDb extends DataSource {
    *
    * @returns {Promise<import('mongodb').AbstractCursor>}
    */
-  async mongoFind ({ filter, sort, limit, aggregate, skip } = {}) {
+  async mongoFind({ filter, sort, limit, aggregate, skip } = {}) {
     console.log({ fn: this.mongoFind.name, filter })
     let cursor = aggregate
       ? (await this.collection()).aggregate(aggregate)
@@ -382,7 +382,7 @@ export class DataSourceMongoDb extends DataSource {
    * @override
    * @param {import('../../domain/datasource').listOptions} param
    */
-  async list (param) {
+  async list(param) {
     try {
       const options = this.processOptions(param)
       if (0 < ~~query.__page) {
@@ -424,7 +424,7 @@ export class DataSourceMongoDb extends DataSource {
    *
    * @override
    */
-  async count () {
+  async count() {
     return {
       total: await this.countDb(),
       cached: this.getCacheSize(),

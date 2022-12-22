@@ -3,25 +3,25 @@
 import mlink, { sharedObject } from 'mesh-link'
 import DataSource from '../../domain/datasource'
 
-async function createSharedObject (name) {
+async function createSharedObject(name) {
   mlink.sharedObject.create({ name: { value: name }, modelId: { value: null } })
 }
 
-async function fetchSharedObject (name) {
+async function fetchSharedObject(name) {
   const so = await mlink.sharedObject.get(name)
   const rv = so || (await createSharedObject(name))
   return rv
 }
 
 export class DataSourceMeshLink extends DataSource {
-  constructor (map, name, namespace, options = {}) {
+  constructor(map, name, namespace, options = {}) {
     super(map, name, namespace, options)
   }
 
   /**
    * @override
    */
-  async load ({ hydrate, serializer }) {
+  async load({ hydrate, serializer }) {
     this.serializer = serializer
     this.so = await fetchSharedObject(this.name)
   }
@@ -31,7 +31,7 @@ export class DataSourceMeshLink extends DataSource {
    * @param {*} id
    * @param {*} data
    */
-  async save (id, data) {
+  async save(id, data) {
     const so = await fetchSharedObject(this.name)
   }
 
@@ -39,10 +39,10 @@ export class DataSourceMeshLink extends DataSource {
    * @override
    * @param {*} id
    */
-  async find (id) {}
+  async find(id) {}
 
   /**
    * @override
    */
-  async list () {}
+  async list() {}
 }

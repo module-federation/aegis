@@ -8,8 +8,8 @@
  * @param {{repository:import('../datasource').default}}
  * @returns {listModels}
  */
-export default function makeListModels ({ repository }) {
-  return async function listModels ({ query, writable }) {
+export default function makeListModels({ repository }) {
+  return async function listModels({ query, writable }) {
     return repository.list({ query, writable, serialize: true })
   }
 }

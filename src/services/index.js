@@ -10,7 +10,7 @@ export const WhoIsService = whois
 
 import { initCertificateService } from './cert'
 export const CertificateService = {
-  provisionCert: initCertificateService(dns, whois)
+  provisionCert: initCertificateService(dns, whois),
 }
 
 import * as MeshServices from './service-mesh'

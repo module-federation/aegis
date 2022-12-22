@@ -2,7 +2,7 @@
 
 import makeArray from './make-array'
 
-export default function checkAcl (requirement, allow, deny = []) {
+export default function checkAcl(requirement, allow, deny = []) {
   console.log({ func: checkAcl.name, requirement, allow })
 
   return (

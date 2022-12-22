@@ -6,7 +6,7 @@ const { undoStarted, undoWorked, undoFailed } = domainEvents
 const MAXRETRY = process.env.MAXUNDORETRY || 3
 const UNDOTIMEOUT = process.env.UNDOTIMEOUT || 60000
 
-function reportStatus (status, eventFn, model) {
+function reportStatus(status, eventFn, model) {
   const result = { compensateResult: status }
   model.emit(eventFn(model.getName()), result)
   return model.update(result)
@@ -22,7 +22,7 @@ function reportStatus (status, eventFn, model) {
  * @param {import('.').Model} model
  * @returns {function():Promise<void>}
  */
-export default async function compensate (model) {
+export default async function compensate(model) {
   try {
     const portFlow = model.getPortFlow()
     const ports = model.getPorts()
@@ -55,7 +55,7 @@ export default async function compensate (model) {
 
               // success: remove from list
               return model.update({
-                [model.getKey('portFlow')]: arr.splice(0, index + 1)
+                [model.getKey('portFlow')]: arr.splice(0, index + 1),
               })
             })
           } catch (error) {

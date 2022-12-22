@@ -5,8 +5,8 @@
  * @param {Error} error
  * @returns
  */
-export function AppError (error, code = 400, cause = null) {
-  if(error.code > 500) {
+export function AppError(error, code = 400, cause = null) {
+  if (error.code > 500) {
     error.code = 400
   }
 
@@ -16,6 +16,6 @@ export function AppError (error, code = 400, cause = null) {
     code: error.code || code, // set http status code
     cause: error.cause || cause,
     message: error.message,
-    hasError: true
+    hasError: true,
   }
 }

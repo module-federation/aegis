@@ -6,7 +6,7 @@
  * @param {number} m
  * @returns
  */
-function within (y, n, m) {
+function within(y, n, m) {
   return (
     Array.from({ length: n }, (x, i) => i)
       .map(i => i + y)

@@ -3,28 +3,28 @@
  * @param {import("../../domain/use-cases/edit-model.js").editModel} editModel
  * @returns {import("../http-adapter").httpController}
  */
-export default function patchModelFactory (editModel) {
-  return async function patchModel (httpRequest) {
+export default function patchModelFactory(editModel) {
+  return async function patchModel(httpRequest) {
     try {
       httpRequest.log(patchModel.name)
 
       const model = await editModel({
         id: httpRequest.params.id,
         changes: httpRequest.body,
-        command: httpRequest.params.command
+        command: httpRequest.params.command,
       })
 
       console.log(model)
       return {
         headers: {
           'Content-Type': 'application/json',
-          'Last-Modified': new Date().toISOString()
+          'Last-Modified': new Date().toISOString(),
         },
         statusCode: 201,
-        body: { 
-          status: "ok", 
-          modelId: model.id 
-        }
+        body: {
+          status: 'ok',
+          modelId: model.id,
+        },
       }
     } catch (e) {
       console.error(e)
@@ -32,19 +32,19 @@ export default function patchModelFactory (editModel) {
       if (e.message === 'Not Found') {
         return {
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
           },
-          statusCode: 404
+          statusCode: 404,
         }
       }
       return {
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
         statusCode: e.code || 400,
         body: {
-          error: e.message
-        }
+          error: e.message,
+        },
       }
     }
   }

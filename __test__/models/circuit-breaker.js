@@ -1,16 +1,16 @@
-"use strict";
+'use strict'
 
-var assert = require("assert");
+var assert = require('assert')
 
-import CircuitBreaker from "../../src/domain/circuit-breaker";
-import Model from "../../src/domain/circuit-breaker";
+import CircuitBreaker from '../../src/domain/circuit-breaker'
+import Model from '../../src/domain/circuit-breaker'
 
-describe("Model", function () {
+describe('Model', function () {
   const breaker = CircuitBreaker(
-    "myfunc",
+    'myfunc',
     x => {
       if (x === 1) {
-        throw Error("error");
+        throw Error('error')
       }
     },
     {
@@ -21,7 +21,7 @@ describe("Model", function () {
         testDelay: 2000,
       },
     }
-  );
+  )
 
-  for (const i = 0; i > 10; i++) breaker.invoke(1);
-});
+  for (const i = 0; i > 10; i++) breaker.invoke(1)
+})

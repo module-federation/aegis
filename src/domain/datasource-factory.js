@@ -61,7 +61,7 @@ const DsCoreExtensions = superclass =>
      * @param {string} id
      * @param {Model} data
      */
-    async save (id, data) {
+    async save(id, data) {
       try {
         this.saveSync(id, data)
         await super.save(id, JSON.parse(JSON.stringify(data)))
@@ -78,7 +78,7 @@ const DsCoreExtensions = superclass =>
      * @param {string} id
      * @returns {Promise<Model>|undefined}
      */
-    async find (id) {
+    async find(id) {
       try {
         const cached = this.findSync(id)
         if (cached) return cached
@@ -98,33 +98,33 @@ const DsCoreExtensions = superclass =>
       }
     }
 
-    hydrate () {
+    hydrate() {
       const ctx = this
 
       return new Transform({
         objectMode: true,
 
-        transform (chunk, encoding, next) {
+        transform(chunk, encoding, next) {
           this.push(ModelFactory.loadModel(broker, ctx, chunk, ctx.name))
           next()
         },
       })
     }
 
-    serialize () {
+    serialize() {
       let first = true
 
       return new Transform({
         objectMode: true,
 
         // start of array
-        construct (callback) {
+        construct(callback) {
           this.push('[')
           callback()
         },
 
         // each chunk is a record
-        transform (chunk, encoding, next) {
+        transform(chunk, encoding, next) {
           // comma-separate
           if (first) first = false
           else this.push(',')
@@ -135,10 +135,10 @@ const DsCoreExtensions = superclass =>
         },
 
         // end of array
-        flush (callback) {
+        flush(callback) {
           this.push(']')
           callback()
-        }
+        },
       })
     }
 
@@ -148,7 +148,7 @@ const DsCoreExtensions = superclass =>
      * @param {import('./datasource').listOptions} options
      * @returns {Array<Readable|Transform>}
      */
-    stream (list, options) {
+    stream(list, options) {
       return new Promise((resolve, reject) => {
         options.writable.on('error', reject)
         options.writable.on('end', resolve)
@@ -173,7 +173,7 @@ const DsCoreExtensions = superclass =>
      * @override
      * @param {import('../../domain/datasource').listOptions} param
      */
-    async list (options) {
+    async list(options) {
       try {
         if (options?.query?.__count) return this.count()
         if (options?.query?.__cached) return this.listSync(options.query)

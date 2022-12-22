@@ -2,7 +2,7 @@ const {
   Worker,
   isMainThread,
   parentPort,
-  workerData
+  workerData,
 } = require('worker_threads')
 
 if (isMainThread) {

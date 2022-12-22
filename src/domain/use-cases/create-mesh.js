@@ -1,7 +1,7 @@
 'use strict'
 import { serviceMeshPlugin } from '.'
 
-export default function makeServiceMesh ({ broker, models, repository }) {
+export default function makeServiceMesh({ broker, models, repository }) {
   return function (options) {
     const plugin = models.createModel(
       broker,
@@ -11,7 +11,7 @@ export default function makeServiceMesh ({ broker, models, repository }) {
     )
 
     if (!plugin) throw new Error('failed to generate service mesh plugin')
-    
+
     return plugin
   }
 }

@@ -32,9 +32,10 @@ jobs:
       #   cmd: test
       - name: Check for modified files
         id: git-check
-        run: echo ::set-output name=modified::$(if [ -n "$(git status --porcelain)" ];
+        run:
+          echo ::set-output name=modified::$(if [ -n "$(git status --porcelain)" ];
           then echo "true"; else echo "false"; fi)
-      
+
       - name: Extract branch name
         shell: bash
         run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"

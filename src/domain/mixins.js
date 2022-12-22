@@ -50,7 +50,7 @@ export const fromSymbol = keyMap => o => {
 
   return {
     ...o,
-    ...stringifySymbols()
+    ...stringifySymbols(),
   }
 }
 
@@ -60,14 +60,14 @@ export const fromSymbol = keyMap => o => {
  * @param {{key: string, value: Symbol}} keyMap
  */
 export const toSymbol = keyMap => o => {
-  function parseSymbols () {
+  function parseSymbols() {
     return Object.keys(keyMap)
       .map(k => (o[k] ? { [keyMap[k]]: o[k] } : {}))
       .reduce((p, c) => ({ ...p, ...c }))
   }
   return {
     ...o,
-    ...parseSymbols()
+    ...parseSymbols(),
   }
 }
 
@@ -76,51 +76,57 @@ export const toSymbol = keyMap => o => {
  * @param {number[]} timestamps
  * @param {"utc"|"iso"} format
  */
-export const fromTimestamp = (timestamps, format = 'utc') => o => {
-  const formats = { utc: 'toISOString', iso: 'toISOString' }
-  const fn = formats[format]
+export const fromTimestamp =
+  (timestamps, format = 'utc') =>
+  o => {
+    const formats = { utc: 'toISOString', iso: 'toISOString' }
+    const fn = formats[format]
 
-  if (!fn) {
-    throw new Error('invalid date format')
+    if (!fn) {
+      throw new Error('invalid date format')
+    }
+
+    const stringifyTimestamps = () =>
+      timestamps
+        .map(k => (o[k] ? { [k]: new Date(o[k])[fn]() } : {}))
+        .reduce((p, c) => ({ ...c, ...p }))
+
+    return {
+      ...o,
+      ...stringifyTimestamps(),
+    }
   }
-
-  const stringifyTimestamps = () =>
-    timestamps
-      .map(k => (o[k] ? { [k]: new Date(o[k])[fn]() } : {}))
-      .reduce((p, c) => ({ ...c, ...p }))
-
-  return {
-    ...o,
-    ...stringifyTimestamps()
-  }
-}
 
 /**
  * Adds `toJSON` method that pipes multiple serializing mixins together.
  * @param {...functionalMixin} keyMap
  */
-export const withSerializers = (...funcs) => o => {
-  return {
-    ...o,
-    toJSON () {
-      return pipe(...funcs)(this)
+export const withSerializers =
+  (...funcs) =>
+  o => {
+    return {
+      ...o,
+      toJSON() {
+        return pipe(...funcs)(this)
+      },
     }
   }
-}
 
 /**
  * Pipes multiple deserializing mixins together.
  * @param  {...functionalMixin} funcs
  */
-export const withDeserializers = (...funcs) => o => {
-  function fromJSON () {
-    return pipe(...funcs)(o)
+export const withDeserializers =
+  (...funcs) =>
+  o => {
+    function fromJSON() {
+      return pipe(...funcs)(o)
+    }
+    return {
+      ...o,
+      ...fromJSON(),
+    }
   }
-  return {
-    ...o,
-    ...fromJSON()
-  }
-}
 
 /**
  * Subscribe to and emit application and domain events.
@@ -129,11 +135,11 @@ export const withDeserializers = (...funcs) => o => {
 export const withbroker = broker => o => {
   return {
     ...o,
-    emit (eventName, eventData) {
+    emit(eventName, eventData) {
       broker.notify(eventName, eventData)
     },
-    subscribe (eventName, callback) {
+    subscribe(eventName, callback) {
       broker.on(eventName, callback)
-    }
+    },
   }
 }

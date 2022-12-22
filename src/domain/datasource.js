@@ -76,7 +76,7 @@ export default class DataSource {
    * @param {string} namespace
    * @param {*} options
    */
-  constructor (map, name, namespace, options = {}) {
+  constructor(map, name, namespace, options = {}) {
     this.dsMap = map
     this.name = name
     this.namespace = namespace
@@ -167,7 +167,7 @@ export default class DataSource {
    * @param {listOptions} options
    * @returns {Promise<any[]>}
    */
-  async list (options) {
+  async list(options) {
     throw new Error('unimplemented abstract method')
   }
 
@@ -176,19 +176,19 @@ export default class DataSource {
    * @param {object} qsssuery
    * @returns
    */
-  listSync (query) {
+  listSync(query) {
     if (query?.__count) return this.handleCount(query.__count)
     const list = this.generateList()
     return query ? this.filterList(query, list) : list
   }
 
-  handleCount (count) {
+  handleCount(count) {
     const [key = null, value = null] = count.split(':')
 
     if (key && value) {
       return {
         [key]: value,
-        total: this.filterList({ [key]: value }, this.generateList()).length
+        total: this.filterList({ [key]: value }, this.generateList()).length,
       }
     }
 
@@ -219,7 +219,7 @@ export default class DataSource {
    * @param {*} query
    * @returns
    */
-  filterList (query, list) {
+  filterList(query, list) {
     if (query) {
       if (typeof query.__limit === 'number') {
         return list.splice(0, query.__limit)

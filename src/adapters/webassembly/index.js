@@ -3,7 +3,7 @@
 import {
   wrapWasmAdapter,
   wrapWasmModelSpec,
-  wrapWasmService
+  wrapWasmService,
 } from './wasm-wrap'
 
 export * from './wasm-interop'
@@ -16,7 +16,7 @@ export * from './repo-client'
 export const adapterTypes = {
   model: 'model',
   adapter: 'adapter',
-  service: 'service'
+  service: 'service',
 }
 
 export const wasmAdapters = {
@@ -33,5 +33,5 @@ export const wasmAdapters = {
   /**
    * @param {WebAssembly.Exports} wasm
    */
-  [adapterTypes.service]: wasm => wrapWasmService(wasm)
+  [adapterTypes.service]: wasm => wrapWasmService(wasm),
 }

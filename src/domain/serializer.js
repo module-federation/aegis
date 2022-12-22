@@ -11,7 +11,7 @@ export const replaceMap = {
   on: 'serialize',
   key: '*',
   type: (key, value) => value instanceof Map,
-  value: (key, value) => [...value]
+  value: (key, value) => [...value],
 }
 
 /**
@@ -21,7 +21,7 @@ export const replaceFunction = {
   on: 'serialize',
   key: '*',
   type: 'function',
-  value: (key, value) => value.toString()
+  value: (key, value) => value.toString(),
 }
 
 /**
@@ -31,12 +31,12 @@ export const reviveFunction = {
   on: 'deserialize',
   key: 'function',
   type: 'string',
-  value: (key, value) => eval(`(${value})`)
+  value: (key, value) => eval(`(${value})`),
 }
 
 const type = {
   serialize: 'serialize',
-  deserialize: 'deserialize'
+  deserialize: 'deserialize',
 }
 
 const serializers = {
@@ -47,14 +47,14 @@ const serializers = {
   /**
    * @type {serializerType[]}
    */
-  [type.deserialize]: []
+  [type.deserialize]: [],
 }
 
 /**
  *
  * @param {serializerType} s
  */
-function checkTypes (s) {
+function checkTypes(s) {
   return (
     ['serialize', 'deserialize'].includes(s.on) &&
     (['function', 'string'].includes(typeof s.key) ||
@@ -70,7 +70,7 @@ function checkTypes (s) {
  *
  * @param {serializerType} serializer
  */
-function checkRequiredProps (serializer) {
+function checkRequiredProps(serializer) {
   const requiredProps = ['on', 'key', 'type', 'value']
   const missing = requiredProps.filter(key => !serializer[key])
   if (missing && missing.length > 0) {
@@ -83,7 +83,7 @@ function checkRequiredProps (serializer) {
  * @param {serializerType[]} serializers
  * @returns {serializerType[]}
  */
-function validateSerializer (serializers) {
+function validateSerializer(serializers) {
   const newSerializers = Array.isArray(serializers)
     ? serializers
     : [serializers]
@@ -110,7 +110,7 @@ const keyApplies = {
    * @param {serializerType} s
    * @returns {boolean}
    */
-  function: (s, k, v) => s.key(k, v)
+  function: (s, k, v) => s.key(k, v),
 }
 
 const typeApplies = {
@@ -127,7 +127,7 @@ const typeApplies = {
    * @param {serializerType} s
    * @returns {boolean}
    */
-  function: (s, k, v) => s.type(k, v)
+  function: (s, k, v) => s.type(k, v),
 }
 
 /**
@@ -137,18 +137,18 @@ const typeApplies = {
  * @param {*} value
  * @returns {boolean}
  */
-function applies (serializer, key, value) {
+function applies(serializer, key, value) {
   return (
     typeApplies[typeof serializer.type](serializer, key, value) &&
     keyApplies[typeof serializer.key](serializer, key, value)
   )
 }
 
-function findDeserializer (key, value) {
+function findDeserializer(key, value) {
   return serializers[type.deserialize].find(s => applies(s, key, value))
 }
 
-function findSerializer (key, value) {
+function findSerializer(key, value) {
   return serializers[type.serialize].find(s => applies(s, key, value))
 }
 
@@ -168,14 +168,14 @@ const Serializer = {
    *
    * @param {serializerType | serializerType[]}
    */
-  addSerializer (s) {
+  addSerializer(s) {
     if (!s) return null
     const newSerializers = validateSerializer(s)
     newSerializers.forEach(s => serializers[s.on].push(s))
     return this
   },
 
-  serialize (key, value) {
+  serialize(key, value) {
     const serializer = findSerializer(key, value)
     if (serializer) {
       return serializer.value(key, value)
@@ -183,13 +183,13 @@ const Serializer = {
     return value
   },
 
-  deserialize (key, value) {
+  deserialize(key, value) {
     const deserializer = findDeserializer(key, value)
     if (deserializer) {
       return deserializer.value(key, value)
     }
     return value
-  }
+  },
 }
 
 export default Serializer

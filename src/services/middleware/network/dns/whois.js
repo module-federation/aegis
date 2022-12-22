@@ -7,13 +7,13 @@ import { lookup } from 'whois'
  * @param {string} domain
  * @returns {Promise<{data:string,getEmail:function():string}>}
  */
-export async function whois (domain) {
+export async function whois(domain) {
   return new Promise(async function (resolve) {
     lookup(domain, function (_err, data) {
       resolve({
         data,
         getEmail: () =>
-          data.match(/([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)/gi)[0]
+          data.match(/([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)/gi)[0],
       })
     })
   })

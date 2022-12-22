@@ -11,7 +11,7 @@ export const FederationMixin = superclass =>
      * @param {*} id
      * @returns {import('.').Model}
      */
-    async find (id) {
+    async find(id) {
       try {
         const result = await super.find(id)
         if (!result || result.length < 1) return this.findRemote(id)
@@ -21,7 +21,7 @@ export const FederationMixin = superclass =>
       }
     }
 
-    async findRemote (id) {
+    async findRemote(id) {
       const event = await requireRemoteObject(
         null,
         { type: 'findById', modelName: this.name, id },

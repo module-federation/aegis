@@ -20,7 +20,7 @@ exports.wrapWasmModelSpec = function (wasmExports) {
     modelFactory,
     onUpdate,
     onDelete,
-    validate
+    validate,
   } = wasmExports
 
   const interop = WasmInterop(wasmExports)
@@ -40,14 +40,14 @@ exports.wrapWasmModelSpec = function (wasmExports) {
     onUpdate: (model, changes) => onUpdate(model, changes),
     onDelete: model => onDelete(model),
     commands: {
-      ...interop.importWasmCommands()
+      ...interop.importWasmCommands(),
     },
     ports: {
-      ...interop.importWasmPorts()
+      ...interop.importWasmPorts(),
     },
     portFunctions: {
-      ...interop.importWasmPortFunctions()
-    }
+      ...interop.importWasmPortFunctions(),
+    },
   }
   console.debug(wrappedSpec)
 
@@ -65,10 +65,12 @@ exports.wrapWasmAdapter = function (exports) {
   return Object.keys(exports)
     .filter(k => typeof exports[k] === 'function' && /adapter/i.test(k))
     .map(k => ({
-      [k.replace('adapter', '')]: service => (model, args = []) =>
-        service
-          ? interop.callWasmFunction(service[k], args[0] || model)
-          : interop.callWasmFunction(k, args[0] || model)
+      [k.replace('adapter', '')]:
+        service =>
+        (model, args = []) =>
+          service
+            ? interop.callWasmFunction(service[k], args[0] || model)
+            : interop.callWasmFunction(k, args[0] || model),
     }))
     .reduce((a, b) => ({ ...a, ...b }))
 }
@@ -83,6 +85,6 @@ exports.wrapWasmService = function (exports) {
     [exports.getName()]: Object.keys(exports)
       .filter(k => typeof exports[k] === 'function' && /service/i.test(k))
       .map(k => ({ [k]: x => callWasmFunction(k, x) }))
-      .reduce((a, b) => ({ ...a, ...b }))
+      .reduce((a, b) => ({ ...a, ...b })),
   }
 }

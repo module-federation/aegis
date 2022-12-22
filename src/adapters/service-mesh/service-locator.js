@@ -5,13 +5,13 @@ import Dns from 'multicast-dns'
 const debug = /true/i.test(process.env.DEBUG)
 
 export class ServiceLocator {
-  constructor ({
+  constructor({
     name,
     serviceUrl,
     primary = false,
     backup = false,
     maxRetries = 20,
-    retryInterval = 8000
+    retryInterval = 8000,
   } = {}) {
     this.url = serviceUrl
     this.name = name
@@ -22,7 +22,7 @@ export class ServiceLocator {
     this.retryInterval = retryInterval
   }
 
-  runningAsService () {
+  runningAsService() {
     return this.isPrimary || (this.isBackup && this.activateBackup)
   }
 
@@ -35,7 +35,7 @@ export class ServiceLocator {
    * @param {number} retries number of query attempts
    * @returns
    */
-  ask (retries = 0) {
+  ask(retries = 0) {
     // have we found the url?
     if (this.url) return
 
@@ -51,16 +51,16 @@ export class ServiceLocator {
       questions: [
         {
           name: this.name,
-          type: 'SRV'
-        }
-      ]
+          type: 'SRV',
+        },
+      ],
     })
 
     // keep asking
     setTimeout(() => this.ask(++retries), this.retryInterval)
   }
 
-  answer () {
+  answer() {
     this.dns.on('query', query => {
       debug && console.debug('got a query packet:', query)
 
@@ -77,10 +77,10 @@ export class ServiceLocator {
               type: 'SRV',
               data: {
                 port: url.port,
-                target: url.hostname
-              }
-            }
-          ]
+                target: url.hostname,
+              },
+            },
+          ],
         }
         console.info('advertising this location')
         this.dns.respond(answer)
@@ -88,7 +88,7 @@ export class ServiceLocator {
     })
   }
 
-  listen () {
+  listen() {
     return new Promise(resolve => {
       console.log('resolving service url')
 
@@ -107,7 +107,7 @@ export class ServiceLocator {
           console.info({
             msg: 'found dns service record for',
             service: this.name,
-            url: this.url
+            url: this.url,
           })
 
           this.dns.off('response', buildUrl)

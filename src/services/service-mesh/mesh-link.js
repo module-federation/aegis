@@ -12,14 +12,14 @@ const DEBUG =
 const defaultCfg = {
   redis: {
     host: '127.0.0.1',
-    port: 6379
+    port: 6379,
   },
   ttl: 1000000000,
   prefix: 'aegis',
   strict: false,
   relayLimit: 1,
   relayDelay: 0,
-  updateInterval: 1000
+  updateInterval: 1000,
 }
 
 mlink.onLogging((level, args) => {
@@ -32,7 +32,7 @@ mlink.onNewNodes(nodes => {
 
 const cfg = userConfig.services.serviceMesh.MeshLink.config || defaultCfg
 
-function numericHash (str) {
+function numericHash(str) {
   let hash = 0
   let i
   let chr
@@ -52,7 +52,7 @@ const sharedObjects = new Map()
  * @param {*} eventData
  * @returns
  */
-function createSharedObject (eventData) {
+function createSharedObject(eventData) {
   const { eventTime, modelName } = eventData
 
   if (sharedObjects.has(modelName)) {
@@ -66,7 +66,7 @@ function createSharedObject (eventData) {
   const so = mlink.sharedObject.create(
     {
       name: { value: modelName },
-      members: { value: {} }
+      members: { value: {} },
     },
     ttl,
     node
@@ -84,7 +84,7 @@ const SharedObjEvent = {
       .get(mid)
       .then(so => {
         so.add('members', eventData.model.getId(), {
-          ...JSON.parse(JSON.stringify(eventData.model))
+          ...JSON.parse(JSON.stringify(eventData.model)),
         })
         so.inc('total', 1)
         so.on('update', () => {})
@@ -97,11 +97,11 @@ const SharedObjEvent = {
       .get(sharedObjects.get(eventData.modelName).mid)
       .then(so =>
         so.set('members', eventData.model.getId(), {
-          ...JSON.parse(JSON.stringify(eventData.model))
+          ...JSON.parse(JSON.stringify(eventData.model)),
         })
       ),
 
-  DELETE: async () => console.log('delete called, no-op')
+  DELETE: async () => console.log('delete called, no-op'),
 }
 
 /**
@@ -109,7 +109,7 @@ const SharedObjEvent = {
  * @param {cfg} config
  * @returns
  */
-async function start (config = cfg, wss) {
+async function start(config = cfg, wss) {
   mlink
     .start(config)
     .then(() => {
@@ -128,7 +128,7 @@ async function start (config = cfg, wss) {
   }
 }
 
-async function publish (event) {
+async function publish(event) {
   console.debug('publish called', event.eventName)
   const deserEvent = JSON.parse(JSON.stringify(event))
   const handlerId = numericHash(event.eventName)
@@ -148,7 +148,7 @@ async function publish (event) {
 
   try {
     global.broadcast(JSON.stringify(event), {
-      info: { id: 2, role: 'MeshLink', pid: process.pid }
+      info: { id: 2, role: 'MeshLink', pid: process.pid },
     })
   } catch (e) {
     console.error('error calling global.broadcast', e)
@@ -157,7 +157,7 @@ async function publish (event) {
 
 let registerSharedObjEvents
 
-function initSharedObject (broker) {
+function initSharedObject(broker) {
   if (!registerSharedObjEvents) {
     registerSharedObjEvents = broker =>
       broker.on(
@@ -170,7 +170,7 @@ function initSharedObject (broker) {
   }
 }
 
-async function subscribe (eventName, callback, broker) {
+async function subscribe(eventName, callback, broker) {
   initSharedObject(broker)
   const handlerId = numericHash(eventName)
   if (!handlerId) return // we've already registered a callback for this event
@@ -185,7 +185,7 @@ async function subscribe (eventName, callback, broker) {
   }
 }
 
-function attachServer (server) {
+function attachServer(server) {
   let messagesSent = 0
   /**
    *
@@ -217,7 +217,7 @@ function attachServer (server) {
         uptimeMinutes: uptime(),
         messagesSent,
         clientsConnected: server.clients.size,
-        meshLinkNodes: mlink.getNodeEndPoints()
+        meshLinkNodes: mlink.getNodeEndPoints(),
       })
     )
   }
@@ -251,7 +251,7 @@ function attachServer (server) {
             ...client.info,
             pid: msg.pid,
             role: msg.role,
-            initialized: true
+            initialized: true,
           }
           console.log('client initialized', client.info)
           return

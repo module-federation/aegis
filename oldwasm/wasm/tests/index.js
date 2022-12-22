@@ -1,6 +1,6 @@
 const assert = require('assert')
-const WasmInterop = require('../../src/adapters/webassembly/wasm-interop')
-  .WasmInterop
+const WasmInterop =
+  require('../../src/adapters/webassembly/wasm-interop').WasmInterop
 const wrapper = require('../../src/adapters/webassembly/wasm-decorators')
 
 require('..').then(async wasmInstance => {
@@ -14,7 +14,7 @@ require('..').then(async wasmInstance => {
   const model = await spec.factory({})({
     key1: '1',
     key2: '2',
-    fibonacci: '45'
+    fibonacci: '45',
   })
   console.log(model)
   adapter.callWasmFunction(onUpdate, model)

@@ -6,31 +6,31 @@ import IPFS from 'ipfs-core'
  * Storage on the distributed web {@link https://ipfs.io}
  */
 export class DataSourceIpfs extends DataSourceFile {
-  constructor (map, name, options = {}) {
+  constructor(map, name, options = {}) {
     super(map, name, options)
   }
 
-  async save (id, data) {
+  async save(id, data) {
     super.save(id, data)
     this.writeFile()
     return data
   }
 
-  async find (id) {
+  async find(id) {
     return super.find(id)
   }
 
-  startIpfs () {
+  startIpfs() {
     try {
       IPFS.create({
-        repo: 'aegis-' + Math.random()
+        repo: 'aegis-' + Math.random(),
       }).then(fs => (this.ipfs = fs))
     } catch (err) {
       console.error(err)
     }
   }
 
-  load (hydrate) {
+  load(hydrate) {
     this.startIpfs()
     if (fs.existsSync(this.file)) {
       try {
@@ -44,7 +44,7 @@ export class DataSourceIpfs extends DataSourceFile {
     }
   }
 
-  async readFile (hydrate) {
+  async readFile(hydrate) {
     try {
       let data
       const stream = this.ipfs.cat(this.cid)
@@ -58,7 +58,7 @@ export class DataSourceIpfs extends DataSourceFile {
     }
   }
 
-  async writeFile () {
+  async writeFile() {
     try {
       // add your data to to IPFS - this can be a string, a Buffer,
       // a stream of Buffers, etc

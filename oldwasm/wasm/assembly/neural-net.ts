@@ -50,7 +50,7 @@ export class Node {
   /**
    * Creates a new node with the provided id and activation function.
    */
-  constructor (id: string, activation: ActivationFunction, initZero?: boolean) {
+  constructor(id: string, activation: ActivationFunction, initZero?: boolean) {
     this.id = id
     this.activation = activation
     if (initZero) {
@@ -59,7 +59,7 @@ export class Node {
   }
 
   /** Recomputes the node's output and returns it. */
-  updateOutput (): number {
+  updateOutput(): number {
     // Stores total input into the node.
     this.totalInput = this.bias
     for (let j = 0; j < this.inputLinks.length; j++) {
@@ -155,7 +155,7 @@ export class RegularizationFunction {
     },
     der: (w: number): number => {
       return w
-    }
+    },
   }
 }
 
@@ -187,7 +187,7 @@ export class Link {
    * @param regularization The regularization function that computes the
    *     penalty for this weight. If null, there will be no regularization.
    */
-  constructor (
+  constructor(
     source: Node,
     dest: Node,
     regularization: IRegularizationFunction,
@@ -216,7 +216,7 @@ export class Link {
  *     no regularization.
  * @param inputIds List of ids for the input nodes.
  */
-export function buildNetwork (
+export function buildNetwork(
   networkShape: number[],
   activation: ActivationFunction,
   outputActivation: ActivationFunction,
@@ -271,7 +271,7 @@ export function buildNetwork (
  *     nodes in the network.
  * @return The final output of the network.
  */
-export function forwardProp (network: Node[][], inputs: number[]): number {
+export function forwardProp(network: Node[][], inputs: number[]): number {
   let inputLayer = network[0]
   if (inputs.length !== inputLayer.length) {
     throw new Error(
@@ -302,7 +302,7 @@ export function forwardProp (network: Node[][], inputs: number[]): number {
  * derivatives with respect to each node, and each weight
  * in the network.
  */
-export function backProp (
+export function backProp(
   network: Node[][],
   target: number,
   errorFunc: IErrorFunction
@@ -358,7 +358,7 @@ export function backProp (
  * Updates the weights of the network using the previously accumulated error
  * derivatives.
  */
-export function updateWeights (
+export function updateWeights(
   network: Node[][],
   learningRate: number,
   regularizationRate: number
@@ -409,7 +409,7 @@ export function updateWeights (
 }
 
 /** Iterates over every node in the network/ */
-export function forEachNode (
+export function forEachNode(
   network: Node[][],
   ignoreInputs: boolean,
   accessor: (node: Node) => any
@@ -428,6 +428,6 @@ export function forEachNode (
 }
 
 /** Returns the output node in the network. */
-export function getOutputNode (network: Node[][]): Node {
+export function getOutputNode(network: Node[][]): Node {
   return network[network.length - 1][0]
 }

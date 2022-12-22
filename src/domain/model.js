@@ -96,7 +96,7 @@ const Model = (() => {
     onDelete: ONDELETE,
     validate: VALIDATE,
     portFlow: PORTFLOW,
-    domain: DOMAIN
+    domain: DOMAIN,
   }
 
   /**
@@ -116,14 +116,14 @@ const Model = (() => {
       .reduce((a, b) => ({ ...a, ...b }, {}))
   }
 
-  function approveChanges (changes, approvedChanges) {
+  function approveChanges(changes, approvedChanges) {
     return Object.entries(changes)
       .filter(([k, v]) => approvedChanges.includes(k))
       .map(([k, v]) => ({ [k]: v }))
       .reduce((a, b) => ({ ...a, ...b }, {}))
   }
 
-  function approveChanges (changes, approvedChanges) {
+  function approveChanges(changes, approvedChanges) {
     return Object.entries(changes)
       .filter(([k, v]) => approvedChanges.includes(k))
       .map(([k, v]) => ({ [k]: v }))
@@ -134,7 +134,7 @@ const Model = (() => {
   const defaultOnDelete = model => withTimestamp('deleteTime')(model)
   const defaultValidate = (model, changes) => defaultOnUpdate(model, changes)
 
-  function queueNotice (model) {
+  function queueNotice(model) {
     console.debug(queueNotice.name, 'disabled')
   }
 
@@ -300,7 +300,7 @@ const Model = (() => {
        * @param {boolean} validate - run validation by default
        * @returns {Promise<Model>}
        */
-      async update (changes, runValidation = true) {
+      async update(changes, runValidation = true) {
         const approved = approvedChanges
           ? approveChanges(approvedChanges)
           : changes
@@ -317,11 +317,11 @@ const Model = (() => {
         return timestampedModel
       },
 
-      setApprovedChanges (propKeys) {
+      setApprovedChanges(propKeys) {
         approvedChanges.concat(propKeys)
       },
 
-      getApprovedChanges () {
+      getApprovedChanges() {
         return approvedChanges
       },
 
@@ -336,7 +336,7 @@ const Model = (() => {
        * @param {boolean} validate
        * @returns {Model}
        */
-      updateSync (changes, runValidation = true) {
+      updateSync(changes, runValidation = true) {
         const approved = approvedChanges
           ? approveChanges(approvedChanges)
           : changes
@@ -407,7 +407,7 @@ const Model = (() => {
        * E.g. the Aegis MongoDB adapter enables streaming upserts.
        * @returns {Writable}
        */
-      createWriteStream () {
+      createWriteStream() {
         return datasource.createWriteStream()
       },
 
@@ -428,7 +428,7 @@ const Model = (() => {
        *
        * @returns {{any}}
        */
-      getDependencies () {
+      getDependencies() {
         return dependencies
       },
 
@@ -455,7 +455,7 @@ const Model = (() => {
        *
        * @returns {boolean}
        */
-      isCached () {
+      isCached() {
         return modelInfo.spec.isCached
       },
 
@@ -510,7 +510,7 @@ const Model = (() => {
        * @param {*} model
        * @returns {boolean}
        */
-      equals (model) {
+      equals(model) {
         return (
           model &&
           (model.id || model.getId) &&
@@ -533,7 +533,7 @@ const Model = (() => {
        *
        * @returns {Model}
        */
-      fetchRelatedService (modelName) {
+      fetchRelatedService(modelName) {
         const upperName = modelName.toUpperCase()
         const ds = datasource.factory.getDataSource(upperName)
         if (!ds) throw new Error('no datasource found')
@@ -544,7 +544,7 @@ const Model = (() => {
        * Returns this model's {@link DataSource}.
        * @returns {DataSource}
        */
-      getDataSource () {
+      getDataSource() {
         // prevents access to ds of other models
         return datasource.factory.getRestrictedDataSource(
           this[MODELNAME],

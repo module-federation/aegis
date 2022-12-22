@@ -31,7 +31,7 @@ export const serviceMeshPlugin =
   process.env.SERVICE_MESH_PLUGIN ||
   'webswitch'
 
-export function registerEvents () {
+export function registerEvents() {
   // main thread handles event dispatch
   brokerEvents({
     broker: EventBrokerFactory.getInstance(),
@@ -41,12 +41,12 @@ export function registerEvents () {
     PortEventRouter,
     DistributedCache,
     createServiceMesh: makeOne(serviceMeshPlugin, makeServiceMesh, {
-      internal: true
-    })
+      internal: true,
+    }),
   })
 }
 
-export function modelsInDomain (domain) {
+export function modelsInDomain(domain) {
   return ModelFactory.getModelSpecs()
     .filter(s => s.domain && s.domain.toUpperCase() === domain.toUpperCase())
     .map(s => s.modelName.toUpperCase())
@@ -57,7 +57,7 @@ export function modelsInDomain (domain) {
  * @param {*} modelName
  * @returns {import('..').ModelSpecification[]}
  */
-function findLocalRelatedModels (modelName) {
+function findLocalRelatedModels(modelName) {
   const targetModel = ModelFactory.getModelSpec(modelName)
   const localModels = ModelFactory.getModelSpecs().map(s => s.modelName)
 
@@ -76,7 +76,7 @@ function findLocalRelatedModels (modelName) {
     toSpecs: () =>
       byRelation
         .concat(byDomain)
-        .map(modelName => ModelFactory.getModelSpec(modelName))
+        .map(modelName => ModelFactory.getModelSpec(modelName)),
   }
 }
 
@@ -85,16 +85,16 @@ function findLocalRelatedModels (modelName) {
  * @param {*} modelName
  * @returns
  */
-function findLocalRelatedDatasources (spec) {
+function findLocalRelatedDatasources(spec) {
   return findLocalRelatedModels(spec.modelName)
     .toSpecs()
     .map(s => ({
       modelName: s.modelName,
-      dsMap: getDataSource(s).dsMap
+      dsMap: getDataSource(s).dsMap,
     }))
 }
 
-function getDataSource (spec, options) {
+function getDataSource(spec, options) {
   return DataSourceFactory.getSharedDataSource(
     spec.modelName,
     spec.domain,
@@ -102,13 +102,13 @@ function getDataSource (spec, options) {
   )
 }
 
-function getThreadPool (spec, ds, options) {
+function getThreadPool(spec, ds, options) {
   if (spec.internal) return null
   return ThreadPoolFactory.getThreadPool(spec.domain, {
     ...options,
     preload: false,
     sharedMap: ds.dsMap,
-    dsRelated: findLocalRelatedDatasources(spec)
+    dsRelated: findLocalRelatedDatasources(spec),
   })
 }
 
@@ -116,7 +116,7 @@ function getThreadPool (spec, ds, options) {
  *
  * @param {import('..').ModelSpecification} spec
  */
-function buildOptions (spec, options) {
+function buildOptions(spec, options) {
   const invariant = {
     modelName: spec.modelName,
     models: ModelFactory,
@@ -125,7 +125,7 @@ function buildOptions (spec, options) {
     context,
     isMainThread,
     domainEvents,
-    AppError
+    AppError,
   }
 
   if (isMainThread) {
@@ -137,7 +137,7 @@ function buildOptions (spec, options) {
       // only main thread knows about thread pools (no nesting)
       threadpool: getThreadPool(spec, ds, options),
       // if caller provides id, use it as key for idempotency
-      async enforceIdempotency () {
+      async enforceIdempotency() {
         const store = context.requestContext.getStore()
 
         if (!store.get('checkIdempotency')) {
@@ -151,13 +151,13 @@ function buildOptions (spec, options) {
           duplicateRequest ? 'yes' : 'no'
         )
         return duplicateRequest
-      }
+      },
     }
   } else {
     return {
       ...invariant,
       // only worker threads can write to persistent storage
-      repository: getDataSource(spec, options)
+      repository: getDataSource(spec, options),
     }
   }
 }
@@ -168,13 +168,13 @@ function buildOptions (spec, options) {
  * @param {function({}):function():Promise<Model>} factory
  * @returns
  */
-function make (factory) {
+function make(factory) {
   const specs = ModelFactory.getModelSpecs()
   return specs.map(spec => ({
     endpoint: spec.endpoint,
     path: spec.path,
     ports: spec.ports,
-    fn: factory(buildOptions(spec))
+    fn: factory(buildOptions(spec)),
   }))
 }
 
@@ -184,7 +184,7 @@ function make (factory) {
  * @param {function({}):function():Promise<Model>} factory
  * @returns
  */
-function makeOne (modelName, factory, options = {}) {
+function makeOne(modelName, factory, options = {}) {
   const spec = ModelFactory.getModelSpec(modelName.toUpperCase(), options)
   return factory(buildOptions(spec, spec.domain))
 }
@@ -202,9 +202,9 @@ const hotReload = () => [
     endpoint: 'reload',
     fn: makeHotReload({
       models: ModelFactory,
-      broker: EventBrokerFactory.getInstance()
-    })
-  }
+      broker: EventBrokerFactory.getInstance(),
+    }),
+  },
 ]
 const deployModel = () => makeDeployModel()
 
@@ -213,7 +213,7 @@ const listConfigs = () =>
     models: ModelFactory,
     broker: EventBrokerFactory.getInstance(),
     datasources: DataSourceFactory,
-    threadpools: ThreadPoolFactory
+    threadpools: ThreadPoolFactory,
   })
 
 /**
@@ -225,7 +225,7 @@ const domainPorts = modelName => ({
   ...UseCaseService(modelName),
   eventBroker: EventBrokerFactory.getInstance(),
   modelSpec: ModelFactory.getModelSpec(modelName),
-  dataSource: DataSourceFactory.getRestrictedDataSource(modelName)
+  dataSource: DataSourceFactory.getRestrictedDataSource(modelName),
 })
 
 /**
@@ -251,7 +251,7 @@ const userController = (fn, ports) => async (req, res) => {
  *
  * @returns {import('../index').endpoint}
  */
-export function getUserRoutes () {
+export function getUserRoutes() {
   try {
     return ModelFactory.getModelSpecs()
       .filter(spec => spec.routes)
@@ -264,7 +264,7 @@ export function getUserRoutes () {
               .map(key =>
                 typeof route[key] === 'function'
                   ? {
-                      [key]: userController(route[key], api)
+                      [key]: userController(route[key], api),
                     }
                   : { [key]: route[key] }
               )
@@ -289,7 +289,7 @@ export const UseCases = {
   registerEvents,
   emitEvents,
   deployModel,
-  invokePorts
+  invokePorts,
 }
 
 /**
@@ -300,7 +300,7 @@ export const UseCases = {
  * @param {string} modelName
  * @returns
  */
-export function UseCaseService (modelName) {
+export function UseCaseService(modelName) {
   if (typeof modelName === 'string') {
     const modelNameUpper = modelName.toUpperCase()
     return {
@@ -312,7 +312,7 @@ export function UseCaseService (modelName) {
       loadModels: makeOne(modelNameUpper, makeLoadModels),
       emitEvent: makeOne(modelNameUpper, makeEmitEvent),
       invokePort: makeOne(modelNameUpper, makeInvokePort),
-      listConfigs: listConfigs()
+      listConfigs: listConfigs(),
     }
   }
 }
@@ -323,11 +323,11 @@ export function UseCaseService (modelName) {
  * @param {string} domain see {@link ModelFactory.domain}
  * @returns
  */
-export function makeDomain (domain) {
+export function makeDomain(domain) {
   if (!domain) throw new Error('no domain provided')
   return modelsInDomain(domain.toUpperCase())
     .map(modelName => ({
-      [modelName]: UseCaseService(modelName)
+      [modelName]: UseCaseService(modelName),
     }))
     .reduce((a, b) => ({ ...a, ...b }), {})
 }

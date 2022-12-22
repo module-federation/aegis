@@ -4,7 +4,7 @@
 
 const aegis = require('../../../dist')
 
-function awsEvent (method, path) {
+function awsEvent(method, path) {
   return {
     body: {
       firstName: 'Uncle',
@@ -15,9 +15,9 @@ function awsEvent (method, path) {
       billingAddress: '123 Park Ave. NY, NY 45678',
       orderItems: [
         { itemId: 'item1', price: 329.95 },
-        { itemId: 'item2', price: 59.0, qty: 4 }
-      ]
-    }
+        { itemId: 'item2', price: 59.0, qty: 4 },
+      ],
+    },
   }
 }
 
@@ -25,32 +25,32 @@ const payloads = {
   post: {
     event: awsEvent('post', '/aegis/api/models/orders'),
     context: {},
-    callback: x => x
+    callback: x => x,
   },
 
   get: {
     event: awsEvent('get', '/aegis/api/models/orders'),
     context: {},
-    callback: x => x
+    callback: x => x,
   },
 
   getbyid: {
     event: awsEvent('get', '/aegis/api/models/orders/'),
     context: {},
-    callback: x => x
+    callback: x => x,
   },
 
   patch: {
     event: awsEvent('patch', '/aegis/api/models/orders/'),
     context: {},
-    callback: x => x
+    callback: x => x,
   },
 
   delete: {
     event: awsEvent('delete', '/aegis/api/models/orders/'),
     context: {},
-    callback: x => x
-  }
+    callback: x => x,
+  },
 }
 
 process.stdin.pipe(require('split')()).on('data', processLine)
@@ -58,7 +58,7 @@ console.log(
   'type post,get,getbyid,patch,delete (:id) and press return to execute'
 )
 
-export async function processLine (line) {
+export async function processLine(line) {
   let [method, modelId, command] = line.split(' ')
   method = method.toUpperCase()
 
@@ -71,7 +71,7 @@ export async function processLine (line) {
       payloads[method].event.path += '/' + command
       payloads[method].event.pathParameters = {
         ...payloads[method].event.pathParameters,
-        command
+        command,
       }
     }
     const result = await aegis.handleServerlessRequest(payloads[method])
