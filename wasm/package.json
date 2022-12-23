@@ -4,7 +4,7 @@
   "main": "index.js",
   "license": "MIT",
   "dependencies": {
-    "assemblyscript": "^0.24.1"
+    "assemblyscript": "^0.25.0"
   },
   "type": "module",
   "exports": {
@@ -22,6 +22,6 @@
     "start": "npx serve ."
   },
   "devDependencies": {
-    "assemblyscript": "^0.24.1"
+    "assemblyscript": "^0.25.0"
   }
 }
