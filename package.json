@@ -59,7 +59,7 @@
     "@babel/core": "7.18.10",
     "@babel/node": "7.18.10",
     "@babel/preset-env": "7.18.10",
-    "@types/node": "16.11.52",
+    "@types/node": "16.18.11",
     "babel-loader": "8.2.5",
     "chalk": "5.0.1",
     "cross-var": "1.1.0",
