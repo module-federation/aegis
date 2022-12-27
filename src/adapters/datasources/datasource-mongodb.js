@@ -72,7 +72,7 @@ export class DataSourceMongoDb extends DataSource {
     })
   }
 
-  async connection({ rotate = true }) {
+  async connection() {
     try {
       while (connections.length < (dsOptions.numConns || 1)) {
         const client = new MongoClient(this.url, this.mongoOpts)
@@ -82,8 +82,8 @@ export class DataSourceMongoDb extends DataSource {
             callVolume: 1,
             intervalMs: 10000,
             testDelay: 300000,
-            fallbackFn: () => client.emit('connectionClosed')
-          }
+            //fallbackFn: () => client.emit('connectionClosed')
+          },
         }
         const breaker = CircuitBreaker(
           'mongodb.connect',
@@ -96,22 +96,17 @@ export class DataSourceMongoDb extends DataSource {
           connections.splice(connections.indexOf(client), 1)
         )
       }
-      let client
-      if (rotate) {
-        client = connections.shift()
-        connections.push(client)
-      } else {
-        client = connections[0] 
-      }
+      const client = connections.shift()
+      connections.push(client)
       return client
     } catch (error) {
       console.error({ fn: this.connection.name, error })
     }
   }
 
-  async collection(options) {
+  async collection() {
     try {
-      return (await this.connection(options)).db(this.namespace).collection(this.name)
+      return (await this.connection()).db(this.namespace).collection(this.name)
     } catch {}
   }
 
@@ -173,7 +168,7 @@ export class DataSourceMongoDb extends DataSource {
 
         if (operations.length > 0) {
           try {
-            const col = await ctx.collection({ rotate: false })
+            const col = await ctx.collection()
             const result = await col.bulkWrite(operations)
             console.log(result.getRawResponse())
             objects = []
