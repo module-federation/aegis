@@ -262,7 +262,7 @@ export class ThreadPool extends EventEmitter {
 
           const errorFn = AsyncResource.bind(error => {
             pool.jobTime(job.stopTimer())
-            console.error({ fn: this.run.name, error })
+            console.error({ fn: this.run.name, msg: 'dead thread', error })
             unsubscribe('exit', exitFn)
             unsubscribe('message', messageFn)
             pool.incrementErrorCount()
@@ -303,6 +303,7 @@ export class ThreadPool extends EventEmitter {
         }
         console.log('aegis up', msg)
         pool.connectEventChannel(worker, eventChannel)
+        pool.threads.push(thread)
         resolve(thread)
       })
     })
@@ -321,7 +322,7 @@ export class ThreadPool extends EventEmitter {
       // call thread.run
       this.waitingJobs.shift()(thread)
     // return to pool
-    else this.freeThreads.push(thread)
+    else this.checkin(thread)
   }
 
   /**
@@ -335,11 +336,8 @@ export class ThreadPool extends EventEmitter {
       file: this.file,
       workerData: this.workerData
     })
-
-    if (thread) {
-      this.threads.push(thread)
-      return thread
-    }
+    
+    if (thread) return thread
 
     throw new Error('error creating thread')
   }
@@ -519,6 +517,24 @@ export class ThreadPool extends EventEmitter {
     )
   }
 
+  checkout () {
+    if (this.freeThreads.length > 0) {
+      const thread = this.freeThreads.shift()
+      const threadsInUse = this.threads.length - this.freeThreads.length
+      console.debug(`thread checked-out, total in-use now ${threadsInUse}`)
+      return thread
+    } 
+  }
+
+  checkin (thread) {
+    if (thread) {
+      this.freeThreads.push(thread)
+      const threadsInUse = this.threads.length - this.freeThreads.length
+      console.debug(`thread checked-in, total in-use now ${threadsInUse}`)
+    }
+    return this
+  }
+
   /**
    * Spin up a new thread if needed and available.
    */
@@ -553,7 +569,7 @@ export class ThreadPool extends EventEmitter {
         ...options
       })
 
-      let thread = this.freeThreads.shift()
+      let thread = this.checkout()
 
       if (!thread) thread = await this.allocate()
 
