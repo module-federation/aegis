@@ -28,7 +28,7 @@
     "@octokit/rest": "19.0.4",
     "acme-client": "^5.0.0",
     "as-bind": "0.8.2",
-    "assemblyscript": "0.21.1",
+    "assemblyscript": "0.25.2",
     "cors": "^2.8.5",
     "dotenv": "16.0.1",
     "express": "4.18.1",
