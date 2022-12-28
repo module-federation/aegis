@@ -60,7 +60,7 @@
     "@babel/node": "7.18.10",
     "@babel/preset-env": "7.18.10",
     "@types/node": "16.18.11",
-    "babel-loader": "8.2.5",
+    "babel-loader": "8.3.0",
     "chalk": "5.0.1",
     "cross-var": "1.1.0",
     "eslint": "8.22.0",
