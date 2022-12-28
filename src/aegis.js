@@ -93,11 +93,18 @@ const router = {
           if (ctrl.ports) {
             for (const portName in ctrl.ports) {
               const port = ctrl.ports[portName]
+              const specPortMethods =
+                port?.methods?.join('|').toLowerCase() || ''
+
               if (port.path) {
                 routeOverrides.set(port.path, portName)
               }
 
-              if (checkAllowedMethods(ctrl, method)) {
+              if (
+                checkAllowedMethods(ctrl, method) &&
+                (!port.methods ||
+                  specPortMethods.includes(method.toLowerCase()))
+              ) {
                 routes.set(port.path || path(ctrl.endpoint), {
                   [method]: adapter(ctrl.fn),
                 })

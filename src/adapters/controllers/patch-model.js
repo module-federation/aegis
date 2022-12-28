@@ -21,7 +21,10 @@ export default function patchModelFactory(editModel) {
           'Last-Modified': new Date().toISOString(),
         },
         statusCode: 201,
-        body: { modelId: model.id },
+        body: {
+          status: 'ok',
+          modelId: model.id,
+        },
       }
     } catch (e) {
       console.error(e)

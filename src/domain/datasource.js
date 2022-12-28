@@ -131,6 +131,16 @@ export default class DataSource {
   }
 
   /**
+   * Create indexes as defined in the datasource object in the model
+   * @param {Array<object>}
+   * @returns {Promise<boolean>} result
+   */
+
+  async createIndexes(indexes) {
+    throw new Error('abstract method not implemented')
+  }
+
+  /**
    * Find model instance by ID
    * @param {*} id record id
    * @returns {Promise<any>} record
@@ -263,13 +273,6 @@ export default class DataSource {
    * @param {*} options
    */
   async load(options) {}
-
-  /**
-   *
-   */
-  async count() {
-    return this.countSync()
-  }
 
   /**
    *

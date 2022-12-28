@@ -1,7 +1,7 @@
 // The entry file of your WebAssembly modul
 
 @external('env', 'console.log')
-  declare function consoleLog(s: string): void
+declare function consoleLog(s: string): void
 
 export function getModelName(): string {
   return 'wasm'
