@@ -35,7 +35,7 @@
     "express-fileupload": "^1.4.0",
     "express-jwt": "7.7.5",
     "import-fresh": "3.3.0",
-    "ipfs": "^0.63.0",
+    "ipfs": "^0.65.0",
     "jwks-rsa": "2.1.4",
     "mesh-link": "0.13.6",
     "mongodb": "^4.12.1",
