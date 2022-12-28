@@ -63,7 +63,7 @@
     "babel-loader": "8.2.5",
     "chalk": "5.0.1",
     "cross-var": "1.1.0",
-    "eslint": "8.22.0",
+    "eslint": "8.30.0",
     "eslint-config-prettier": "^8.5.0",
     "eslint-config-standard": "^17.0.0",
     "eslint-plugin-prettier": "^4.2.1",
