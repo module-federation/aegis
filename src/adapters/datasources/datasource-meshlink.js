@@ -4,7 +4,10 @@ import mlink, { sharedObject } from 'mesh-link'
 import DataSource from '../../domain/datasource'
 
 async function createSharedObject(name) {
-  mlink.sharedObject.create({ name: { value: name }, modelId: { value: null } })
+  mlink.sharedObject.create({
+    name: { value: name },
+    modelId: { value: null },
+  })
 }
 
 async function fetchSharedObject(name) {
