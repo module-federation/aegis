@@ -389,7 +389,7 @@ export class ThreadPool extends EventEmitter {
   maxPoolSize () {
     return this.maxThreads
   }
-  s
+
   minPoolSize () {
     return this.minThreads
   }
