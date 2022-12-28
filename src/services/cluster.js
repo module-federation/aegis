@@ -12,7 +12,7 @@ let workerList = []
  * listen for a reload request from it,
  * add it to `workerList` which is used during the rolling restart.
  */
-function startWorker () {
+function startWorker() {
   const worker = cluster.fork()
 
   worker.on('message', function (message) {
@@ -46,7 +46,7 @@ function startWorker () {
           cluster.workers[id].send({
             ...message,
             pid: process.pid,
-            cmd: message.cmd.replace('Broadcast', 'Command')
+            cmd: message.cmd.replace('Broadcast', 'Command'),
           })
         }
       }
@@ -60,7 +60,7 @@ function startWorker () {
  * @typedef {function()} stopWorker
  * Gracefully stop a worker on the reload list.
  */
-function stopWorker () {
+function stopWorker() {
   const worker = reloadList.pop()
   if (worker) worker.kill('SIGTERM')
   else {
@@ -75,11 +75,11 @@ function stopWorker () {
  * @param {number} waitms - Delay execution by `waitms`
  * milliseconds so your app has time to start
  */
-function continueReload (callback, waitms) {
+function handleReload(callback, waitms = 2000) {
   const failedWorker =
     !reloading &&
     workerList.length < numCores &&
-    callback.name.includes('start')
+    callback.name === startWorker.name
 
   if (reloading || failedWorker) {
     setTimeout(callback, failedWorker ? 60000 : waitms)
@@ -109,16 +109,16 @@ exports.startCluster = function (startService, waitms = 2000) {
     // Worker stopped. If reloading, start a new one.
     cluster.on('exit', function (worker) {
       console.log('worker down', worker.process.pid)
-      continueReload(startWorker, 0)
+      handleReload(startWorker, 0)
     })
 
     // Worker started. If reloading, stop the next one.
     cluster.on('online', function (worker) {
       console.log('worker up', worker.process.pid)
-      continueReload(stopWorker, waitms)
+      handleReload(stopWorker, waitms)
     })
 
-    setInterval(continueReload, 60000, startWorker, waitms)
+    setInterval(() => handleReload(startWorker, 0), 60000)
 
     console.log(`master starting ${numCores} workers 🌎`)
     // Run a copy of this program on each core

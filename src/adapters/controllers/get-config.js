@@ -1,8 +1,8 @@
 'use strict'
 import getContent from './get-content'
 
-export default function getConfigFactory (listConfigs) {
-  return async function getConfig (httpRequest) {
+export default function getConfigFactory(listConfigs) {
+  return async function getConfig(httpRequest) {
     try {
       httpRequest.log(getConfig.name)
 
@@ -11,20 +11,20 @@ export default function getConfigFactory (listConfigs) {
 
       return {
         headers: {
-          'Content-Type': contentType
+          'Content-Type': contentType,
         },
         statusCode: 200,
-        body: content
+        body: content,
       }
     } catch (e) {
       return {
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
         statusCode: 400,
         body: {
-          error: e.message
-        }
+          error: e.message,
+        },
       }
     }
   }

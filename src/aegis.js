@@ -2,12 +2,8 @@
 
 const domain = require('./domain')
 const adapters = require('./adapters')
-const {
-  EventBrokerFactory,
-  DomainEvents,
-  importRemotes,
-  requestContext
-} = domain
+const { EventBrokerFactory, DomainEvents, importRemotes, requestContext } =
+  domain
 const { badUserRoute, reload } = DomainEvents
 const { pathToRegexp, match } = require('path-to-regexp')
 const { nanoid } = require('nanoid')
@@ -25,7 +21,8 @@ const {
   patchModels,
   postModels,
   liveUpdate,
-  anyInvokePorts
+  postEntry,
+  anyInvokePorts,
 } = adapters.controllers
 
 const apiRoot = process.env.API_ROOT || '/aegis/api'
@@ -42,13 +39,13 @@ const endpointPortId = e => `${modelPath}/${e}/:id/service/ports/:port`
  * @extends {Map}
  */
 class RouteMap extends Map {
-  find (path) {
+  find(path) {
     const routeInfo = [...super.values()].find(v => v.regex.test(path))
     if (routeInfo)
       return { ...routeInfo, params: routeInfo.matcher(path).params }
   }
 
-  set (path, method) {
+  set(path, method) {
     if (super.has(path)) {
       super.set(path, { ...super.get(path), ...method })
       return
@@ -57,17 +54,17 @@ class RouteMap extends Map {
     super.set(path, {
       ...method,
       regex: pathToRegexp(path),
-      matcher: match(path)
+      matcher: match(path),
     })
   }
 
-  has (path) {
+  has(path) {
     this.hasPath = path
     this.routeInfo = this.find(path)
     return this.routeInfo ? true : false
   }
 
-  get (path) {
+  get(path) {
     // if equal we already know the answer
     return path === this.hasPath ? this.routeInfo : this.find(path)
   }
@@ -76,19 +73,19 @@ class RouteMap extends Map {
 const routes = new RouteMap()
 const routeOverrides = new Map()
 
-function buildPath (ctrl, path) {
+function buildPath(ctrl, path) {
   return ctrl.path && ctrl.path[path.name]
     ? ctrl.path[path.name]
     : path(ctrl.endpoint)
 }
 
-function checkAllowedMethods (ctrl, method) {
+function checkAllowedMethods(ctrl, method) {
   if (!ctrl.ports.methods) return true
   return ctrl.ports.methods.includes(method)
 }
 
 const router = {
-  autoRoutes (path, method, controllers, adapter, ports = false) {
+  autoRoutes(path, method, controllers, adapter, ports = false) {
     controllers()
       .filter(ctrl => !ctrl.internal)
       .forEach(ctrl => {
@@ -96,28 +93,33 @@ const router = {
           if (ctrl.ports) {
             for (const portName in ctrl.ports) {
               const port = ctrl.ports[portName]
-              const specPortMethods = port?.methods?.join('|') || ""
+              const specPortMethods =
+                port?.methods?.join('|').toLowerCase() || ''
 
               if (port.path) {
                 routeOverrides.set(port.path, portName)
               }
 
-              if (checkAllowedMethods(ctrl, method) && (!port.methods || (specPortMethods.includes(method.toLowerCase()))) ) {
+              if (
+                checkAllowedMethods(ctrl, method) &&
+                (!port.methods ||
+                  specPortMethods.includes(method.toLowerCase()))
+              ) {
                 routes.set(port.path || path(ctrl.endpoint), {
-                  [method]: adapter(ctrl.fn)
+                  [method]: adapter(ctrl.fn),
                 })
               }
             }
           }
         } else {
           routes.set(buildPath(ctrl, path), {
-            [method]: adapter(ctrl.fn)
+            [method]: adapter(ctrl.fn),
           })
         }
       })
   },
 
-  userRoutes (controllers) {
+  userRoutes(controllers) {
     try {
       controllers().forEach(ctlr => routes.set(ctlr.path, ctlr))
     } catch (error) {
@@ -126,15 +128,13 @@ const router = {
     }
   },
 
-  adminRoute (controller, adapter) {
-    const adminPath = `${apiRoot}/config`
-    routes.set(adminPath, { get: adapter(controller()) })
-  }
+  adminRoute(controller, adapter, method, path) {
+    const adminPath = `${apiRoot}/${path}`
+    routes.set(adminPath, { [method]: adapter(controller()) })
+  },
 }
 
-function makeRoutes () {
-  router.adminRoute(getConfig, http)
-  router.userRoutes(getRoutes)
+function makeRoutes() {
   router.autoRoutes(endpoint, 'get', liveUpdate, http)
   router.autoRoutes(endpoint, 'get', getModels, http)
   router.autoRoutes(endpoint, 'post', postModels, http)
@@ -150,6 +150,9 @@ function makeRoutes () {
   router.autoRoutes(endpointPortId, 'patch', anyInvokePorts, http, true)
   router.autoRoutes(endpointPortId, 'delete', anyInvokePorts, http, true)
   router.autoRoutes(endpointPortId, 'get', anyInvokePorts, http, true)
+  router.adminRoute(getConfig, http, 'get', 'config')
+  router.adminRoute(postEntry, http, 'post', 'deploy')
+  router.userRoutes(getRoutes)
   console.log(routes)
 }
 
@@ -163,7 +166,7 @@ function makeRoutes () {
  * @param {Response} res
  * @returns
  */
-async function handle (path, method, req, res) {
+async function handle(path, method, req, res) {
   const routeInfo = routes.get(path)
 
   if (!routeInfo) {
@@ -187,11 +190,12 @@ async function handle (path, method, req, res) {
     requestContext.enterWith(
       new Map([
         ['id', req.headers['idempotency-key'] || nanoid()],
+        ['checkIdempotency', req.headers['idempotency-key'] ? true : false],
         ['begin', Date.now()],
         ['user', req.user],
         ['res', res],
         ['path', path],
-        ['headers', req.headers]
+        ['headers', req.headers],
       ])
     )
     console.debug(`enter context ${requestContext.getStore().get('id')}`)
@@ -206,7 +210,7 @@ async function handle (path, method, req, res) {
     const perfMsg = {
       requestId: store.get('id'),
       threadDuration: store.get('threadDuration'),
-      totalDuration: store.get('end') - store.get('begin')
+      totalDuration: store.get('end') - store.get('begin'),
     }
     console.log(perfMsg)
     broker.notify('perf', perfMsg)
@@ -214,9 +218,9 @@ async function handle (path, method, req, res) {
     return result
   } catch (error) {
     console.error({ fn: handle.name, error })
-    res.status(500).send(error.message)
+    if (!res.headersSent) res.status(500).send(error.message)
   } finally {
-    const msg = `exit context ${requestContext.getStore().get('id')}`
+    const msg = `exit context ${requestContext.getStore()?.get('id')}`
     requestContext.exit(() => console.log(msg))
   }
 }

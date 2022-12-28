@@ -1,12 +1,12 @@
 const compose = require('../../src/domain/util/compose')
 
-function increment (num) {
+function increment(num) {
   const sum = num + 1
   console.log(`increment: ${sum}`)
   return sum
 }
 
-function decrement (num) {
+function decrement(num) {
   const diff = num - 1
   console.log(`decrement: ${diff}`)
   return diff

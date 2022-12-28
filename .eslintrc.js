@@ -6,6 +6,7 @@ module.exports = {
     commonjs: true,
     es2020: true,
   },
+  extends: ['standard', 'plugin:prettier/recommended'],
   parserOptions: {
     ecmaVersion: 11,
     sourceType: 'module',
@@ -15,4 +16,4 @@ module.exports = {
   },
   extends: ['eslint:recommended', 'plugin:prettier/recommended'],
   rules: {},
-};
+}

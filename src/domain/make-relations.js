@@ -5,15 +5,12 @@
  */
 
 import domainEvents from './domain-events'
-import { importRemoteCache } from './import-remotes'
+import { importModelCache } from './import-remotes'
 
-const {
-  internalCacheRequest,
-  internalCacheResponse,
-  externalCacheRequest
-} = domainEvents
+const { internalCacheRequest, internalCacheResponse, externalCacheRequest } =
+  domainEvents
 
-const maxwait = process.env.REMOTE_OBJECT_MAXWAIT || 6000
+const maxwait = process.env.REMOTE_OBJECT_MAXWAIT || 1000
 
 export const relationType = {
   /**
@@ -154,14 +151,29 @@ const updateForeignKeys = {
  * @param {import('./datasource').default} ds
  * @returns
  */
-async function createNewModels (args, fromModel, relation, ds) {
+async function createModels (args, fromModel, relation, ds) {
   if (args.length > 0) {
-    const { UseCaseService, importRemoteCache } = require('.')
-    const service = UseCaseService(relation.modelName.toUpperCase())
+    const { UseCaseService } = require('.')
+    const service = UseCaseService(relation.modelName)
     const newModels = await Promise.all(
       args.map(arg => service.createModel(arg))
     )
     return updateForeignKeys[relation.type](fromModel, newModels, relation, ds)
+  }
+}
+
+async function createNewModels (args, rel, datasource) {
+  if (args.length > 0 && rel.type !== 'custom') {
+    // fetch the local ds and create the models
+    const ds = datasource.factory.getDataSource(rel.modelName)
+    return {
+      yes: true,
+      create: async () => await createModels(args, this, rel, ds)
+    }
+  }
+  return {
+    yes: false,
+    create: () => null
   }
 }
 
@@ -179,13 +191,12 @@ async function createNewModels (args, fromModel, relation, ds) {
 export function requireRemoteObject (model, relation, broker, ...args) {
   const request = internalCacheRequest(relation.modelName)
   const response = internalCacheResponse(relation.modelName)
-
-  console.debug({ fn: requireRemoteObject.name, relation })
-
   const name = (model ? model.getName() : relation.modelName).toUpperCase()
   const id = model ? model.getId() : relation.id
   const eventSource = name
   const eventTarget = model ? relation.modelName.toUpperCase() : null
+
+  console.debug({ fn: requireRemoteObject.name, relation })
 
   const requestData = {
     eventName: request,
@@ -230,9 +241,11 @@ export default function makeRelations (relations, datasource, broker) {
 
   return Object.keys(relations)
     .map(function (relation) {
+      const relModelName = relations[relation].modelName.toUpperCase()
+
       const rel = {
         ...relations[relation],
-        modelName: relations[relation].modelName.toUpperCase(),
+        modelName: relModelName,
         name: relation
       }
 
@@ -246,21 +259,17 @@ export default function makeRelations (relations, datasource, broker) {
         return {
           // the relation function
           async [relation] (...args) {
-            // Get existing (or create temp) datasource of related object
-            const local = isRelatedModelLocal(rel)
-            const createNew = args?.length > 0
+            const local = isRelatedModelLocal(relModelName)
+            if (!local) await importModelCache(relModelName)
 
-            if (!local) {
-              // the ds is for a remote object, fetch the code for it.
-              await importRemoteCache(rel.modelName)
-            } else if (createNew && rel.type !== 'custom') {
-              // fetch the local ds and create the models
-              const ds = datasource.factory.getDataSource(rel.modelName)
-              return await createNewModels(args, this, rel, ds)
+            if (local) {
+              const result = createNewModels(args, rel, datasource)
+              if (result.yes) return result.create()
             }
 
-            // if the object is remote, we now have its code
-            const ds = datasource.factory.getDataSource(rel.modelName)
+            // If object is remote, we should have its code by now.
+            // Recreate its datasource, including any customization
+            const ds = datasource.factory.getDataSource(relModelName)
 
             const models = await relationType[rel.type](this, ds, rel, args)
 
@@ -273,7 +282,7 @@ export default function makeRelations (relations, datasource, broker) {
                 ...args
               )
 
-              if (createNew)
+              if (args.length > 0)
                 updateForeignKeys[rel.type](this, event.model, rel, ds)
 
               return await relationType[rel.type](this, ds, rel, args)

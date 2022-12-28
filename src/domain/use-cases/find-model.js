@@ -24,14 +24,14 @@ import async from '../util/async-error'
  * @param {ModelParam} param0
  * @returns {findModel}
  */
-export default function makeFindModel ({
+export default function makeFindModel({
   threadpool,
   repository,
   models,
   modelName,
-  broker
+  broker,
 } = {}) {
-  return async function findModel ({ id, query, model }) {
+  return async function findModel({ id, query, model }) {
     if (isMainThread) {
       // Main thread performs read operations
       const modelInst = await repository.find(id)
@@ -67,7 +67,12 @@ export default function makeFindModel ({
 
         if (query.command) {
           const result = await async(
-            executeCommand(hydratedModel, query.command, 'read')
+            executeCommand(
+              hydratedModel,
+              query.command,
+              { args: query.args },
+              'read'
+            )
           )
           if (result.ok) {
             return result.data

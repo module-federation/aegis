@@ -12,7 +12,8 @@ const {
   removeModels,
   hotReload,
   registerEvents,
-  invokePorts
+  invokePorts,
+  deployModel,
 } = UseCases
 
 import postModelFactory from './post-model'
@@ -23,13 +24,14 @@ import deleteModelFactory from './delete-model'
 import getConfigFactory from './get-config'
 import anyInvokePortFactory from './post-invoke-port'
 import makeLiveUpdate from './live-update'
+import makeLiveRollout from './live-rollout'
 
-function make (useCases, controllerFactory) {
+function make(useCases, controllerFactory) {
   return useCases().map(uc => ({
     endpoint: uc.endpoint,
     path: uc.path,
     ports: uc.ports,
-    fn: controllerFactory(uc.fn)
+    fn: controllerFactory(uc.fn),
   }))
 }
 
@@ -42,20 +44,21 @@ export const anyInvokePorts = () => make(invokePorts, anyInvokePortFactory)
 export const liveUpdate = () => make(hotReload, makeLiveUpdate)
 export const getConfig = () => getConfigFactory(listConfigs())
 export const getRoutes = () => getUserRoutes()
+export const postEntry = () => makeLiveRollout(deployModel())
 
 export const initCache = () => {
   const label = '\ntime to load cache'
   const specs = loadModels()
   registerEvents()
 
-  async function loadModelInstances () {
+  async function loadModelInstances() {
     console.time(label)
     await Promise.allSettled(specs.map(async m => (m && m.fn ? m.fn() : false)))
     console.timeEnd(label)
   }
 
   return {
-    load: () => loadModelInstances()
+    load: () => loadModelInstances(),
   }
 }
 

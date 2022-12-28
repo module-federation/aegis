@@ -21,7 +21,7 @@ import Event from './event'
 /**
  * @typedef {Object} ModelFactory Low-level port functions for creating, updating, deleting domain models. To be called by
  * application use-case functions, which in turn are called by driving/primary adapters.
- * @property {function(broker,Datasource,string,...args):Promise<Readonly<Model>>} createModel Create a new model instance
+ * @property {function(broker,Datasource,string,...args):Readonly<Model>} createModel Create a new model instance
  * @property {function(string,string,*):Readonly<Event>} createEvent
  * @property {function(Model,object):Model} updateModel
  * @property {function(Model):Model} deleteModel
@@ -38,6 +38,8 @@ import Event from './event'
  * function. This object functions as the model's service implementation. Methods that rely
  * on factory-generated instance properties will not work; so only static methods, or
  * instance methods created by the framework, are useable.
+ * @property {string} domain indicates a group of {@link Model}s that are part of a bounded context.
+ * Models that share the same domain name run in the same threadpool and live in the same database
  */
 
 /**
@@ -48,13 +50,13 @@ const EventTypes = {
   CREATE: 'CREATE',
   UPDATE: 'UPDATE',
   DELETE: 'DELETE',
-  ONLOAD: 'ONLOAD'
+  ONLOAD: 'ONLOAD',
 }
 
 /**
  * @param {String} modelName
  */
-function checkModelName (modelName) {
+function checkModelName(modelName) {
   if (typeof modelName === 'string') {
     return String(modelName).toUpperCase()
   }
@@ -65,7 +67,7 @@ function checkModelName (modelName) {
  *
  * @param {EventType} eventType
  */
-function checkEventType (eventType) {
+function checkEventType(eventType) {
   return eventType
 }
 
@@ -74,7 +76,7 @@ function checkEventType (eventType) {
  * @param {EventType} eventType
  * @param {String} modelName
  */
-function createEventName (eventType, modelName) {
+function createEventName(eventType, modelName) {
   return checkEventType(eventType) + String(modelName).toUpperCase() // create for non-loaded
 }
 
@@ -91,7 +93,7 @@ const eventFactories = {
   [EventTypes.CREATE]: new Map(),
   [EventTypes.UPDATE]: new Map(),
   [EventTypes.DELETE]: new Map(),
-  [EventTypes.ONLOAD]: new Map()
+  [EventTypes.ONLOAD]: new Map(),
 }
 
 /**
@@ -135,7 +137,7 @@ const ModelFactory = {
    * @param {*[]} args - input sent in the request
    * @param {import('./event-broker').EventBroker} broker - send & receive events
    * @param {import('./datasource').default} datasource - persistence/cache
-   * @returns {Promise<Readonly<Model>>} the model instance
+   * @returns {<Readonly<Model>} the model instance
    */
   createModel: function (broker, datasource, modelName, ...args) {
     const name = checkModelName(modelName)
@@ -147,8 +149,8 @@ const ModelFactory = {
         spec: {
           ...spec,
           broker,
-          datasource
-        }
+          datasource,
+        },
       })
     }
     throw new Error('unregistered model')
@@ -169,8 +171,8 @@ const ModelFactory = {
         spec: {
           ...spec,
           broker,
-          datasource
-        }
+          datasource,
+        },
       })
     }
     throw new Error('unregistered model', modelName)
@@ -193,7 +195,7 @@ const ModelFactory = {
         args,
         factory,
         eventType: type,
-        modelName: name
+        modelName: name,
       })
     }
     throw new Error('unregistered model event')
@@ -231,7 +233,7 @@ const ModelFactory = {
   getEvents: () =>
     Object.keys(eventFactories).map(k => ({
       type: k,
-      events: [...eventFactories[k].keys()]
+      events: [...eventFactories[k].keys()],
     })),
 
   /**
@@ -282,8 +284,8 @@ const ModelFactory = {
       ...modelFactories.get(modelName),
       modelName,
       datasource,
-      broker
-    })
+      broker,
+    }),
 }
 
 Object.freeze(modelFactories)

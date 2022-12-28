@@ -1,6 +1,6 @@
 'use strict'
 
-import { Transform } from 'stream'
+import { Readable, Transform, Writable } from 'node:stream'
 import { isMainThread } from 'worker_threads'
 /** @typedef {import('.').Model} Model */
 
@@ -9,6 +9,7 @@ import { isMainThread } from 'worker_threads'
  * @property {boolean} memoryOnly - if true returns memory adapter and caches it
  * @property {boolean} ephemeral - if true returns memory adapter but doesn't cache it
  * @property {string} adapterName - name of adapter to use
+ * @property {Array<function():typeof import('./datasource').default>} mixins
  */
 
 import ModelFactory from '.'
@@ -17,8 +18,8 @@ import * as adapters from '../adapters/datasources'
 import { dsClasses } from '../adapters/datasources'
 import configRoot from '../config'
 import DataSource from './datasource'
-import { withSharedMemory } from './shared-memory'
 import compose from './util/compose'
+import { withSharedMemory } from './shared-memory'
 
 const debug = /\*|datasource/i.test(process.env.DEBUG)
 const broker = EventBrokerFactory.getInstance()
@@ -37,6 +38,10 @@ const DefaultDataSource =
  */
 const DsCoreExtensions = superclass =>
   class extends superclass {
+    constructor (map, name, namespace, options) {
+      super(map, name, namespace, options)
+    }
+
     set factory (value) {
       this[FACTORY] = value
     }
@@ -45,10 +50,10 @@ const DsCoreExtensions = superclass =>
       return this[FACTORY]
     }
 
-    serialize (data, options) {
-      if (options?.serializers) return options.serializers['serialize'](data)
-      return JSON.stringify(data)
-    }
+    // serialize (data, options) {
+    //   if (options?.serializers) return options.serializers['serialize'](data)
+    //   return JSON.stringify(data)
+    // }
 
     /**
      * Override the super class, adding cache and serialization functions.
@@ -57,9 +62,13 @@ const DsCoreExtensions = superclass =>
      * @param {Model} data
      */
     async save (id, data) {
-      this.saveSync(id, data)
-      const clone = JSON.parse(this.serialize(data))
-      super.save(id, clone)
+      try {
+        this.saveSync(id, data)
+        await super.save(id, JSON.parse(JSON.stringify(data)))
+      } catch (error) {
+        console.error({ fn: this.save.name, error })
+        throw error
+      }
     }
 
     /**
@@ -70,52 +79,122 @@ const DsCoreExtensions = superclass =>
      * @returns {Promise<Model>|undefined}
      */
     async find (id) {
-      const cached = this.findSync(id)
-      if (cached) return cached
+      try {
+        const cached = this.findSync(id)
+        if (cached) return cached
 
-      const model = await super.find(id)
+        const model = await super.find(id)
 
-      if (model) {
-        // save to cache
-        this.saveSync(id, model)
-        return isMainThread
-          ? model
-          : ModelFactory.loadModel(broker, this, model, this.name)
+        if (model) {
+          // save to cache
+          this.saveSync(id, model)
+          return isMainThread
+            ? model
+            : ModelFactory.loadModel(broker, this, model, this.name)
+        }
+      } catch (error) {
+        console.error({ fn: this.find.name, error })
+        throw error
       }
     }
 
-    transform () {
+    hydrate () {
       const ctx = this
 
       return new Transform({
         objectMode: true,
 
-        transform (chunk, _encoding, next) {
+        transform (chunk, encoding, next) {
           this.push(ModelFactory.loadModel(broker, ctx, chunk, ctx.name))
           next()
         }
       })
     }
 
+    serialize () {
+      let first = true
+
+      return new Transform({
+        objectMode: true,
+
+        // start of array
+        construct (callback) {
+          this.push('[')
+          callback()
+        },
+
+        // each chunk is a record
+        transform (chunk, encoding, next) {
+          // comma-separate
+          if (first) first = false
+          else this.push(',')
+
+          // serialize record
+          this.push(JSON.stringify(chunk))
+          next()
+        },
+
+        // end of array
+        flush (callback) {
+          this.push(']')
+          callback()
+        }
+      })
+    }
+
     /**
+     *
+     * @param {Model[]} list
+     * @param {import('./datasource').listOptions} options
+     * @returns {Array<Readable|Transform>}
+     */
+    stream (list, options) {
+      return new Promise((resolve, reject) => {
+        options.writable.on('error', reject)
+        options.writable.on('end', resolve)
+
+        if (!isMainThread) list.push(this.hydrate())
+        if (options.transform) list.concat(options.transform)
+        if (options.serialize) list.push(this.serialize())
+
+        return list.reduce((p, c) => p.pipe(c)).pipe(options.writable)
+      })
+    }
+
+    /**
+     * Returns the set of objects satisfying the `filter` if specified;
+     * otherwise returns all objects. If a `writable` stream is provided and
+     * `cached` is false, the list is streamed. Otherwise the list is returned
+     * in an array. One or more custom transforms can be specified to modify the
+     * streamed results. Using {@link createWriteStream}, updates can be streamed
+     * back to the storage provider. With streams, we can support queries of very
+     * large tables, with minimal memory overhead on the node server.
+     *
      * @override
-     * @param {*} options
-     * @returns
+     * @param {import('../../domain/datasource').listOptions} param
      */
     async list (options) {
-      if (options?.writable)
-        return isMainThread
-          ? super.list(options)
-          : super.list({ ...options, transform: this.transform() })
+      try {
+        if (options?.query?.__count) return this.count()
+        if (options?.query?.__cached) return this.listSync(options.query)
 
-      const arr = await super.list(options)
+        const opts = { ...options, streamRequested: options?.writable }
+        const list = [await super.list(opts)].flat()
 
-      if (Array.isArray(arr))
+        if (list.length < 1) return []
+
+        if (list[0] instanceof Readable || list[0] instanceof Transform)
+          return this.stream(list, options)
+
         return isMainThread
-          ? arr
-          : arr.map(model =>
+          ? list
+          : list.map(model =>
               ModelFactory.loadModel(broker, this, model, this.name)
             )
+      } catch (error) {
+        console.error({ fn: this.list.name, error })
+        throw error
+      }
     }
 
     /**
@@ -126,12 +205,12 @@ const DsCoreExtensions = superclass =>
     async delete (id) {
       try {
         await super.delete(id)
+        // only if super succeeds
+        this.deleteSync(id)
       } catch (error) {
         console.error(error)
-        return
+        throw error
       }
-      // only if super succeeds
-      this.deleteSync(id)
     }
   }
 
@@ -195,7 +274,7 @@ const DataSourceFactory = (() => {
 
     if (adapterName) return adapters[adapterName] || DefaultDataSource
 
-    if (spec?.datasource) {
+    if (spec?.datasource?.factory) {
       const url = spec.datasource.url
       const cacheSize = spec.datasource.cacheSize
       const adapterFactory = spec.datasource.factory
@@ -234,9 +313,12 @@ const DataSourceFactory = (() => {
     const DsClass = createDataSourceClass(spec, options)
     const DsExtendedClass = extendDataSourceClass(DsClass, options)
 
+    if (spec.datasource) {
+      options = { ...options, connOpts: { ...spec.datasource } }
+    }
+
     const newDs = new DsExtendedClass(dsMap, name, namespace, options)
     newDs.factory = this // setter to avoid exposing in ctor
-
     if (!options.ephemeral) dataSources.set(name, newDs)
 
     debug && console.debug({ newDs })
@@ -252,11 +334,8 @@ const DataSourceFactory = (() => {
    */
   function getDataSource (name, namespace = null, options = {}) {
     if (!dataSources) dataSources = new Map()
-
     if (!namespace) return dataSources.get(name)
-
     if (dataSources.has(name)) return dataSources.get(name)
-
     return createDataSource(name, namespace, options)
   }
 
@@ -270,11 +349,8 @@ const DataSourceFactory = (() => {
    */
   function getSharedDataSource (name, namespace = null, options = {}) {
     if (!dataSources) dataSources = new Map()
-
     if (!namespace) return dataSources.get(name)
-
     if (dataSources.has(name)) return dataSources.get(name)
-
     return withSharedMemory(createDataSource, this, name, namespace, options)
   }
 

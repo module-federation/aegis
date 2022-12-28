@@ -1,0 +1,54 @@
+---
+name: Node.js CI
+on:
+  pull_request:
+    branches:
+      - develop
+      - main
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version:
+          - 16.x
+    steps:
+      - uses: actions/checkout@v2
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Run install
+        uses: borales/actions-yarn@v4
+        with:
+          cmd: install
+      - name: Build bundle
+        uses: borales/actions-yarn@v4
+        with:
+          cmd: build
+      # - name: Run Test
+      # uses: borales/actions-yarn@v4
+      # with:
+      #   cmd: test
+      - name: Check for modified files
+        id: git-check
+        run:
+          echo ::set-output name=modified::$(if [ -n "$(git status --porcelain)" ];
+          then echo "true"; else echo "false"; fi)
+
+      - name: Extract branch name
+        shell: bash
+        run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+        id: extract_branch
+      - name: Update changes in GitHub repository
+        if: steps.git-check.outputs.modified == 'true'
+        run: >
+          git config --global user.name 'buildbot' 
+
+          git config --global user.email 'buildbot@briteliteimmersive.com'
+
+          git add -A
+
+          git commit -m '[automated commit] add built bundle using GitHub workflows'
+
+          git push origin HEAD:${{ github.head_ref }} --force

@@ -20,7 +20,7 @@ exports.makeServerlessAdapter = function (getParsers) {
      * @param  {...any} args
      * @returns
      */
-    async function parseMessage (type, ...args) {
+    async function parseMessage(type, ...args) {
       const parse = await getParser(type)
 
       if (typeof parse === 'function') {
@@ -31,13 +31,13 @@ exports.makeServerlessAdapter = function (getParsers) {
       console.warn('no parser found for provider')
     }
 
-    async function getParser (type) {
+    async function getParser(type) {
       if (parsers) return parsers[provider][type]
       parsers = await getParsers()
       return parsers[provider][type]
     }
 
-    return async function handle (...args) {
+    return async function handle(...args) {
       const { req, res } = await parseMessage('request', ...args)
       const response = await controller(req.path, req.method, req, res)
       return parseMessage('response', response)

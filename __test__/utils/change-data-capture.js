@@ -2,7 +2,7 @@
 
 const {
   findChanges,
-  filterByChangeType
+  filterByChangeType,
 } = require('../../src/domain/util/change-data-capture')
 
 /**
@@ -11,10 +11,10 @@ const {
  * @param {*} to
  * @returns
  */
-function findChanges2 (from, to) {
+function findChanges2(from, to) {
   const cdc = []
   const changeDataCapture = {
-    set (target, prop, value) {
+    set(target, prop, value) {
       console.log(`changed ${prop} from ${target[prop]} to ${value}`)
 
       if (target[prop] !== value) {
@@ -22,7 +22,7 @@ function findChanges2 (from, to) {
         cdc.push(prop)
       }
       return true
-    }
+    },
   }
 
   const fromProxy = new Proxy(from, changeDataCapture)
@@ -46,7 +46,7 @@ function findChanges2 (from, to) {
  * @param {string} changeTypeValue
  * @returns
  */
-function filterByChangeType2 (changeType, from, to, changeTypeValue) {
+function filterByChangeType2(changeType, from, to, changeTypeValue) {
   const keys = findChanges(from, to)
   const changeTypes = {
     toValue: (from, to, val) => to !== val,
@@ -56,7 +56,7 @@ function filterByChangeType2 (changeType, from, to, changeTypeValue) {
     fromTypeValue: (from, to, val) => typeof from != val,
     definedOnly: (from, to, val) => typeof to !== 'undefined',
     greaterThan: (from, to, val) => from > to,
-    lessThan: (from, to, val) => from < to
+    lessThan: (from, to, val) => from < to,
   }
 
   if (changeType)
@@ -73,7 +73,7 @@ const param =
     ? JSON.parse(`[${process.argv[2]}, ${process.argv[3]}]`)
     : [
         { c: 2, d: 4 },
-        { c: 3, d: undefined }
+        { c: 3, d: undefined },
       ]
 const options = { changeType: 'typeDiff' }
 console.log(findChanges(param[0], param[1], options))

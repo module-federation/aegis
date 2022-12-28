@@ -185,6 +185,55 @@
  * @property {command} addCommand
  */
 
+/**
+ * @typedef {object} remoteEntry points to a manifest (remoteEntry.js) of remote modules
+ * exposed for consumption at runtime. Note .wasm files are not contained in these bundles
+ * as they are already optimized for size and statically linked to their dependencies.
+ * It can, however, be dynamically "linked" to other modules at runtime via the Aegis
+ * framework, i.e. events, ports/adapters, relations, commands, etc
+ * @property {string} name descriptive name of the entry
+ * @property {string} url location of the remoteEntry.js or .wasm file to be imported
+ * - if using github, specify `https://api.github.com`
+ * @property {string} path local path where compiled files are written
+ * @property {"model"|"adapter"|"service"} type the type of components in the module
+ * * @property {function():Promise<object>} importRemote the function used to import the module
+ * - `await import("microservices/models")` imports models based on the below webpack.config.js
+ *
+ * ```js
+ * new ModuleFederationPlugin({
+ *  name: "microservices",
+ *  filename: "remoteEntry.js",
+ *    library: {
+ *      name: "microservices",
+ *      type: "commonjs-module",
+ *  },
+ *  remoteType: "commonjs-module",
+ *  exposes: {
+ *    "./models": "./src/domain",
+ *    "./adapters": "./src/adapters",
+ *    "./services": "./src/services",
+ *    "./ports": "./src/domain/ports"
+ *   }
+ * })
+ * ```
+ *
+ * @property {string} [repo] if using github, name of the github repo
+ * @property {string} [owner] if using gitbub, owner of the repo
+ * @property {string} [filedir] if using gitub, path to the remoteEntry.js file
+ * @property {string} [branch] if using github, branch of the repo to use, e.g. "master" or "main"
+ * @property {boolean} [wasm] is this a WebAssembly module?
+ * @property {string} [serviceName] optional name of the service to which the module belongs
+ * - use to group model, adapaters and services together
+ * at startup instead of waiting until a request for the model has been received
+ * modor serviceel, adapter
+ * @property {string} [worker] Creates a model that is controlled by a custom worker
+ * instead of the system default worker. Developers can do whatever they want with the worker
+ * and needn't use the associated model at all. That said, developers may want to make use of
+ * the auto-generated APIs and storage, which are exposed at a lower level, allowing
+ * for more extensive customization.
+ *
+ */
+
 import ModelFactory from './model-factory'
 import bindAdapters from './bind-adapters'
 import { requestContext } from './util/async-context'
@@ -200,7 +249,7 @@ import {
   importAdapterCache,
   importServiceCache,
   importWorkerCache,
-  importPortCache
+  importPortCache,
 } from './import-remotes'
 
 /**
@@ -215,25 +264,25 @@ const createEvent = model => ({ model })
 const updateEvent = ({ updated, changes }) => ({
   model: updated,
   changes: {
-    ...changes
-  }
+    ...changes,
+  },
 })
 
 const deleteEvent = model => ({
   modelId: ModelFactory.getModelId(model),
-  model
+  model,
 })
 
 const onloadEvent = model => ({
   modelId: ModelFactory.getModelId(model),
-  model
+  model,
 })
 
-function getUniqueId () {
+function getUniqueId() {
   return getContextId() || uuid()
 }
 
-function getContextId () {
+function getContextId() {
   const store = requestContext.getStore()
   if (store) return store.get('id')
 }
@@ -248,27 +297,27 @@ function getContextId () {
  * workers:{[x: string]:Function},
  * isCached:boolean}}
  */
-function register ({
+function register({
   model,
   ports,
   services,
   adapters,
   workers,
-  isCached = false
+  isCached = false,
 } = {}) {
   const modelName = model.modelName.toUpperCase()
 
   const bindings = bindAdapters({
     portSpec: model.ports,
+    ports: { ...model.portFunctions, ...ports },
     adapters,
     services,
-    ports
   })
 
   const dependencies = {
     ...model.dependencies,
     ...bindings,
-    getUniqueId
+    getUniqueId,
   }
 
   ModelFactory.registerModel({
@@ -278,7 +327,7 @@ function register ({
     dependencies,
     factory: model.factory(dependencies),
     worker: workers[modelName],
-    isCached
+    isCached,
   })
 
   ModelFactory.registerEvent(
@@ -313,14 +362,15 @@ function register ({
  * @param {*} services - services on which the model depends
  * @param {*} adapters - adapters for talking to the services
  */
-async function importModels ({
+async function importModels({
   remoteEntries,
   services,
   adapters,
   workers,
-  ports
+  ports,
 } = {}) {
   const models = await importRemoteModels(remoteEntries)
+
   models.forEach(model =>
     register({ model, services, adapters, ports, workers })
   )
@@ -334,7 +384,7 @@ let localOverrides = {}
  * @param {import('../../webpack/remote-entries-type.js')} remoteEntries
  * @param {*} overrides - override or add services and adapters
  */
-export async function importRemotes (remoteEntries, overrides = {}) {
+export async function importRemotes(remoteEntries, overrides = {}) {
   const services = await importRemoteServices(remoteEntries)
   const adapters = await importRemoteAdapters(remoteEntries)
   const workers = await importRemoteWorkers(remoteEntries)
@@ -346,17 +396,17 @@ export async function importRemotes (remoteEntries, overrides = {}) {
     remoteEntries,
     services: {
       ...services,
-      ...overrides
+      ...overrides,
     },
     adapters: {
       ...adapters,
-      ...overrides
+      ...overrides,
     },
     ports: {
       ...ports,
-      ...overrides
+      ...overrides,
     },
-    workers
+    workers,
   })
 
   remotesConfig = remoteEntries
@@ -369,7 +419,7 @@ let serviceCache
 let portCache
 let workerCache
 
-export async function importRemoteCache (name) {
+export async function importRemoteCache(name) {
   try {
     if (!remotesConfig) {
       console.warn('distributed cache cannot be initialized')
@@ -383,19 +433,19 @@ export async function importRemoteCache (name) {
       // Check if we have since loaded the model
       adapterCache = {
         ...(await importAdapterCache(remotesConfig)),
-        ...localOverrides
+        ...localOverrides,
       }
       serviceCache = {
         ...(await importServiceCache(remotesConfig)),
-        ...localOverrides
+        ...localOverrides,
       }
       portCache = {
         ...(await importPortCache(remotesConfig)),
-        ...localOverrides
+        ...localOverrides,
       }
       workerCache = {
         ...(await importWorkerCache(remotesConfig)),
-        ...localOverrides
+        ...localOverrides,
       }
     }
 
@@ -421,7 +471,7 @@ export async function importRemoteCache (name) {
       adapters: adapterCache,
       ports: portCache,
       workers: workerCache,
-      isCached: true
+      isCached: true,
     })
   } catch (e) {
     console.error(importRemoteCache.name, e)
@@ -429,22 +479,24 @@ export async function importRemoteCache (name) {
 }
 
 /**
- * The total number of domains deployed to a host.
- * A domain consists of one or more models.
- * Each model represents a domain unless it specifies
- * the name of another model in `ModelSpecification.domain`,
- * in which case it is a subdomain within the bounded context
- * of that domain or simply a supporting entity. Such models
- * run in the same threadpool and share the same storage
- * namespace (e.g. collections or tables in the same database)
- *
+ * The total number of services deployed to a host. A
+ * service corresponds to a bounded context containing
+ * one or more subdomains. Each Aegis domain model represents
+ * a service unless it specifies the name of another model in
+ * `ModelSpecification.domain`, in which case it is a subdomain
+ * within a bounded context or simply a supporting entity or utility.
+ * If it specifies its own name, then that is the name of a bounded
+ * context (service) of which other models can be members. Models
+ * in a bounded context run in the same threadpool and
+ * share the same storage namespace (e.g. their data live in the
+ * same database).
  *
  * @returns {number} sum of domains deployed to host
  */
-export const totalDomains = () =>
+export const totalServices = () =>
   ModelFactory.getModelSpecs().filter(
-    s => !s.isCached && (!s.domain || s.modelName === s.domain)
-  ).length
+    s => !s.isCached && (!s.domain || s.domain.toUpperCase() === s.modelName)
+  ).length || 1
 
 export { UseCaseService } from './use-cases'
 

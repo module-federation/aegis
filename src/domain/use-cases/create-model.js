@@ -1,11 +1,5 @@
 'use strict'
 
-import { isMainThread } from 'worker_threads'
-import domainEvents from '../domain-events'
-import { AppError } from '../util/app-error'
-
-/** @todo abstract away thread library */
-
 /**
  * @typedef {Object} injectedDependencies injected dependencies
  * @property {String} modelName - name of the domain model
@@ -22,14 +16,17 @@ import { AppError } from '../util/app-error'
  * @param {injectedDependencies} param0
  * @returns {createModel}
  */
-export default function makeCreateModel ({
+export default function makeCreateModel({
   modelName,
   models,
   repository,
   threadpool,
-  idempotent,
+  enforceIdempotency,
   broker,
-  handlers = []
+  handlers = [],
+  isMainThread,
+  domainEvents,
+  AppError,
 } = {}) {
   const eventType = models.EventTypes.CREATE
   const eventName = models.getEventName(eventType, modelName)
@@ -38,16 +35,17 @@ export default function makeCreateModel ({
   broker.on(domainEvents.createModel(modelName), createModel)
 
   /** @type {createModel} */
-  async function createModel (input) {
+  async function createModel(input) {
     if (isMainThread) {
-      const existingRecord = await idempotent()
-      if (existingRecord) return existingRecord
+      const existingModel = await enforceIdempotency()
+      if (existingModel) return existingModel
 
       return threadpool.runJob(createModel.name, input, modelName)
     } else {
       try {
         const model = models.createModel(broker, repository, modelName, input)
         await repository.save(model.getId(), model)
+
         try {
           const event = models.createEvent(eventType, modelName, model)
           broker.notify(eventName, event)
@@ -57,8 +55,8 @@ export default function makeCreateModel ({
           return AppError(error)
         }
 
-        // Return the latest changes
-        return repository.find(model.getId())
+        // Return model from cache to capture any updates
+        return repository.findSync(model.getId())
       } catch (error) {
         return AppError(error)
       }

@@ -3,7 +3,7 @@ const {
   isMainThread,
   Worker,
   workerData,
-  parentPort
+  parentPort,
 } = require('worker_threads')
 
 const MAPSIZE = 128 * 1024

@@ -2,7 +2,7 @@ const {
   Worker,
   isMainThread,
   workerData,
-  BroadcastChannel
+  BroadcastChannel,
 } = require('worker_threads')
 
 if (isMainThread) {

@@ -7,7 +7,9 @@
  * ```
  * @param {...Function} fns
  */
-const asyncPipe = (...fns) => x =>
-  fns.reduce((o, f) => o.then(f), Promise.resolve(x))
+const asyncPipe =
+  (...fns) =>
+  x =>
+    fns.reduce((o, f) => o.then(f), Promise.resolve(x))
 
 module.exports = asyncPipe

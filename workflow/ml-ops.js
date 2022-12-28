@@ -16,33 +16,33 @@ const MLOps = {
       type: 'outbound',
       keys: ['', ''],
       consumesEvent: 'mlopsDefineModel',
-      producesEvent: 'mlopsModelVerified'
+      producesEvent: 'mlopsModelVerified',
     },
     findModel: {
       service: 'MLOpsManager',
-      keys: ['trainingDataLocation']
+      keys: ['trainingDataLocation'],
     },
     fetchTrainingData: {
       service: 'MLOpsManager',
       service: 'repoClient',
       type: 'inbound',
       consumesEvent: 'mlopsRetrieveTrainingData',
-      producesEvent: 'mlopsTrainingDataRetrieved'
+      producesEvent: 'mlopsTrainingDataRetrieved',
     },
     deployModel: {
       service: 'MLOpsManager',
       type: 'outbound',
       consumesEvent: 'mlopsDeployModel',
-      producesEvent: 'mlopsModelDeployed'
+      producesEvent: 'mlopsModelDeployed',
     },
     trainModel: {},
     detectConvergence: {
-      timeout: 600000
+      timeout: 600000,
     },
     compareResults: {},
     reportResults: {},
-    implementRecommendations: {}
-  }
+    implementRecommendations: {},
+  },
 }
 
 module.exports.MLOps = MLOps

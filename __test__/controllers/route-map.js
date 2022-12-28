@@ -2,21 +2,21 @@ const { assert } = require('console')
 const { pathToRegexp } = require('path-to-regexp')
 
 class RouteMap extends Map {
-  find (path) {
+  find(path) {
     return [...super.keys()].find(
       regex => regex instanceof RegExp && regex.test(path)
     )
   }
 
-  set (path, method) {
+  set(path, method) {
     super.set(pathToRegexp(path), method)
   }
 
-  has (path) {
+  has(path) {
     return this.find(path) ? true : false
   }
 
-  get (path) {
+  get(path) {
     return this.find(path)
   }
 }

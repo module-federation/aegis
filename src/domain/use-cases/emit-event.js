@@ -17,20 +17,20 @@ import { isMainThread, workerData } from 'worker_threads'
  * @param {ModelParam} param0
  * @returns {function():Promise<import("../domain/model").Model>}
  */
-export default function makeEmitEvent ({
+export default function makeEmitEvent({
   modelName,
   models,
   repository,
   threadpool,
   broker,
-  handlers = []
+  handlers = [],
 } = {}) {
   /**
    *
    * @param {{eventName:string,...}} input
    * @returns
    */
-  return async function emitEvent (input) {
+  return async function emitEvent(input) {
     try {
       if (isMainThread) {
         try {

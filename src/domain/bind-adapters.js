@@ -2,7 +2,7 @@
 
 const debug = /true/i.test(process.env.DEBUG)
 
-function DefaultInboundAdapter (port) {
+function DefaultInboundAdapter(port) {
   return async function ({ model, args }) {
     return port.apply(model, args)
   }
@@ -10,18 +10,23 @@ function DefaultInboundAdapter (port) {
 
 /**
  * In a hex arch, ports and adapters control I/O between
- * the application core and the outside world. Inbound
- * adapters invoke ports and ports invoke outbound adapters.
- * Optionally, outbound adapters invoke services.
+ * the application core and the outside world. Ports are
+ * associated with one or more adapters. An Adapter either
+ * calls a port or is called by one. In the former case,
+ * we say the adpater is inbound, driving or primary;
+ * in the second outbound, driven, or secondary. Inbound
+ * adpaters call ports on the domain model. Outbound adapters
+ * optionally call service adapaters, or just services.
  *
  * Inject each adapter with its port or service dependency--
  * i.e. bind it to a port or service, as indicated in the
  * model spec.
  *
  * Return an object containing the set of port functions for
- * each model. These bound functions are called by common logic
+ * each model. These port functions are called by common logic
  * that handles error recovery, instrumentation, authorization,
- * flow control and other port services.
+ * flow control, state (enabled or disabled) and other universal
+ * port features.
  *
  * @param {{
  *  portSpec:import('.').ports
@@ -31,11 +36,11 @@ function DefaultInboundAdapter (port) {
  * }}
  *
  */
-export default function bindAdapters ({
+export default function bindAdapters({
   ports,
   adapters,
   services,
-  portSpec
+  portSpec,
 } = {}) {
   if (!portSpec || (!adapters && !ports)) {
     debug && console.debug('missing params')
@@ -44,15 +49,15 @@ export default function bindAdapters ({
 
   const bindings = {
     outbound: (portName, port, adapter, service) => ({
-      [portName]: adapter(service)
+      [portName]: adapter(service),
     }),
 
     inbound: (portName, port, adapter = DefaultInboundAdapter, service) => ({
-      [portName]: adapter(port)
-    })
+      [portName]: adapter(port),
+    }),
   }
 
-  function badPortConfig ({ spec, type, port, adapter }) {
+  function badPortConfig({ spec, type, port, adapter }) {
     return (
       !spec ||
       !type ||

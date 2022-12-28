@@ -1,7 +1,7 @@
-"use strict";
+'use strict'
 
-const argv = require("node:process");
-const service = require("whois");
+const argv = require('node:process')
+const service = require('whois')
 
 export default async function whois(domain) {
   return new Promise(async function (resolve) {
@@ -10,9 +10,9 @@ export default async function whois(domain) {
         data,
         getEmail: () =>
           data.match(/([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)/gi)[0],
-      });
-    });
-  });
+      })
+    })
+  })
 }
 
-whois(argv[2]).then(data => console.log(data));
+whois(argv[2]).then(data => console.log(data))

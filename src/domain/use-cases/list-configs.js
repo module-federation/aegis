@@ -10,20 +10,22 @@ import { isMainThread } from 'worker_threads'
  *  threadpools:import('../thread-pool').default
  * }} injectedDependencies
  */
-export default function listConfigsFactory ({
+export default function listConfigsFactory({
   models,
   broker,
   datasources,
-  threadpools
+  threadpools,
 } = {}) {
   try {
-    return async function listConfigs (query) {
+    return async function listConfigs(query) {
       const modelName =
         typeof query.modelName === 'string'
           ? query.modelName.toUpperCase()
           : null
       const poolName =
         typeof query.poolName === 'string' ? query.poolName.toUpperCase() : null
+
+      const domain = models.getModelSpec(modelName)?.domain
 
       const configTypes = {
         data: async () =>
@@ -32,13 +34,18 @@ export default function listConfigsFactory ({
                 .getThreadPool(modelName)
                 .runJob(listConfigs.name, query, modelName)
             : modelName && poolName
-            ? await datasources.getSharedDataSource(poolName).list()
+            ? await datasources.getSharedDataSource(poolName, domain).list()
             : modelName
-            ? await datasources.getSharedDataSource(modelName).list()
+            ? await datasources.getSharedDataSource(modelName, domain).list()
             : await Promise.all(
                 datasources.listDataSources().map(async dsName => ({
                   dsName,
-                  ...(await datasources.getSharedDataSource(dsName).count())
+                  ...(await datasources
+                    .getSharedDataSource(
+                      dsName,
+                      models.getModelSpec(modelName)?.domain
+                    )
+                    .count()),
                 }))
               ),
 
@@ -49,7 +56,7 @@ export default function listConfigsFactory ({
                 .runJob(listConfigs.name, query, modelName)
             : [...broker.getEvents()].map(([k, v]) => ({
                 eventName: k,
-                handlers: v.length
+                handlers: v.length,
               })),
 
         models: () =>
@@ -72,7 +79,7 @@ export default function listConfigsFactory ({
             ? models.getModelSpec(modelName).relations
             : models.getModelSpecs().map(spec => ({
                 modelName: spec.modelName,
-                relations: spec.relations ? Object.values(spec.relations) : {}
+                relations: spec.relations ? Object.values(spec.relations) : {},
               })),
 
         commands: () =>
@@ -84,7 +91,7 @@ export default function listConfigsFactory ({
             ? models.getModelSpec(modelName).commands
             : models.getModelSpecs().map(spec => ({
                 modelName: spec.modelName,
-                commands: spec.commands ? Object.values(spec.commands) : {}
+                commands: spec.commands ? Object.values(spec.commands) : {},
               })),
 
         ports: () =>
@@ -96,8 +103,8 @@ export default function listConfigsFactory ({
             ? models.getModelSpec(modelName).ports
             : models.getModelSpecs().map(spec => ({
                 modelName: spec.modelName,
-                ports: spec.ports ? Object.values(spec.ports) : {}
-              }))
+                ports: spec.ports ? Object.values(spec.ports) : {},
+              })),
       }
 
       if (query?.details && typeof configTypes[query.details] === 'function')

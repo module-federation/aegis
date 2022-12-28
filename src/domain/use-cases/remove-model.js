@@ -22,19 +22,19 @@ import { AppError } from '../util/app-error'
  * @param {ModelParam} param0
  * @returns {removeModel}
  */
-export default function removeModelFactory ({
+export default function removeModelFactory({
   modelName,
   models,
   repository,
   threadpool,
   broker,
-  handlers = []
+  handlers = [],
 } = {}) {
   const eventType = models.EventTypes.DELETE
   const eventName = models.getEventName(eventType, modelName)
   handlers.forEach(handler => broker.on(eventName, handler))
 
-  return async function removeModel ({ id }) {
+  return async function removeModel({ id }) {
     if (isMainThread) {
       const model = await repository.find(id)
       if (!model) throw new Error('Not Found')

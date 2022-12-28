@@ -12,7 +12,7 @@ const MAPSIZE = 2048 * 56
 const KEYSIZE = 64
 const OBJSIZE = 4056
 
-function logError (x) {
+function logError(x) {
   const errObj = { msg: 'unexpected datatype', type: typeof x, value: x }
   console.error(errObj)
   throw new Error(JSON.stringify(errObj))
@@ -24,15 +24,15 @@ const dataType = {
     object: x => JSON.stringify(x),
     number: x => logError(x),
     symbol: x => logError(x),
-    undefined: x => logError(x)
+    undefined: x => logError(x),
   },
   read: {
     string: x => JSON.parse(x),
     object: x => logError(x),
     number: x => logError(x),
     symbol: x => logError(x),
-    undefined: x => logError(x)
-  }
+    undefined: x => logError(x),
+  },
 }
 
 /** @typedef {import('./datasource-factory').default} DataSourceFactory */
@@ -46,15 +46,15 @@ const dataType = {
  */
 const SharedMemoryMixin = superclass =>
   class extends superclass {
-    constructor (map, name, options) {
-      super(map, name, options)
+    constructor(map, name, namespace, options) {
+      super(map, name, namespace, options)
     }
 
     /**
      * @override
      * @returns {import('.').Model}
      */
-    mapSet (id, data) {
+    mapSet(id, data) {
       return this.dsMap.set(id, dataType.write[typeof data](data))
     }
 
@@ -64,7 +64,7 @@ const SharedMemoryMixin = superclass =>
      * @param {*} id
      * @returns {import('.').Model}
      */
-    mapGet (id) {
+    mapGet(id) {
       if (!id) {
         return console.warn({ fn: this.mapGet.name, msg: 'no id provided' })
       }
@@ -92,7 +92,7 @@ const SharedMemoryMixin = superclass =>
      * @override
      * @returns
      */
-    mapToArray () {
+    mapToArray() {
       return this.dsMap.map(v =>
         isMainThread
           ? JSON.parse(v)
@@ -104,11 +104,11 @@ const SharedMemoryMixin = superclass =>
      * @override
      * @returns
      */
-    mapCount () {
+    mapCount() {
       return this.dsMap.length
     }
 
-    getClassName () {
+    getClassName() {
       return this.className
     }
   }
@@ -118,7 +118,7 @@ const SharedMemoryMixin = superclass =>
  * @param {string} name i.e. modelName
  * @returns {SharedMap}
  */
-function findSharedMap (name) {
+function findSharedMap(name) {
   if (name === workerData.poolName) return workerData.sharedMap
 
   if (workerData.dsRelated?.length > 0) {
@@ -127,14 +127,14 @@ function findSharedMap (name) {
   }
 }
 
-function rehydrateSharedMap (name) {
+function rehydrateSharedMap(name) {
   const sharedMap = findSharedMap(name)
   if (sharedMap) return Object.setPrototypeOf(sharedMap, SharedMap.prototype)
 }
 
-function createSharedMap (mapsize, keysize, objsize, name) {
+function createSharedMap(mapsize, keysize, objsize, name) {
   return Object.assign(new SharedMap(mapsize, keysize, objsize), {
-    modelName: name // assign modelName
+    modelName: name, // assign modelName
   })
 }
 
@@ -146,7 +146,7 @@ function createSharedMap (mapsize, keysize, objsize, name) {
  * @param {import('./datasource-factory').dsOpts} options
  * @returns {import('./datasource').default}
  */
-export function withSharedMemory (
+export function withSharedMemory(
   createDataSource,
   factory,
   name,
@@ -169,7 +169,7 @@ export function withSharedMemory (
         dsMap: sharedMap,
         mixins: [DsClass => class extends SharedMemoryMixin(DsClass) {}].concat(
           options.mixins || []
-        )
+        ),
       })
     }
 

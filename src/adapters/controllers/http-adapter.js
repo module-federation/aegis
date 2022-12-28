@@ -37,14 +37,13 @@ export default function buildCallback(controller) {
           params: httpRequest.params,
           query: httpRequest.query,
           headers: httpRequest.headers,
-          body: httpRequest.body
+          body: httpRequest.body,
         })
-      }
+      },
     }
 
     return controller(httpRequest)
       .then(httpResponse => {
-        if (httpRequest.stream) return
         if (httpResponse.headers) {
           res.set(httpResponse.headers)
         }

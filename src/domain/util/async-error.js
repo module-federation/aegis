@@ -8,13 +8,13 @@ import makeObject from './make-object'
  * return predictable response
  * @param {Promise} promise
  */
-export default function async (promise) {
+export default function async(promise) {
   return promise
     .then(data => ({
       ok: true,
       data,
       asObject: () => makeObject(data),
-      asArray: () => makeArray(data)
+      asArray: () => makeArray(data),
     }))
     .catch(error => {
       console.error(error)

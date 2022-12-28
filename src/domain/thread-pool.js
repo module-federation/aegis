@@ -4,11 +4,12 @@ import EventBrokerFactory from './event-broker'
 import { EventEmitter } from 'stream'
 import { Worker, BroadcastChannel } from 'worker_threads'
 import domainEvents from './domain-events'
-import ModelFactory, { totalDomains } from '.'
+import ModelFactory, { totalServices } from '.'
 import os from 'os'
 import { AsyncResource } from 'async_hooks'
 import { requestContext } from '.'
 import path from 'path'
+import { async } from 'regenerator-runtime'
 
 const { poolOpen, poolClose, poolDrain, poolAbort } = domainEvents
 const broker = EventBrokerFactory.getInstance()
@@ -191,7 +192,7 @@ export class ThreadPool extends EventEmitter {
    *  file:string
    *  workerData:WorkerOptions.workerData
    * }} param0
-   * @returns {Thread}
+   * @returns {Promise<Thread>}
    */
   newThread ({ pool = this, file, workerData }) {
     return new Promise((resolve, reject) => {
@@ -211,11 +212,22 @@ export class ThreadPool extends EventEmitter {
         eventChannel: eventChannel.port1,
 
         once (event, callback) {
-          worker.on(event, callback)
+          worker.once(event, callback)
         },
 
         async stop () {
-          return worker.terminate()
+          return new Promise(resolve => {
+            const timerId = setTimeout(async () => {
+              console.warn('shutdown timeout')
+              resolve(await worker.terminate())
+            }, 6000)
+            worker.once('exit', () => {
+              clearTimeout(timerId)
+              console.log('orderly shutdown')
+              resolve(1)
+            })
+            this.eventChannel.postMessage({ eventName: 'shutdown' })
+          })
         },
 
         /**
@@ -250,7 +262,7 @@ export class ThreadPool extends EventEmitter {
 
           const errorFn = AsyncResource.bind(error => {
             pool.jobTime(job.stopTimer())
-            console.error({ fn: this.run.name, error })
+            console.error({ fn: this.run.name, msg: 'dead thread', error })
             unsubscribe('exit', exitFn)
             unsubscribe('message', messageFn)
             pool.incrementErrorCount()
@@ -283,7 +295,13 @@ export class ThreadPool extends EventEmitter {
         }
       }
 
-      worker.once('online', () => {
+      worker.once('message', msg => {
+        if (msg?.status !== 'online') {
+          const error = new Error('thread init failed')
+          console.error(error.message)
+          return reject(error)
+        }
+        console.log('aegis up', msg)
         pool.connectEventChannel(worker, eventChannel)
         pool.threads.push(thread)
         resolve(thread)
@@ -304,7 +322,7 @@ export class ThreadPool extends EventEmitter {
       // call thread.run
       this.waitingJobs.shift()(thread)
     // return to pool
-    else this.freeThreads.push(thread)
+    else this.checkin(thread)
   }
 
   /**
@@ -314,10 +332,14 @@ export class ThreadPool extends EventEmitter {
    * @returns {Promise<Thread>}
    */
   async startThread () {
-    return this.newThread({
+    const thread = await this.newThread({
       file: this.file,
       workerData: this.workerData
     })
+    
+    if (thread) return thread
+
+    throw new Error('error creating thread')
   }
 
   /**
@@ -330,8 +352,7 @@ export class ThreadPool extends EventEmitter {
    * }}
    */
   async startThreads () {
-    for (let i = 0; i < this.minPoolSize(); i++)
-      this.freeThreads.push(await this.startThread())
+    for (let i = 0; i < this.minPoolSize(); i++) await this.startThread()
     return this
   }
 
@@ -345,13 +366,14 @@ export class ThreadPool extends EventEmitter {
     const exitCode = await thread.stop()
     const exitStatus = { pool: this.name, id: thread.id, exitCode, reason }
     this.emit('threadExit', exitStatus)
+    this.freeThreads.splice(this.freeThreads.indexOf(thread), 1)
+    this.threads.splice(this.freeThreads.indexOf(thread), 1)
     return exitStatus
   }
 
   async stopThreads (reason) {
     for (const thread of this.threads)
       console.warn(await this.stopThread(thread, reason))
-    this.freeThreads.splice(0, this.freeThreads.length)
     return this
   }
 
@@ -495,6 +517,24 @@ export class ThreadPool extends EventEmitter {
     )
   }
 
+  checkout () {
+    if (this.freeThreads.length > 0) {
+      const thread = this.freeThreads.shift()
+      const threadsInUse = this.threads.length - this.freeThreads.length
+      console.debug(`thread checked-out, total in-use now ${threadsInUse}`)
+      return thread
+    } 
+  }
+
+  checkin (thread) {
+    if (thread) {
+      this.freeThreads.push(thread)
+      const threadsInUse = this.threads.length - this.freeThreads.length
+      console.debug(`thread checked-in, total in-use now ${threadsInUse}`)
+    }
+    return this
+  }
+
   /**
    * Spin up a new thread if needed and available.
    */
@@ -529,7 +569,7 @@ export class ThreadPool extends EventEmitter {
         ...options
       })
 
-      let thread = this.freeThreads.shift()
+      let thread = this.checkout()
 
       if (!thread) thread = await this.allocate()
 
@@ -548,9 +588,7 @@ export class ThreadPool extends EventEmitter {
     console.warn('pool is aborting', this.name, reason)
     this.aborting = true
 
-    await this.close()
-      .notify(poolAbort)
-      .stopThreads(reason)
+    await this.close().notify(poolAbort).stopThreads(reason)
 
     this.aborting = false
     this.open()
@@ -561,41 +599,62 @@ export class ThreadPool extends EventEmitter {
     return this
   }
 
+  /**
+   * Fire event with the given scope (host, pool, thread)
+   * @param {{
+   *   scope:'host'|'pool'|'thread'|'response',
+   *   data:string,
+   *   name:string
+   * }} event
+   * @returns
+   */
   async fireEvent (event) {
-    // send to all pools, all threads
-    if (event.scope === 'host') {
-      broker.notify('to_worker', { ...event, eventSource: this.name })
-      return
+    const eventScopes = {
+      host: event =>
+        broker.notify('to_worker', { ...event, eventSource: this.name }),
+
+      pool: event => this.broadcastEvent(event),
+
+      thread: event => {
+        const thread = this.freeThreads[0] || this.threads[0]
+        thread.eventChannel.postMessage(event)
+      },
+
+      response: event =>
+        this.runJob(event.eventName, event, this.name, {
+          channel: EVENTCHANNEL
+        })
     }
 
-    // send to all threads in this pool
-    if (event.scope === 'pool') {
-      this.broadcastEvent(event)
-      return
-    }
+    const res = eventScopes[event.scope](event)
 
-    // send to one thread in this pool
-    if (event.scope === 'thread') {
-      const thread = this.freeThreads[0] || this.threads[0]
-      if (thread) thread.eventChannel.postMessage(event)
-      return
-    }
+    return event.scope === 'response' ? await res : this
+  }
 
-    // use if a response is required
-    if (event.scope === 'response') {
-      // this is the only scope that will start a thread
-      return this.runJob(event.eventName, event, this.name, {
-        channel: EVENTCHANNEL
-      })
-    }
+  reload (pool = this) {
+    return new Promise((resolve, reject) => {
+      pool
+        .close()
+        .notify(poolClose)
+        .drain()
+        .then(pool => pool.stopThreads('reload'))
+        .then(pool => pool.startThreads())
+        .then(pool => pool.open().bumpDeployCount().notify(poolOpen))
+        .catch(reject)
+        .then(resolve)
+    })
+  }
 
-    const err = {
-      fn: this.fireEvent.name,
-      msg: 'event not fired, no scope specified'
-    }
-
-    console.warn(err)
-    this.emit('malformedEvent', err)
+  destroy (pool = this) {
+    return new Promise((resolve, reject) => {
+      pool
+        .close()
+        .notify(poolClose)
+        .drain()
+        .then(pool => pool.stopThreads('destroy'))
+        .catch(reject)
+        .then(resolve)
+    })
   }
 
   /**
@@ -617,10 +676,16 @@ export class ThreadPool extends EventEmitter {
     }
 
     return new Promise((resolve, reject) => {
+      const ctx = this
       if (this.noJobsRunning()) resolve(this)
       else {
         const timerId = setTimeout(
-          () => reject(new Error('drain timeout')),
+          () =>
+            console.log(
+              'drain timeout',
+              ctx.freeThreads.length,
+              ctx.threads.length
+            ) && resolve(ctx),
           4000
         )
 
@@ -636,8 +701,8 @@ export class ThreadPool extends EventEmitter {
    * send event to all worker threads in this pool
    * @param {string} eventName
    */
-  broadcastEvent (eventName) {
-    this.broadcastChannel.postMessage(eventName)
+  broadcastEvent (eventName, msg) {
+    this.broadcastChannel.postMessage({ eventName, msg })
   }
 }
 
@@ -681,7 +746,7 @@ const ThreadPoolFactory = (() => {
     if (options?.maxThreads) return options.maxThreads
     // divide the total cpu count by the number of domains
     return Math.floor(
-      os.cpus().length / totalDomains() || DEFAULT_THREADPOOL_MAX
+      os.cpus().length / totalServices() || DEFAULT_THREADPOOL_MAX
     )
   }
 
@@ -791,21 +856,7 @@ const ThreadPoolFactory = (() => {
     return new Promise((resolve, reject) => {
       const pool = threadPools.get(poolName.toUpperCase())
       if (!pool) reject(`no such pool ${pool}`)
-
-      pool
-        .close()
-        .notify(poolClose)
-        .drain()
-        .then(pool => pool.stopThreads('reload'))
-        .then(pool => pool.startThreads())
-        .then(pool =>
-          pool
-            .open()
-            .bumpDeployCount()
-            .notify(poolOpen)
-        )
-        .catch(reject)
-        .then(resolve)
+      pool.reload()
     })
   }
 
@@ -830,14 +881,7 @@ const ThreadPoolFactory = (() => {
   function destroy (pool) {
     return new Promise((resolve, reject) => {
       console.debug('dispose pool', pool.name)
-      return pool
-        .close()
-        .notify(poolClose)
-        .drain()
-        .then(pool => pool.stopThreads('destroy'))
-        .then(() => threadPools.delete(pool.name))
-        .catch(reject)
-        .then(resolve)
+      pool.destroy()
     })
   }
 

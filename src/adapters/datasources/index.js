@@ -11,5 +11,5 @@ import { DataSourceMongoDb } from './datasource-mongodb'
 export const dsClasses = {
   [DataSourceFile.name]: DataSourceFile,
   [DataSourceMemory.name]: DataSourceMemory,
-  [DataSourceMongoDb.name]: DataSourceMongoDb
+  [DataSourceMongoDb.name]: DataSourceMongoDb,
 }

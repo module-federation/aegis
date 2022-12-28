@@ -6,7 +6,7 @@ import DataSourceFactory from './datasource-factory'
 import EventBrokerFactory from './event-broker'
 import EventEmitter from 'events'
 
-export async function generateWorkflow (options) {
+export async function generateWorkflow(options) {
   const { wfName, wfInput, wfTasks } = options
 
   if (ModelFactory.getModelSpec(wfName)) {
@@ -23,13 +23,13 @@ export async function generateWorkflow (options) {
     endpoint: 'workflows',
     factory: () => dependencies =>
       new Object.freeze({ ...dependencies, ...wfInput }),
-    ports: wfTasks
+    ports: wfTasks,
   }
 
   ModelFactory.registerModel(workflow)
 }
 
-export function runWorkflow ({ wfName }) {
+export function runWorkflow({ wfName }) {
   const model = ModelFactory.createModel(
     EventBrokerFactory.getInstance(),
     DataSourceFactory.getSharedDataSource(wfName),
@@ -45,7 +45,7 @@ export function runWorkflow ({ wfName }) {
  *
  * @param {Array<import(".").Model>} list
  */
-export function resumeWorkflow (list) {
+export function resumeWorkflow(list) {
   if (list?.length > 0) {
     list.forEach(function (model) {
       const history = model.getPortFlow()

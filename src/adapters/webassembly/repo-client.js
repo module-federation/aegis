@@ -40,10 +40,10 @@ export const RepoClient = {
           })
         })
         .then(function (rest) {
-          const buf = Buffer.from(rest.data.content, 'base64')
+          const buf = Buffer.from(rest.data.content)
           resolve({
             toString: () => buf.toString('utf-8'),
-            asBase64Buffer: () => buf,
+            toArrayBuffer: () => buf,
             toUint16Array: () =>
               new Uint16Array(
                 buf.buffer,
@@ -76,11 +76,10 @@ export const RepoClient = {
         })
         res.on('end', function () {
           try {
-            body = Buffer.concat(body).toString()
+            resolve(Buffer.concat(body))
           } catch (e) {
             reject(e)
           }
-          resolve(body)
         })
       })
       req.on('error', function (err) {
@@ -98,6 +97,6 @@ export const RepoClient = {
   async fetch (entry) {
     if (/^https:\/\/api.github.com.*/i.test(entry.url))
       return this.octoGet(entry)
-    return this.httpGet(entry.url)
+    return this.httpGet(new URL(entry.url))
   }
 }

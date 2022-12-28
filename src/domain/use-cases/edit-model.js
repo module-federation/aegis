@@ -20,13 +20,13 @@ import { AppError } from '../util/app-error'
  * @param {ModelParam} param0
  * @returns {function():Promise<import("../domain/model").Model>}
  */
-export default function makeEditModel ({
+export default function makeEditModel({
   modelName,
   models,
   repository,
   threadpool,
   broker,
-  handlers = []
+  handlers = [],
 } = {}) {
   const eventType = models.EventTypes.UPDATE
   const eventName = models.getEventName(eventType, modelName)
@@ -40,7 +40,7 @@ export default function makeEditModel ({
    * @param {{id:string,changes:object,command:string}} input
    * @returns
    */
-  async function editModel (input) {
+  async function editModel(input) {
     if (isMainThread) {
       const model = await repository.find(input.id)
 
@@ -54,17 +54,15 @@ export default function makeEditModel ({
 
         // get model
         const model = await repository.find(id)
-        console.debug({ model })
 
         // only the worker does the update
-        const updated = await models.updateModel(model, changes)
+        const updatedModel = models.updateModel(model, changes)
 
-        console.debug({ updated })
-        await repository.save(id, updated)
+        await repository.save(id, updatedModel)
 
         const event = models.createEvent(eventType, modelName, {
-          updated,
-          changes
+          attemptedChanges: changes,
+          updatedModel,
         })
 
         try {
@@ -72,7 +70,7 @@ export default function makeEditModel ({
 
           if (command) {
             const result = await async(
-              executeCommand(updated, command, 'write')
+              executeCommand(updatedModel, command, 'write')
             )
             if (result.ok) return result.data
           }

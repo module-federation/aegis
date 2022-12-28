@@ -13,7 +13,8 @@ See the [aegis-host](https://github.com/module-federation/aegis-host) repo for d
     </a>
 </div>
 
-## Consolidate your microservices 
+## Consolidate your microservices
+
 (by running them together in a single process)
 
 - for decreased footprint,
@@ -27,6 +28,7 @@ _without loosing_
 - or component independence (i.e. components remain decoupled)
 
 ## Or distribute your components
+
 (across a self-forming service mesh)
 
 - dynamically and adaptively
@@ -67,7 +69,7 @@ npm i @module-federation/aegis
 
 ### Contribute
 
-[![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/github.com/module-federation/aegis) 
+[![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/github.com/module-federation/aegis)
 
 or
 
@@ -90,9 +92,11 @@ yarn start
 yarn demo
 ```
 
-----
+---
+
 ### Learn
-[![Aegis Overview](https://res.cloudinary.com/marcomontalbano/image/upload/v1632364889/video_to_markdown/images/youtube--n2qqgi3fTto-c05b58ac6eb4c4700831b2b3070cd403.jpg)](https://youtu.be/jddhfLA_2k0 "Aegis Overview")
+
+[![Aegis Overview](https://res.cloudinary.com/marcomontalbano/image/upload/v1632364889/video_to_markdown/images/youtube--n2qqgi3fTto-c05b58ac6eb4c4700831b2b3070cd403.jpg)](https://youtu.be/jddhfLA_2k0 'Aegis Overview')
 
 # Roadmap
 
@@ -120,6 +124,4 @@ yarn demo
 [downloads-image]: https://img.shields.io/npm/dm/@module-federation/aegis
 [downloads-url]: https://npmjs.org/package/@module-federation/aegis
 [gitpod-image]: https://img.shields.io/badge/Gitpod-ready--to--code-908a85?logo=gitpod
-[gitpod-url]: https://gitpod.io/github.com/module-federation/aegis
-
-
+[gitpod-url]: https://gitpod.io/github.com/module-federation/aegis-app

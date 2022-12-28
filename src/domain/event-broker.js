@@ -46,7 +46,7 @@ export class EventBroker {
    *
    * param {Map<string | RegExp, eventHandler[]>} eventHandlers
    */
-  constructor () {}
+  constructor() {}
 
   /**
    * Register callback to fire on event `eventName`
@@ -54,7 +54,7 @@ export class EventBroker {
    * @param {eventHandler} handler
    * @param {brokerOptions} [options]
    */
-  on (eventName, handler, options = {}) {
+  on(eventName, handler, options = {}) {
     throw new Error('unimplemented abstract method')
   }
 
@@ -64,7 +64,7 @@ export class EventBroker {
    * @param {Event} eventData - the import of the event
    * @param {{forward:boolean}} options - forward this event externally
    */
-  notify (eventName, eventData, options) {
+  notify(eventName, eventData, options) {
     throw new Error('unimplemented abstract method')
   }
 
@@ -73,7 +73,7 @@ export class EventBroker {
    * @param {string|RegExp} eventName
    * @param {eventHandler} callback
    */
-  off (eventName, callback) {
+  off(eventName, callback) {
     throw new Error('unimplemented abstract method')
   }
 }
@@ -93,7 +93,7 @@ const handleError = error => {
  * @param {eventHandler} handle
  * @param {boolean} forward
  */
-function runHandler (eventName, eventData, handle) {
+function runHandler(eventName, eventData, handle) {
   if (!eventData) {
     console.warn('no data provided, abort')
     return
@@ -102,7 +102,7 @@ function runHandler (eventName, eventData, handle) {
   if (debugHandler)
     console.debug('event fired', {
       eventName,
-      eventData
+      eventData,
     })
   else console.debug('handler running', eventName)
 
@@ -119,7 +119,7 @@ function runHandler (eventName, eventData, handle) {
  * @param {brokerOptions} options
  * @fires eventName
  */
-function notify (eventName, eventData = {}, options = {}) {
+function notify(eventName, eventData = {}, options = {}) {
   const run = runHandler.bind(this)
   const data =
     typeof eventData === 'object'
@@ -155,7 +155,7 @@ class EventBrokerImpl extends EventBroker {
   /**
    * @override
    */
-  constructor () {
+  constructor() {
     super()
     this.notify = notify.bind(this)
     this.subscriptionCb = x => x
@@ -167,7 +167,7 @@ class EventBrokerImpl extends EventBroker {
    * @param {eventHandler} handler
    * @param {brokerOptions} [options]
    */
-  on (
+  on(
     eventName,
     handler,
     {
@@ -179,7 +179,7 @@ class EventBrokerImpl extends EventBroker {
       enabled = [],
       disabled = [],
       singleton = false,
-      priviledged = null
+      priviledged = null,
     } = {}
   ) {
     if (!eventName || typeof handler !== 'function') {
@@ -187,7 +187,7 @@ class EventBrokerImpl extends EventBroker {
         fn: EventBrokerImpl.name,
         errmsg: 'invalid arg',
         eventName,
-        handler
+        handler,
       })
       return null
     }
@@ -202,7 +202,7 @@ class EventBrokerImpl extends EventBroker {
       const conditions = {
         filter: {
           applies: filterKeys.length > 0,
-          satisfied: event => filterKeys.every(k => filterKeys[k] === event[k])
+          satisfied: event => filterKeys.every(k => filterKeys[k] === event[k]),
         },
         priviledged: {
           applies: true, // have to check the data to know
@@ -210,30 +210,30 @@ class EventBrokerImpl extends EventBroker {
             !event ||
             !event._options ||
             !event._options.priviledged ||
-            event._options.priviledged === hash(priviledged)
+            event._options.priviledged === hash(priviledged),
         },
         ignore: {
           applies: ignore?.length > 0,
-          satisfied: event => !ignore.includes(event.eventName)
+          satisfied: event => !ignore.includes(event.eventName),
         },
         custom: {
           applies: typeof custom === 'function',
-          satisfied: event => custom(event)
+          satisfied: event => custom(event),
         },
         enabled: {
           applies: enabledEvents.length > 0,
-          satisfied: event => enabled.includes(event.eventName)
+          satisfied: event => enabled.includes(event.eventName),
         },
         disabled: {
           applies: disabledEvents.length > 0,
-          satisfied: event => !disabled.includes(event.eventName)
-        }
+          satisfied: event => !disabled.includes(event.eventName),
+        },
       }
 
       if (
         Object.keys(conditions).every(key => {
           return (
-            (!conditions[key].applies || conditions[key].satisfied(eventData))
+            !conditions[key].applies || conditions[key].satisfied(eventData)
           )
         })
       ) {
@@ -247,7 +247,7 @@ class EventBrokerImpl extends EventBroker {
 
     const sub = {
       ...subscription,
-      unsubscribe: () => this.off(eventName, eventCallbackWrapper)
+      unsubscribe: () => this.off(eventName, eventCallbackWrapper),
     }
 
     const funcs = handlers.get(eventName)
@@ -270,7 +270,7 @@ class EventBrokerImpl extends EventBroker {
    * @param {()=>void} fn
    * @returns
    */
-  off (eventName, fn) {
+  off(eventName, fn) {
     let retval = false
     // if no function provided, delete all of them
     if (!fn) handlers.delete(eventName)
@@ -291,22 +291,22 @@ class EventBrokerImpl extends EventBroker {
   //   this.eventSource = eventSource
   // }
 
-  onSubcribe (cb) {
+  onSubcribe(cb) {
     this.subscriptionCb = eventName => typeof cb === 'function' && cb(eventName)
   }
 
-  serialize () {
+  serialize() {
     return JSON.stringify(
       [...handlers].map(([k, v]) => ({ [k]: v.map(fn => fn.toString()) })),
       null
     )
   }
 
-  getEvents () {
+  getEvents() {
     return [...handlers]
   }
 
-  toString () {
+  toString() {
     console.log('toString', this.serialize())
     return this.serialize()
   }
@@ -319,12 +319,15 @@ class EventBrokerImpl extends EventBroker {
 const EventBrokerFactory = (() => {
   let instance
 
-  function createInstance () {
+  function createInstance() {
     return new EventBrokerImpl()
   }
 
   return Object.freeze({
     /**
+     * @typedef {import('./model-factory').ModelFactory} ModelFactory
+     * While not needed to implement a singleton (see {@link ModelFactory }),
+     * this more strongly indicates to devs that the broker is a singleton
      * @returns {EventBroker} singleton
      */
     getInstance: function () {
@@ -332,7 +335,7 @@ const EventBrokerFactory = (() => {
         instance = createInstance()
       }
       return instance
-    }
+    },
   })
 })()
 

@@ -4,16 +4,21 @@ import DataSource from '../../domain/datasource'
 
 /**
  * Temporary in-memory storage.
+ *
+ * These methods represent calls to external storage, which doesnt
+ * exist in this case. Because the system extends and overrides these
+ * methods to implement caching, there's nothing for them to do, except
+ * to emit cache sync events when running in cluster mode.
  */
 export class DataSourceMemory extends DataSource {
-  constructor (map, name, namespace, options) {
+  constructor(map, name, namespace, options) {
     super(map, name, namespace, options)
   }
 
   /**
    * @override
    *
-   * Update cache and datasource. Sync cache of other
+   * Handles cluster cache sync. Sync cache of other
    * cluster members if running in cluster mode.
    *
    * @param {*} id
@@ -21,40 +26,43 @@ export class DataSourceMemory extends DataSource {
    * @param {*} sync - sync cluster nodes, true by default
    * @returns
    */
-  save (id, data, sync = true) {
+  save(id, data, sync = true) {
     if (sync && process.send === 'function') {
       /** send data to cluster members */
       process.send({
         cmd: 'saveBroadcast',
         pid: process.pid,
         name: this.name,
+        namespace: this.namespace,
         data,
-        id
+        id,
       })
     }
-    this.saveSync(id, data)
-  }
-
-  find (id) {
-    return this.findSync(id)
-  }
-
-  list (options) {
-    return this.listSync(options)
   }
 
   /**
+   * @param {*} id
+   * @returns
+   */
+  find(id) {}
+
+  list(options) {}
+
+  /**
+   * Handles cluster cache sync. Sync cache of other
+   * cluster members if running in cluster mode.
+   *
    * @override
    */
-  delete (id, sync = true) {
+  delete(id, sync = true) {
     if (sync && process.send === 'function') {
       process.send({
         cmd: 'deleteBroadcast',
         pid: process.pid,
         name: this.name,
-        id
+        namespace: this.namespace,
+        id,
       })
     }
-    return this.deleteSync(id)
   }
 }

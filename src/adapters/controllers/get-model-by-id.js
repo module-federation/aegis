@@ -4,14 +4,14 @@ import getContent from './get-content'
  * @param {import("../use-cases/find-model").findModel} findModel
  * @returns {import("../adapters/http-adapter").httpController}
  */
-export default function getModelByIdFactory (findModel) {
-  return async function getModelById (httpRequest) {
+export default function getModelByIdFactory(findModel) {
+  return async function getModelById(httpRequest) {
     try {
       httpRequest.log(getModelById.name)
 
       const model = await findModel({
         id: httpRequest.params.id,
-        query: httpRequest.query
+        query: httpRequest.query,
       })
 
       const { content, contentType } = getContent(
@@ -22,10 +22,10 @@ export default function getModelByIdFactory (findModel) {
 
       return {
         headers: {
-          'Content-Type': contentType
+          'Content-Type': contentType,
         },
         statusCode: 200,
-        body: content
+        body: content,
       }
     } catch (e) {
       console.error(e.message)
@@ -33,23 +33,23 @@ export default function getModelByIdFactory (findModel) {
       if (e.message === 'Not Found') {
         return {
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
           },
           statusCode: 404,
           body: {
-            error: e.message
-          }
+            error: e.message,
+          },
         }
       }
 
       return {
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
         statusCode: e.code || 400,
         body: {
-          error: e.message
-        }
+          error: e.message,
+        },
       }
     }
   }

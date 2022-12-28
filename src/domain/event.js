@@ -50,7 +50,7 @@ const Event = (() => {
     args = {},
     eventType,
     eventName,
-    modelName
+    modelName,
   } = {}) => ({
     eventName:
       eventName ||
@@ -58,7 +58,7 @@ const Event = (() => {
     eventType,
     modelName,
     eventSource: modelName?.toUpperCase(),
-    ...(factory ? factory(args) : args)
+    ...(factory ? factory(args) : args),
   })
 
   const makeEvent = pipe(
@@ -74,7 +74,7 @@ const Event = (() => {
      * @param {options} options
      * @returns {Readonly<Event>}
      */
-    create: options => makeEvent(options)
+    create: options => makeEvent(options),
   }
 })()
 

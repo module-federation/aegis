@@ -6,38 +6,39 @@
  * @param {function():string} hash
  * @returns {import("./http-adapter").httpController}
  */
-export default function anyInvokePortFactory (invokePort) {
-  return async function anyInvokePort (httpRequest) {
+export default function anyInvokePortFactory(invokePort) {
+  return async function anyInvokePort(httpRequest) {
     try {
       httpRequest.log(anyInvokePort.name)
       const result = await invokePort({
         port: httpRequest.params.port,
         args: httpRequest.body,
+        params: httpRequest.query,
         method: httpRequest.method,
         headers: httpRequest.headers,
         path: httpRequest.path,
-        id: httpRequest.params.id || null
+        id: httpRequest.params.id || null,
       })
 
       return {
         headers: {
           'Content-Type': 'application/json',
-          'Last-Modified': new Date().toISOString()
+          'Last-Modified': new Date().toISOString(),
         },
         statusCode: 201,
-        body: { ...result }
+        body: { ...result },
       }
     } catch (e) {
       console.error(e)
 
       return {
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
         statusCode: e.code || 400,
         body: {
-          error: e.message
-        }
+          error: e.message,
+        },
       }
     }
   }

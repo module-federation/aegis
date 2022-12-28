@@ -1,4 +1,3 @@
-
 {
-    "options": {"experimentalDecorators": true}
+  "options": { "experimentalDecorators": true }
 }

@@ -57,7 +57,7 @@ const constructUrl = () =>
 let uplinkCallback
 
 export class ServiceMeshClient extends EventEmitter {
-  constructor (url = null) {
+  constructor(url = null) {
     super()
     this.ws = null
     this.url = url || constructUrl()
@@ -73,17 +73,17 @@ export class ServiceMeshClient extends EventEmitter {
     this.headers = {
       'x-webswitch-host': os.hostname(),
       'x-webswitch-role': 'node',
-      'x-webswitch-pid': process.pid
+      'x-webswitch-pid': process.pid,
     }
   }
 
-  services () {
+  services() {
     return this.options.listServices
       ? (this.serviceList = this.options.listServices())
       : this.serviceList
   }
 
-  telemetry () {
+  telemetry() {
     return {
       eventName: 'telemetry',
       proto: this.name,
@@ -92,16 +92,16 @@ export class ServiceMeshClient extends EventEmitter {
       pid: process.pid,
       telemetry: { ...process.memoryUsage(), ...process.cpuUsage() },
       services: this.services(),
-      state: this.ws?.readyState || 'undefined'
+      state: this.ws?.readyState || 'undefined',
     }
   }
 
-  async resolveUrl () {
+  async resolveUrl() {
     const locator = new ServiceLocator({
       name: this.name,
       serviceUrl: constructUrl(),
       primary: this.isPrimary,
-      backup: this.isBackup
+      backup: this.isBackup,
     })
     if (this.isPrimary) {
       locator.answer()
@@ -110,7 +110,7 @@ export class ServiceMeshClient extends EventEmitter {
     return locator.listen()
   }
 
-  async connect (options = {}) {
+  async connect(options = {}) {
     if (this.ws) {
       console.info('conn already open')
       return
@@ -119,7 +119,7 @@ export class ServiceMeshClient extends EventEmitter {
     this.url = await this.resolveUrl()
     this.ws = new WebSocket(this.url, {
       headers: this.headers,
-      protocol: SERVICENAME
+      protocol: SERVICENAME,
     })
 
     this.ws.binaryType = 'arraybuffer'
@@ -167,7 +167,7 @@ export class ServiceMeshClient extends EventEmitter {
     this.ws.on('pong', () => (this.pong = true))
   }
 
-  heartbeat () {
+  heartbeat() {
     if (this.pong) {
       this.pong = false
       this.ws.ping()
@@ -182,7 +182,7 @@ export class ServiceMeshClient extends EventEmitter {
     }
   }
 
-  sendQueuedMsgs () {
+  sendQueuedMsgs() {
     try {
       while (this.sendQueue.length > 0) this.send(this.sendQueue.pop())
     } catch (error) {
@@ -196,30 +196,30 @@ export class ServiceMeshClient extends EventEmitter {
       string: msg => Buffer.from(JSON.stringify(msg)),
       number: msg => Buffer.from(JSON.stringify(msg)),
       symbol: msg => console.log('unsupported', msg),
-      undefined: msg => console.log('undefined', msg)
+      undefined: msg => console.log('undefined', msg),
     },
     decode: {
       object: msg => JSON.parse(Buffer.from(msg).toString()),
       string: msg => msg,
       number: msg => msg,
       symbol: msg => msg,
-      undefined: msg => console.error('undefined', msg)
-    }
+      undefined: msg => console.error('undefined', msg),
+    },
   }
 
-  encode (msg) {
+  encode(msg) {
     const encoded = this.primitives.encode[typeof msg](msg)
     debug && console.debug({ encoded })
     return encoded
   }
 
-  decode (msg) {
+  decode(msg) {
     const decoded = this.primitives.decode[typeof msg](msg)
     debug && console.debug({ decoded })
     return decoded
   }
 
-  send (msg) {
+  send(msg) {
     if (
       this.ws &&
       this.ws.readyState === this.ws.OPEN &&
@@ -240,7 +240,7 @@ export class ServiceMeshClient extends EventEmitter {
     return false
   }
 
-  manageSendQueue (msg) {
+  manageSendQueue(msg) {
     this.sendQueue.push(msg)
     this.saveSendQueue(queue => {
       return new Promise(resolve => {
@@ -250,7 +250,7 @@ export class ServiceMeshClient extends EventEmitter {
     })
   }
 
-  async saveSendQueue (sender) {
+  async saveSendQueue(sender) {
     try {
       if (this.sendQueue.length < 1.5 * this.sendQueueLimit) {
         await sender(this.sendQueue)
@@ -275,17 +275,17 @@ export class ServiceMeshClient extends EventEmitter {
     }
   }
 
-  async publish (msg) {
+  async publish(msg) {
     debug && console.debug({ fn: this.publish.name, msg })
     await this.connect()
     this.send(msg)
   }
 
-  subscribe (eventName, callback) {
+  subscribe(eventName, callback) {
     this.on(eventName, callback)
   }
 
-  close (code, reason) {
+  close(code, reason) {
     console.debug('closing socket')
     this.ws.removeAllListeners()
     this.ws.close(code, reason)

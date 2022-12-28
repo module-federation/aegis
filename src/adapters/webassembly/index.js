@@ -1,37 +1,37 @@
+'use strict'
+
 import {
   wrapWasmAdapter,
   wrapWasmModelSpec,
-  wrapWasmService
-} from './wasm-decorators'
-export * from './wasm-import'
+  wrapWasmService,
+} from './wasm-wrap'
+
 export * from './wasm-interop'
+export * from './wasm-import'
 export * from './repo-client'
 
-/** @typedef  {'adapter'|'service'|'model'} adapterType */
-
 /**
- * @enum
+ *
  */
 export const adapterTypes = {
-  /** @type {adapterType} */
   model: 'model',
-  /** @type {adapterType} */
   adapter: 'adapter',
-  /** @type {adapterType} */
-  service: 'service'
+  service: 'service',
 }
 
 export const wasmAdapters = {
   /**
-   * @param {WebAssembly.Instance} wasm
+   * @param {WebAssembly.Exports} wasm
+   * @returns {import('./wasm-wrap').ModelSpecification}
    */
-  model: wasm => wrapWasmModelSpec(wasm),
+  [adapterTypes.model]: wasm => wrapWasmModelSpec(wasm),
   /**
-   * @param {WebAssembly.Instance} wasm
+   * @param {WebAssembly.Exports} wasm
+   *
    */
-  adapter: wasm => wrapWasmAdapter(wasm),
+  [adapterTypes.adapter]: wasm => wrapWasmAdapter(wasm),
   /**
-   * @param {WebAssembly.Instance} wasm
+   * @param {WebAssembly.Exports} wasm
    */
-  service: wasm => wrapWasmService(wasm)
+  [adapterTypes.service]: wasm => wrapWasmService(wasm),
 }

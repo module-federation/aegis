@@ -6,33 +6,33 @@
  * @param {function():string} hash
  * @returns {import("./http-adapter").httpController}
  */
-export default function makeLiveRollout (hotDeploy) {
-  return async function liveRollout (httpRequest) {
+export default function makeLiveRollout(deployModel) {
+  return async function liveRollout(httpRequest) {
     try {
       httpRequest.log(liveRollout.name)
 
-      const result = await hotDeploy(httpRequest.query.remoteEntry)
+      const result = await deployModel(httpRequest.body)
 
       console.debug({ fn: liveRollout.name, result })
       return {
         headers: {
           'Content-Type': 'application/json',
-          'Last-Modified': new Date().toISOString()
+          'Last-Modified': new Date().toISOString(),
         },
         statusCode: 200,
-        body: { result }
+        body: { result },
       }
     } catch (error) {
       console.error({ error })
 
       return {
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
         statusCode: 400,
         body: {
-          error: e.message
-        }
+          error: e.message,
+        },
       }
     }
   }

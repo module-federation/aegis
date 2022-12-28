@@ -5,21 +5,21 @@
  */
 
 const res = {
-  send (data) {
+  send(data) {
     console.log('send', data)
     return data
   },
-  status (num) {
+  status(num) {
     console.log('status', num)
     return this
   },
   set: data => data,
   headers: {},
-  type: data => data
+  type: data => data,
 }
 
 // Thanks API GW for this 🙁
-function handleMultiline (body) {
+function handleMultiline(body) {
   if (!body) return null
   try {
     return JSON.parse(
@@ -42,15 +42,16 @@ export const aws = {
       query: args.queryStringParameters,
       params: args.pathParameters,
       body: handleMultiline(args.body),
-      all: { ...args }
+      headers: args.headers,
+      all: { ...args },
     },
-    res
+    res,
   }),
   response: args => ({
     // API GW res
     isBase64Encoded: false,
     statusCode: args.statusCode,
     headers: args.headers,
-    body: JSON.stringify(args.body || args)
-  })
+    body: JSON.stringify(args.body || args),
+  }),
 }

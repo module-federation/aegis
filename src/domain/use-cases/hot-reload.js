@@ -46,13 +46,13 @@ let inProgress = false
  * @param {factoryParam} param0
  * @returns
  */
-export default function makeHotReload ({ models, broker } = {}) {
+export default function makeHotReload({ models, broker } = {}) {
   // Add an event whose callback invokes this factory.
   broker.on(domainEvents.hotReload, hotReload)
 
   /**
    */
-  async function hotReload (modelName) {
+  async function hotReload(remoteEntry) {
     if (inProgress) {
       return { status: 'reload already in progress' }
     }

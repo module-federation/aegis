@@ -21,7 +21,7 @@ import { isMainThread } from 'worker_threads'
  * }} models
  *
  */
-export default async function brokerEvents ({
+export default async function brokerEvents({
   broker,
   models,
   datasources,
@@ -38,7 +38,7 @@ export default async function brokerEvents ({
         .map(spec => spec.modelName)
 
     const serviceMesh = createServiceMesh({
-      listServices: listLocalModels
+      listServices: listLocalModels,
     })
 
     // connect to broker
@@ -64,7 +64,7 @@ export default async function brokerEvents ({
       broker,
       datasources,
       publish: event => broker.notify('to_main', event),
-      subscribe: (eventName, cb) => broker.on(eventName, cb)
+      subscribe: (eventName, cb) => broker.on(eventName, cb),
     })
 
     cache.listen()

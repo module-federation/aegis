@@ -1,68 +1,34 @@
 'use strict'
 
-import Serializer from '../serializer'
-import { resumeWorkflow } from '../orchestrator'
 import { isMainThread } from 'worker_threads'
-import { modelsInDomain } from '.'
+import { Writable, Transform } from 'node:stream'
+import Serializer from '../serializer'
 
-/**
- * @param {function(import("..").Model)} loadModel
- * @param {import("../event-broker").EventBroker} broker
- * @param {import("../datasource").default} repository
- * @returns {function(Map<string,Model>|Model)}
- */
-function hydrateModels (loadModel, broker, repository) {
-  return function (saved) {
-    if (!saved) return
+function nextModelFn (port, mf) {
+  mf
+    .getModelSpecs()
+    .filter(spec => spec.ports)
+    .map(spec =>
+      Object.entries(spec.ports)
+        .filter(p => port.consumesEvent === port)
+        .reduce(p => spec.modelName, [])
+    )[0]
+}
 
-    try {
-      if (saved instanceof Map) {
-        return new Map(
-          [...saved].map(function ([k, v]) {
-            const model = loadModel(broker, repository, v, v.modelName)
-            return [k, model]
-          })
-        )
-      }
+function startWorkflow (model, mf) {
+  const history = model.getPortFlow()
+  const ports = model.getPorts()
 
-      if (Object.getOwnPropertyNames(saved).includes('modelName')) {
-        return loadModel(broker, repository, saved, saved.modelName)
-      }
-    } catch (error) {
-      console.warn(hydrateModels.name, error.message)
-    }
+  if (history?.length > 0 && !model.compensate) {
+    const lastPort = history.length - 1
+    const nextPort = ports[history[lastPort]]?.producesEvent
+    const nextModel = nextModelFn(nextPort, mf)
+    if (nextPort) model.emit(nextPort, nextModel)
   }
 }
 
-function handleError (e) {
-  console.error(e)
-}
-
 /**
- *
- * @param {{
- *  repository:{import("../datasource").default}
- *  models:import('../model-factory').ModelFactory
- * }}
- */
-function handleRestart (repository, eventName) {
-  if (process.env.RESUME_WORKFLOW_DISABLED) return
-
-  const writable = {}
-
-  repository
-    .list({ writable })
-    .then(resumeWorkflow)
-    .catch(handleError)
-
-  repository
-    .listSync()
-    .then(list => list.forEach(model => model.emit(eventName, model)))
-    .catch(handleError)
-}
-
-/**
- * Returns factory function to unmarshal deserialized models.
+ * deserialize and unmarshall from stream.
  * @typedef {import('..').Model}
  * @param {{
  *  models:import('../model-factory').ModelFactory,
@@ -75,19 +41,42 @@ function handleRestart (repository, eventName) {
 export default function ({ modelName, repository, broker, models }) {
   // main thread only
   if (!isMainThread) {
-    /**
-     * Loads persited data from datd cc x
-     */
-    return async function loadModels () {
-      // const domainModels = modelsInDomain(modelName)
-      // for await (const model of domainModels) {
-      //   const spec = models.getModelSpec(model)
-      //   setTimeout(handleRestart, 30000, repository, eventName)
-      //   return repository.load({
-      //     hydrate: hydrateModels(models.loadModel, broker, repository),
-      //     serializer: Serializer.addSerializer(spec.serializers),
-      //   })
-      // }
-    }
+    console.log('loading cache ', modelName)
+    const serializers = models.getModelSpec(modelName).serializers
+
+    const deserializers = serializers
+      ? serializers.filter(s => !s.disabled && s.on === 'deserialize')
+      : null
+
+    if (deserializers)
+      deserializers.forEach(des => Serializer.addSerializer(des))
+
+    const rehydrate = new Transform({
+      objectMode: true,
+
+      transform (chunk, _endcoding, next) {
+        const model = models.loadModel(broker, repository, chunk, modelName)
+        repository.saveSync(model.getId(), model)
+        this.push(model)
+        next()
+      }
+    })
+
+    const resumeWorkflow = new Writable({
+      objectMode: true,
+
+      write (chunk, _encoding, next) {
+        startWorkflow(chunk, models)
+        next()
+        return true
+      },
+
+      end (chunk, _encoding, done) {
+        startWorkflow(chunk, models)
+        done()
+      }
+    })
+
+    repository.list({ transform: rehydrate, writable: resumeWorkflow })
   }
 }

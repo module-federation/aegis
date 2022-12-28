@@ -3,7 +3,7 @@
 require('regenerator-runtime')
 const { domain, adapters } = require('..')
 const path = require('path')
-const { workerData, parentPort } = require('worker_threads')
+const { workerData, parentPort, BroadcastChannel } = require('worker_threads')
 const remote = require(path.resolve(process.cwd(), 'dist/remoteEntry'))
 
 const {
@@ -11,23 +11,24 @@ const {
   makeDomain,
   AppError,
   EventBrokerFactory,
-  requestContext
+  requestContext,
 } = domain
 
 const { initCache } = adapters.controllers
 
-/** @type {import('@module-federation/aegis/lib/domain/event-broker').EventBroker} */
+/** @type {import('./event-broker').EventBroker} */
 const broker = EventBrokerFactory.getInstance()
+const broadcast = new BroadcastChannel(workerData.poolName)
 
-/** @type {Promise<import('../webpack/remote-entries-type').remoteEntry[]>} */
+/** @type {Promise<import('./').remoteEntry[]>} */
 const remoteEntries = remote.get('./remoteEntries').then(factory => factory())
 
 /**
  * Import and bind remote modules: i.e. models, adapters and services
- * @param {import('../webpack/remote-entries-type.js').remoteEntry[]} remotes
+ * @param {import('./').remoteEntry[]} remotes
  * @returns
  */
-async function init (remotes) {
+async function init(remotes) {
   try {
     // import federated modules; override as needed
     await importRemotes(remotes)
@@ -40,40 +41,48 @@ async function init (remotes) {
 
 /**
  * Create a subchannel between this thread and the main thread that is dedicated
- * to events, both inter-thread (raised by one thread and handled by another) and
- * inter-process (remotely generated and locally handled or vice versa). Inter-process
- * events (event from another host instance) are transmitted over the service mesh.
+ * to events, both in-process (e.g. raised by one thread and handled by another) and
+ * inter-process (events from or to a remote event source or sink) . Inter-process
+ * events (e.g. events from another host instance) are transmitted over the service mesh.
  *
- * Connect both ends of the channel to the thread-local {@link broker} via pub & sub events.
+ * Connect both ends of the channel to the thread-local {@link broker} via pub/sub events.
+ * Do the same for broadcast events. By convention, broadcast events never leave the host,
+ * while messages sent over the event channel are forwarded to the service mesh.
  *
- * Unlike the main channel, the event channel is not meant to return a response to the caller.
- * If a response is needed, call `ThreadPool.run` as shown below.
+ * Unlike the main channel, the event channel is not meant to return a response to the caller,
+ * it just fires and forgets, relying on the underlying thread implemntation to handle execution.
+ *
+ * If a response is needed, call `ThreadPool.runJob` as shown below
  *
  * ```js
- * ThreadPool.runJob(jobName, jobData, { channel: EVENTCHANNEL })
+ * threadpool.runJob(jobName, jobData, { channel: EVENTCHANNEL })
  * ```
  *
  * @param {MessagePort} eventPort
  */
-function connectEventChannel (eventPort) {
+function connectSubChannels(eventPort) {
   try {
     // fire events from main
-    eventPort.onmessage = msgEvent =>
-      broker.notify(msgEvent.data.eventName, msgEvent.data)
+    eventPort.onmessage = ev => broker.notify(ev.data.eventName, ev.data)
+    // listen for broadcasts
+    broadcast.onmessage = ev => broker.notify(ev.data.eventName, ev.data)
 
     // forward events to main
-    broker.on('to_main', event =>
-      eventPort.postMessage(JSON.parse(JSON.stringify(event)))
+    broker.on('to_main', ev =>
+      eventPort.postMessage(JSON.parse(JSON.stringify(ev)))
+    )
+    // forward to any thread listening on channel `poolName`
+    broker.on('broadcast', ev =>
+      broadcast.postMessage(JSON.parse(JSON.stringify(ev)))
     )
   } catch (error) {
-    console.error({ fn: connectEventChannel.name, error })
+    console.error({ fn: connectSubChannels.name, error })
   }
 }
 
 remoteEntries.then(remotes => {
   init(remotes).then(domainPorts => {
     console.info('aegis worker thread running')
-
     // dont wait for cache to load
     initCache().load()
 
@@ -114,7 +123,7 @@ remoteEntries.then(remotes => {
 
         if (msg.eventPort instanceof MessagePort) {
           // send/recv broker events to/from main thread
-          connectEventChannel(msg.eventPort)
+          connectSubChannels(msg.eventPort)
           // no response to parent port expected
           return
         }
@@ -128,5 +137,8 @@ remoteEntries.then(remotes => {
         parentPort.postMessage(AppError(error, error.code))
       }
     })
+
+    // tell the main thread we are ready
+    parentPort.postMessage({ status: 'online' })
   })
 })

@@ -61,7 +61,7 @@ import {
   withDeserializers,
   fromTimestamp,
   fromSymbol,
-  toSymbol
+  toSymbol,
 } from './mixins'
 import pipe from './util/pipe'
 import makePorts from './make-ports'
@@ -79,20 +79,24 @@ const Model = (() => {
   const MODELNAME = Symbol('modelName')
   const CREATETIME = Symbol('createTime')
   const UPDATETIME = Symbol('updateTime')
+  const ENDPOINT = Symbol('endpoint')
   const ONUPDATE = Symbol('onUpdate')
   const ONDELETE = Symbol('onDelete')
   const VALIDATE = Symbol('validate')
   const PORTFLOW = Symbol('portFlow')
+  const DOMAIN = Symbol('domain')
 
   const keyMap = {
     id: ID,
     modelName: MODELNAME,
     createTime: CREATETIME,
     updateTime: UPDATETIME,
+    endpoint: ENDPOINT,
     onUpdate: ONUPDATE,
     onDelete: ONDELETE,
     validate: VALIDATE,
-    portFlow: PORTFLOW
+    portFlow: PORTFLOW,
+    domain: DOMAIN,
   }
 
   /**
@@ -102,23 +106,21 @@ const Model = (() => {
   const eventMask = {
     update: 1, //  0001 Update
     create: 1 << 1, //  0010 Create
-    onload: 1 << 2 //  0100 Load
+    onload: 1 << 2, //  0100 Load
+  }
+
+  function approveChanges(changes, approvedChanges) {
+    return Object.entries(changes)
+      .filter(([k, v]) => approvedChanges.includes(k))
+      .map(([k, v]) => ({ [k]: v }))
+      .reduce((a, b) => ({ ...a, ...b }, {}))
   }
 
   const defaultOnUpdate = (model, changes) => ({ ...model, ...changes })
   const defaultOnDelete = model => withTimestamp('deleteTime')(model)
   const defaultValidate = (model, changes) => defaultOnUpdate(model, changes)
 
-  // caller can skip vadlidation, which is on by default
-  const validateUpdates = (model, changes, option = true) => {
-    if (option) return model[VALIDATE](changes, eventMask.update)
-    return {
-      ...model,
-      ...changes
-    }
-  }
-
-  function queueNotice (model) {
+  function queueNotice(model) {
     console.debug(queueNotice.name, 'disabled')
   }
 
@@ -132,7 +134,7 @@ const Model = (() => {
    * @param {} clonedModel
    * @returns
    */
-  function rehydrate (clonedModel, model) {
+  function rehydrate(clonedModel, model) {
     return model.prototype
       ? Object.setPrototypeOf(clonedModel, model.prototype)
       : clonedModel
@@ -140,14 +142,14 @@ const Model = (() => {
 
   /**
    * Add data and functions that support framework services.
-   * @paramn {{
+   * @param {{
    *  model:Model,
    *  args:*,
    *  spec:import('./index').ModelSpecification
    * }} modelInfo
    * @returns {Model}
    */
-  function make (modelInfo) {
+  function make(modelInfo) {
     const {
       model = {},
       spec: {
@@ -155,13 +157,16 @@ const Model = (() => {
         onDelete = defaultOnDelete,
         validate = defaultValidate,
         ports,
+        domain,
         broker,
+        endpoint,
         modelName,
         datasource,
         mixins = [],
         dependencies,
-        relations = {}
-      }
+        relations = {},
+        approvedChanges,
+      },
     } = modelInfo
 
     return {
@@ -180,16 +185,22 @@ const Model = (() => {
       // model class name
       [MODELNAME]: modelName,
 
+      // URI: plural of modelName
+      [ENDPOINT]: endpoint,
+
+      // model belongs to
+      [DOMAIN]: domain || modelName,
+
       // this fn injected into dependencies
       [ID]: dependencies.getUniqueId(),
 
       // Called before update is committed
-      [ONUPDATE] (changes) {
+      [ONUPDATE](changes) {
         return onUpdate(this, changes)
       },
 
-      // Called before edelte is committed
-      [ONDELETE] () {
+      // Called before delete is committed
+      [ONDELETE]() {
         return onDelete(this)
       },
 
@@ -199,7 +210,7 @@ const Model = (() => {
        * @param {eventMask} event - event type, see {@link eventMask}.
        * @returns {Model} - updated model
        */
-      [VALIDATE] (changes, event) {
+      [VALIDATE](changes, event) {
         return validate(this, changes, event)
       },
 
@@ -209,7 +220,7 @@ const Model = (() => {
        * @param {number} event
        * @returns {string} key name/s: create, update, onload, delete
        */
-      getEventMaskName (event) {
+      getEventMaskName(event) {
         if (typeof event !== 'number') return
         const key = Object.keys(eventMask).find(k => eventMask[k] & event)
         return key
@@ -219,7 +230,7 @@ const Model = (() => {
        * Compensate for downstream transaction failures.
        * Back out all previous port transactions
        */
-      async undo () {
+      async undo() {
         return compensate(this)
       },
 
@@ -231,7 +242,7 @@ const Model = (() => {
        * @param {boolean} [multi] - allow multiple listeners for event,
        * defaults to `true`
        */
-      addListener (eventName, callback, options) {
+      addListener(eventName, callback, options) {
         broker.on(eventName, callback, options)
       },
 
@@ -243,13 +254,13 @@ const Model = (() => {
        * @param {boolean} [forward] - forward event to service mesh,
        * defaults to `false`
        */
-      emit (eventName, eventData, options) {
+      emit(eventName, eventData, options) {
         broker.notify(
           eventName,
           {
             eventName,
             eventData,
-            model: this
+            model: this,
           },
           options
         )
@@ -257,7 +268,7 @@ const Model = (() => {
 
       /** @typedef {import('./serializer.js').Serializer} Serializer */
 
-      getDataSourceType () {
+      getDataSourceType() {
         return datasource.getClassName()
       },
 
@@ -275,36 +286,59 @@ const Model = (() => {
        * @param {boolean} validate - run validation by default
        * @returns {Promise<Model>}
        */
-      async update (changes, validate = true) {
-        const validated = validateUpdates(this, changes, validate)
-        const timestamp = { ...validated, [UPDATETIME]: Date.now() }
+      async update(changes, runValidation = true) {
+        const approved = approvedChanges
+          ? approveChanges(approvedChanges)
+          : changes
 
-        await datasource.save(this[ID], timestamp)
-        const rehydrated = rehydrate(timestamp, model)
-        queueNotice(rehydrated)
+        // merge changes and optionally validate
+        const mergedModel = runValidation
+          ? this[VALIDATE](approved, eventMask.update)
+          : { ...this, ...approved }
 
-        return rehydrated
+        const timestampedModel = { ...mergedModel, [UPDATETIME]: Date.now() }
+
+        await datasource.save(this[ID], timestampedModel)
+
+        return timestampedModel
+      },
+
+      setApprovedChanges(propKeys) {
+        approvedChanges.concat(propKeys)
+      },
+
+      getApprovedChanges() {
+        return approvedChanges
       },
 
       /**
        * Synchronous version of {@link Model.update}.
        * Only updates cache. External storage is
-       * not updated
+       * not updated. Use to efficiently communicate
+       * state that does not require persistence, e.g.
+       * properties that are only needed at runtime.
        *
        * @param {*} changes
        * @param {boolean} validate
        * @returns {Model}
        */
-      updateSync (changes, validate = true) {
-        // merge changes with lastest copy and optionally validate
-        const validated = validateUpdates(this, changes, validate)
+      updateSync(changes, runValidation = true) {
+        const approved = approvedChanges
+          ? approveChanges(approvedChanges)
+          : changes
+
+        // merge changes and optionally validate
+        const mergedModel = runValidation
+          ? this[VALIDATE](approved, eventMask.update)
+          : { ...this, ...approved }
+
         // update timestamp
-        const timestamp = { ...validated, [UPDATETIME]: Date.now() }
+        const timestampedModel = { ...mergedModel, [UPDATETIME]: Date.now() }
 
-        datasource.saveSync(this[ID], timestamp)
+        // only update the cache
+        datasource.saveSync(this[ID], timestampedModel)
 
-        // restore prototype if used
-        return rehydrate(timestamp, model)
+        return timestampedModel
       },
 
       /**
@@ -314,17 +348,17 @@ const Model = (() => {
        * @param {*} data
        * @returns
        */
-      async save (id = null, data = null) {
+      async save(id = null, data = null) {
         if (id && data) return datasource.save(id, data)
         return datasource.save(this[ID], this)
       },
 
-      async find (id) {
+      async find(id) {
         if (!id) throw new Error('missing id')
         return datasource.find(id)
       },
 
-      findSync (id) {
+      findSync(id) {
         if (!id) throw new Error('missing id')
         return datasource.findSync(id)
       },
@@ -332,47 +366,63 @@ const Model = (() => {
       /**
        * Search existing model instances (synchronously).
        * Only searches the cache. Does not search persistent storage.
+       * Useful for getting state that does not require persistence.
        *
-       * @param {{key1, keyN}} filter - list of required matching key-values
+       * @param {import('./datasource').dsOpts} filter - list of required matching key-values
        * @returns {Model[]}
        */
-      listSync (filter) {
+      listSync(filter) {
         return datasource.listSync(filter)
       },
 
+      /** @typedef {import('./datasource').default} DataSource */
+
       /**
-       * Search existing model instances (asynchronously).
-       * Searches cache first, then persistent storage if not found.
+       * Retrieve existing model instances (asynchronously).
+       * See {@link DataSource.list}.
        *
-       * @param {modelName:string} modelName related model to query
        * @param {listOptions} options
-       * @returns {Model[]}
+       * @returns {Promise<Model[]>}
        */
-      async list (options) {
+      async list(options) {
         return datasource.list(options)
       },
 
-      createWriteStream () {
+      /**
+       * Availability depends on {@link DataSource} adapter.
+       * E.g. the Aegis MongoDB adapter enables streaming upserts.
+       * @returns {Writable}
+       */
+      createWriteStream() {
         return datasource.createWriteStream()
       },
 
       /**
-       * Original request passed in by caller
-       * @returns arguments passed by caller
+       * Payload of the request that created this model instance.
+       * @returns request payload
        */
-      getArgs () {
+      getArgs() {
         return modelInfo.args ? modelInfo.args : []
       },
 
-      getDependencies () {
+      /** @typedef {import('.').ModelSpecification} ModelSpec */
+
+      /**
+       * The object returned contains the dependencies this
+       * model requires. Dependencies are injected through
+       * the {@link ModelSpec}
+       *
+       * @returns {{any}}
+       */
+      getDependencies() {
         return dependencies
       },
 
       /**
-       * Identify events types.
+       * Use to identify event types.
        * @returns {eventMask}
        */
-      getEventMask () {
+      getEventMask() {
         return eventMask
       },
 
@@ -381,20 +431,26 @@ const Model = (() => {
        *
        * @returns {import(".").ModelSpecification}
        */
-      getSpec () {
+      getSpec() {
         return modelInfo.spec
       },
 
-      isCached () {
+      /**
+       * Was this object created from a remote source
+       * in the distributed cache?
+       *
+       * @returns {boolean}
+       */
+      isCached() {
         return modelInfo.spec.isCached
       },
 
       /**
-       * Returns the `ports` for this model.
+       * Returns the `ports` exposed by this domain model.
        *
        * @returns {import(".").ports}
        */
-      getPorts () {
+      getPorts() {
         return modelInfo.spec.ports
       },
 
@@ -403,7 +459,7 @@ const Model = (() => {
        *
        * @returns
        */
-      getName () {
+      getName() {
         return this[MODELNAME]
       },
 
@@ -412,7 +468,7 @@ const Model = (() => {
        *
        * @returns {string}
        */
-      getId () {
+      getId() {
         return this[ID]
       },
 
@@ -421,7 +477,7 @@ const Model = (() => {
        *
        * @returns {string[]} history of ports called by this model instance
        */
-      getPortFlow () {
+      getPortFlow() {
         return this[PORTFLOW]
       },
 
@@ -431,11 +487,16 @@ const Model = (() => {
        * @param {string} key - string representation of Symbol
        * @returns {Symbol}
        */
-      getKey (key) {
+      getKey(key) {
         return keyMap[key]
       },
 
-      equals (model) {
+      /**
+       * Is this the same model instance as `model`?
+       * @param {*} model
+       * @returns {boolean}
+       */
+      equals(model) {
         return (
           model &&
           (model.id || model.getId) &&
@@ -443,38 +504,39 @@ const Model = (() => {
         )
       },
 
-      getContext (name) {
+      getContext(name) {
         return asyncContext[name]
       },
 
       /**
-       * Returns service of related domain provided
-       * this domain is related to it via modelspec.
-       * If not, we won't be able to access the
-       * domain's memory. Every domain model employs
-       * this capability-based security measure.
-       * @returns
+       * Returns related model service, where the two models are
+       * related via ModelSpec.relation or belong to the same domain.
+       *
+       * Note: relation or domain membership must be defined
+       * in ModelSpec; otherwise, we won't be able to access
+       * the model's memory. Every domain model employs this
+       * capability-based security measure.
+       *
+       * @returns {Model}
        */
-      fetchRelatedModel (modelName) {
-        const rel = Object.values(relations).find(
-          v => v.modelName.toUpperCase() === modelName.toUpperCase()
+      fetchRelatedService(modelName) {
+        const upperName = modelName.toUpperCase()
+        const ds = datasource.factory.getDataSource(upperName)
+        if (!ds) throw new Error('no datasource found')
+        return require('.').default.getService(upperName, ds, broker)
+      },
+
+      /**
+       * Returns this model's {@link DataSource}.
+       * @returns {DataSource}
+       */
+      getDataSource() {
+        // prevents access to ds of other models
+        return datasource.factory.getRestrictedDataSource(
+          this[MODELNAME],
+          this[DOMAIN]
         )
-
-        if (!rel) throw new Error('no relation found')
-
-        if (
-          !datasource.factory
-            .listDataSources()
-            .includes(modelName.toUpperCase())
-        )
-          throw new Error('no datasource found')
-
-        const ds = datasource.factory.getDataSource(modelName.toUpperCase())
-
-        if (!ds) throw new Error('no datasoure found')
-
-        return require('.').default.getService(modelName, ds, broker)
-      }
+      },
     }
   }
 
@@ -496,7 +558,7 @@ const Model = (() => {
       // Call factory with data from request payload
       model: modelInfo.spec.factory(...modelInfo.args),
       args: modelInfo.args,
-      spec: modelInfo.spec
+      spec: modelInfo.spec,
     })
 
   const validate = event => model => model[VALIDATE]({}, event)
@@ -531,17 +593,20 @@ const Model = (() => {
   )
 
   /**
-   * Return an object with all the methods for
-   * the specified model, but none of the properties
-   * from its factory function.
-   *
+   * Return an object with all the methods/ports of
+   * the specified model, but none of its properties;
+   * namely those that come from its factory function.
    * This object functions as the model's service
-   * implementation. Methods that rely on factory-
-   * generated instance properties will not work;
-   * so only static methods, or instance methods
-   * created by the framework, are useable.
+   * implementation.
    *
-   * @param {import('.').ModelSpecification} spec
+   * Methods that rely on factory-generated
+   * properties will not work; only static- and
+   * framework-generated methods are available.
+   *
+   * Useful for invoking port methods that do not
+   * rely on model state.
+   *
+   * @param {import('.').ModelSpecification} spec model spec
    * @returns {Model}
    */
   const makeService = spec => make({ spec })
@@ -558,7 +623,7 @@ const Model = (() => {
     create: modelInfo => makeModel(modelInfo),
 
     /**
-     * Load a saved model
+     * Rehydrate a deserialized model instance.
      * @param {Model} savedModel deserialized model
      * @param {import('.').ModelSpecification}
      */
@@ -572,12 +637,10 @@ const Model = (() => {
      * @returns {Model} updated model
      *
      */
-    async update (model, changes) {
-      return model.update(changes)
-    },
+    update: (model, changes) => model.updateSync(changes),
 
     /**
-     *
+     * Run the model's validation functions.
      * @param {Model} model
      * @param {*} changes
      */
@@ -612,7 +675,7 @@ const Model = (() => {
      */
     getId: model => model[ID],
 
-    makeService
+    makeService,
   }
 })()
 
