@@ -14,8 +14,8 @@ const processQuery = qpm({
   converters: {
     nullstring: val => {
       return { $type: 10 }
-    }, // reference BSON datatypes https://www.mongodb.com/docs/manual/reference/bson-types/
-  },
+    } // reference BSON datatypes https://www.mongodb.com/docs/manual/reference/bson-types/
+  }
 })
 
 const url = process.env.MONGODB_URL || 'mongodb://localhost:27017'
@@ -136,16 +136,16 @@ export class DataSourceMongoDb extends DataSource {
     }
   }
 
-  async collection() {
+  async collection () {
     return (await this.connection()).db(this.namespace).collection(this.name)
   }
 
-  async createIndexes(client) {
+  async createIndexes (client) {
     const indexOperations = this.options.connOpts.indexes.map(index => {
       return {
         name: index.fields.join('_'),
         key: index.fields.reduce((a, v) => ({ ...a, [v]: 1 }), {}),
-        ...index.options,
+        ...index.options
       }
     })
 
@@ -278,7 +278,7 @@ export class DataSourceMongoDb extends DataSource {
    * @returns
    */
 
-  async mongoCount({ filter = {} } = {}) {
+  async mongoCount ({ filter = {} } = {}) {
     return filter == {}
       ? await this.countDb()
       : (await this.collection()).count(filter)
@@ -295,21 +295,20 @@ export class DataSourceMongoDb extends DataSource {
    * }} param0
    * @returns
    */
-  streamList({ writable, serialize, transform, options }) {
+  streamList ({ writable, serialize, transform, options }) {
     try {
-
       const serializer = new Transform({
         writableObjectMode: true,
 
         // start of array
-        construct(callback) {
+        construct (callback) {
           this.first = true
           this.push('[')
           callback()
         },
 
         // each chunk is a record
-        transform(chunk, _encoding, next) {
+        transform (chunk, _encoding, next) {
           // comma-separate
           if (this.first) this.first = false
           else this.push(',')
@@ -320,32 +319,32 @@ export class DataSourceMongoDb extends DataSource {
         },
 
         // end of array
-        flush(callback) {
+        flush (callback) {
           this.push(']')
           callback()
-        },
+        }
       })
 
       const paginate = new Transform({
         writableObjectMode: true,
 
         // start of array
-        construct(callback) {
+        construct (callback) {
           this.push('{ ')
           callback()
         },
 
         // first chunk is the pagination data, rest is result
-        transform(chunk, _encoding, next) {
+        transform (chunk, _encoding, next) {
           this.push(chunk)
           next()
         },
 
         // end of array
-        flush(callback) {
+        flush (callback) {
           this.push('}')
           callback()
-        },
+        }
       })
 
       return new Promise(async (resolve, reject) => {
@@ -354,7 +353,7 @@ export class DataSourceMongoDb extends DataSource {
 
         // optionally transform db stream then pipe to output
         pipeArgs.push(readable)
-        
+
         if (options.page) {
           const count = ~~(await this.mongoCount(options.filter))
           pipeArgs.push(paginate)
@@ -366,19 +365,18 @@ export class DataSourceMongoDb extends DataSource {
             () => console.log('paginated query', options)
           )
         }
-        
+
         return pipeArgs
-   
       })
     } catch (error) {
       console.error({
         fn: this.streamList.name,
-        error,
+        error
       })
     }
   }
 
-  processOptions({ options = {}, query = {} }) {
+  processOptions ({ options = {}, query = {} }) {
     return { ...processQuery(query), ...options } // options must overwite the query not otherwise
   }
 
@@ -389,13 +387,14 @@ export class DataSourceMongoDb extends DataSource {
    */
   async list (param) {
     try {
+      let result
       const options = this.processOptions(param)
-      if (0 < ~~query.__page) {
+      if (0 < ~~options.__page) {
         // qpm > processOptions weeds out __page - add it back properly as an integer
         options.page = ~~query.__page
         options.skip = (options.page - 1) * options.limit || 0
       }
-      if (query.__aggregate) {
+      if (options.__aggregate) {
         // qpm > processOptions weeds out __aggregate - add it back properly as parsed json
         try {
           const aggregateQuery = JSON.parse(query.__aggregate)
@@ -406,7 +405,7 @@ export class DataSourceMongoDb extends DataSource {
       }
       console.log({ options })
 
-      if (streamRequested && !query.__json)
+      if (options.streamRequested && !query.__json)
         this.streamList({ writable, serialize, transform, options })
       else {
         const data = (await this.mongoFind(options)).toArray()
@@ -415,7 +414,7 @@ export class DataSourceMongoDb extends DataSource {
           ...options,
           data,
           count,
-          total: Math.ceil(count / options.limit),
+          total: Math.ceil(count / options.limit)
         }
       }
 
