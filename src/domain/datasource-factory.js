@@ -181,7 +181,6 @@ const DsCoreExtensions = superclass =>
         const opts = { ...options, streamRequested: options?.writable }
         const list = [await super.list(opts)].flat()
 
-        console.debug({ list })
         if (list.length < 1) return []
 
         if (list[0] instanceof Readable || list[0] instanceof Transform)
