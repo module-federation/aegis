@@ -6,10 +6,10 @@ import { RepoClient } from './repo-client'
 const broker = EventBrokerFactory.getInstance()
 
 exports.importWebAssembly = function (remoteEntry) {
-  async function instantiate(module, imports = {}) {
+  async function instantiate (module, imports = {}) {
     const adaptedImports = {
       env: Object.assign(Object.create(globalThis), imports.env || {}, {
-        abort(message, fileName, lineNumber, columnNumber) {
+        abort (message, fileName, lineNumber, columnNumber) {
           // ~lib/builtins/abort(~lib/string/String | null?, ~lib/string/String | null?, u32?, u32?) => void
           message = __liftString(message >>> 0)
           fileName = __liftString(fileName >>> 0)
@@ -26,13 +26,13 @@ exports.importWebAssembly = function (remoteEntry) {
           // ~lib/bindings/dom/Date.now() => f64
           Date.now,
 
-        'console.log'(text) {
+        'console.log' (text) {
           // ~lib/bindings/dom/console.log(~lib/string/String) => void
           text = __liftString(text >>> 0)
           console.log(text)
         },
 
-        callJsFunction(kv) {
+        callJsFunction (kv) {
           __liftArray(
             pointer =>
               __liftArray(
@@ -46,8 +46,8 @@ exports.importWebAssembly = function (remoteEntry) {
           )
           const fn = kv.filter(([k, v]) => k === 'fn').map(([k, v]) => v)[0]
           const args = kv.filter(([k, v]) => k === 'arg').map(([k, v]) => v)
-        },
-      }),
+        }
+      })
     }
 
     const { exports } = await WebAssembly.instantiate(module, adaptedImports)
@@ -66,32 +66,32 @@ exports.importWebAssembly = function (remoteEntry) {
         _exports: exports,
         memory,
 
-        getModelName() {
+        getModelName () {
           // assembly/index/getModelName() => ~lib/string/String
           return __liftString(exports.getModelName() >>> 0)
         },
 
-        getEndpoint() {
+        getEndpoint () {
           // assembly/index/getEndpoint() => ~lib/string/String
           return __liftString(exports.getEndpoint() >>> 0)
         },
 
-        getDomain() {
+        getDomain () {
           // assembly/index/getDomain() => ~lib/string/String
           return __liftString(exports.getDomain() >>> 0)
         },
 
         ArrayOfStrings_ID: {
           // assembly/index/ArrayOfStrings_ID: u32
-          valueOf() {
+          valueOf () {
             return this.value
           },
-          get value() {
+          get value () {
             return exports.ArrayOfStrings_ID.value >>> 0
-          },
+          }
         },
 
-        modelFactory(obj) {
+        modelFactory (obj) {
           const entries = Object.entries(obj)
             .filter(([k, v]) =>
               ['string', 'number', 'boolean'].includes(typeof v)
@@ -134,7 +134,7 @@ exports.importWebAssembly = function (remoteEntry) {
             .reduce((a, b) => ({ ...a, ...b }))
         },
 
-        getPorts() {
+        getPorts () {
           // assembly/index/getPorts() => ~lib/array/Array<~lib/array/Array<~lib/string/String>>
           return __liftArray(
             pointer =>
@@ -151,7 +151,7 @@ exports.importWebAssembly = function (remoteEntry) {
             .reduce((a, b) => ({ ...a, ...b }))
         },
 
-        getCommands() {
+        getCommands () {
           // assembly/index/getCommands() => ~lib/array/Array<~lib/array/Array<~lib/string/String>>
           return __liftArray(
             pointer =>
@@ -168,7 +168,7 @@ exports.importWebAssembly = function (remoteEntry) {
             .reduce((a, b) => ({ ...a, ...b }))
         },
 
-        emitEvent(kv) {
+        emitEvent (kv) {
           // assembly/index/emitEvent(~lib/array/Array<~lib/array/Array<~lib/string/String>>) => ~lib/array/Array<~lib/array/Array<~lib/string/String>>
           kv =
             __lowerArray(
@@ -206,7 +206,7 @@ exports.importWebAssembly = function (remoteEntry) {
           )
         },
 
-        onUpdate(kv) {
+        onUpdate (kv) {
           // assembly/index/onUpdate(~lib/array/Array<~lib/array/Array<~lib/string/String>>) => ~lib/array/Array<~lib/array/Array<~lib/string/String>>
           kv =
             __lowerArray(
@@ -244,7 +244,7 @@ exports.importWebAssembly = function (remoteEntry) {
           )
         },
 
-        onDelete(kv) {
+        onDelete (kv) {
           // assembly/index/onDelete(~lib/array/Array<~lib/array/Array<~lib/string/String>>) => i8
           kv =
             __lowerArray(
@@ -268,7 +268,7 @@ exports.importWebAssembly = function (remoteEntry) {
           return exports.onDelete(kv)
         },
 
-        validate(kv) {
+        validate (kv) {
           // assembly/index/validate(~lib/array/Array<~lib/array/Array<~lib/string/String>>) => void
           kv =
             __lowerArray(
@@ -290,12 +290,12 @@ exports.importWebAssembly = function (remoteEntry) {
               kv
             ) || __notnull()
           exports.validate(kv)
-        },
+        }
       },
       exports
     )
 
-    function __liftString(pointer) {
+    function __liftString (pointer) {
       if (!pointer) return null
       const end =
           (pointer + new Uint32Array(memory.buffer)[(pointer - 4) >>> 2]) >>> 1,
@@ -309,7 +309,7 @@ exports.importWebAssembly = function (remoteEntry) {
       return string + String.fromCharCode(...memoryU16.subarray(start, end))
     }
 
-    function __lowerString(value) {
+    function __lowerString (value) {
       if (value == null) return 0
       const length = value.length,
         pointer = exports.__new(length << 1, 2) >>> 0,
@@ -319,7 +319,7 @@ exports.importWebAssembly = function (remoteEntry) {
       return pointer
     }
 
-    function __liftArray(liftElement, align, pointer) {
+    function __liftArray (liftElement, align, pointer) {
       if (!pointer) return null
       const memoryU32 = new Uint32Array(memory.buffer),
         dataStart = memoryU32[(pointer + 4) >>> 2],
@@ -330,7 +330,7 @@ exports.importWebAssembly = function (remoteEntry) {
       return values
     }
 
-    function __lowerArray(lowerElement, id, align, values) {
+    function __lowerArray (lowerElement, id, align, values) {
       if (values == null) return 0
       const length = values.length,
         buffer = exports.__pin(exports.__new(length << align, 1)) >>> 0,
@@ -349,7 +349,7 @@ exports.importWebAssembly = function (remoteEntry) {
 
     const refcounts = new Map()
 
-    function __retain(pointer) {
+    function __retain (pointer) {
       if (pointer) {
         const refcount = refcounts.get(pointer)
         if (refcount) refcounts.set(pointer, refcount + 1)
@@ -358,7 +358,7 @@ exports.importWebAssembly = function (remoteEntry) {
       return pointer
     }
 
-    function __release(pointer) {
+    function __release (pointer) {
       if (pointer) {
         const refcount = refcounts.get(pointer)
         if (refcount === 1) exports.__unpin(pointer), refcounts.delete(pointer)
@@ -370,26 +370,24 @@ exports.importWebAssembly = function (remoteEntry) {
       }
     }
 
-    function __notnull(key) {
+    function __notnull (key) {
       throw TypeError(`value must not be null ${key}`)
     }
 
-    function __store_ref(pointer, value) {
+    function __store_ref (pointer, value) {
       new Uint32Array(memory.buffer)[pointer >>> 2] = value
     }
 
     return adaptedExports
   }
 
-  async function compileStream(remoteEntry) {
+  async function compileStream (remoteEntry) {
     try {
       return await globalThis.WebAssembly.compileStreaming(
         globalThis.fetch(remoteEntry.url)
       )
     } catch {
-      return globalThis.WebAssembly.compile(
-        (await RepoClient.fetch(remoteEntry)).toArrayBuffer()
-      )
+      return globalThis.WebAssembly.compile(await RepoClient.fetch(remoteEntry))
     }
   }
 

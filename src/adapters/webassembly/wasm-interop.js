@@ -26,7 +26,7 @@ exports.WasmInterop = function (wasmExports) {
     store_ref,
     notnull,
     memory,
-    _exports,
+    _exports
   } = wasmExports
 
   /**
@@ -35,7 +35,7 @@ exports.WasmInterop = function (wasmExports) {
    * @param {string[][]} kv key-value pairs
    * @returns {object}
    */
-  function lift(fn, kv) {
+  function lift (fn, kv) {
     return liftArray(
       pointer =>
         liftArray(
@@ -53,7 +53,7 @@ exports.WasmInterop = function (wasmExports) {
    * @param {string[][]} kv key-value pairs in a 2 dimensional string array
    * @returns {string[][]}
    */
-  function lower(kv) {
+  function lower (kv) {
     return (
       lowerArray(
         (pointer, value) => {
@@ -81,7 +81,7 @@ exports.WasmInterop = function (wasmExports) {
    * @param {string} v - value
    * @returns {string|number|boolean}
    */
-  function parseString(v) {
+  function parseString (v) {
     return !isNaN(parseFloat(v))
       ? parseFloat(v)
       : /^true$/i.test(v)
@@ -96,10 +96,10 @@ exports.WasmInterop = function (wasmExports) {
    * @param {object} o
    * @returns {string[][]}
    */
-  function parseObject(o) {
+  function parseObject (o) {
     return Object.entries(o)
       .filter(([k, v]) => ['string', 'number', 'boolean'].includes(typeof v))
-      .map(([k, v]) => [k, v.toString()])
+      .map(([k, v]) => [k, v.toString() || '_'])
   }
 
   /**
@@ -107,7 +107,7 @@ exports.WasmInterop = function (wasmExports) {
    * @param {object} obj
    * @returns {string[][]}
    */
-  function toKeyValueArray(obj) {
+  function toKeyValueArray (obj) {
     // handle custom port format
     if (obj.port && obj.args) return parseObject(obj.args)
     return parseObject(obj)
@@ -118,7 +118,7 @@ exports.WasmInterop = function (wasmExports) {
    * @param {string[][]} kv
    * @returns {object}
    */
-  function fromKeyValueArray(kv) {
+  function fromKeyValueArray (kv) {
     return kv
       .map(([k, v]) => ({ [k]: parseString(v) }))
       .reduce((a, b) => ({ ...a, ...b }))
@@ -143,7 +143,7 @@ exports.WasmInterop = function (wasmExports) {
    * @param {object} [obj] object; see above
    * @returns {object} object
    */
-  function callWasmFunction(fn, obj) {
+  function callWasmFunction (fn, obj) {
     return fromKeyValueArray(lift(fn, lower(toKeyValueArray(obj))))
   }
 
@@ -152,7 +152,7 @@ exports.WasmInterop = function (wasmExports) {
      * For every command in {@link getCommands} create a
      * an entry that will invoke the exported wasm function.
      */
-    importWasmCommands() {
+    importWasmCommands () {
       const commandNames = getCommands()
       return Object.keys(commandNames)
         .map(command => {
@@ -162,10 +162,10 @@ exports.WasmInterop = function (wasmExports) {
                 callWasmFunction(command, {
                   ...model,
                   modelId: model.getId(),
-                  modelName: model.getName(),
+                  modelName: model.getName()
                 }),
-              acl: ['read', 'write'],
-            },
+              acl: ['read', 'write']
+            }
           }
         })
         .reduce((p, c) => ({ ...p, ...c }), {})
@@ -176,7 +176,7 @@ exports.WasmInterop = function (wasmExports) {
      * an entry in {@link ModelSpecification.ports}
      * that will invoke the exported wasm function.
      */
-    importWasmPorts() {
+    importWasmPorts () {
       const ports = getPorts()
       return Object.keys(ports)
         .map(port => {
@@ -187,7 +187,7 @@ exports.WasmInterop = function (wasmExports) {
             producesEvent,
             callback,
             undo,
-            inbound,
+            inbound
           ] = ports[port].split(',')
           return {
             [port]: {
@@ -197,10 +197,10 @@ exports.WasmInterop = function (wasmExports) {
               producesEvent,
               callback: data => callWasmFunction(callback, data),
               undo: data => callWasmFunction(undo, data),
-              inbound(port, args, id) {
+              inbound (port, args, id) {
                 callWasmFunction(inbound, { port, ...args, id })
-              },
-            },
+              }
+            }
           }
         })
         .reduce((p, c) => ({ ...p, ...c }), {})
@@ -210,7 +210,7 @@ exports.WasmInterop = function (wasmExports) {
      *
      * @returns {{[x: string]:(x) => any}}
      */
-    importWasmPortFunctions() {
+    importWasmPortFunctions () {
       return Object.entries(getPorts())
         .map(([k, v]) => [k, v.split(',')[1]])
         .filter(([k, v]) => v === 'inbound')
@@ -218,7 +218,7 @@ exports.WasmInterop = function (wasmExports) {
         .reduce((a, b) => ({ ...a, ...b }), {})
     },
 
-    callWasmFunction,
+    callWasmFunction
   })
 }
 
