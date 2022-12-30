@@ -24,9 +24,9 @@ function DefaultInboundAdapter(port) {
  *
  * Return an object containing the set of port functions for
  * each model. These port functions are called by common logic
- * that handles error recovery, instrumentation, authorization,
+ * that handle error recovery, instrumentation, authorization,
  * flow control, state (enabled or disabled) and other universal
- * port features.
+ * functions.
  *
  * @param {{
  *  portSpec:import('.').ports
@@ -51,7 +51,6 @@ export default function bindAdapters({
     outbound: (portName, port, adapter, service) => ({
       [portName]: adapter(service),
     }),
-
     inbound: (portName, port, adapter = DefaultInboundAdapter, service) => ({
       [portName]: adapter(port),
     }),

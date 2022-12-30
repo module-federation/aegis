@@ -1,6 +1,6 @@
 'use strict'
 
-import { Readable, Transform, Writable } from 'node:stream'
+import { Readable, Stream, Transform } from 'node:stream'
 import { isMainThread } from 'worker_threads'
 /** @typedef {import('.').Model} Model */
 
@@ -144,9 +144,8 @@ const DsCoreExtensions = superclass =>
 
     /**
      *
-     * @param {Model[]} list
+     * @param {Model[]|Stream[]} list
      * @param {import('./datasource').listOptions} options
-     * @returns {Array<Readable|Transform>}
      */
     stream (list, options) {
       return new Promise((resolve, reject) => {
@@ -157,7 +156,7 @@ const DsCoreExtensions = superclass =>
         if (options.transform) list.concat(options.transform)
         if (options.serialize) list.push(this.serialize())
 
-        return list.reduce((p, c) => p.pipe(c)).pipe(options.writable)
+        list.reduce((p, c) => p.pipe(c)).pipe(options.writable)
       })
     }
 
