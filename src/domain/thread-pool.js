@@ -3,10 +3,10 @@
 import { Worker, BroadcastChannel } from 'worker_threads'
 import { EventEmitter } from 'node:stream'
 import { AsyncResource } from 'node:async_hooks'
-import { assert } from 'console'
 import ModelFactory, { totalServices, requestContext } from '.'
 import EventBrokerFactory from './event-broker'
 import domainEvents from './domain-events'
+import assert from 'assert'
 import path from 'path'
 import os from 'os'
 
@@ -226,7 +226,7 @@ export class ThreadPool extends EventEmitter {
               resolve(1)
             })
             this.eventChannel.postMessage({ eventName: 'shutdown' })
-          }).catch(console.error)
+          })
         },
 
         /**
@@ -335,10 +335,8 @@ export class ThreadPool extends EventEmitter {
       file: this.file,
       workerData: this.workerData
     })
-
-    if (thread) return thread
-
-    throw new Error('error creating thread')
+    assert.ok(thread, 'error creating thread')
+    return thread
   }
 
   /**
@@ -372,8 +370,8 @@ export class ThreadPool extends EventEmitter {
     const status = []
     for (const thread of this.threads)
       status.push(await this.stopThread(thread, reason))
-    assert(this.threads.length === 0, 'at least 1 thread didnt stop', ...status)
     this.emit(this.stopThreads.name, ...status)
+    assert.ok(this.threads.length === 0, 'some threads didnt stop', ...status)
     return this
   }
 
@@ -524,27 +522,30 @@ export class ThreadPool extends EventEmitter {
     if (this.poolCanGrow()) return this.startThread()
   }
 
-  checkThreadCount (threadsInUse) {
-    assert(
-      threadsInUse < 0 && threadsInUse > this.threads.length,
-      'thread mgmt issue',
-      'in use',
-      threadsInUse,
-      'total',
-      this.threads.length,
-      'free',
-      this.freeThreads.length,
-      'max',
-      this.maxThreads
+  threadsInUse () {
+    const diff = this.threads.length - this.freeThreads.length
+    assert.ok(
+      diff >= 0 && diff <= this.maxThreads,
+      'thread mgmt issue: in use: ' +
+        diff +
+        ', total:' +
+        this.threads.length +
+        ', free:' +
+        this.freeThreads.length +
+        ', min:' +
+        this.minThreads +
+        ', max:' +
+        this.maxThreads
     )
+    return diff
   }
 
   checkout () {
     if (this.freeThreads.length > 0) {
       const thread = this.freeThreads.shift()
-      const threadsInUse = this.threads.length - this.freeThreads.length
-      console.debug(`thread checked-out, total in-use now ${threadsInUse}`)
-      this.checkThreadCount(threadsInUse)
+      console.debug(
+        `thread checked out, total in use now ${this.threadsInUse()}`
+      )
       return thread
     }
   }
@@ -552,9 +553,9 @@ export class ThreadPool extends EventEmitter {
   checkin (thread) {
     if (thread) {
       this.freeThreads.push(thread)
-      const threadsInUse = this.threads.length - this.freeThreads.length
-      console.debug(`thread checked-in, total in-use now ${threadsInUse}`)
-      this.checkThreadCount(threadsInUse)
+      console.debug(
+        `thread checked-in, total in-use now ${this.threadsInUse()}`
+      )
     }
     return this
   }
@@ -617,7 +618,7 @@ export class ThreadPool extends EventEmitter {
   }
 
   /**
-   * Fire event with the given scope (host, pool, thread)
+   * Fire event within the given scope (mesh, host, pool, thread)
    * @param {{
    *   scope:'host'|'pool'|'thread'|'response',
    *   data:string,
@@ -627,6 +628,9 @@ export class ThreadPool extends EventEmitter {
    */
   async fireEvent (event) {
     const eventScopes = {
+      mesh: event =>
+        broker.notify(event.eventName, { ...event, eventSource: this.name }),
+
       host: event =>
         broker.notify('to_worker', { ...event, eventSource: this.name }),
 
@@ -746,11 +750,8 @@ const ThreadPoolFactory = (() => {
    * @param {string} poolName same as `modelName`
    */
   function broadcastEvent (event, poolName) {
-    if (poolName) return getBroadcastChannel(poolName).postMessage(event)
-    getBroadcastChannel().postMessgae({
-      eventName: 'threadError',
-      ...event
-    })
+    assert.ok(poolName, 'no poolname given')
+    getBroadcastChannel(poolName).postMessage(event)
   }
 
   /**
@@ -862,9 +863,10 @@ const ThreadPoolFactory = (() => {
    * @returns {Promise<any>} returns a response
    */
   async function fireEvent (event) {
-    const pool = threadPools.get(event.domain)
+    const pool = threadPools.get(event.domain || event.modelName)
     if (pool) return pool.fireEvent(event)
-    broadcastEvent(event)
+    // no pool specified, forward to mesh
+    broker.notify('from_worker', event)
   }
 
   /**
@@ -874,13 +876,15 @@ const ThreadPoolFactory = (() => {
    * @returns {Promise<ThreadPool>}
    * @throws {ReloadError}
    */
-  function reload (poolName) {
-    return new Promise(async (resolve, reject) => {
+  async function reload (poolName) {
+    try {
       const pool = threadPools.get(poolName.toUpperCase())
-      if (!pool) reject(`no such pool ${pool}`)
+      assert.ok(pool, `no such pool ${pool}`)
       await pool.reload()
-      resolve(pool.status())
-    }).catch(broadcastEvent)
+    } catch (error) {
+      console.error({ fn: reload.name, error })
+      return fireEvent({ eventName: error.name, ...error })
+    }
   }
 
   async function reloadPools () {
@@ -910,7 +914,7 @@ const ThreadPoolFactory = (() => {
 
   async function destroyPools () {
     await Promise.all([...threadPools].map(([, pool]) => destroy(pool)))
-    threadPools.clear()
+    assert.ok(threadPools.size === 0, 'some pools not destroyed')
   }
 
   function status (poolName = null) {

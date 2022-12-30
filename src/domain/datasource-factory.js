@@ -317,7 +317,7 @@ const DataSourceFactory = (() => {
     const DsClass = createDataSourceClass(spec, options)
     const DsExtendedClass = extendDataSourceClass(DsClass, options)
 
-    if (spec.datasource) {
+    if (spec?.datasource) {
       options = { ...options, connOpts: { ...spec.datasource } }
     }
 
