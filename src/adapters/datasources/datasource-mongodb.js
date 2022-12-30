@@ -365,10 +365,10 @@ export class DataSourceMongoDb extends DataSource {
       let result
       const options = this.processOptions(param)
 
-      if (0 < ~~options.__page) {
+      if (0 < ~~param.query.__page) {
         // qpm > processOptions weeds out __page - add it back properly as an integer
-        options.page = ~~options.__page
-        options.skip = (options.page - 1) * options.limit || 0
+        options.page = ~~param.query.__page
+        options.skip = ((options.page - 1) * options.limit) || 0
       }
 
       if (param.query.__aggregate) {
@@ -383,8 +383,8 @@ export class DataSourceMongoDb extends DataSource {
 
       if (options.streamRequested) return this.streamList(options)
 
-      const data = (await this.mongoFind(options)).toArray()
-      const count = data?.length
+      const data = await(await this.mongoFind(options)).toArray()
+      const count = ~~(await this.mongoCount(options.filter))
       result = {
         ...options,
         data,
