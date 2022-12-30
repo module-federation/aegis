@@ -180,7 +180,8 @@ const DsCoreExtensions = superclass =>
 
         const opts = {
           ...options,
-          streamRequested: options?.writable ? true : false
+          streamRequested:
+            options?.writable && !options?.query?.__aggregate ? true : false
         }
         const list = [await super.list(opts)].flat()
 
