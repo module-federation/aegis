@@ -63,15 +63,21 @@ You don't need that anymore.
 
 ### Install [<img src="https://github.com/tysonrm/cluster-rolling-restart/blob/main/npm-tile.png">](https://www.npmjs.com/package/@module-federation/aegis)
 
+Install just the core lib from NPM:
+
 ```shell
 npm i @module-federation/aegis
 ```
 
 ### Contribute
 
+Open a Gitpod workspace using a local repo:
+
 [![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/github.com/module-federation/aegis-app)
 
 or
+
+Manually install using Github as a repo. 
 
 ```shell
 git clone https://github.com/module-federation/aegis
@@ -84,9 +90,10 @@ cd ..
 
 git clone https://github.com/module-federation/aegis-host
 cd aegis-host
-cp dotenv.example .env
 yarn
 yarn link "@module-federation/aegis"
+cd webpack/remote-entries
+cp index-github.js index.js
 yarn build
 yarn start
 yarn demo
