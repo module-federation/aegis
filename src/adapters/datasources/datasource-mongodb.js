@@ -259,6 +259,8 @@ export class DataSourceMongoDb extends DataSource {
    */
   async mongoFind ({ filter, sort, limit, aggregate, skip } = {}) {
     console.log({ fn: this.mongoFind.name, filter })
+    console.log({ aggregate })
+
     let cursor = aggregate
       ? (await this.collection()).aggregate(aggregate)
       : (await this.collection()).find(filter)
@@ -294,36 +296,10 @@ export class DataSourceMongoDb extends DataSource {
    * }} param0
    * @returns
    */
-  streamList ({ serialize, options }) {
+  async streamList (options) {
+    const pipeArgs = []
+
     try {
-      const serializer = new Transform({
-        writableObjectMode: true,
-
-        // start of array
-        construct (callback) {
-          this.first = true
-          this.push('[')
-          callback()
-        },
-
-        // each chunk is a record
-        transform (chunk, _encoding, next) {
-          // comma-separate
-          if (this.first) this.first = false
-          else this.push(',')
-
-          // serialize record
-          this.push(JSON.stringify(chunk))
-          next()
-        },
-
-        // end of array
-        flush (callback) {
-          this.push(']')
-          callback()
-        }
-      })
-
       const paginate = new Transform({
         writableObjectMode: true,
 
@@ -346,29 +322,25 @@ export class DataSourceMongoDb extends DataSource {
         }
       })
 
-      return new Promise(async (resolve, reject) => {
-        const pipeArgs = []
-        const readable = (await this.mongoFind(options)).stream()
+      const readable = (await this.mongoFind(options)).stream()
+      // optionally transform db stream then pipe to output
+      pipeArgs.push(readable)
 
-        // optionally transform db stream then pipe to output
-        pipeArgs.push(readable)
+      if (options.page) {
+        const count = ~~(await this.mongoCount(options.filter))
 
-        if (options.page) {
-          const count = ~~(await this.mongoCount(options.filter))
+        paginate._transform(
+          `"count":${count}, "total":${Math.ceil(
+            count / options.limit
+          )}, ${JSON.stringify(options).slice(1, -1)}, "data":`,
+          'utf8',
+          () => console.log('paginated query', options)
+        )
 
-          paginate._transform(
-            `"count":${count}, "total":${Math.ceil(
-              count / options.limit
-            )}, ${JSON.stringify(options).slice(1, -1)}, "data":`,
-            'utf8',
-            () => console.log('paginated query', options)
-          )
+        pipeArgs.push(paginate)
+      }
 
-          pipeArgs.push(paginate)
-        }
-
-        return pipeArgs
-      })
+      return pipeArgs
     } catch (error) {
       console.error({
         fn: this.streamList.name,
@@ -378,6 +350,7 @@ export class DataSourceMongoDb extends DataSource {
   }
 
   processOptions ({ options = {}, query = {} }) {
+    console.log(processQuery(query))
     return { ...processQuery(query), ...options } // options must overwite the query not otherwise
   }
 
@@ -388,34 +361,35 @@ export class DataSourceMongoDb extends DataSource {
    */
   async list (param) {
     try {
+      console.log({ param })
       let result
       const options = this.processOptions(param)
+
       if (0 < ~~options.__page) {
         // qpm > processOptions weeds out __page - add it back properly as an integer
         options.page = ~~options.__page
         options.skip = (options.page - 1) * options.limit || 0
       }
-      if (options.__aggregate) {
+
+      if (param.query.__aggregate) {
         // qpm > processOptions weeds out __aggregate - add it back properly as parsed json
         try {
-          const aggregateQuery = JSON.parse(query.__aggregate)
-          options.aggregate = aggregateQuery
+          options.aggregate = JSON.parse(param.query.__aggregate)
         } catch (e) {
           console.error(e, 'invalid Aggregate')
         }
       }
       console.log({ options })
 
-      if (options.streamRequested) this.streamList({ serialize, options })
-      else {
-        const data = (await this.mongoFind(options)).toArray()
-        const count = data?.length
-        result = {
-          ...options,
-          data,
-          count,
-          total: Math.ceil(count / options.limit)
-        }
+      if (options.streamRequested) return this.streamList(options)
+
+      const data = (await this.mongoFind(options)).toArray()
+      const count = data?.length
+      result = {
+        ...options,
+        data,
+        count,
+        total: Math.ceil(count / options.limit)
       }
 
       return options?.page ? result : result?.data
