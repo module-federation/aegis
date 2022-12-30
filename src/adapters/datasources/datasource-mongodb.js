@@ -14,15 +14,15 @@ const processQuery = qpm({
   converters: {
     nullstring: val => {
       return { $type: 10 }
-    }, // reference BSON datatypes https://www.mongodb.com/docs/manual/reference/bson-types/
-  },
+    } // reference BSON datatypes https://www.mongodb.com/docs/manual/reference/bson-types/
+  }
 })
 
 const url = process.env.MONGODB_URL || 'mongodb://localhost:27017'
 
 const dsOptions = configRoot.adapters.datasources.DataSourceMongoDb.options || {
   runOffline: true,
-  numConns: 2,
+  numConns: 2
 }
 
 const cacheSize = configRoot.adapters.cacheSize || 3000
@@ -44,7 +44,7 @@ const mongoOpts = {
  * even when the database is offline.
  */
 export class DataSourceMongoDb extends DataSource {
-  constructor(map, name, namespace, options = {}) {
+  constructor (map, name, namespace, options = {}) {
     super(map, name, namespace, options)
     this.cacheSize = cacheSize
     this.mongoOpts = mongoOpts
@@ -57,7 +57,7 @@ export class DataSourceMongoDb extends DataSource {
    *
    * @returns {Promise<import('mongodb').Db>}
    */
-  async connectionPool() {
+  async connectionPool () {
     return new Promise((resolve, reject) => {
       if (this.db) return resolve(this.db)
       MongoClient.connect(
@@ -65,7 +65,7 @@ export class DataSourceMongoDb extends DataSource {
         {
           ...this.mongoOpts,
           poolSize: dsOptions.numConns || 2,
-          connectTimeoutMS: 500,
+          connectTimeoutMS: 500
         },
         (err, db) => {
           if (err) return reject(err)
@@ -76,7 +76,7 @@ export class DataSourceMongoDb extends DataSource {
     })
   }
 
-  connect(client) {
+  connect (client) {
     return async function () {
       let timeout = false
       const timerId = setTimeout(() => {
@@ -88,12 +88,12 @@ export class DataSourceMongoDb extends DataSource {
     }
   }
 
-  async connection() {
+  async connection () {
     try {
       while (connections.length < (dsOptions.numConns || 1)) {
         const client = new MongoClient(this.url, {
           ...this.mongoOpts,
-          connectTimeoutMS: 500,
+          connectTimeoutMS: 500
         })
         const thresholds = {
           default: {
@@ -101,8 +101,8 @@ export class DataSourceMongoDb extends DataSource {
             callVolume: 1,
             intervalMs: 10000,
             testDelay: 300000,
-            fallbackFn: () => console.log('circuit open'),
-          },
+            fallbackFn: () => console.log('circuit open')
+          }
         }
         const breaker = CircuitBreaker(
           'mongodb.connect',
@@ -136,16 +136,16 @@ export class DataSourceMongoDb extends DataSource {
     }
   }
 
-  async collection() {
+  async collection () {
     return (await this.connection()).db(this.namespace).collection(this.name)
   }
 
-  async createIndexes(client) {
+  async createIndexes (client) {
     const indexOperations = this.options.connOpts.indexes.map(index => {
       return {
         name: index.fields.join('_'),
         key: index.fields.reduce((a, v) => ({ ...a, [v]: 1 }), {}),
-        ...index.options,
+        ...index.options
       }
     })
 
@@ -155,7 +155,7 @@ export class DataSourceMongoDb extends DataSource {
       .createIndexes(indexOperations)
   }
 
-  async find(id) {
+  async find (id) {
     try {
       return (await this.collection()).findOne({ _id: id })
     } catch (error) {
@@ -173,7 +173,7 @@ export class DataSourceMongoDb extends DataSource {
    * @param {*} id
    * @param {*} data
    */
-  async save(id, data) {
+  async save (id, data) {
     try {
       await (
         await this.collection()
@@ -196,19 +196,19 @@ export class DataSourceMongoDb extends DataSource {
    * @param {number} highWaterMark num of docs per batch write
    * @returns
    */
-  createWriteStream(filter = {}, highWaterMark = HIGHWATERMARK) {
+  createWriteStream (filter = {}, highWaterMark = HIGHWATERMARK) {
     try {
       let objects = []
       const ctx = this
 
-      async function upsert() {
+      async function upsert () {
         const operations = objects.map(obj => {
           return {
             replaceOne: {
               filter: { ...filter, _id: obj.id },
               replacement: { ...obj, _id: obj.id },
-              upsert: true,
-            },
+              upsert: true
+            }
           }
         })
 
@@ -227,17 +227,17 @@ export class DataSourceMongoDb extends DataSource {
       const writable = new Writable({
         objectMode: true,
 
-        async write(chunk, _encoding, next) {
+        async write (chunk, _encoding, next) {
           objects.push(chunk)
           // if true time to flush buffer and write to db
           if (objects.length >= highWaterMark) await upsert()
           next()
         },
 
-        end(chunk, _, done) {
+        end (chunk, _, done) {
           objects.push(chunk)
           done()
-        },
+        }
       })
 
       writable.on('finish', async () => await upsert())
@@ -257,8 +257,10 @@ export class DataSourceMongoDb extends DataSource {
    *
    * @returns {Promise<import('mongodb').AbstractCursor>}
    */
-  async mongoFind({ filter, sort, limit, aggregate, skip } = {}) {
+  async mongoFind ({ filter, sort, limit, aggregate, skip } = {}) {
     console.log({ fn: this.mongoFind.name, filter })
+    console.log({ aggregate })
+
     let cursor = aggregate
       ? (await this.collection()).aggregate(aggregate)
       : (await this.collection()).find(filter)
@@ -278,7 +280,7 @@ export class DataSourceMongoDb extends DataSource {
    * @returns
    */
 
-  async mongoCount({ filter = {} } = {}) {
+  async mongoCount ({ filter = {} } = {}) {
     return filter == {}
       ? await this.countDb()
       : (await this.collection()).count(filter)
@@ -290,93 +292,65 @@ export class DataSourceMongoDb extends DataSource {
    *
    * @param  {{
    *  filter:*
-   *  transform:Transform
    *  serialize:boolean
    * }} param0
    * @returns
    */
-  streamList({ writable, serialize, transform, options }) {
+  async streamList (options) {
+    const pipeArgs = []
+
     try {
-      const serializer = new Transform({
-        writableObjectMode: true,
-
-        // start of array
-        construct(callback) {
-          this.first = true
-          this.push('[')
-          callback()
-        },
-
-        // each chunk is a record
-        transform(chunk, _encoding, next) {
-          // comma-separate
-          if (this.first) this.first = false
-          else this.push(',')
-
-          // serialize record
-          this.push(JSON.stringify(chunk))
-          next()
-        },
-
-        // end of array
-        flush(callback) {
-          this.push(']')
-          callback()
-        },
-      })
-
       const paginate = new Transform({
         writableObjectMode: true,
 
         // start of array
-        construct(callback) {
+        construct (callback) {
           this.push('{ ')
           callback()
         },
 
         // first chunk is the pagination data, rest is result
-        transform(chunk, _encoding, next) {
+        transform (chunk, _encoding, next) {
           this.push(chunk)
           next()
         },
 
         // end of array
-        flush(callback) {
+        flush (callback) {
           this.push('}')
           callback()
-        },
-      })
-
-      return new Promise(async (resolve, reject) => {
-        const pipeArgs = []
-        const readable = (await this.mongoFind(options)).stream()
-
-        // optionally transform db stream then pipe to output
-        pipeArgs.push(readable)
-
-        if (options.page) {
-          const count = ~~(await this.mongoCount(options.filter))
-          pipeArgs.push(paginate)
-          paginate._transform(
-            `"count":${count}, "total":${Math.ceil(
-              count / options.limit
-            )}, ${JSON.stringify(options).slice(1, -1)}, "data":`,
-            'utf8',
-            () => console.log('paginated query', options)
-          )
         }
-
-        return pipeArgs
       })
+
+      const readable = (await this.mongoFind(options)).stream()
+      // optionally transform db stream then pipe to output
+      pipeArgs.push(readable)
+
+      if (options.page) {
+        const count = ~~(await this.mongoCount(options.filter))
+
+        paginate._transform(
+          `"count":${count}, "total":${Math.ceil(
+            count / options.limit
+          )}, ${JSON.stringify(options).slice(1, -1)}, "data":`,
+          'utf8',
+          () => console.log('paginated query', options)
+        )
+
+        pipeArgs.push(paginate)
+      }
+
+      return pipeArgs
     } catch (error) {
       console.error({
         fn: this.streamList.name,
-        error,
+        error
       })
     }
   }
 
-  processOptions({ options = {}, query = {} }) {
+  processOptions ({ options = {}, query = {} }) {
+    console.log(processQuery(query))
     return { ...processQuery(query), ...options } // options must overwite the query not otherwise
   }
 
@@ -385,37 +359,37 @@ export class DataSourceMongoDb extends DataSource {
    * @override
    * @param {import('../../domain/datasource').listOptions} param
    */
-  async list(param) {
+  async list (param) {
     try {
+      console.log({ param })
       let result
       const options = this.processOptions(param)
+
       if (0 < ~~options.__page) {
         // qpm > processOptions weeds out __page - add it back properly as an integer
-        options.page = ~~query.__page
+        options.page = ~~options.__page
         options.skip = (options.page - 1) * options.limit || 0
       }
-      if (options.__aggregate) {
+
+      if (param.query.__aggregate) {
         // qpm > processOptions weeds out __aggregate - add it back properly as parsed json
         try {
-          const aggregateQuery = JSON.parse(query.__aggregate)
-          options.aggregate = aggregateQuery
+          options.aggregate = JSON.parse(param.query.__aggregate)
         } catch (e) {
           console.error(e, 'invalid Aggregate')
         }
       }
       console.log({ options })
 
-      if (options.streamRequested && !query.__json)
-        this.streamList({ writable, serialize, transform, options })
-      else {
-        const data = (await this.mongoFind(options)).toArray()
-        const count = data?.length
-        result = {
-          ...options,
-          data,
-          count,
-          total: Math.ceil(count / options.limit),
-        }
+      if (options.streamRequested) return this.streamList(options)
+
+      const data = (await this.mongoFind(options)).toArray()
+      const count = data?.length
+      result = {
+        ...options,
+        data,
+        count,
+        total: Math.ceil(count / options.limit)
       }
 
       return options?.page ? result : result?.data
@@ -428,11 +402,11 @@ export class DataSourceMongoDb extends DataSource {
    *
    * @override
    */
-  async count() {
+  async count () {
     return {
       total: await this.countDb(),
       cached: this.getCacheSize(),
-      bytes: this.getCacheSizeBytes(),
+      bytes: this.getCacheSizeBytes()
     }
   }
 
@@ -440,7 +414,7 @@ export class DataSourceMongoDb extends DataSource {
    * @override
    * @returns
    */
-  async countDb() {
+  async countDb () {
     return (await this.collection()).countDocuments()
   }
 
@@ -451,7 +425,7 @@ export class DataSourceMongoDb extends DataSource {
    * @override
    * @param {*} id
    */
-  async delete(id) {
+  async delete (id) {
     try {
       await (await this.collection()).deleteOne({ _id: id })
     } catch (error) {
