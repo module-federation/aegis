@@ -164,7 +164,7 @@ export class ThreadPool extends EventEmitter {
 
     if (options?.preload) {
       console.info('preload enabled for', this.name)
-      this.startThreads(true)
+      this.startThreads()
     }
   }
 
@@ -516,6 +516,7 @@ export class ThreadPool extends EventEmitter {
       errorTolerance: this.errorRateThreshold(),
       errors: this.errorCount(),
       deployments: this.deploymentCount(),
+      poolCanGrow: this.poolCanGrow(),
       ...Object.entries(process.memoryUsage())
         .map(([k, v]) => ({ [`${k}Mb`]: Math.round(v / 1024 / 1024) }))
         .reduce((a, b) => ({ ...a, ...b })),
@@ -593,6 +594,10 @@ export class ThreadPool extends EventEmitter {
     return this
   }
 
+  enqueue (job) {
+    this.waitingJobs.push(thread => thread.run(job))
+  }
+
   /**
    * Run a job (use case function) on an available thread; or queue the job
    * until one becomes available.
@@ -620,7 +625,7 @@ export class ThreadPool extends EventEmitter {
         ...options
       })
 
-      let thread = this.checkout()
+      const thread = this.checkout()
 
       if (thread) {
         thread.run(job)
@@ -628,7 +633,7 @@ export class ThreadPool extends EventEmitter {
       }
 
       console.warn('no threads: queuing job', jobName)
-      this.waitingJobs.push(thread => thread.run(job))
+      this.enqueue(job)
       this.incrementJobsQueued()
     })
   }
