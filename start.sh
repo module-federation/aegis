@@ -6,4 +6,5 @@ cd ../aegis
 yarn link
 cd ../aegis-host
 yarn link @module-federation/aegis
+export PORT=80
 yarn start

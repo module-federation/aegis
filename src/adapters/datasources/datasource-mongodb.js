@@ -371,7 +371,7 @@ export class DataSourceMongoDb extends DataSource {
         options.skip = (options.page - 1) * options.limit || 0
       }
 
-      if (param.query.__aggregate) {
+      if (param?.query?.__aggregate) {
         // qpm > processOptions weeds out __aggregate - add it back properly as parsed json
         try {
           options.aggregate = JSON.parse(param.query.__aggregate)
@@ -398,16 +398,8 @@ export class DataSourceMongoDb extends DataSource {
     }
   }
 
-  /**
-   *
-   * @override
-   */
   async count () {
-    return {
-      total: await this.countDb(),
-      cached: this.getCacheSize(),
-      bytes: this.getCacheSizeBytes()
-    }
+    return this.countDb()
   }
 
   /**

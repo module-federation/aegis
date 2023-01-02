@@ -4,12 +4,12 @@ import { workerData, BroadcastChannel, isMainThread } from 'worker_threads'
 import { modelsInDomain } from './use-cases'
 
 export class PortEventRouter {
-  constructor(models, broker) {
+  constructor (models, broker) {
     this.models = models
     this.broker = broker
   }
 
-  getThreadLocalPorts() {
+  getThreadLocalPorts () {
     const localSpec = this.models.getModelSpec(
       workerData.poolName.toUpperCase()
     )
@@ -28,7 +28,7 @@ export class PortEventRouter {
       )
   }
 
-  getThreadRemotePorts() {
+  getThreadRemotePorts () {
     return this.models
       .getModelSpecs()
       .filter(
@@ -43,7 +43,7 @@ export class PortEventRouter {
       )
   }
 
-  handleChannelEvent(msg) {
+  handleChannelEvent (msg) {
     if (msg.data.eventName) this.broker.notify(msg.data.eventName, msg.data)
     else {
       console.log('missing eventName', msg.data)
@@ -57,7 +57,7 @@ export class PortEventRouter {
    * and forward to pools that consume them. If a producer event is
    * not consumed by any local thread, foward to service mesh.
    */
-  listen() {
+  listen () {
     const localPorts = this.getThreadLocalPorts()
     const remotePorts = this.getThreadRemotePorts()
 
@@ -98,7 +98,11 @@ export class PortEventRouter {
         console.log('broadcasting...', { port, event })
         channels
           .get(port.modelName)
-          .postMessage(JSON.parse(JSON.stringify(event)))
+          .postMessage(
+            JSON.parse(
+              JSON.stringify({ ...event, route: 'balanceEventConsumer' })
+            )
+          )
       })
     )
 
@@ -109,10 +113,13 @@ export class PortEventRouter {
         this.handleChannelEvent(msg)
       }
     })
-
+    
     unhandledPorts.forEach(port => {
       this.broker.on(port.producesEvent, event => {
-        this.broker.notify('to_main', event)
+        this.broker.notify('to_main', {
+          ...event,
+          route: 'balanceEventConsumer'
+        })
       })
     })
 

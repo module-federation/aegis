@@ -22,7 +22,7 @@ const {
   postModels,
   liveUpdate,
   postEntry,
-  anyInvokePorts,
+  anyInvokePorts
 } = adapters.controllers
 
 const apiRoot = process.env.API_ROOT || '/aegis/api'
@@ -39,13 +39,13 @@ const endpointPortId = e => `${modelPath}/${e}/:id/service/ports/:port`
  * @extends {Map}
  */
 class RouteMap extends Map {
-  find(path) {
+  find (path) {
     const routeInfo = [...super.values()].find(v => v.regex.test(path))
     if (routeInfo)
       return { ...routeInfo, params: routeInfo.matcher(path).params }
   }
 
-  set(path, method) {
+  set (path, method) {
     if (super.has(path)) {
       super.set(path, { ...super.get(path), ...method })
       return
@@ -54,17 +54,17 @@ class RouteMap extends Map {
     super.set(path, {
       ...method,
       regex: pathToRegexp(path),
-      matcher: match(path),
+      matcher: match(path)
     })
   }
 
-  has(path) {
+  has (path) {
     this.hasPath = path
     this.routeInfo = this.find(path)
     return this.routeInfo ? true : false
   }
 
-  get(path) {
+  get (path) {
     // if equal we already know the answer
     return path === this.hasPath ? this.routeInfo : this.find(path)
   }
@@ -73,19 +73,19 @@ class RouteMap extends Map {
 const routes = new RouteMap()
 const routeOverrides = new Map()
 
-function buildPath(ctrl, path) {
+function buildPath (ctrl, path) {
   return ctrl.path && ctrl.path[path.name]
     ? ctrl.path[path.name]
     : path(ctrl.endpoint)
 }
 
-function checkAllowedMethods(ctrl, method) {
+function checkAllowedMethods (ctrl, method) {
   if (!ctrl.ports.methods) return true
   return ctrl.ports.methods.includes(method)
 }
 
 const router = {
-  autoRoutes(path, method, controllers, adapter, ports = false) {
+  autoRoutes (path, method, controllers, adapter, ports = false) {
     controllers()
       .filter(ctrl => !ctrl.internal)
       .forEach(ctrl => {
@@ -106,20 +106,20 @@ const router = {
                   specPortMethods.includes(method.toLowerCase()))
               ) {
                 routes.set(port.path || path(ctrl.endpoint), {
-                  [method]: adapter(ctrl.fn),
+                  [method]: adapter(ctrl.fn)
                 })
               }
             }
           }
         } else {
           routes.set(buildPath(ctrl, path), {
-            [method]: adapter(ctrl.fn),
+            [method]: adapter(ctrl.fn)
           })
         }
       })
   },
 
-  userRoutes(controllers) {
+  userRoutes (controllers) {
     try {
       controllers().forEach(ctlr => routes.set(ctlr.path, ctlr))
     } catch (error) {
@@ -128,13 +128,13 @@ const router = {
     }
   },
 
-  adminRoute(controller, adapter, method, path) {
+  adminRoute (controller, adapter, method, path) {
     const adminPath = `${apiRoot}/${path}`
     routes.set(adminPath, { [method]: adapter(controller()) })
-  },
+  }
 }
 
-function makeRoutes() {
+function makeRoutes () {
   router.autoRoutes(endpoint, 'get', liveUpdate, http)
   router.autoRoutes(endpoint, 'get', getModels, http)
   router.autoRoutes(endpoint, 'post', postModels, http)
@@ -166,7 +166,7 @@ function makeRoutes() {
  * @param {Response} res
  * @returns
  */
-async function handle(path, method, req, res) {
+async function handle (path, method, req, res) {
   const routeInfo = routes.get(path)
 
   if (!routeInfo) {
@@ -195,7 +195,7 @@ async function handle(path, method, req, res) {
         ['user', req.user],
         ['res', res],
         ['path', path],
-        ['headers', req.headers],
+        ['headers', req.headers]
       ])
     )
     console.debug(`enter context ${requestContext.getStore().get('id')}`)
@@ -210,7 +210,7 @@ async function handle(path, method, req, res) {
     const perfMsg = {
       requestId: store.get('id'),
       threadDuration: store.get('threadDuration'),
-      totalDuration: store.get('end') - store.get('begin'),
+      totalDuration: store.get('end') - store.get('begin')
     }
     console.log(perfMsg)
     broker.notify('perf', perfMsg)
@@ -266,3 +266,4 @@ process.on('uncaughtException', error => {
   console.error('uncaughtException', error)
   broker.notify('uncaughtException', error)
 })
+

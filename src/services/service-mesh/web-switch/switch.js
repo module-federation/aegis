@@ -21,22 +21,20 @@ const isPrimary =
 const headers = {
   host: 'x-webswitch-host',
   role: 'x-webswitch-role',
-  pid: 'x-webswitch-pid',
+  pid: 'x-webswitch-pid'
 }
 let messagesSent = 0
 let backupSwitch
 
 /**
  * Attach {@link ServiceMeshAdapter} to the API listener socket.
- * Listen for upgrade events from http server and switch
- * client to WebSockets protocol. Clients connecting this
  * way are using the service mesh, not the REST API. Use
  * key + cert in {@link secureCtx} for secure connection.
  * @param {https.Server|http.Server} httpServer
  * @param {tls.SecureContext} [secureCtx] if ssl enabled
  * @returns {import('ws').server}
  */
-export function attachServer(httpServer, secureCtx = {}) {
+export function attachServer (httpServer, secureCtx = {}) {
   const info = Symbol('webswitch')
   /**
    * list of client connections (federation hosts, browsers, etc)
@@ -50,25 +48,25 @@ export function attachServer(httpServer, secureCtx = {}) {
   const server = new Server({
     ...secureCtx,
     clientTracking: false,
-    server: httpServer,
+    server: httpServer
   })
 
   server.binaryType = 'arraybuffer'
 
-  function verifySignature(signature, data) {
+  function verifySignature (signature, data) {
     return verify(
       'sha256',
       Buffer.from(data),
       {
         key: publicKey,
-        padding: constants.RSA_PKCS1_PSS_PADDING,
+        padding: constants.RSA_PKCS1_PSS_PADDING
       },
       Buffer.from(signature.toString('base64'), 'base64')
     )
   }
 
-  function signatureVerified(request) {
-    //verifySignature(header, publicKey)
+  function signatureVerified (request) {
+    //verifySignature(header, publicKey`)
     return true
   }
 
@@ -77,7 +75,7 @@ export function attachServer(httpServer, secureCtx = {}) {
    * @param {IncomingMessage} request
    * @returns
    */
-  function foundHeaders(request) {
+  function foundHeaders (request) {
     const list = Object.values(headers)
     const node = list.filter(h => request.headers[h]).length === list.length
     const browser = request.headers['sec-websocket-protocol'] === 'webswitch'
@@ -90,7 +88,7 @@ export function attachServer(httpServer, secureCtx = {}) {
     return accept
   }
 
-  function withinRateLimits(request) {
+  function withinRateLimits (request) {
     return true
   }
 
@@ -117,7 +115,7 @@ export function attachServer(httpServer, secureCtx = {}) {
       console.error({
         fn: 'client.on(error)',
         client: client[info],
-        error,
+        error
       })
 
       if (client[info].errors > CLIENT_MAX_ERRORS) {
@@ -150,7 +148,7 @@ export function attachServer(httpServer, secureCtx = {}) {
         msg: 'client closing',
         code,
         reason: reason.toString(),
-        client: client[info],
+        client: client[info]
       })
       clients.delete(client[info]?.uniqueName)
       reassignBackup(client)
@@ -158,7 +156,7 @@ export function attachServer(httpServer, secureCtx = {}) {
     })
   })
 
-  function setClientInfo(client, request) {
+  function setClientInfo (client, request) {
     client[info] = {}
     client[info].id = nanoid()
     client[info].pid =
@@ -169,7 +167,7 @@ export function attachServer(httpServer, secureCtx = {}) {
     client[info].uniqueName = client[info].host + client[info].pid
   }
 
-  function initClient(client, request) {
+  function initClient (client, request) {
     setClientInfo(client, request)
 
     if (clients.has(client[info].uniqueName)) {
@@ -186,12 +184,12 @@ export function attachServer(httpServer, secureCtx = {}) {
     assignBackup(client)
 
     // tell client if its now a backup switch or not
-    sendClient(client, encode(client[info]))
+    sendMesh(encode(client[info]), client)
     // tell everyone about new node (ignore browsers)
     if (client[info].role === 'node') broadcast(encode(statusReport()), client)
   }
 
-  function handleEvent(client, message) {
+  function handleEvent (client, message) {
     const event = decode(message)
     debug && console.debug('client received', message, event)
 
@@ -204,42 +202,127 @@ export function attachServer(httpServer, secureCtx = {}) {
       updateTelemetry(client, event)
       return
     }
-    broadcast(message, client)
+    // broadcast(message, client)
+    routeMessage(message, client)
   }
 
-  function broadcast(data, sender) {
-    clients.forEach(function (client) {
-      if (client[info]?.uniqueName !== sender[info]?.uniqueName) {
-        debug && console.debug('sending client', client[info], decode(data))
-        sendClient(client, data)
-        messagesSent++
-      }
-    })
-
-    if (server.uplink && server.uplink !== sender) {
-      server.uplink.publish(data)
-      messagesSent++
-    }
-  }
-
-  function encode(message) {
-    return Buffer.from(JSON.stringify(message))
-  }
-
-  function decode(message) {
-    return JSON.parse(Buffer.from(message).toString())
-  }
-
-  function sendClient(client, message, retries = 0) {
+  function sendMesh (message, client = null, retries = 0) {
+    if (!client) client = this
     if (client.readyState === WebSocket.OPEN) {
       client.send(message)
+      messagesSent++
       return
     }
     if (retries.length < CLIENT_MAX_RETRIES)
-      setTimeout(sendClient, 2000, client, message, ++retries)
+      setTimeout(() => sendMesh(message, client, ++retries), 2000)
   }
 
-  function assignBackup(client) {
+  function leastRecentlyUsed (lastUsed, client) {
+    const cli =
+      lastUsed[info].lastUsed > client[info].lastUsed ? client : lastUsed
+    cli[info].lastUsed = Date.now()
+    return cli
+  }
+
+  const noMatch = { sendMesh: msg => console.log('no match', msg) }
+
+  WebSocket.prototype.sendMesh = function (message) {
+    sendMesh.apply(this, message)
+  }
+
+  /**
+   *
+   */
+  const routingAlgorithms = {
+    /**
+     * Send to exactly one client running the service specified by `eventTarget`.
+     * Rotate target hosts.
+     */
+    balanceEventTarget: (message, sender) =>
+      clients
+        .filter(
+          client =>
+            client !== sender &&
+            client[info].services.includes(message.eventTarget)
+        )
+        .reduce(leastRecentlyUsed, noMatch)
+        .sendMesh(message),
+    /**
+     * Send to all clients running the service specified by `eventTarget`.
+     * @param {import('../../../domain').Event} message
+     */
+    broadcastEventTarget: (message, sender) =>
+      clients
+        .filter(
+          client =>
+            client !== sender &&
+            client[info].services.includes(message.eventTarget)
+        )
+        .forEach(client => sendMesh(message, client)),
+    /**
+     * Send to exactly one client that consumes the event in `message.eventName`.
+     * Rotate clients.
+     * @param {import('../../../domain').Event} message
+     */
+    balanceEventConsumer: (message, sender) =>
+      clients
+        .filter(
+          client =>
+            client !== sender && client[info].events.includes(message.eventName)
+        )
+        .reduce(leastRecentlyUsed, noMatch)
+        .sendMesh(message),
+    /**
+     * Send to all clients that consume the event in `message.eventName`.
+     * @param {import('../../../domain').Event} message
+     */
+    broadcastEventConsumer: (message, sender) =>
+      clients
+        .filter(
+          client =>
+            client !== sender && client[info].events.includes(message.eventName)
+        )
+        .forEach(client => sendMesh(message, client)),
+    /**
+     * send to all clients
+     * @param {import('../../../domain').Event} message
+     */
+    broadcast: (message, sender) => {
+      clients.forEach(function (client) {
+        if (client !== sender) sendMesh(message, client)
+      })
+      routingAlgorithms.sendUplink(message, sender)
+    },
+
+    sendUplink: (message, sender) => {
+      if (server.uplink && server.uplink !== sender) {
+        server.uplink.publish(message)
+        messagesSent++
+      }
+    }
+  }
+
+  /**
+   *
+   * @param {import('../../../domain').Event} message
+   * @param {*} client
+   * @returns
+   */
+  function routeMessage (message, client) {
+    const route = routingAlgorithms[message.route]
+    if (route) return route(message, client)
+    return routingAlgorithms.broadcast(message, client)
+  }
+
+  function encode (message) {
+    return Buffer.from(JSON.stringify(message))
+  }
+
+  function decode (message) {
+    return JSON.parse(Buffer.from(message).toString())
+  }
+
+  function assignBackup (client) {
     if (
       isPrimary &&
       // is there a backup already?
@@ -254,23 +337,23 @@ export function attachServer(httpServer, secureCtx = {}) {
     }
   }
 
-  function reassignBackup(client) {
+  function reassignBackup (client) {
     if (client[info]?.id === backupSwitch) {
-      for (let c of clients) {
+      for (let cli of clients) {
         if (
-          c[info]?.role === 'node' &&
-          c[info].hostname !== hostname() &&
-          c[info].id !== backupSwitch
+          cli[info]?.role === 'node' &&
+          cli[info].hostname !== hostname() &&
+          cli[info].id !== backupSwitch
         ) {
-          backupSwitch = c[info].id
-          c[info].isBackupSwitch = true
+          backupSwitch = cli[info].id
+          cli[info].isBackupSwitch = true
           return
         }
       }
     }
   }
 
-  function statusReport() {
+  function statusReport () {
     return {
       eventName: 'meshStatusReport',
       servicePlugin: SERVICENAME,
@@ -281,8 +364,8 @@ export function attachServer(httpServer, secureCtx = {}) {
       isPrimarySwitch: isPrimary,
       clients: [...clients.values()].map(v => ({
         ...v[info],
-        state: v.readyState,
-      })),
+        state: v.readyState
+      }))
     }
   }
 
@@ -291,15 +374,16 @@ export function attachServer(httpServer, secureCtx = {}) {
    * @param {WebSocket} client
    */
 
-  function sendStatus(client) {
+  function sendStatus (client) {
     console.debug('sending client status')
-    sendClient(client, encode(statusReport()))
+    sendMesh(encode(statusReport()), client)
   }
 
-  function updateTelemetry(client, msg) {
+  function updateTelemetry (client, msg) {
     if (!client[info]) return
     if (msg?.telemetry && client[info]) client[info].telemetry = msg.telemetry
     if (msg?.services && client[info]) client[info].services = msg.services
+    if (msg?.events && client[info]) client[info].events = msg.events
     client[info].isBackupSwitch = backupSwitch === client[info].id
     console.log('updating telemetry', client[info])
   }
@@ -307,11 +391,12 @@ export function attachServer(httpServer, secureCtx = {}) {
   // try {
   //   // configure uplink
   //   if (config.uplink) {
-  //     const node = require('./node')
-  //     server.uplink = node
-  //     node.setUplinkUrl(config.uplink)
-  //     node.onUplinkMessage(msg => broadcast(msg, node))
-  //     node.connect()
+  //     const node = import('local/webswitch').then(node => {
+  //       server.uplink = node
+  //       node.serviceUrl = config.uplink
+  //       node.onMessage(msg => routeMessage(msg, node))
+  //       node.connect()
+  //     })
   //   }
   // } catch (e) {
   //   console.error('uplink', e)

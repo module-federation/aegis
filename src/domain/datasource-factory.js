@@ -215,6 +215,24 @@ const DsCoreExtensions = superclass =>
         throw error
       }
     }
+
+    /**
+     * return total records in external storage,
+     * total records cached, size of cache in bytes
+     * @override
+     * @returns {{
+     *  total: number,
+     *  cached: number,
+     *  bytes: number
+     * }}
+     */
+    async count () {
+      return {
+        total: await super.count(),
+        cached: this.getCacheSize(),
+        bytes: this.getCacheSizeBytes()
+      }
+    }
   }
 
 const extendClass = DsClass => class extends DsCoreExtensions(DsClass) {}

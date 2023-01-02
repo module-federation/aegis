@@ -2,7 +2,7 @@
 import { Readable, Transform } from 'stream'
 import getContent from './get-content'
 
-function isStream(models) {
+function isStream (models) {
   return (
     models?.length > 0 &&
     (models[0] instanceof Readable || models[0] instanceof Transform)
@@ -14,38 +14,38 @@ function isStream(models) {
  * @param {import("../use-cases/list-models").listModels} listModels
  * @returns {import("../adapters/http-adapter").httpController}
  */
-export default function getModelsFactory(listModels) {
-  return async function getModels(httpRequest) {
+export default function getModelsFactory (listModels) {
+  return async function getModels (httpRequest) {
     try {
       httpRequest.log(getModels.name)
 
       const models = await listModels({
         query: httpRequest.query,
-        writable: httpRequest.res,
+        writable: httpRequest.res
       })
 
-      if (isStream()) return
+      if (isStream(models)) return
 
       const { content, contentType } = getContent(httpRequest, models)
 
       return {
         headers: {
-          'Content-Type': contentType,
+          'Content-Type': contentType
         },
         statusCode: 200,
-        body: content,
+        body: content
       }
     } catch (e) {
       console.error(e)
 
       return {
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
         statusCode: e.code || 400,
         body: {
-          error: e.message,
-        },
+          error: e.message
+        }
       }
     }
   }
