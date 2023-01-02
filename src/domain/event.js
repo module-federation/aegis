@@ -29,8 +29,10 @@ import pipe from './util/pipe'
  * @property {string} [eventCode]
  * @property {number} [eventRank]
  * @property {string[]} [eventTags]
- * @property {string} [eventSource]
- * @property {string} [eventTarget]
+ * @property {string} [eventSource] msg sent from this serviced
+ * @property {string} [eventTarget] send msg to this service
+ * @property {'balanceEventConsumer'|'broadcastEventConsumer'|'balanceEventTarget'|'broadcastEventTarget'
+ * |'broadcast'|'host'|'uplink'} [route] specifies the routing algo, default is broadcast
  * @property {EventType} [eventType]
  */
 
@@ -50,7 +52,7 @@ const Event = (() => {
     args = {},
     eventType,
     eventName,
-    modelName,
+    modelName
   } = {}) => ({
     eventName:
       eventName ||
@@ -58,7 +60,7 @@ const Event = (() => {
     eventType,
     modelName,
     eventSource: modelName?.toUpperCase(),
-    ...(factory ? factory(args) : args),
+    ...(factory ? factory(args) : args)
   })
 
   const makeEvent = pipe(
@@ -74,7 +76,7 @@ const Event = (() => {
      * @param {options} options
      * @returns {Readonly<Event>}
      */
-    create: options => makeEvent(options),
+    create: options => makeEvent(options)
   }
 })()
 

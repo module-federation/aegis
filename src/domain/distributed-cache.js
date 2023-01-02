@@ -11,14 +11,14 @@ const {
   internalCacheResponse,
   externalCacheRequest,
   externalCacheResponse,
-  externalCrudEvent,
+  externalCrudEvent
 } = domainEvents
 
 /**
  * @typedef {import("./model").Model} Model
  */
 
-/**
+/**q
  * Implements distributed object cache. Find any model
  * referenced by a relation that is not registered in
  * the model factory and listen for remote CRUD events
@@ -36,12 +36,12 @@ const {
  *  publish:function(string,object),
  * }} param0
  */
-export default function DistributedCache({
+export default function DistributedCache ({
   models,
   broker,
   datasources,
   publish,
-  subscribe,
+  subscribe
 }) {
   /**
    * @typedef {{
@@ -64,7 +64,7 @@ export default function DistributedCache({
    * @param {Event} payload
    * @returns {Event}
    */
-  function parse(payload) {
+  function parse (payload) {
     if (!payload) {
       throw new Error({ func: parse.name, error: 'no payload included' })
     }
@@ -83,7 +83,7 @@ export default function DistributedCache({
         ...payload,
         modelName: (payload.modelName || payload.model.modelName).toUpperCase(),
         modelId: payload.modelId || payload.model.id,
-        args: payload.args || [],
+        args: payload.args || []
       }
     } catch (e) {
       console.error('could not parse message', e, { payload })
@@ -97,11 +97,11 @@ export default function DistributedCache({
    * @param {string} modelName
    * @returns {Model}
    */
-  function hydrate(o) {
+  function hydrate (o) {
     const { model, datasource, modelName } = o
     return {
       ...o,
-      model: model.map(m => models.loadModel(broker, datasource, m, modelName)),
+      model: model.map(m => models.loadModel(broker, datasource, m, modelName))
     }
   }
 
@@ -111,13 +111,13 @@ export default function DistributedCache({
    * @param {import("./datasource").default} datasource
    * @param {function(m)=>m.id} return id to save
    */
-  async function save(o) {
+  async function save (o) {
     const { model, modelName, datasource } = o
 
     console.debug({
       fn: save.name,
       modelName,
-      ds: datasource.name,
+      ds: datasource.name
     })
 
     if (modelName !== datasource.name.toUpperCase()) {
@@ -133,7 +133,7 @@ export default function DistributedCache({
    * Fetch {@link ModelSpecification} modules for `modelName` from repo.
    * @param {string} modelName
    */
-  async function streamCode(o) {
+  async function streamCode (o) {
     const { modelName } = o
     console.debug('check if we have the code for this object...')
 
@@ -154,7 +154,7 @@ export default function DistributedCache({
    * @param {Event} event
    * @returns
    */
-  async function handleDelete(eventName, modelName, event) {
+  async function handleDelete (eventName, modelName, event) {
     if (
       eventName === models.getEventName(models.EventTypes.DELETE, modelName)
     ) {
@@ -181,7 +181,7 @@ export default function DistributedCache({
    * @param {function(object)} route what to do after updating
    * @returns {function(message):Promise<void>}
    */
-  function updateCache(route) {
+  function updateCache (route) {
     return async function (message) {
       try {
         const event = parse(message)
@@ -206,7 +206,7 @@ export default function DistributedCache({
           modelName: modelNameUpper,
           datasource: datasources.getDataSource(modelNameUpper),
           model: models,
-          event,
+          event
         })
 
         if (route) route(enrichedEvent)
@@ -222,7 +222,7 @@ export default function DistributedCache({
    * @returns {Promise<Event>}
    * @throws
    */
-  async function createModels(event) {
+  async function createModels (event) {
     const modelName = event.relation.modelName.toUpperCase()
     const service = UseCaseService(modelName)
     const models = await Promise.all(
@@ -246,7 +246,7 @@ export default function DistributedCache({
    * Updated source model (model that defines the relation)
    * @throws
    */
-  async function saveModels(event) {
+  async function saveModels (event) {
     try {
       const models = event.model
       const datasource = datasources.getDataSource(
@@ -269,7 +269,7 @@ export default function DistributedCache({
    * @returns {function(message):Promise<void>}
    * function that searches the cache
    */
-  function searchCache(route) {
+  function searchCache (route) {
     return async function (message) {
       try {
         const event = parse(message)
@@ -279,7 +279,7 @@ export default function DistributedCache({
         if (event.args?.length > 0) {
           console.debug({
             fn: searchCache.name,
-            models: event.model,
+            models: event.model
           })
 
           return await route(await newModels(event))
@@ -295,10 +295,15 @@ export default function DistributedCache({
         console.debug({
           fn: searchCache.name,
           msg: 'related model(s)',
-          related: relatedModels,
+          related: relatedModels
         })
 
-        return await route({ ...event, model: relatedModels })
+        return await route({
+          ...event,
+          model: relatedModels,
+          eventTarget: sender,
+          route: 'response'
+        })
       } catch (error) {
         console.error(searchCache.name, error)
       }
@@ -335,7 +340,7 @@ export default function DistributedCache({
           ...event,
           eventName: response,
           eventTarget: event.eventSource,
-          eventSource: event.eventTarget,
+          eventSource: event.eventTarget
         })
       )
     )
@@ -366,13 +371,13 @@ export default function DistributedCache({
       publish({ ...event, eventName: externalCrudEvent(eventName) })
     )
 
-  function handlecrudeEvent(modelSpecs) {}
+  function handlecrudeEvent (modelSpecs) {}
   /**
    * Subcribe to external CRUD events for related models.
    * Also listen for request and response events for locally
    * and remotely cached data.
    */
-  function listen() {
+  function listen () {
     const modelSpecs = models.getModelSpecs()
     const localModels = modelsInDomain(workerData.poolName)
     const relatedModels = [
@@ -381,7 +386,7 @@ export default function DistributedCache({
         .map(spec => Object.values(spec.relations))
         .flat(2)
         .map(relation => relation.modelName)
-        .reduce((unique, modelName) => unique.add(modelName), new Set()),
+        .reduce((unique, modelName) => unique.add(modelName), new Set())
     ]
 
     console.debug({ relatedModels })
@@ -403,7 +408,7 @@ export default function DistributedCache({
               .map(k => m.relations[k].modelName.toUpperCase())
           )
           .reduce((a, b) => a.concat(b), [])
-      ),
+      )
     ]
 
     console.info('local models', localModels, 'remote models', remoteModels)
@@ -425,7 +430,7 @@ export default function DistributedCache({
         // listen for CRUD events from related, external models
         models.getEventName(models.EventTypes.UPDATE, modelName),
         models.getEventName(models.EventTypes.CREATE, modelName),
-        models.getEventName(models.EventTypes.DELETE, modelName),
+        models.getEventName(models.EventTypes.DELETE, modelName)
       ].forEach(receiveCrudBroadcast)
     })
 
@@ -446,7 +451,7 @@ export default function DistributedCache({
       ;[
         models.getEventName(models.EventTypes.UPDATE, modelName),
         models.getEventName(models.EventTypes.CREATE, modelName),
-        models.getEventName(models.EventTypes.DELETE, modelName),
+        models.getEventName(models.EventTypes.DELETE, modelName)
       ].forEach(broadcastCrudEvent)
     })
   }
@@ -454,6 +459,6 @@ export default function DistributedCache({
   console.info('distributed object cache running')
 
   return Object.freeze({
-    listen,
+    listen
   })
 }

@@ -160,9 +160,11 @@ export class ThreadPool extends EventEmitter {
     this.jobsRequested = this.jobsQueued = 0
     this.broadcastChannel = options.broadcast
 
+    this.once(this.growPool.name, this.growPool)
+
     if (options?.preload) {
       console.info('preload enabled for', this.name)
-      this.startThreads()
+      this.startThreads(true)
     }
   }
 
@@ -303,6 +305,7 @@ export class ThreadPool extends EventEmitter {
         console.log('aegis up', msg)
         pool.connectEventChannel(worker, eventChannel)
         pool.threads.push(thread)
+        pool.freeThreads.push(thread)
         resolve(thread)
       })
     })
@@ -391,7 +394,7 @@ export class ThreadPool extends EventEmitter {
   }
 
   /**
-   * number of jobs waiting for threads
+   * number of jobs waiting for a thread
    * @returns {number}
    */
   jobQueueDepth () {
@@ -425,12 +428,32 @@ export class ThreadPool extends EventEmitter {
     return this
   }
 
-  totalTransactions () {
+  incrementJobsRequested () {
+    this.jobsRequested++
+    return this
+  }
+
+  totalJobsRequested () {
     return this.jobsRequested
   }
 
+  incrementJobsQueued () {
+    this.jobsQueued++
+    this.jobQueueRate()
+    return this
+  }
+
+  growPool () {
+    if (this.capacityAvailable()) this.startThread()
+  }
+
   jobQueueRate () {
-    return Math.round((this.jobsQueued / this.jobsRequested) * 100)
+    const rate = Math.round((this.jobsQueued / this.jobsRequested) * 100)
+    if (rate > this.jobQueueThreshold()) {
+      console.warn('job queue threshold exceeded')
+      this.emit(this.growPool.name)
+    }
+    return rate
   }
 
   jobQueueThreshold () {
@@ -440,6 +463,13 @@ export class ThreadPool extends EventEmitter {
   jobTime (millisec) {
     this.totJobTime += millisec
     this.avgJobTime = Math.round(this.totJobTime / this.jobsRequested)
+    if (
+      this.avgJobTime > this.jobDurationThreshold() &&
+      this.jobsRequested > 20
+    ) {
+      this.emit(this.growPool.name)
+      console.log('job duration threshold exceeded', this)
+    }
     return this
   }
 
@@ -477,15 +507,18 @@ export class ThreadPool extends EventEmitter {
       total: this.poolSize(),
       waiting: this.jobQueueDepth(),
       available: this.availThreadCount(),
-      transactions: this.totalTransactions(),
-      averageDuration: this.avgJobDuration(),
-      durationTolerance: this.jobDurationThreshold(),
+      jobsRequested: this.totalJobsRequested(),
+      avgDuration: this.avgJobDuration(),
+      avgDurTolerance: this.jobDurationThreshold(),
       queueRate: this.jobQueueRate(),
-      queueRateTolerance: this.jobQueueThreshold(),
+      queueTolerance: this.jobQueueThreshold(),
       errorRate: this.errorRate(),
-      errorRateTolerance: this.errorRateThreshold(),
+      errorTolerance: this.errorRateThreshold(),
       errors: this.errorCount(),
       deployments: this.deploymentCount(),
+      ...Object.entries(process.memoryUsage())
+        .map(([k, v]) => ({ [`${k}Mb`]: Math.round(v / 1024 / 1024) }))
+        .reduce((a, b) => ({ ...a, ...b })),
       since: new Date(this.startTime).toISOString()
     }
   }
@@ -554,7 +587,7 @@ export class ThreadPool extends EventEmitter {
     if (thread) {
       this.freeThreads.push(thread)
       console.debug(
-        `thread checked-in, total in-use now ${this.threadsInUse()}`
+        `thread checked in, total in use now ${this.threadsInUse()}`
       )
     }
     return this
@@ -571,7 +604,7 @@ export class ThreadPool extends EventEmitter {
    */
   runJob (jobName, jobData, modelName, options = {}) {
     return new Promise(async (resolve, reject) => {
-      this.jobsRequested++
+      this.incrementJobsRequested()
 
       if (this.closed) {
         console.warn('pool is closed')
@@ -589,8 +622,6 @@ export class ThreadPool extends EventEmitter {
 
       let thread = this.checkout()
 
-      if (!thread) thread = await this.allocate()
-
       if (thread) {
         thread.run(job)
         return
@@ -598,7 +629,7 @@ export class ThreadPool extends EventEmitter {
 
       console.warn('no threads: queuing job', jobName)
       this.waitingJobs.push(thread => thread.run(job))
-      this.jobsQueued++
+      this.incrementJobsQueued()
     })
   }
 
@@ -975,7 +1006,7 @@ const ThreadPoolFactory = (() => {
       threadPools.forEach(pool => {
         if (pool.aborting) return
 
-        const workRequested = pool.totalTransactions()
+        const workRequested = pool.totalJobsRequested()
         const workWaiting = pool.jobQueueDepth()
         const workersAvail = pool.availThreadCount()
         const workCompleted = workRequested - workWaiting
@@ -991,7 +1022,7 @@ const ThreadPoolFactory = (() => {
             if (
               pool.jobQueueDepth() > 0 &&
               pool.availThreadCount() < 1 &&
-              pool.totalTransactions() - pool.jobQueueDepth() === workCompleted
+              pool.totalJobsRequested() - pool.jobQueueDepth() === workCompleted
             ) {
               const timerId = setTimeout(() => abort(pool), 1000)
 
@@ -1028,6 +1059,25 @@ const ThreadPoolFactory = (() => {
   }
 
   monitorPools()
+
+  process.on('SIGUSR2', () => {
+    // v8.getHeapSnapshot().pipe(
+    //   fs.createWriteStream(`process_${process.pid}.heapsnapshot`)
+    // )
+    threadPools.forEach(pool =>
+      pool.threads.forEach(thread =>
+        thread.mainChannel
+          .getHeapSnapshot()
+          .then(heapsnapshot =>
+            heapsnapshot.pipe(
+              fs.createWriteStream(
+                `process_${process.pid}_wt_${thread.id}.heapsnapshot`
+              )
+            )
+          )
+      )
+    )
+  })
 
   broker.on('reload', destroyPools)
 

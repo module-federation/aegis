@@ -28,31 +28,21 @@ import ThreadPoolFactory from '../thread-pool'
  * @returns {function():Promise<import('../domain').Model>}
  */
 
-// async function compile () {
-//   await new Promise((resolve, reject) => {
-//     compiler.run((err, res) => {
-//       if (err) {
-//         return reject(err)
-//       }
-//       resolve(res)
-//     })
-//   })
-// }
-
 let inProgress = false
+const history = []
 
 /**
  *
  * @param {factoryParam} param0
  * @returns
  */
-export default function makeHotReload({ models, broker } = {}) {
+export default function makeHotReload ({ models, broker } = {}) {
   // Add an event whose callback invokes this factory.
   broker.on(domainEvents.hotReload, hotReload)
 
   /**
    */
-  async function hotReload(remoteEntry) {
+  async function hotReload (remoteEntry) {
     if (inProgress) {
       return { status: 'reload already in progress' }
     }
@@ -75,6 +65,14 @@ export default function makeHotReload({ models, broker } = {}) {
       console.log({ fn: hotReload.name, error })
     } finally {
       inProgress = false
+      const lastSample = history.pop()
+      const thisSample = process.memoryUsage()
+      history.push(thisSample)
+      return Object.keys(thisSample)
+        .map(k => ({
+          [`${k}-MB`]: thisSample[k] - lastSample[k] / 1024 / 1024
+        }))
+        .reduce((a, b) => ({ ...a, ...b }), {})
     }
   }
 

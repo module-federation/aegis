@@ -2,13 +2,13 @@ const { EventEmitter } = require('stream')
 const domainEvents = {
   internalCacheRequest: modelName => `internalCacheRequest_${modelName}`,
   internalCacheResponse: modelName => `internalCacheResponse_${modelName}`,
-  externalCacheRequest: modelName => `externalCacheRequest_${modelName}`,
+  externalCacheRequest: modelName => `externalCacheRequest_${modelName}`
 }
 const { internalCacheRequest, internalCacheResponse, externalCacheRequest } =
   domainEvents
 const maxwait = 300
 
-function requireRemoteObject(model, relation, broker, ...args) {
+function requireRemoteObject (model, relation, broker, ...args) {
   const request = internalCacheRequest(relation.modelName.toUpperCase())
   const response = internalCacheResponse(relation.modelName.toUpperCase())
 
@@ -20,10 +20,11 @@ function requireRemoteObject(model, relation, broker, ...args) {
     eventType: externalCacheRequest.name,
     eventSource: model.getName().toUpperCase(),
     eventTarget: relation.modelName.toUpperCase(),
+    route: 'balanceEventTarget',
     modelId: model.getId(),
     relation,
     model,
-    args,
+    args
   }
 
   return new Promise(async function (resolve) {
@@ -38,11 +39,11 @@ broker.on('error', err => console.log(err))
 
 const model = {
   getName: () => 'model1',
-  getId: () => 1,
+  getId: () => 1
 }
 
 const relation = {
-  modelName: 'model2',
+  modelName: 'model2'
 }
 
 broker.on(internalCacheRequest('MODEL2'), () =>

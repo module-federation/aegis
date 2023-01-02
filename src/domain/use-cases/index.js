@@ -106,7 +106,7 @@ function getThreadPool(spec, ds, options) {
   if (spec.internal) return null
   return ThreadPoolFactory.getThreadPool(spec.domain, {
     ...options,
-    preload: false,
+    preload: true,
     sharedMap: ds.dsMap,
     dsRelated: findLocalRelatedDatasources(spec),
   })
@@ -312,6 +312,7 @@ export function UseCaseService(modelName) {
       loadModels: makeOne(modelNameUpper, makeLoadModels),
       emitEvent: makeOne(modelNameUpper, makeEmitEvent),
       invokePort: makeOne(modelNameUpper, makeInvokePort),
+      deployModel: makeOne(modelNameUpper, makeDeployModel),
       listConfigs: listConfigs(),
     }
   }

@@ -13,7 +13,7 @@ const {
   hotReload,
   registerEvents,
   invokePorts,
-  deployModel,
+  deployModel
 } = UseCases
 
 import postModelFactory from './post-model'
