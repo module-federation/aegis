@@ -16,7 +16,7 @@ export class PortEventRouter {
 
   get threadLocalPorts () {
     if (this.__threadLocalPorts) return this.__threadLocalPorts
-    this.__threadLocalPorts = this.__threadLocalPorts = this.models
+    this.__threadLocalPorts = this.models
       .getModelSpecs()
       .filter(
         spec =>

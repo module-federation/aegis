@@ -186,7 +186,7 @@ export function attachServer (httpServer, secureCtx = {}) {
     // tell client if its now a backup switch or not
     sendMesh(encode(client[info]), client)
     // tell everyone about new node (ignore browsers)
-    if (client[info].role === 'node') broadcast(encode(statusReport()), client)
+    if (client[info].role === 'node') sendMesh(encode(statusReport()), client)
   }
 
   function handleEvent (client, message) {
@@ -224,7 +224,7 @@ export function attachServer (httpServer, secureCtx = {}) {
     return cli
   }
 
-  const noMatch = { sendMesh: msg => console.log('no match', msg) }
+  const defRoute = { sendMesh: msg => console.log('no match', msg) }
 
   WebSocket.prototype.sendMesh = function (message) {
     sendMesh.apply(this, message)
@@ -245,7 +245,7 @@ export function attachServer (httpServer, secureCtx = {}) {
             client !== sender &&
             client[info].services.includes(message.eventTarget)
         )
-        .reduce(leastRecentlyUsed, noMatch)
+        .reduce(leastRecentlyUsed, defRoute)
         .sendMesh(message),
     /**
      * Send to all clients running the service specified by `eventTarget`.
@@ -270,7 +270,7 @@ export function attachServer (httpServer, secureCtx = {}) {
           client =>
             client !== sender && client[info].events.includes(message.eventName)
         )
-        .reduce(leastRecentlyUsed, noMatch)
+        .reduce(leastRecentlyUsed, defRoute)
         .sendMesh(message),
     /**
      * Send to all clients that consume the event in `message.eventName`.
