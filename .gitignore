@@ -8,3 +8,4 @@ tst-rtry.js
 .VSCodeCounter/
 esm
 lib
+nohup.out

@@ -3275,3 +3275,1082 @@ Error: Command failed: ./watch.sh 80 8888
   signal: null,
   cmd: './watch.sh 80 8888'
 }
+change domain/event-router.js
+Error: Command failed: ./watch.sh 80 8888
+SyntaxError: /Users/tysonmidboe/Code/aegis/src/domain/event-router.js: Unexpected token (55:8)
+
+  53 |   )
+  54 |   }
+> 55 |   const subscribePorts = remotePorts.filter(remote =>
+     |         ^
+  56 |     localPorts.find(local => local.consumesEvent === remote.producesEvent)
+  57 |   )
+  58 |   const unhandledPorts = localPorts.filter(
+    at instantiate (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:67:32)
+    at constructor (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:364:12)
+    at Parser.raise (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:3363:19)
+    at Parser.unexpected (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:3396:16)
+    at Parser.parseClassMemberWithIsStatic (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:13963:12)
+    at Parser.parseClassMember (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:13848:10)
+    at /Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:13790:14
+    at Parser.withSmartMixTopicForbiddingContext (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:12628:14)
+    at Parser.parseClassBody (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:13769:10)
+    at Parser.parseClass (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:13744:22) {
+  code: 'BABEL_PARSE_ERROR',
+  reasonCode: 'UnexpectedToken',
+  loc: Position { line: 55, column: 8, index: 1459 },
+  pos: [Getter/Setter]
+}
+error Command failed with exit code 1.
+
+    at ChildProcess.exithandler (node:child_process:402:12)
+    at ChildProcess.emit (node:events:513:28)
+    at maybeClose (node:internal/child_process:1100:16)
+    at Process.ChildProcess._handle.onexit (node:internal/child_process:304:5) {
+  code: 7,
+  killed: false,
+  signal: null,
+  cmd: './watch.sh 80 8888'
+}
+change domain/event-router.js
+Error: Command failed: ./watch.sh 80 8888
+Error: ENOENT: no such file or directory, lstat 'esm//adapters/cli/index.js'
+    at Object.lstatSync (node:fs:1561:3)
+    at /Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:146:17
+    at Array.forEach (<anonymous>)
+    at deleteDir (/Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:143:29)
+    at /Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:147:9
+    at Array.forEach (<anonymous>)
+    at deleteDir (/Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:143:29)
+    at /Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:147:9
+    at Array.forEach (<anonymous>)
+    at Object.deleteDir (/Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:143:29) {
+  errno: -2,
+  syscall: 'lstat',
+  code: 'ENOENT',
+  path: 'esm//adapters/cli/index.js'
+}
+error Command failed with exit code 1.
+
+    at ChildProcess.exithandler (node:child_process:402:12)
+    at ChildProcess.emit (node:events:513:28)
+    at maybeClose (node:internal/child_process:1100:16)
+    at Process.ChildProcess._handle.onexit (node:internal/child_process:304:5) {
+  code: 7,
+  killed: false,
+  signal: null,
+  cmd: './watch.sh 80 8888'
+}
+change domain/event-router.js
+change domain/event-router.js
+Error: Command failed: ./watch.sh 80 8888
+
+    at ChildProcess.exithandler (node:child_process:402:12)
+    at ChildProcess.emit (node:events:513:28)
+    at maybeClose (node:internal/child_process:1100:16)
+    at Process.ChildProcess._handle.onexit (node:internal/child_process:304:5) {
+  code: 7,
+  killed: false,
+  signal: null,
+  cmd: './watch.sh 80 8888'
+}
+change domain/event-router.js
+Error: Command failed: ./watch.sh 80 8888
+
+    at ChildProcess.exithandler (node:child_process:402:12)
+    at ChildProcess.emit (node:events:513:28)
+    at maybeClose (node:internal/child_process:1100:16)
+    at Process.ChildProcess._handle.onexit (node:internal/child_process:304:5) {
+  code: 7,
+  killed: false,
+  signal: null,
+  cmd: './watch.sh 80 8888'
+}
+change domain/event-router.js
+Error: Command failed: ./watch.sh 80 8888
+
+    at ChildProcess.exithandler (node:child_process:402:12)
+    at ChildProcess.emit (node:events:513:28)
+    at maybeClose (node:internal/child_process:1100:16)
+    at Process.ChildProcess._handle.onexit (node:internal/child_process:304:5) {
+  code: 7,
+  killed: false,
+  signal: null,
+  cmd: './watch.sh 80 8888'
+}
+change domain/event-router.js
+Error: Command failed: ./watch.sh 80 8888
+
+    at ChildProcess.exithandler (node:child_process:402:12)
+    at ChildProcess.emit (node:events:513:28)
+    at maybeClose (node:internal/child_process:1100:16)
+    at Process.ChildProcess._handle.onexit (node:internal/child_process:304:5) {
+  code: 7,
+  killed: false,
+  signal: null,
+  cmd: './watch.sh 80 8888'
+}
+change domain/event-router.js
+Error: Command failed: ./watch.sh 80 8888
+Error: ENOENT: no such file or directory, lstat 'esm//adapters/cli/index.js'
+    at Object.lstatSync (node:fs:1561:3)
+    at /Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:146:17
+    at Array.forEach (<anonymous>)
+    at deleteDir (/Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:143:29)
+    at /Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:147:9
+    at Array.forEach (<anonymous>)
+    at deleteDir (/Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:143:29)
+    at /Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:147:9
+    at Array.forEach (<anonymous>)
+    at Object.deleteDir (/Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:143:29) {
+  errno: -2,
+  syscall: 'lstat',
+  code: 'ENOENT',
+  path: 'esm//adapters/cli/index.js'
+}
+error Command failed with exit code 1.
+
+    at ChildProcess.exithandler (node:child_process:402:12)
+    at ChildProcess.emit (node:events:513:28)
+    at maybeClose (node:internal/child_process:1100:16)
+    at Process.ChildProcess._handle.onexit (node:internal/child_process:304:5) {
+  code: 7,
+  killed: false,
+  signal: null,
+  cmd: './watch.sh 80 8888'
+}
+change domain/event-router.js
+change domain/event-router.js
+change domain/event-router.js
+change domain/event-router.js
+change domain/event-router.js
+change domain/event-router.js
+change domain/event-router.js
+change domain/event-router.js
+change domain/event-router.js
+change domain/datasource-factory.js
+change domain/datasource-factory.js
+change domain/datasource-factory.js
+change domain/datasource-factory.js
+change domain/datasource-factory.js
+change domain/datasource-factory.js
+change domain/event-router.js
+change domain/datasource-factory.js
+change domain/event-router.js
+change domain/event-router.js
+change domain/event-router.js
+change domain/event-router.js
+change domain/event-router.js
+Error: Command failed: ./watch.sh 80 8888
+SyntaxError: /Users/tysonmidboe/Code/aegis/src/domain/datasource-factory.js: Unexpected token, expected "{" (32:17)
+
+  30 |   adapters[defaultAdapter] || dsClasses['DataSourceMemory']
+  31 |
+> 32 | class MongoError extendsdads Error {
+     |                  ^
+  33 |   constructor(error, code) {
+  34 |     super(error)
+  35 |     this.code = code
+    at instantiate (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:67:32)
+    at constructor (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:364:12)
+    at Parser.raise (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:3363:19)
+    at Parser.unexpected (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:3396:16)
+    at Parser.expect (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:3758:28)
+    at Parser.parseClassBody (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:13767:10)
+    at Parser.parseClass (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:13744:22)
+    at Parser.parseStatementContent (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:12999:21)
+    at Parser.parseStatementLike (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:12963:17)
+    at Parser.parseModuleItem (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:12944:17) {
+  code: 'BABEL_PARSE_ERROR',
+  reasonCode: 'UnexpectedToken',
+  loc: Position { line: 32, column: 17, index: 1197 },
+  pos: [Getter/Setter]
+}
+error Command failed with exit code 1.
+
+    at ChildProcess.exithandler (node:child_process:402:12)
+    at ChildProcess.emit (node:events:513:28)
+    at maybeClose (node:internal/child_process:1100:16)
+    at Process.ChildProcess._handle.onexit (node:internal/child_process:304:5) {
+  code: 7,
+  killed: false,
+  signal: null,
+  cmd: './watch.sh 80 8888'
+}
+Error: Command failed: ./watch.sh 80 8888
+SyntaxError: /Users/tysonmidboe/Code/aegis/src/domain/datasource-factory.js: Unexpected token, expected "{" (32:17)
+
+  30 |   adapters[defaultAdapter] || dsClasses['DataSourceMemory']
+  31 |
+> 32 | class MongoError extendsdads Error {
+     |                  ^
+  33 |   constructor(error, code) {
+  34 |     super(error)
+  35 |     this.code = code
+    at instantiate (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:67:32)
+    at constructor (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:364:12)
+    at Parser.raise (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:3363:19)
+    at Parser.unexpected (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:3396:16)
+    at Parser.expect (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:3758:28)
+    at Parser.parseClassBody (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:13767:10)
+    at Parser.parseClass (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:13744:22)
+    at Parser.parseStatementContent (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:12999:21)
+    at Parser.parseStatementLike (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:12963:17)
+    at Parser.parseModuleItem (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:12944:17) {
+  code: 'BABEL_PARSE_ERROR',
+  reasonCode: 'UnexpectedToken',
+  loc: Position { line: 32, column: 17, index: 1197 },
+  pos: [Getter/Setter]
+}
+error Command failed with exit code 1.
+
+    at ChildProcess.exithandler (node:child_process:402:12)
+    at ChildProcess.emit (node:events:513:28)
+    at maybeClose (node:internal/child_process:1100:16)
+    at Socket.<anonymous> (node:internal/child_process:458:11)
+    at Socket.emit (node:events:513:28)
+    at Pipe.<anonymous> (node:net:301:12) {
+  code: 7,
+  killed: false,
+  signal: null,
+  cmd: './watch.sh 80 8888'
+}
+Error: Command failed: ./watch.sh 80 8888
+
+    at ChildProcess.exithandler (node:child_process:402:12)
+    at ChildProcess.emit (node:events:513:28)
+    at maybeClose (node:internal/child_process:1100:16)
+    at Socket.<anonymous> (node:internal/child_process:458:11)
+    at Socket.emit (node:events:513:28)
+    at Pipe.<anonymous> (node:net:301:12) {
+  code: 7,
+  killed: false,
+  signal: null,
+  cmd: './watch.sh 80 8888'
+}
+Error: Command failed: ./watch.sh 80 8888
+
+    at ChildProcess.exithandler (node:child_process:402:12)
+    at ChildProcess.emit (node:events:513:28)
+    at maybeClose (node:internal/child_process:1100:16)
+    at Socket.<anonymous> (node:internal/child_process:458:11)
+    at Socket.emit (node:events:513:28)
+    at Pipe.<anonymous> (node:net:301:12) {
+  code: 7,
+  killed: false,
+  signal: null,
+  cmd: './watch.sh 80 8888'
+}
+Error: Command failed: ./watch.sh 80 8888
+Error: ENOENT: no such file or directory, lstat 'esm//adapters/cli/index.js'
+    at Object.lstatSync (node:fs:1561:3)
+    at /Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:146:17
+    at Array.forEach (<anonymous>)
+    at deleteDir (/Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:143:29)
+    at /Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:147:9
+    at Array.forEach (<anonymous>)
+    at deleteDir (/Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:143:29)
+    at /Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:147:9
+    at Array.forEach (<anonymous>)
+    at Object.deleteDir (/Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:143:29) {
+  errno: -2,
+  syscall: 'lstat',
+  code: 'ENOENT',
+  path: 'esm//adapters/cli/index.js'
+}
+error Command failed with exit code 1.
+
+    at ChildProcess.exithandler (node:child_process:402:12)
+    at ChildProcess.emit (node:events:513:28)
+    at maybeClose (node:internal/child_process:1100:16)
+    at Socket.<anonymous> (node:internal/child_process:458:11)
+    at Socket.emit (node:events:513:28)
+    at Pipe.<anonymous> (node:net:301:12) {
+  code: 7,
+  killed: false,
+  signal: null,
+  cmd: './watch.sh 80 8888'
+}
+Error: Command failed: ./watch.sh 80 8888
+
+    at ChildProcess.exithandler (node:child_process:402:12)
+    at ChildProcess.emit (node:events:513:28)
+    at maybeClose (node:internal/child_process:1100:16)
+    at Socket.<anonymous> (node:internal/child_process:458:11)
+    at Socket.emit (node:events:513:28)
+    at Pipe.<anonymous> (node:net:301:12) {
+  code: 7,
+  killed: false,
+  signal: null,
+  cmd: './watch.sh 80 8888'
+}
+Error: Command failed: ./watch.sh 80 8888
+
+    at ChildProcess.exithandler (node:child_process:402:12)
+    at ChildProcess.emit (node:events:513:28)
+    at maybeClose (node:internal/child_process:1100:16)
+    at Socket.<anonymous> (node:internal/child_process:458:11)
+    at Socket.emit (node:events:513:28)
+    at Pipe.<anonymous> (node:net:301:12) {
+  code: 7,
+  killed: false,
+  signal: null,
+  cmd: './watch.sh 80 8888'
+}
+Error: Command failed: ./watch.sh 80 8888
+
+    at ChildProcess.exithandler (node:child_process:402:12)
+    at ChildProcess.emit (node:events:513:28)
+    at maybeClose (node:internal/child_process:1100:16)
+    at Socket.<anonymous> (node:internal/child_process:458:11)
+    at Socket.emit (node:events:513:28)
+    at Pipe.<anonymous> (node:net:301:12) {
+  code: 7,
+  killed: false,
+  signal: null,
+  cmd: './watch.sh 80 8888'
+}
+Error: Command failed: ./watch.sh 80 8888
+
+    at ChildProcess.exithandler (node:child_process:402:12)
+    at ChildProcess.emit (node:events:513:28)
+    at maybeClose (node:internal/child_process:1100:16)
+    at Socket.<anonymous> (node:internal/child_process:458:11)
+    at Socket.emit (node:events:513:28)
+    at Pipe.<anonymous> (node:net:301:12) {
+  code: 7,
+  killed: false,
+  signal: null,
+  cmd: './watch.sh 80 8888'
+}
+Error: Command failed: ./watch.sh 80 8888
+
+    at ChildProcess.exithandler (node:child_process:402:12)
+    at ChildProcess.emit (node:events:513:28)
+    at maybeClose (node:internal/child_process:1100:16)
+    at Socket.<anonymous> (node:internal/child_process:458:11)
+    at Socket.emit (node:events:513:28)
+    at Pipe.<anonymous> (node:net:301:12) {
+  code: 7,
+  killed: false,
+  signal: null,
+  cmd: './watch.sh 80 8888'
+}
+Error: Command failed: ./watch.sh 80 8888
+SyntaxError: /Users/tysonmidboe/Code/aegis/src/domain/datasource-factory.js: Unexpected token, expected "{" (32:17)
+
+  30 |   adapters[defaultAdapter] || dsClasses['DataSourceMemory']
+  31 |
+> 32 | class MongoError extendsdads Error {
+     |                  ^
+  33 |   constructor(error, code) {
+  34 |     super(error)
+  35 |     this.code = code
+    at instantiate (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:67:32)
+    at constructor (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:364:12)
+    at Parser.raise (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:3363:19)
+    at Parser.unexpected (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:3396:16)
+    at Parser.expect (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:3758:28)
+    at Parser.parseClassBody (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:13767:10)
+    at Parser.parseClass (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:13744:22)
+    at Parser.parseStatementContent (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:12999:21)
+    at Parser.parseStatementLike (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:12963:17)
+    at Parser.parseModuleItem (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:12944:17) {
+  code: 'BABEL_PARSE_ERROR',
+  reasonCode: 'UnexpectedToken',
+  loc: Position { line: 32, column: 17, index: 1197 },
+  pos: [Getter/Setter]
+}
+error Command failed with exit code 1.
+
+    at ChildProcess.exithandler (node:child_process:402:12)
+    at ChildProcess.emit (node:events:513:28)
+    at maybeClose (node:internal/child_process:1100:16)
+    at Socket.<anonymous> (node:internal/child_process:458:11)
+    at Socket.emit (node:events:513:28)
+    at Pipe.<anonymous> (node:net:301:12) {
+  code: 7,
+  killed: false,
+  signal: null,
+  cmd: './watch.sh 80 8888'
+}
+Error: Command failed: ./watch.sh 80 8888
+Error: ENOENT: no such file or directory, lstat 'esm//adapters/cli/index.js'
+    at Object.lstatSync (node:fs:1561:3)
+    at /Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:146:17
+    at Array.forEach (<anonymous>)
+    at deleteDir (/Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:143:29)
+    at /Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:147:9
+    at Array.forEach (<anonymous>)
+    at deleteDir (/Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:143:29)
+    at /Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:147:9
+    at Array.forEach (<anonymous>)
+    at Object.deleteDir (/Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:143:29) {
+  errno: -2,
+  syscall: 'lstat',
+  code: 'ENOENT',
+  path: 'esm//adapters/cli/index.js'
+}
+error Command failed with exit code 1.
+
+    at ChildProcess.exithandler (node:child_process:402:12)
+    at ChildProcess.emit (node:events:513:28)
+    at maybeClose (node:internal/child_process:1100:16)
+    at Socket.<anonymous> (node:internal/child_process:458:11)
+    at Socket.emit (node:events:513:28)
+    at Pipe.<anonymous> (node:net:301:12) {
+  code: 7,
+  killed: false,
+  signal: null,
+  cmd: './watch.sh 80 8888'
+}
+Error: Command failed: ./watch.sh 80 8888
+
+    at ChildProcess.exithandler (node:child_process:402:12)
+    at ChildProcess.emit (node:events:513:28)
+    at maybeClose (node:internal/child_process:1100:16)
+    at Socket.<anonymous> (node:internal/child_process:458:11)
+    at Socket.emit (node:events:513:28)
+    at Pipe.<anonymous> (node:net:301:12) {
+  code: 7,
+  killed: false,
+  signal: null,
+  cmd: './watch.sh 80 8888'
+}
+Error: Command failed: ./watch.sh 80 8888
+Error: ENOENT: no such file or directory, rmdir 'lib//services/middleware/network/dns/providers'
+    at Object.rmdirSync (node:fs:1213:10)
+    at deleteDir (/Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:153:11)
+    at /Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:147:9
+    at Array.forEach (<anonymous>)
+    at deleteDir (/Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:143:29)
+    at /Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:147:9
+    at Array.forEach (<anonymous>)
+    at deleteDir (/Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:143:29)
+    at /Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:147:9
+    at Array.forEach (<anonymous>) {
+  errno: -2,
+  syscall: 'rmdir',
+  code: 'ENOENT',
+  path: 'lib//services/middleware/network/dns/providers'
+}
+error Command failed with exit code 1.
+
+    at ChildProcess.exithandler (node:child_process:402:12)
+    at ChildProcess.emit (node:events:513:28)
+    at maybeClose (node:internal/child_process:1100:16)
+    at Socket.<anonymous> (node:internal/child_process:458:11)
+    at Socket.emit (node:events:513:28)
+    at Pipe.<anonymous> (node:net:301:12) {
+  code: 7,
+  killed: false,
+  signal: null,
+  cmd: './watch.sh 80 8888'
+}
+Error: Command failed: ./watch.sh 80 8888
+
+    at ChildProcess.exithandler (node:child_process:402:12)
+    at ChildProcess.emit (node:events:513:28)
+    at maybeClose (node:internal/child_process:1100:16)
+    at Socket.<anonymous> (node:internal/child_process:458:11)
+    at Socket.emit (node:events:513:28)
+    at Pipe.<anonymous> (node:net:301:12) {
+  code: 7,
+  killed: false,
+  signal: null,
+  cmd: './watch.sh 80 8888'
+}
+Error: Command failed: ./watch.sh 80 8888
+Error: ENOENT: no such file or directory, lstat 'esm//adapters/cli/index.js'
+    at Object.lstatSync (node:fs:1561:3)
+    at /Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:146:17
+    at Array.forEach (<anonymous>)
+    at deleteDir (/Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:143:29)
+    at /Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:147:9
+    at Array.forEach (<anonymous>)
+    at deleteDir (/Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:143:29)
+    at /Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:147:9
+    at Array.forEach (<anonymous>)
+    at Object.deleteDir (/Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:143:29) {
+  errno: -2,
+  syscall: 'lstat',
+  code: 'ENOENT',
+  path: 'esm//adapters/cli/index.js'
+}
+error Command failed with exit code 1.
+
+    at ChildProcess.exithandler (node:child_process:402:12)
+    at ChildProcess.emit (node:events:513:28)
+    at maybeClose (node:internal/child_process:1100:16)
+    at Socket.<anonymous> (node:internal/child_process:458:11)
+    at Socket.emit (node:events:513:28)
+    at Pipe.<anonymous> (node:net:301:12) {
+  code: 7,
+  killed: false,
+  signal: null,
+  cmd: './watch.sh 80 8888'
+}
+Error: Command failed: ./watch.sh 80 8888
+Error: ENOENT: no such file or directory, unlink 'esm//adapters/controllers/get-models.js'
+    at Object.unlinkSync (node:fs:1767:3)
+    at /Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:149:15
+    at Array.forEach (<anonymous>)
+    at deleteDir (/Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:143:29)
+    at /Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:147:9
+    at Array.forEach (<anonymous>)
+    at deleteDir (/Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:143:29)
+    at /Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:147:9
+    at Array.forEach (<anonymous>)
+    at Object.deleteDir (/Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:143:29) {
+  errno: -2,
+  syscall: 'unlink',
+  code: 'ENOENT',
+  path: 'esm//adapters/controllers/get-models.js'
+}
+error Command failed with exit code 1.
+
+    at ChildProcess.exithandler (node:child_process:402:12)
+    at ChildProcess.emit (node:events:513:28)
+    at maybeClose (node:internal/child_process:1100:16)
+    at Socket.<anonymous> (node:internal/child_process:458:11)
+    at Socket.emit (node:events:513:28)
+    at Pipe.<anonymous> (node:net:301:12) {
+  code: 7,
+  killed: false,
+  signal: null,
+  cmd: './watch.sh 80 8888'
+}
+Error: Command failed: ./watch.sh 80 8888
+
+    at ChildProcess.exithandler (node:child_process:402:12)
+    at ChildProcess.emit (node:events:513:28)
+    at maybeClose (node:internal/child_process:1100:16)
+    at Socket.<anonymous> (node:internal/child_process:458:11)
+    at Socket.emit (node:events:513:28)
+    at Pipe.<anonymous> (node:net:301:12) {
+  code: 7,
+  killed: false,
+  signal: null,
+  cmd: './watch.sh 80 8888'
+}
+Error: Command failed: ./watch.sh 80 8888
+Error: ENOENT: no such file or directory, lstat 'esm//adapters/cli/index.js'
+    at Object.lstatSync (node:fs:1561:3)
+    at /Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:146:17
+    at Array.forEach (<anonymous>)
+    at deleteDir (/Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:143:29)
+    at /Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:147:9
+    at Array.forEach (<anonymous>)
+    at deleteDir (/Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:143:29)
+    at /Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:147:9
+    at Array.forEach (<anonymous>)
+    at Object.deleteDir (/Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:143:29) {
+  errno: -2,
+  syscall: 'lstat',
+  code: 'ENOENT',
+  path: 'esm//adapters/cli/index.js'
+}
+error Command failed with exit code 1.
+
+    at ChildProcess.exithandler (node:child_process:402:12)
+    at ChildProcess.emit (node:events:513:28)
+    at maybeClose (node:internal/child_process:1100:16)
+    at Socket.<anonymous> (node:internal/child_process:458:11)
+    at Socket.emit (node:events:513:28)
+    at Pipe.<anonymous> (node:net:301:12) {
+  code: 7,
+  killed: false,
+  signal: null,
+  cmd: './watch.sh 80 8888'
+}
+Error: Command failed: ./watch.sh 80 8888
+Error: ENOENT: no such file or directory, lstat 'esm//adapters/cli/index.js'
+    at Object.lstatSync (node:fs:1561:3)
+    at /Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:146:17
+    at Array.forEach (<anonymous>)
+    at deleteDir (/Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:143:29)
+    at /Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:147:9
+    at Array.forEach (<anonymous>)
+    at deleteDir (/Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:143:29)
+    at /Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:147:9
+    at Array.forEach (<anonymous>)
+    at Object.deleteDir (/Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:143:29) {
+  errno: -2,
+  syscall: 'lstat',
+  code: 'ENOENT',
+  path: 'esm//adapters/cli/index.js'
+}
+error Command failed with exit code 1.
+
+    at ChildProcess.exithandler (node:child_process:402:12)
+    at ChildProcess.emit (node:events:513:28)
+    at maybeClose (node:internal/child_process:1100:16)
+    at Socket.<anonymous> (node:internal/child_process:458:11)
+    at Socket.emit (node:events:513:28)
+    at Pipe.<anonymous> (node:net:301:12) {
+  code: 7,
+  killed: false,
+  signal: null,
+  cmd: './watch.sh 80 8888'
+}
+Error: Command failed: ./watch.sh 80 8888
+Error: ENOENT: no such file or directory, lstat 'esm//adapters/cli/index.js'
+    at Object.lstatSync (node:fs:1561:3)
+    at /Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:146:17
+    at Array.forEach (<anonymous>)
+    at deleteDir (/Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:143:29)
+    at /Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:147:9
+    at Array.forEach (<anonymous>)
+    at deleteDir (/Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:143:29)
+    at /Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:147:9
+    at Array.forEach (<anonymous>)
+    at Object.deleteDir (/Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:143:29) {
+  errno: -2,
+  syscall: 'lstat',
+  code: 'ENOENT',
+  path: 'esm//adapters/cli/index.js'
+}
+error Command failed with exit code 1.
+
+    at ChildProcess.exithandler (node:child_process:402:12)
+    at ChildProcess.emit (node:events:513:28)
+    at maybeClose (node:internal/child_process:1100:16)
+    at Socket.<anonymous> (node:internal/child_process:458:11)
+    at Socket.emit (node:events:513:28)
+    at Pipe.<anonymous> (node:net:301:12) {
+  code: 7,
+  killed: false,
+  signal: null,
+  cmd: './watch.sh 80 8888'
+}
+change domain/event-router.js
+Error: Command failed: ./watch.sh 80 8888
+SyntaxError: /Users/tysonmidboe/Code/aegis/src/domain/datasource-factory.js: Unexpected token, expected "{" (32:17)
+
+  30 |   adapters[defaultAdapter] || dsClasses['DataSourceMemory']
+  31 |
+> 32 | class MongoError extendsdads Error {
+     |                  ^
+  33 |   constructor(error, code) {
+  34 |     super(error)
+  35 |     this.code = code
+    at instantiate (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:67:32)
+    at constructor (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:364:12)
+    at Parser.raise (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:3363:19)
+    at Parser.unexpected (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:3396:16)
+    at Parser.expect (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:3758:28)
+    at Parser.parseClassBody (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:13767:10)
+    at Parser.parseClass (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:13744:22)
+    at Parser.parseStatementContent (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:12999:21)
+    at Parser.parseStatementLike (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:12963:17)
+    at Parser.parseModuleItem (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:12944:17) {
+  code: 'BABEL_PARSE_ERROR',
+  reasonCode: 'UnexpectedToken',
+  loc: Position { line: 32, column: 17, index: 1197 },
+  pos: [Getter/Setter]
+}
+error Command failed with exit code 1.
+
+    at ChildProcess.exithandler (node:child_process:402:12)
+    at ChildProcess.emit (node:events:513:28)
+    at maybeClose (node:internal/child_process:1100:16)
+    at Socket.<anonymous> (node:internal/child_process:458:11)
+    at Socket.emit (node:events:513:28)
+    at Pipe.<anonymous> (node:net:301:12) {
+  code: 7,
+  killed: false,
+  signal: null,
+  cmd: './watch.sh 80 8888'
+}
+change domain/event-router.js
+Error: Command failed: ./watch.sh 80 8888
+Error: ENOENT: no such file or directory, lstat 'esm//adapters/cli/index.js'
+    at Object.lstatSync (node:fs:1561:3)
+    at /Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:146:17
+    at Array.forEach (<anonymous>)
+    at deleteDir (/Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:143:29)
+    at /Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:147:9
+    at Array.forEach (<anonymous>)
+    at deleteDir (/Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:143:29)
+    at /Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:147:9
+    at Array.forEach (<anonymous>)
+    at Object.deleteDir (/Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:143:29) {
+  errno: -2,
+  syscall: 'lstat',
+  code: 'ENOENT',
+  path: 'esm//adapters/cli/index.js'
+}
+error Command failed with exit code 1.
+
+    at ChildProcess.exithandler (node:child_process:402:12)
+    at ChildProcess.emit (node:events:513:28)
+    at maybeClose (node:internal/child_process:1100:16)
+    at Process.ChildProcess._handle.onexit (node:internal/child_process:304:5) {
+  code: 7,
+  killed: false,
+  signal: null,
+  cmd: './watch.sh 80 8888'
+}
+change domain/event-router.js
+Error: Command failed: ./watch.sh 80 8888
+SyntaxError: /Users/tysonmidboe/Code/aegis/src/domain/datasource-factory.js: Unexpected token, expected "{" (32:17)
+
+  30 |   adapters[defaultAdapter] || dsClasses['DataSourceMemory']
+  31 |
+> 32 | class MongoError extendsdads Error {
+     |                  ^
+  33 |   constructor(error, code) {
+  34 |     super(error)
+  35 |     this.code = code
+    at instantiate (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:67:32)
+    at constructor (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:364:12)
+    at Parser.raise (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:3363:19)
+    at Parser.unexpected (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:3396:16)
+    at Parser.expect (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:3758:28)
+    at Parser.parseClassBody (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:13767:10)
+    at Parser.parseClass (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:13744:22)
+    at Parser.parseStatementContent (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:12999:21)
+    at Parser.parseStatementLike (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:12963:17)
+    at Parser.parseModuleItem (/Users/tysonmidboe/Code/aegis/node_modules/@babel/parser/lib/index.js:12944:17) {
+  code: 'BABEL_PARSE_ERROR',
+  reasonCode: 'UnexpectedToken',
+  loc: Position { line: 32, column: 17, index: 1197 },
+  pos: [Getter/Setter]
+}
+error Command failed with exit code 1.
+
+    at ChildProcess.exithandler (node:child_process:402:12)
+    at ChildProcess.emit (node:events:513:28)
+    at maybeClose (node:internal/child_process:1100:16)
+    at Process.ChildProcess._handle.onexit (node:internal/child_process:304:5) {
+  code: 7,
+  killed: false,
+  signal: null,
+  cmd: './watch.sh 80 8888'
+}
+change domain/datasource-factory.js
+Error: Command failed: ./watch.sh 80 8888
+Error: ENOENT: no such file or directory, lstat 'esm//adapters/cli/index.js'
+    at Object.lstatSync (node:fs:1561:3)
+    at /Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:146:17
+    at Array.forEach (<anonymous>)
+    at deleteDir (/Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:143:29)
+    at /Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:147:9
+    at Array.forEach (<anonymous>)
+    at deleteDir (/Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:143:29)
+    at /Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:147:9
+    at Array.forEach (<anonymous>)
+    at Object.deleteDir (/Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:143:29) {
+  errno: -2,
+  syscall: 'lstat',
+  code: 'ENOENT',
+  path: 'esm//adapters/cli/index.js'
+}
+error Command failed with exit code 1.
+
+    at ChildProcess.exithandler (node:child_process:402:12)
+    at ChildProcess.emit (node:events:513:28)
+    at maybeClose (node:internal/child_process:1100:16)
+    at Process.ChildProcess._handle.onexit (node:internal/child_process:304:5) {
+  code: 7,
+  killed: false,
+  signal: null,
+  cmd: './watch.sh 80 8888'
+}
+change adapters/datasources/datasource-mongodb.js
+Error: Command failed: ./watch.sh 80 8888
+
+    at ChildProcess.exithandler (node:child_process:402:12)
+    at ChildProcess.emit (node:events:513:28)
+    at maybeClose (node:internal/child_process:1100:16)
+    at Process.ChildProcess._handle.onexit (node:internal/child_process:304:5) {
+  code: 7,
+  killed: false,
+  signal: null,
+  cmd: './watch.sh 80 8888'
+}
+change adapters/datasources/datasource-mongodb.js
+Error: Command failed: ./watch.sh 80 8888
+
+    at ChildProcess.exithandler (node:child_process:402:12)
+    at ChildProcess.emit (node:events:513:28)
+    at maybeClose (node:internal/child_process:1100:16)
+    at Process.ChildProcess._handle.onexit (node:internal/child_process:304:5) {
+  code: 7,
+  killed: false,
+  signal: null,
+  cmd: './watch.sh 80 8888'
+}
+change adapters/datasources/datasource-mongodb.js
+Error: Command failed: ./watch.sh 80 8888
+
+    at ChildProcess.exithandler (node:child_process:402:12)
+    at ChildProcess.emit (node:events:513:28)
+    at maybeClose (node:internal/child_process:1100:16)
+    at Process.ChildProcess._handle.onexit (node:internal/child_process:304:5) {
+  code: 7,
+  killed: false,
+  signal: null,
+  cmd: './watch.sh 80 8888'
+}
+change domain/datasource-factory.js
+change adapters/datasources/datasource-mongodb.js
+Error: Command failed: ./watch.sh 80 8888
+
+    at ChildProcess.exithandler (node:child_process:402:12)
+    at ChildProcess.emit (node:events:513:28)
+    at maybeClose (node:internal/child_process:1100:16)
+    at Process.ChildProcess._handle.onexit (node:internal/child_process:304:5) {
+  code: 7,
+  killed: false,
+  signal: null,
+  cmd: './watch.sh 80 8888'
+}
+change domain/event-router.js
+Error: Command failed: ./watch.sh 80 8888
+
+    at ChildProcess.exithandler (node:child_process:402:12)
+    at ChildProcess.emit (node:events:513:28)
+    at maybeClose (node:internal/child_process:1100:16)
+    at Process.ChildProcess._handle.onexit (node:internal/child_process:304:5) {
+  code: 7,
+  killed: false,
+  signal: null,
+  cmd: './watch.sh 80 8888'
+}
+change domain/event-router.js
+Error: Command failed: ./watch.sh 80 8888
+
+    at ChildProcess.exithandler (node:child_process:402:12)
+    at ChildProcess.emit (node:events:513:28)
+    at maybeClose (node:internal/child_process:1100:16)
+    at Socket.<anonymous> (node:internal/child_process:458:11)
+    at Socket.emit (node:events:513:28)
+    at Pipe.<anonymous> (node:net:301:12) {
+  code: 7,
+  killed: false,
+  signal: null,
+  cmd: './watch.sh 80 8888'
+}
+change domain/event-router.js
+Error: Command failed: ./watch.sh 80 8888
+
+    at ChildProcess.exithandler (node:child_process:402:12)
+    at ChildProcess.emit (node:events:513:28)
+    at maybeClose (node:internal/child_process:1100:16)
+    at Process.ChildProcess._handle.onexit (node:internal/child_process:304:5) {
+  code: 7,
+  killed: false,
+  signal: null,
+  cmd: './watch.sh 80 8888'
+}
+change domain/event-router.js
+Error: Command failed: ./watch.sh 80 8888
+
+    at ChildProcess.exithandler (node:child_process:402:12)
+    at ChildProcess.emit (node:events:513:28)
+    at maybeClose (node:internal/child_process:1100:16)
+    at Socket.<anonymous> (node:internal/child_process:458:11)
+    at Socket.emit (node:events:513:28)
+    at Pipe.<anonymous> (node:net:301:12) {
+  code: 7,
+  killed: false,
+  signal: null,
+  cmd: './watch.sh 80 8888'
+}
+change domain/event-router.js
+Error: Command failed: ./watch.sh 80 8888
+
+    at ChildProcess.exithandler (node:child_process:402:12)
+    at ChildProcess.emit (node:events:513:28)
+    at maybeClose (node:internal/child_process:1100:16)
+    at Process.ChildProcess._handle.onexit (node:internal/child_process:304:5) {
+  code: 7,
+  killed: false,
+  signal: null,
+  cmd: './watch.sh 80 8888'
+}
+change domain/event-router.js
+Error: Command failed: ./watch.sh 80 8888
+
+    at ChildProcess.exithandler (node:child_process:402:12)
+    at ChildProcess.emit (node:events:513:28)
+    at maybeClose (node:internal/child_process:1100:16)
+    at Process.ChildProcess._handle.onexit (node:internal/child_process:304:5) {
+  code: 7,
+  killed: false,
+  signal: null,
+  cmd: './watch.sh 80 8888'
+}
+change domain/event-router.js
+Error: Command failed: ./watch.sh 80 8888
+
+    at ChildProcess.exithandler (node:child_process:402:12)
+    at ChildProcess.emit (node:events:513:28)
+    at maybeClose (node:internal/child_process:1100:16)
+    at Process.ChildProcess._handle.onexit (node:internal/child_process:304:5) {
+  code: 7,
+  killed: false,
+  signal: null,
+  cmd: './watch.sh 80 8888'
+}
+change domain/event-router.js
+Error: Command failed: ./watch.sh 80 8888
+
+    at ChildProcess.exithandler (node:child_process:402:12)
+    at ChildProcess.emit (node:events:513:28)
+    at maybeClose (node:internal/child_process:1100:16)
+    at Socket.<anonymous> (node:internal/child_process:458:11)
+    at Socket.emit (node:events:513:28)
+    at Pipe.<anonymous> (node:net:301:12) {
+  code: 7,
+  killed: false,
+  signal: null,
+  cmd: './watch.sh 80 8888'
+}
+change domain/event-router.js
+Error: Command failed: ./watch.sh 80 8888
+
+    at ChildProcess.exithandler (node:child_process:402:12)
+    at ChildProcess.emit (node:events:513:28)
+    at maybeClose (node:internal/child_process:1100:16)
+    at Process.ChildProcess._handle.onexit (node:internal/child_process:304:5) {
+  code: 7,
+  killed: false,
+  signal: null,
+  cmd: './watch.sh 80 8888'
+}
+change domain/event-router.js
+Error: Command failed: ./watch.sh 80 8888
+
+    at ChildProcess.exithandler (node:child_process:402:12)
+    at ChildProcess.emit (node:events:513:28)
+    at maybeClose (node:internal/child_process:1100:16)
+    at Process.ChildProcess._handle.onexit (node:internal/child_process:304:5) {
+  code: 7,
+  killed: false,
+  signal: null,
+  cmd: './watch.sh 80 8888'
+}
+change adapters/datasources/datasource-mongodb.js
+change domain/event-router.js
+Error: Command failed: ./watch.sh 80 8888
+Error: ENOENT: no such file or directory, lstat 'esm//adapters/index.js'
+    at Object.lstatSync (node:fs:1561:3)
+    at /Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:146:17
+    at Array.forEach (<anonymous>)
+    at deleteDir (/Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:143:29)
+    at /Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:147:9
+    at Array.forEach (<anonymous>)
+    at Object.deleteDir (/Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/util.js:143:29)
+    at /Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/dir.js:197:14
+    at Generator.next (<anonymous>)
+    at asyncGeneratorStep (/Users/tysonmidboe/Code/aegis/node_modules/@babel/cli/lib/babel/dir.js:42:103) {
+  errno: -2,
+  syscall: 'lstat',
+  code: 'ENOENT',
+  path: 'esm//adapters/index.js'
+}
+error Command failed with exit code 1.
+
+    at ChildProcess.exithandler (node:child_process:402:12)
+    at ChildProcess.emit (node:events:513:28)
+    at maybeClose (node:internal/child_process:1100:16)
+    at Socket.<anonymous> (node:internal/child_process:458:11)
+    at Socket.emit (node:events:513:28)
+    at Pipe.<anonymous> (node:net:301:12) {
+  code: 7,
+  killed: false,
+  signal: null,
+  cmd: './watch.sh 80 8888'
+}
+change domain/event-router.js
+Error: Command failed: ./watch.sh 80 8888
+
+    at ChildProcess.exithandler (node:child_process:402:12)
+    at ChildProcess.emit (node:events:513:28)
+    at maybeClose (node:internal/child_process:1100:16)
+    at Socket.<anonymous> (node:internal/child_process:458:11)
+    at Socket.emit (node:events:513:28)
+    at Pipe.<anonymous> (node:net:301:12) {
+  code: 7,
+  killed: false,
+  signal: null,
+  cmd: './watch.sh 80 8888'
+}
+change domain/event-router.js
+Error: Command failed: ./watch.sh 80 8888
+
+    at ChildProcess.exithandler (node:child_process:402:12)
+    at ChildProcess.emit (node:events:513:28)
+    at maybeClose (node:internal/child_process:1100:16)
+    at Socket.<anonymous> (node:internal/child_process:458:11)
+    at Socket.emit (node:events:513:28)
+    at Pipe.<anonymous> (node:net:301:12) {
+  code: 7,
+  killed: false,
+  signal: null,
+  cmd: './watch.sh 80 8888'
+}
+change domain/event-router.js
+Error: Command failed: ./watch.sh 80 8888
+
+    at ChildProcess.exithandler (node:child_process:402:12)
+    at ChildProcess.emit (node:events:513:28)
+    at maybeClose (node:internal/child_process:1100:16)
+    at Process.ChildProcess._handle.onexit (node:internal/child_process:304:5) {
+  code: 7,
+  killed: false,
+  signal: null,
+  cmd: './watch.sh 80 8888'
+}
+change domain/event-router.js
+Error: Command failed: ./watch.sh 80 8888
+
+    at ChildProcess.exithandler (node:child_process:402:12)
+    at ChildProcess.emit (node:events:513:28)
+    at maybeClose (node:internal/child_process:1100:16)
+    at Process.ChildProcess._handle.onexit (node:internal/child_process:304:5) {
+  code: 7,
+  killed: false,
+  signal: null,
+  cmd: './watch.sh 80 8888'
+}
+change domain/event-router.js
+Error: Command failed: ./watch.sh 80 8888
+
+    at ChildProcess.exithandler (node:child_process:402:12)
+    at ChildProcess.emit (node:events:513:28)
+    at maybeClose (node:internal/child_process:1100:16)
+    at Process.ChildProcess._handle.onexit (node:internal/child_process:304:5) {
+  code: 7,
+  killed: false,
+  signal: null,
+  cmd: './watch.sh 80 8888'
+}
+change domain/thread-pool.js
+Error: Command failed: ./watch.sh 80 8888
+
+    at ChildProcess.exithandler (node:child_process:402:12)
+    at ChildProcess.emit (node:events:513:28)
+    at maybeClose (node:internal/child_process:1100:16)
+    at Process.ChildProcess._handle.onexit (node:internal/child_process:304:5) {
+  code: 7,
+  killed: false,
+  signal: null,
+  cmd: './watch.sh 80 8888'
+}
+change domain/thread-pool.js
+Error: Command failed: ./watch.sh 80 8888
+
+    at ChildProcess.exithandler (node:child_process:402:12)
+    at ChildProcess.emit (node:events:513:28)
+    at maybeClose (node:internal/child_process:1100:16)
+    at Process.ChildProcess._handle.onexit (node:internal/child_process:304:5) {
+  code: 7,
+  killed: false,
+  signal: null,
+  cmd: './watch.sh 80 8888'
+}
+watching  ./src
+watching  ./src
