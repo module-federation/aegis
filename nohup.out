@@ -4354,3 +4354,5 @@ Error: Command failed: ./watch.sh 80 8888
 }
 watching  ./src
 watching  ./src
+change services/service-mesh/nats-mesh.js
+change services/service-mesh/nats-mesh.js
