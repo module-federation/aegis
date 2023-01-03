@@ -3261,3 +3261,17 @@ Error: Command failed: ./watch.sh 80 8888
   signal: null,
   cmd: './watch.sh 80 8888'
 }
+change adapters/datasources/datasource-ipfs.js
+Error: Command failed: ./watch.sh 80 8888
+
+    at ChildProcess.exithandler (node:child_process:402:12)
+    at ChildProcess.emit (node:events:513:28)
+    at maybeClose (node:internal/child_process:1100:16)
+    at Socket.<anonymous> (node:internal/child_process:458:11)
+    at Socket.emit (node:events:513:28)
+    at Pipe.<anonymous> (node:net:301:12) {
+  code: 7,
+  killed: false,
+  signal: null,
+  cmd: './watch.sh 80 8888'
+}
