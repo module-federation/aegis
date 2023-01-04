@@ -156,6 +156,19 @@ const DsCoreExtensions = superclass =>
       })
     }
 
+    /**@returns {boolean} */
+    streamResult (options) {
+      return options?.writable && !options?.query?.__aggregate ? true : false
+    }
+
+    isStream (list) {
+      return list[0] instanceof Readable || list[0] instanceof Transform
+    }
+
+    unmarshall (model) {
+      return ModelFactory.loadModel(broker, this, model, this.name)
+    }
+
     /**
      * Returns the set of objects satisfying the `filter` if specified;
      * otherwise returns all objects. If a `writable` stream is provided and
@@ -173,24 +186,16 @@ const DsCoreExtensions = superclass =>
         if (options?.query?.__count) return this.count()
         if (options?.query?.__cached) return this.listSync(options.query)
 
-        const opts = {
-          ...options,
-          streamResult:
-            options?.writable && !options?.query?.__aggregate ? true : false
-        }
+        const opts = { ...options, streamResult: this.streamResult() }
         const list = [await super.list(opts)].flat()
-        if (list.length < 1) throw new Error()
-        if (list[0] instanceof Readable || list[0] instanceof Transform)
-          return this.stream(list, options)
 
-        return isMainThread
-          ? list
-          : list.map(model =>
-              ModelFactory.loadModel(broker, this, model, this.name)
-            )
+        if (list.length < 1) throw new DsError('Not Found', 404)
+        if (this.isStream(list)) return this.stream(list, options)
+
+        return isMainThread ? list : list.map(model => this.unmarshall(model))
       } catch (error) {
         console.error({ fn: this.list.name, error })
-        throw error
+        throw new DsError(error, 500)
       }
     }
 
@@ -286,7 +291,6 @@ const DataSourceFactory = (() => {
     const { memoryOnly, ephemeral, adapterName } = options
 
     if (memoryOnly || ephemeral) return dsClasses['DataSourceMemory']
-
     if (adapterName) return adapters[adapterName] || DefaultDataSource
 
     if (spec?.datasource?.factory) {
