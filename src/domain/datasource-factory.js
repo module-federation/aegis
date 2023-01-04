@@ -144,7 +144,7 @@ const DsCoreExtensions = superclass =>
      */
     stream (list, options) {
       return new Promise((resolve, reject) => {
-        assert.ok(list && options, 'missing m kkkakkk')
+        assert.ok(list && options, 'missing params')
         options.writable.on('error', reject)
         options.writable.on('end', resolve)
 
