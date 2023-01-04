@@ -17,6 +17,7 @@
     "asbuild:debug": "asc assembly/index.ts --exportRuntime --bindings --target debug",
     "asbuild:release": "asc assembly/index.ts --exportRuntime --bindings --target release",
     "asbuild": "npm run asbuild:debug && npm run asbuild:release",
+    "build": "npm run asbuild",
     "deploy": "cp build/release.wasm ../../aegis-app/dist/main.wasm",
     "test": "node tests",
     "start": "npx serve ."
