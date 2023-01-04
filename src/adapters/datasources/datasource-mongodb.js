@@ -28,6 +28,14 @@ const dsOptions = configRoot.adapters.datasources.DataSourceMongoDb.options || {
 const cacheSize = configRoot.adapters.cacheSize || 3000
 let connPool
 
+class DsMongoError extends Error {
+  constructor (error, code) {
+    super(error)
+    this.code = code
+    console.error(this)
+  }
+}
+
 /**
  * @type {Map<string,MongoClient>}
  */
@@ -84,7 +92,9 @@ export class DataSourceMongoDb extends DataSource {
       }, 500)
       await client.connect()
       clearTimeout(timerId)
-      if (timeout) throw new Error('mongo conn timeout')
+      if (timeout) {
+        throw new DsMongoError('mongo conn timeout', 500)
+      }
     }
   }
 
@@ -381,7 +391,7 @@ export class DataSourceMongoDb extends DataSource {
       }
       console.log({ options })
 
-      if (options.streamRequested) return this.streamList(options)
+      if (options.streamResult) return this.streamList(options)
 
       const data = (await this.mongoFind(options)).toArray()
       const count = data?.length

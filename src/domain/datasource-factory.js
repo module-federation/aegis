@@ -20,6 +20,7 @@ import configRoot from '../config'
 import DataSource from './datasource'
 import compose from './util/compose'
 import { withSharedMemory } from './shared-memory'
+import { assert } from 'node:console'
 
 const debug = /\*|datasource/i.test(process.env.DEBUG)
 const broker = EventBrokerFactory.getInstance()
@@ -28,13 +29,17 @@ const defaultAdapter = configRoot.hostConfig.adapters.defaultDatasource
 const DefaultDataSource =
   adapters[defaultAdapter] || dsClasses['DataSourceMemory']
 
+class DsError extends Error {
+  constructor (error, code) {
+    super(error)
+    this.code = code
+  }
+}
+
 /**
  * Core extensions include object caching, marshalling and serialization.
  * Using this compositional mixin, these extensions are applied transparently
  * to any {@link DataSource} class in the hierarchy.
- *
- * @param {*} superclass
- * @returns
  */
 const DsCoreExtensions = superclass =>
   class extends superclass {
@@ -50,11 +55,6 @@ const DsCoreExtensions = superclass =>
       return this[FACTORY]
     }
 
-    // serialize (data, options) {
-    //   if (options?.serializers) return options.serializers['serialize'](data)
-    //   return JSON.stringify(data)
-    // }
-
     /**
      * Override the super class, adding cache and serialization functions.
      * @override
@@ -67,7 +67,7 @@ const DsCoreExtensions = superclass =>
         await super.save(id, JSON.parse(JSON.stringify(data)))
       } catch (error) {
         console.error({ fn: this.save.name, error })
-        throw error
+        throw new DsError(error, 500)
       }
     }
 
@@ -79,22 +79,17 @@ const DsCoreExtensions = superclass =>
      * @returns {Promise<Model>|undefined}
      */
     async find (id) {
-      try {
-        const cached = this.findSync(id)
-        if (cached) return cached
+      const cached = this.findSync(id)
+      if (cached) return cached
 
-        const model = await super.find(id)
+      const model = await super.find(id)
+      if (model) {
+        // save to cache
+        this.saveSync(id, model)
 
-        if (model) {
-          // save to cache
-          this.saveSync(id, model)
-          return isMainThread
-            ? model
-            : ModelFactory.loadModel(broker, this, model, this.name)
-        }
-      } catch (error) {
-        console.error({ fn: this.find.name, error })
-        throw error
+        return isMainThread
+          ? model // dont unmarshall - main gets readonly copy
+          : ModelFactory.loadModel(broker, this, model, this.name)
       }
     }
 
@@ -149,6 +144,7 @@ const DsCoreExtensions = superclass =>
      */
     stream (list, options) {
       return new Promise((resolve, reject) => {
+        assert.ok(list && options, 'missing m kkkakkk')
         options.writable.on('error', reject)
         options.writable.on('end', resolve)
 
@@ -179,13 +175,11 @@ const DsCoreExtensions = superclass =>
 
         const opts = {
           ...options,
-          streamRequested:
+          streamResult:
             options?.writable && !options?.query?.__aggregate ? true : false
         }
         const list = [await super.list(opts)].flat()
-
-        if (list.length < 1) return []
-
+        if (list.length < 1) throw new Error()
         if (list[0] instanceof Readable || list[0] instanceof Transform)
           return this.stream(list, options)
 
