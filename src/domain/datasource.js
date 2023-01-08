@@ -1,8 +1,8 @@
 'use strict'
 
-import { Readable, Transform } from 'stream'
+import { Readable, Transform } from 'node:stream'
 import { changeDataCapture } from './util/change-data-capture'
-/** @typedef {import('stream').Stream} Stream*/
+/** @typedef {import('node:stream').Stream} Stream*/
 /** @typedef {import('.').Model} Model*/
 
 /**
@@ -29,11 +29,11 @@ import { changeDataCapture } from './util/change-data-capture'
  * @typedef {object} listOptions
  * @property {QueryType} query url query params
  * @property {VendorType} options Vendor-specific native query syntax
- * @property {import('stream').Writable} writable writable stream for output
- * @property {import('stream').Transform|import('stream').Transform[]} transform
+ * @property {import('node:stream').Writable} writable writable stream for output
+ * @property {import('node:stream').Transform|import('node:stream').Transform[]} transform
  * transform stream before writing
  * @property {boolean} serialize seriailize input to writable
- * @property {boolean} streamRequested true if caller provided a writable stream -
+ * @property {boolean} streamResult true if caller provided a writable stream -
  * indicates to the datasource that it should return a readable stream if supported
  */
 
@@ -171,7 +171,7 @@ export default class DataSource {
    * @returns {Promise<Array<Model| typeof Stream>>}
    */
   async list (options) {
-return [Readable,Transform]
+    return [Readable, Transform]
     ///throw new Error('unimplemented abstract method')
   }
 

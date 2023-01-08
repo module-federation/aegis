@@ -159,6 +159,7 @@ export class ThreadPool extends EventEmitter {
     this.aborting = false
     this.jobsRequested = this.jobsQueued = 0
     this.broadcastChannel = options.broadcast
+    this.grow = false
 
     this.once(this.growPool.name, this.growPool)
 
@@ -439,21 +440,22 @@ export class ThreadPool extends EventEmitter {
 
   incrementJobsQueued () {
     this.jobsQueued++
-    this.jobQueueRate()
+    if (
+      this.jobQueueRate() > this.jobQueueThreshold() &&
+      this.jobsRequested > 20
+    ) {
+      console.warn('job queue threshold exceeded')
+      this.emit(this.growPool.name)
+    }
     return this
   }
 
   growPool () {
-    if (this.capacityAvailable()) this.startThread()
+    if (this.capacityAvailable()) return this.startThread()
   }
 
   jobQueueRate () {
-    const rate = Math.round((this.jobsQueued / this.jobsRequested) * 100)
-    if (rate > this.jobQueueThreshold()) {
-      console.warn('job queue threshold exceeded')
-      this.emit(this.growPool.name)
-    }
-    return rate
+    return Math.round((this.jobsQueued / this.jobsRequested) * 100)
   }
 
   jobQueueThreshold () {
@@ -483,6 +485,10 @@ export class ThreadPool extends EventEmitter {
 
   incrementErrorCount () {
     this.errors++
+    if (this.errorRate() > this.errorRateThreshold() && this.errors > 10) {
+      this.emit(this.growPool.name)
+      console.log('job duration threshold exceeded', this)
+    }
     return this
   }
 
@@ -862,7 +868,7 @@ const ThreadPoolFactory = (() => {
    * and remote imports run. If one service relies on another, but that service
    * is dowm (not preloaded), the system will automatically spin up a thread and
    * start the service in order to handle the request. This overhead of starting
-   * threads, which usually completes in under a second, occurs twice
+   * threads, which usually completes in under a se cond, occurs twice
    * in a service's lifetime: when started for the first time and when restarted
    * to handle a deployment.
    */

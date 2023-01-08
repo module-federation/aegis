@@ -2,7 +2,7 @@
 
 import ModelFactory from '../../domain'
 
-function prettifyJson(json) {
+function prettifyJson (json) {
   if (typeof json !== 'string') {
     json = JSON.stringify(json, null, 2)
   }
@@ -27,7 +27,7 @@ function prettifyJson(json) {
   )
 }
 
-function getResourceName(httpRequest, defaultTitle = '') {
+function getResourceName (httpRequest, defaultTitle = '') {
   if (/events/i.test(httpRequest.query.details)) return 'Domain Events'
   if (/threads/i.test(httpRequest.query.details)) return 'Thread Pools'
   if (/data/i.test(httpRequest.query.details)) return 'Data Sources'
@@ -37,7 +37,7 @@ function getResourceName(httpRequest, defaultTitle = '') {
   return defaultTitle
 }
 
-function findLocalRelatedModels(modelName) {
+function findLocalRelatedModels (modelName) {
   const localModels = ModelFactory.getModelSpecs().map(s =>
     s.modelName.toUpperCase()
   )
@@ -60,7 +60,7 @@ function findLocalRelatedModels(modelName) {
  * @returns
  */
 
-export default function getContent(httpRequest, content, defaultTitle) {
+export default function getContent (httpRequest, content, defaultTitle) {
   const contents = content instanceof Array ? content : [content]
   try {
     if (!httpRequest.query.html)
@@ -169,14 +169,14 @@ export default function getContent(httpRequest, content, defaultTitle) {
 
         html += '<div class="mb3">'
         ModelFactory.getModelSpecs().forEach(s => {
-          html += `<a href="${httpRequest.path}?${queryText}modelName=${s.modelName}">View thread info for ${s.modelName}</a><br>`
+          html += `<a href="${httpRequest.path}?${queryText}modelName=${s.modelName}">View data in ${s.modelName} thread</a><br>`
           try {
             console.debug(httpRequest.query.details === 'data')
             if (httpRequest.query.details === 'data') {
               const related = findLocalRelatedModels(s.modelName)
               related.forEach(
-                rel =>
-                  (html += `<a href="${httpRequest.path}?${queryText}modelName=${s.modelName}&poolName=${rel}">View ${s.modelName} thread info for ${rel}</a><br>`)
+                relModel =>
+                  (html += `<a href="${httpRequest.path}?${queryText}modelName=${s.modelName}&poolName=${relModel}">View ${relModel} data from ${s.modelName} thread</a><br>`)
               )
             }
           } catch (error) {

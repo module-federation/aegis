@@ -2,8 +2,8 @@
 
 const { requestContext } = require('./async-context')
 
-class CdcCapture extends Map {
-  get(target) {
+class CdCapture extends Map {
+  get (target) {
     const targetName =
       target.constructor?.name ||
       target.prototype?.constructor.name ||
@@ -17,18 +17,18 @@ class CdcCapture extends Map {
   }
 }
 
-const cdcCapture = new CdcCapture()
+const cdCapture = new CdCapture()
 
-function capture(target, prop, value) {
+function capture (target, prop, value) {
   if (target[prop] === value) return false
 
-  cdcCapture.get(target).push({
+  cdCapture.get(target).push({
     object: target,
     prop,
     from: target[prop],
     to: value,
     time: Date.now(),
-    user: requestContext.getStore().get('user'),
+    user: requestContext.getStore().get('user')
   })
 
   console.log(`changed ${prop} from ${target[prop]} to ${value}`)
@@ -39,13 +39,13 @@ function capture(target, prop, value) {
  * @param {object} target
  * @param {Array<{prop:string,from:*,to:*}>} captureArray
  */
-function changeDataCapture(target, handlers = []) {
+function changeDataCapture (target, handlers = []) {
   handlers.push(capture)
 
   const handler = {
-    set(target, prop, value) {
+    set (target, prop, value) {
       return handlers.reduce(h => h(target, prop, value))
-    },
+    }
   }
 
   return new Proxy(target, handler)
@@ -57,9 +57,9 @@ function changeDataCapture(target, handlers = []) {
  * @param {object} to
  * @returns
  */
-function findChanges(from, to) {
+function findChanges (from, to) {
   const fromProxy = changeDataCapture(from)
-  const captureArray = cdcCapture.get(from)
+  const captureArray = cdCapture.get(from)
 
   Object.keys(to).forEach(key => {
     if (to[key]) fromProxy[key] = to[key]
@@ -73,7 +73,7 @@ function findChanges(from, to) {
         .map(i => ({ [i.prop]: fromProxy[i.prop] }))
         .reduce((a, b) => ({ ...a, ...b }), {}),
     toArray: () => captureArray,
-    toArrayOfKeys: () => captureArray.map(i => i.prop),
+    toArrayOfKeys: () => captureArray.map(i => i.prop)
   }
 }
 
@@ -82,7 +82,7 @@ function findChanges(from, to) {
  * @param {*} param0
  * @returns
  */
-function filterByChangeType({ from, to, changeType, changeTypeValue }) {
+function filterByChangeType ({ from, to, changeType, changeTypeValue }) {
   const keys = findChanges(from, to).toArrayOfKeys()
   const changeTypes = {
     toValue: (from, to, val) => to === val,
@@ -92,7 +92,7 @@ function filterByChangeType({ from, to, changeType, changeTypeValue }) {
     fromTypeValue: (from, to, val) => typeof from === val,
     definedOnly: (from, to, val) => typeof to !== 'undefined',
     greaterThan: (from, to, val) => from > to,
-    lessThan: (from, to, val) => from < to,
+    lessThan: (from, to, val) => from < to
   }
 
   if (changeType)

@@ -1,6 +1,6 @@
 'use strict'
 
-import { Readable, Stream, Transform } from 'node:stream'
+import { Readable, Transform, Writable, Stream } from 'node:stream'
 import { isMainThread } from 'worker_threads'
 /** @typedef {import('.').Model} Model */
 
@@ -20,7 +20,6 @@ import configRoot from '../config'
 import DataSource from './datasource'
 import compose from './util/compose'
 import { withSharedMemory } from './shared-memory'
-import { assert } from 'node:console'
 
 const debug = /\*|datasource/i.test(process.env.DEBUG)
 const broker = EventBrokerFactory.getInstance()
@@ -30,16 +29,16 @@ const DefaultDataSource =
   adapters[defaultAdapter] || dsClasses['DataSourceMemory']
 
 class DsError extends Error {
-  constructor (error, code) {
+  constructor (error, code = null, fn = null) {
     super(error)
     this.code = code
+    console.error({ fn, error, code })
   }
 }
 
 /**
- * Core extensions include object caching, marshalling and serialization.
- * Using this compositional mixin, these extensions are applied transparently
- * to any {@link DataSource} class in the hierarchy.
+ * Core extensions adds support for object caching, serialization, marshalling,
+ * and shared memory to any class in the {@link DataSource} hierachy.
  */
 const DsCoreExtensions = superclass =>
   class extends superclass {
@@ -66,8 +65,7 @@ const DsCoreExtensions = superclass =>
         this.saveSync(id, data)
         await super.save(id, JSON.parse(JSON.stringify(data)))
       } catch (error) {
-        console.error({ fn: this.save.name, error })
-        throw new DsError(error, 500)
+        throw new DsError(error, 500, this.save.name)
       }
     }
 
@@ -79,20 +77,29 @@ const DsCoreExtensions = superclass =>
      * @returns {Promise<Model>|undefined}
      */
     async find (id) {
-      const cached = this.findSync(id)
-      if (cached) return cached
+      try {
+        const cached = this.findSync(id)
+        if (cached) return cached
 
-      const model = await super.find(id)
-      if (model) {
-        // save to cache
-        this.saveSync(id, model)
+        const model = await super.find(id)
+        if (model) {
+          // save to cache
+          this.saveSync(id, model)
 
-        return isMainThread
-          ? model // dont unmarshall - main gets readonly copy
-          : ModelFactory.loadModel(broker, this, model, this.name)
+          return isMainThread
+            ? model // dont unmarshal - main gets readonly copy
+            : ModelFactory.loadModel(broker, this, model, this.name)
+        }
+      } catch (error) {
+        throw new DsError(error, 500, this.find.name)
       }
     }
 
+    /**
+     * Unmarshal JSON object to {@link Model} instance.
+     *
+     * @returns {Transform}
+     */
     hydrate () {
       const ctx = this
 
@@ -106,6 +113,11 @@ const DsCoreExtensions = superclass =>
       })
     }
 
+    /**
+     * Serialize an object stream.
+     *
+     * @returns {Transform}
+     */
     serialize () {
       let first = true
 
@@ -113,9 +125,9 @@ const DsCoreExtensions = superclass =>
         objectMode: true,
 
         // start of array
-        construct (callback) {
+        construct (next) {
           this.push('[')
-          callback()
+          next()
         },
 
         // each chunk is a record
@@ -130,72 +142,78 @@ const DsCoreExtensions = superclass =>
         },
 
         // end of array
-        flush (callback) {
+        flush (done) {
           this.push(']')
-          callback()
+          done()
         }
       })
     }
 
     /**
+     * Stream results of query.
      *
      * @param {Model[]|Stream[]} list
      * @param {import('./datasource').listOptions} options
      */
     stream (list, options) {
       return new Promise((resolve, reject) => {
-        assert.ok(list && options, 'missing params')
         options.writable.on('error', reject)
         options.writable.on('end', resolve)
 
         if (!isMainThread) list.push(this.hydrate())
         if (options.transform) list.concat(options.transform)
         if (options.serialize) list.push(this.serialize())
+        list.push(options.writable)
 
-        list.reduce((p, c) => p.pipe(c)).pipe(options.writable)
+        list.reduce((p, c) => p.pipe(c))
       })
     }
 
-    /**@returns {boolean} */
+    /**
+     * @returns {boolean}
+     */
     streamResult (options) {
-      return options?.writable && !options?.query?.__aggregate ? true : false
+      return options?.writable && !options.aggregation ? true : false
     }
 
+    /**
+     * @returns {boolean}
+     */
     isStream (list) {
-      return list[0] instanceof Readable || list[0] instanceof Transform
+      return list.some(i => i instanceof Readable)
     }
 
-    unmarshall (model) {
+    unmarshal (model) {
       return ModelFactory.loadModel(broker, this, model, this.name)
     }
 
     /**
-     * Returns the set of objects satisfying the `filter` if specified;
+     * Returns the set of objects satisfying the filter if specified;
      * otherwise returns all objects. If a `writable` stream is provided and
      * `cached` is false, the list is streamed. Otherwise the list is returned
      * in an array. One or more custom transforms can be specified to modify the
-     * streamed results. Using {@link createWriteStream}, updates can be streamed
-     * back to the storage provider. With streams, we can support queries of very
-     * large tables, with minimal memory overhead on the node server.
+     * streamed results. If `createWriteStream` is implemented, updates can
+     * be streamed back to the storage provider. With streams, we can support queries
+     * of very large tables, with minimal memory overhead on the node server.
      *
      * @override
      * @param {import('../../domain/datasource').listOptions} param
      */
     async list (options) {
       try {
-        if (options?.query?.__count) return this.count()
+        if (options?.query?.__count)
+          return this.handleCount(options.query.__count)
         if (options?.query?.__cached) return this.listSync(options.query)
+        if (options?.query?.__aggregate) options.aggregation = true
+        else if (options) options.aggregation = false
 
-        const opts = { ...options, streamResult: this.streamResult() }
-        const list = [await super.list(opts)].flat()
+        const opts = { ...options, streamResult: this.streamResult(options) }
+        const list = await super.list(opts)
 
-        if (list.length < 1) throw new DsError('Not Found', 404)
         if (this.isStream(list)) return this.stream(list, options)
-
-        return isMainThread ? list : list.map(model => this.unmarshall(model))
+        return isMainThread ? list : list.map(model => this.unmarshal(model))
       } catch (error) {
-        console.error({ fn: this.list.name, error })
-        throw new DsError(error, 500)
+        throw new DsError(error, 500, this.list.name)
       }
     }
 
@@ -210,8 +228,7 @@ const DsCoreExtensions = superclass =>
         // only if super succeeds
         this.deleteSync(id)
       } catch (error) {
-        console.error(error)
-        throw error
+        throw new DsError(error, 500, this.delete.name)
       }
     }
 
@@ -385,7 +402,7 @@ const DataSourceFactory = (() => {
     return new Proxy(getDataSource(name, namespace, options), {
       get (target, key) {
         if (key === 'factory') {
-          throw new Error('unauthorized')
+          throw new DsError('Unauthorized', 403)
         }
       },
       ownKeys (target) {

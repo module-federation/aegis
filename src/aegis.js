@@ -7,7 +7,7 @@ const { EventBrokerFactory, DomainEvents, importRemotes, requestContext } =
 const { badUserRoute, reload } = DomainEvents
 const { pathToRegexp, match } = require('path-to-regexp')
 const { nanoid } = require('nanoid')
-const { EventEmitter } = require('stream')
+const { EventEmitter } = require('node:stream')
 const broker = EventBrokerFactory.getInstance()
 
 const {
@@ -15,7 +15,7 @@ const {
   getConfig,
   getRoutes,
   getModels,
-  getModelsById,
+  getModelById,
   http,
   initCache,
   patchModels,
@@ -35,7 +35,7 @@ const endpointPortId = e => `${modelPath}/${e}/:id/service/ports/:port`
 
 /**
  * Store routes and their controllers for direct invocation
- * as serverless functions
+ *
  * @extends {Map}
  */
 class RouteMap extends Map {
@@ -138,7 +138,7 @@ function makeRoutes () {
   router.autoRoutes(endpoint, 'get', liveUpdate, http)
   router.autoRoutes(endpoint, 'get', getModels, http)
   router.autoRoutes(endpoint, 'post', postModels, http)
-  router.autoRoutes(endpointId, 'get', getModelsById, http)
+  router.autoRoutes(endpointId, 'get', getModelById, http)
   router.autoRoutes(endpointId, 'patch', patchModels, http)
   router.autoRoutes(endpointId, 'delete', deleteModels, http)
   router.autoRoutes(endpointCmd, 'patch', patchModels, http)
@@ -162,8 +162,8 @@ function makeRoutes () {
  *
  * @param {string} path
  * @param {'get'|'patch'|'post'|'delete'} method
- * @param {Request} req
- * @param {Response} res
+ * @param {ClientRequest} req
+ * @param {ServerResponse} res
  * @returns
  */
 async function handle (path, method, req, res) {
@@ -266,4 +266,3 @@ process.on('uncaughtException', error => {
   console.error('uncaughtException', error)
   broker.notify('uncaughtException', error)
 })
-

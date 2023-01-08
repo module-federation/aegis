@@ -2,9 +2,10 @@
 
 import { isMainThread } from 'worker_threads'
 import { Writable, Transform } from 'node:stream'
-import Serializer from '../serializer'
+import { hostConfig } from '../../config'
+import e from 'express'
 
-function nextModelFn(port, mf) {
+function nextModelFn (port, mf) {
   mf
     .getModelSpecs()
     .filter(spec => spec.ports)
@@ -15,7 +16,7 @@ function nextModelFn(port, mf) {
     )[0]
 }
 
-function startWorkflow(model, mf) {
+function startWorkflow (model, mf) {
   const history = model.getPortFlow()
   const ports = model.getPorts()
 
@@ -38,45 +39,48 @@ function startWorkflow(model, mf) {
  * }} options
  * @returns {function():Promise<void>}
  */
-export default function ({ modelName, repository, broker, models }) {
-  // main thread only
-  if (!isMainThread) {
-    console.log('loading cache ', modelName)
-    const serializers = models.getModelSpec(modelName).serializers
+export default async function ({ modelName, repository, models }) {
+  if (isMainThread) return
 
-    const deserializers = serializers
-      ? serializers.filter(s => !s.disabled && s.on === 'deserialize')
-      : null
+  const cacheLoadDisabled =
+    /false/i.test(process.env.LOADCACHE) ||
+    hostConfig.adapters.loadCache === false
 
-    if (deserializers)
-      deserializers.forEach(des => Serializer.addSerializer(des))
+  if (cacheLoadDisabled) return
 
-    const rehydrate = new Transform({
-      objectMode: true,
+  const resumeWorkflowDisabled =
+    /false/i.test(process.env.RESUMEWORKFLOW) ||
+    hostConfig.adapters.resumeWorkflow === false
 
-      transform(chunk, _endcoding, next) {
-        const model = models.loadModel(broker, repository, chunk, modelName)
-        repository.saveSync(model.getId(), model)
-        this.push(model)
-        next()
-      },
-    })
+  console.log('loading cache ', modelName)
 
-    const resumeWorkflow = new Writable({
-      objectMode: true,
+  // const serializers = models.getModelSpec(modelName).serializers
 
-      write(chunk, _encoding, next) {
-        startWorkflow(chunk, models)
-        next()
-        return true
-      },
+  // const deserializers = serializers
+  //   ? serializers.filter(s => !s.disabled && s.on === 'deserialize')
+  //   : null
 
-      end(chunk, _encoding, done) {
-        startWorkflow(chunk, models)
-        done()
-      },
-    })
+  // if (deserializers) deserializers.forEach(des => Serializer.addSerializer(des))
 
-    repository.list({ transform: rehydrate, writable: resumeWorkflow })
-  }
+  const loadCache = new Writable({
+    objectMode: true,
+
+    write (chunk, _, next) {
+      if (chunk?.id) repository.saveSync(chunk.id, chunk)
+      next()
+    }
+  })
+
+  const resumeWorkflow = new Transform({
+    objectMode: true,
+
+    transform (chunk, _, next) {
+      startWorkflow(chunk, models)
+      next()
+    }
+  })
+
+  if (resumeWorkflowDisabled)
+    repository.list({ writable: loadCache, transform: resumeWorkflow })
+  else repository.list({ writable: loadCache })
 }

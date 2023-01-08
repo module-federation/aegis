@@ -124,7 +124,7 @@ function findSharedMap (name) {
   if (workerData.dsRelated?.length > 0) {
     const dsRel = workerData.dsRelated.find(ds => ds.modelName === name)
     if (dsRel) return dsRel.dsMap
-  }
+  } 
 }
 
 function rehydrateSharedMap (name) {
@@ -139,7 +139,7 @@ function createSharedMap (mapsize, keysize, objsize, name) {
 }
 
 /**
- * Decorator adds support for thread-safe shared {@link Map} using {@link SharedArrayBuffer}.
+ * Support thread-safe shared {@link Map} using {@link SharedArrayBuffer}.
  *
  * @param {function():import('./datasource').default} createDataSource in {@link DataSourceFactory}
  * @param {import('./datasource-factory').DataSourceFactory} factory

@@ -17,17 +17,18 @@ import { isMainThread } from 'worker_threads'
  *  datasources:import('../shared-memory').DataSourceFactory,
  *  models:import("../model-factory").ModelFactory,
  *  ObjectCache:import('../distributed-cache'),
- *  ServiceMesh:import('../../adapters/service-mesh/node').ServiceMeshClient
+ *  ServiceMesh:import('../../adapters/service-mesh/node').ServiceMeshClient,
+ *  PortEventRouter:import('../event-router').PortEventRouter
  * }} models
  *
  */
-export default async function brokerEvents({
+export default async function brokerEvents ({
   broker,
   models,
   datasources,
   PortEventRouter,
   DistributedCache,
-  createServiceMesh,
+  createServiceMesh
 }) {
   if (isMainThread) {
     // generate a list of installed services
@@ -38,7 +39,7 @@ export default async function brokerEvents({
         .map(spec => spec.modelName)
 
     const serviceMesh = createServiceMesh({
-      listServices: listLocalModels,
+      listServices: listLocalModels
     })
 
     // connect to broker
@@ -64,7 +65,7 @@ export default async function brokerEvents({
       broker,
       datasources,
       publish: event => broker.notify('to_main', event),
-      subscribe: (eventName, cb) => broker.on(eventName, cb),
+      subscribe: (eventName, cb) => broker.on(eventName, cb)
     })
 
     cache.listen()
