@@ -159,9 +159,6 @@ export class ThreadPool extends EventEmitter {
     this.aborting = false
     this.jobsRequested = this.jobsQueued = 0
     this.broadcastChannel = options.broadcast
-    this.grow = false
-
-    this.once(this.growPool.name, this.growPool)
 
     if (options?.preload) {
       console.info('preload enabled for', this.name)
@@ -442,8 +439,6 @@ export class ThreadPool extends EventEmitter {
     this.jobsQueued++
     return this
   }
-
-  async growPool () {}
 
   jobQueueRate () {
     return Math.round((this.jobsQueued / this.jobsRequested) * 100)
