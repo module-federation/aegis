@@ -309,6 +309,7 @@ export class DataSourceMongoDb extends DataSource {
   async streamList (options) {
     const pipeArgs = []
 
+    console.log('streamList')
     try {
       const paginate = new Transform({
         writableObjectMode: true,
@@ -391,7 +392,7 @@ export class DataSourceMongoDb extends DataSource {
       }
       console.log({ options })
 
-      if (options.streamResult) return this.streamList(options)
+      if (param.streamResult) return this.streamList(param)
 
       const data = (await this.mongoFind(options)).toArray()
       const count = data?.length

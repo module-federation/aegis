@@ -42,7 +42,7 @@ export default function makeHotReload ({ models, broker } = {}) {
 
   /**
    */
-  async function hotReload (remoteEntry) {
+  async function hotReload (modelName) {
     if (inProgress) {
       return { status: 'reload already in progress' }
     }
@@ -50,9 +50,12 @@ export default function makeHotReload ({ models, broker } = {}) {
 
     try {
       if (modelName && modelName !== '*') {
-        const spec = models.getModelSpec(modelName)
-        if (!spec) throw new Error(`model not found ${modelName}`)
-        const poolName = spec.domain || modelName
+        const upperName = modelName.toUpperCase()
+        let spec = models.getModelSpec(upperName)
+        if (!spec)
+          spec = models.getModelSpecs().find(s => s.domain === upperName)
+        if (!spec) throw new Error(`can't find model spec for ${upperName}`)
+        const poolName = spec.domain
         console.log('reloading pool', poolName)
         await ThreadPoolFactory.reload(poolName)
         return ThreadPoolFactory.status(poolName)
@@ -65,14 +68,6 @@ export default function makeHotReload ({ models, broker } = {}) {
       console.log({ fn: hotReload.name, error })
     } finally {
       inProgress = false
-      const lastSample = history.pop()
-      const thisSample = process.memoryUsage()
-      history.push(thisSample)
-      return Object.keys(thisSample)
-        .map(k => ({
-          [`${k}-MB`]: thisSample[k] - lastSample[k] / 1024 / 1024
-        }))
-        .reduce((a, b) => ({ ...a, ...b }), {})
     }
   }
 

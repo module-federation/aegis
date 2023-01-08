@@ -1,6 +1,5 @@
 'use strict'
 
-import { IncomingMessage } from 'http'
 import { nanoid } from 'nanoid'
 import { hostname } from 'os'
 import { Server, WebSocket } from 'ws'
@@ -164,6 +163,7 @@ export function attachServer (httpServer, secureCtx = {}) {
     client[info].host = request.headers[headers.host] || request.headers.host
     client[info].role = request.headers[headers.role] || 'browser'
     client[info].errors = 0
+    client[info].lastUsed = 0
     client[info].uniqueName = client[info].host + client[info].pid
   }
 
@@ -184,9 +184,9 @@ export function attachServer (httpServer, secureCtx = {}) {
     assignBackup(client)
 
     // tell client if its now a backup switch or not
-    sendMesh(encode(client[info]), client)
+    publish(encode(client[info]), client)
     // tell everyone about new node (ignore browsers)
-    if (client[info].role === 'node') sendMesh(encode(statusReport()), client)
+    if (client[info].role === 'node') publish(encode(statusReport()), client)
   }
 
   function handleEvent (client, message) {
@@ -206,7 +206,7 @@ export function attachServer (httpServer, secureCtx = {}) {
     routeMessage(message, client)
   }
 
-  function sendMesh (message, client = null, retries = 0) {
+  function publish (message, client = null, retries = 0) {
     if (!client) client = this
     if (client.readyState === WebSocket.OPEN) {
       client.send(message)
@@ -214,7 +214,11 @@ export function attachServer (httpServer, secureCtx = {}) {
       return
     }
     if (retries.length < CLIENT_MAX_RETRIES)
-      setTimeout(() => sendMesh(message, client, ++retries), 2000)
+      setTimeout(() => publish(message, client, ++retries), 2000)
+  }
+
+  WebSocket.prototype.publish = function (message) {
+    publish.apply(this, message)
   }
 
   function leastRecentlyUsed (lastUsed, client) {
@@ -224,16 +228,16 @@ export function attachServer (httpServer, secureCtx = {}) {
     return cli
   }
 
-  const defRoute = { sendMesh: msg => console.log('no match', msg) }
-
-  WebSocket.prototype.sendMesh = function (message) {
-    sendMesh.apply(this, message)
+  const noRoute = sender => {
+    publish: msg => router.broadcast(msg, sender)
   }
 
   /**
-   *
+   * These methods determine how messages are routed in the mesh.
+   * If the message does not specify a method in the `route` field,
+   * then the default method, broadcast, is used.
    */
-  const routingAlgorithms = {
+  const router = {
     /**
      * Send to exactly one client running the service specified by `eventTarget`.
      * Rotate target hosts.
@@ -245,8 +249,8 @@ export function attachServer (httpServer, secureCtx = {}) {
             client !== sender &&
             client[info].services.includes(message.eventTarget)
         )
-        .reduce(leastRecentlyUsed, defRoute)
-        .sendMesh(message),
+        .reduce(leastRecentlyUsed, noRoute(sender))
+        .publish(message),
     /**
      * Send to all clients running the service specified by `eventTarget`.
      * @param {import('../../../domain').Event} message
@@ -258,7 +262,7 @@ export function attachServer (httpServer, secureCtx = {}) {
             client !== sender &&
             client[info].services.includes(message.eventTarget)
         )
-        .forEach(client => sendMesh(message, client)),
+        .forEach(client => publish(message, client)),
     /**
      * Send to exactly one client that consumes the event in `message.eventName`.
      * Rotate clients.
@@ -270,8 +274,8 @@ export function attachServer (httpServer, secureCtx = {}) {
           client =>
             client !== sender && client[info].events.includes(message.eventName)
         )
-        .reduce(leastRecentlyUsed, defRoute)
-        .sendMesh(message),
+        .reduce(leastRecentlyUsed, noRoute)
+        .publish(message),
     /**
      * Send to all clients that consume the event in `message.eventName`.
      * @param {import('../../../domain').Event} message
@@ -282,19 +286,38 @@ export function attachServer (httpServer, secureCtx = {}) {
           client =>
             client !== sender && client[info].events.includes(message.eventName)
         )
-        .forEach(client => sendMesh(message, client)),
+        .forEach(client => publish(message, client)),
     /**
      * send to all clients
      * @param {import('../../../domain').Event} message
      */
     broadcast: (message, sender) => {
       clients.forEach(function (client) {
-        if (client !== sender) sendMesh(message, client)
+        if (client !== sender) publish(message, client)
       })
-      routingAlgorithms.sendUplink(message, sender)
+      router.uplink(message, sender)
     },
 
-    sendUplink: (message, sender) => {
+    /**
+     * This is a response to a request. Send this to the
+     * original requester, named in the field `requester`.
+     *
+     * @param {*} message
+     * @param {*} sender
+     */
+    response: (message, sender) => {
+      clients
+        .find(client => sender.requester === client.uniqueName)
+        .publish(message, sender)
+    },
+
+    /**
+     * Send to the uplink for this network, if there is one.
+     *
+     * @param {*} message
+     * @param {*} sender
+     */
+    uplink: (message, sender) => {
       if (server.uplink && server.uplink !== sender) {
         server.uplink.publish(message)
         messagesSent++
@@ -309,9 +332,9 @@ export function attachServer (httpServer, secureCtx = {}) {
    * @returns
    */
   function routeMessage (message, client) {
-    const route = routingAlgorithms[message.route]
+    const route = router[message.route]
     if (route) return route(message, client)
-    return routingAlgorithms.broadcast(message, client)
+    return router.broadcast(message, client)
   }
 
   function encode (message) {
@@ -376,7 +399,7 @@ export function attachServer (httpServer, secureCtx = {}) {
 
   function sendStatus (client) {
     console.debug('sending client status')
-    sendMesh(encode(statusReport()), client)
+    publish(encode(statusReport()), client)
   }
 
   function updateTelemetry (client, msg) {

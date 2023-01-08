@@ -301,7 +301,7 @@ export default function DistributedCache ({
         return await route({
           ...event,
           model: relatedModels,
-          eventTarget: sender,
+          eventTarget: requester,
           route: 'response'
         })
       } catch (error) {
