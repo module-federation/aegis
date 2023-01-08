@@ -3,7 +3,7 @@
 /**
  * @param {import('./event-broker').EventBroker} broker
  */
-export function registerEvents(broker) {
+export function registerEvents (broker) {
   //
   broker.on('shutdown', signal => {
     console.log('shutdown requested')
@@ -51,6 +51,7 @@ const domainEvents = {
   poolAbort: modelName => `poolAbort_${String(modelName).toUpperCase()}`,
   badUserRoute: error => `badUserRoute error: ${error}`,
   reload: 'reload',
+  portEvent: name => `externalPortEvent_${name}`
 }
 
 export default domainEvents

@@ -1,6 +1,8 @@
 'use strict'
 
 import { workerData, BroadcastChannel } from 'worker_threads'
+import domainEvents from './domain-events'
+const { portEvent } = domainEvents
 
 /**
  * Port events controls event-driven, distributed workflow and
@@ -16,6 +18,8 @@ export class PortEventRouter {
     this.models = models
     this.broker = broker
     this._localSpec = this.models.getModelSpec(workerData.poolName)
+    if (!this._localSpec)
+      this.models.getModelSpecs().find(i => i.domain === workerData.poolName)
     this._threadRemotePorts = this.threadRemotePorts()
     this._threadLocalPorts = this.threadLocalPorts()
   }
@@ -103,11 +107,32 @@ export class PortEventRouter {
   }
 
   handleBroadcastEvent (msg) {
-    if (msg?.data?.eventName) this.broker.notify(msg.data.eventName, msg.data)
+    if (msg?.data?.eventName)
+      this.broker.notify(this.internalizeEvent(msg.data.eventName), msg.data)
     else {
       console.log('missing eventName', msg.data)
       this.broker.notify('missingEventName', msg.data)
     }
+  }
+
+  externalizeEvent (event) {
+    if (typeof event === 'object') {
+      return {
+        ...event,
+        eventName: portEvent(event.eventName)
+      }
+    }
+    if (typeof event === 'string') return portEvent(event)
+  }
+
+  internalizeEvent (event) {
+    if (typeof event === 'object') {
+      return {
+        ...event,
+        eventName: event.eventName.replace(portEvent(), '')
+      }
+    }
+    if (typeof event === 'string') return event.replace(portEvent(), '')
   }
 
   /**
@@ -139,7 +164,9 @@ export class PortEventRouter {
     // listen for producer events and dispatch them to local pools
     publisherPorts.forEach(port =>
       this.broker.on(port.producesEvent, event =>
-        channels.get(port.domain).postMessage(JSON.parse(JSON.stringify(event)))
+        channels
+          .get(port.domain)
+          .postMessage(JSON.parse(JSON.stringify(this.externalizeEvent(event))))
       )
     )
 
@@ -154,16 +181,18 @@ export class PortEventRouter {
       this.broker.on(port.producesEvent, event => {
         this.broker.notify('to_main', {
           ...event,
-          eventName: port.producesEvent,
+          eventName: this.externalizeEvent(port.producesEvent),
           route: 'balanceEventConsumer' // mesh routing algo
         })
       })
     })
 
-    // listen to this model's channel
-    new BroadcastChannel(workerData.poolName).onmessage = msg => {
-      console.log('onmessage', msg.data)
-      this.handleBroadcastEvent(msg)
+    if (!channels.has(this.localSpec.domain)) {
+      // listen to this model's channel
+      new BroadcastChannel(this.localSpec.domain).onmessage = msg => {
+        console.log('onmessage', msg.data)
+        this.handleBroadcastEvent(msg)
+      }
     }
   }
 }
