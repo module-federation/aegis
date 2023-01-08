@@ -57,7 +57,7 @@ export const relationType = {
    * @param {*} rel
    * @returns
    */
-  oneToOne(model, ds, rel) {
+  oneToOne (model, ds, rel) {
     return this.manyToOne(model, ds, rel)
   },
 
@@ -87,14 +87,14 @@ export const relationType = {
     const rds = ds.factory.getRestrictedDataSource(model.modelName)
     const relRds = ds.factory.getRestrictedDataSource(rel.modelName, {
       isCached: true,
-      ephemeral: true,
+      ephemeral: true
     })
 
     // if relRds is in the same domain but is remote, this fails
     if (rds.namespace !== relRds.namespace) return null
 
     return rds[rel.name]({ args, model, ds: relRds, relation: rel })
-  },
+  }
 }
 
 /**
@@ -108,39 +108,39 @@ const updateForeignKeys = {
    * @param {import('./index').relations[x]} relation
    * @param {import('./model-factory').Datasource} ds
    */
-  async [relationType.manyToOne.name](fromModel, toModels, relation, ds) {
+  async [relationType.manyToOne.name] (fromModel, toModels, relation, ds) {
     return fromModel.update(
       { [relation.foreignKey]: toModels[0].getId() },
       false
     )
   },
 
-  async [relationType.oneToOne.name](fromModel, toModels, relation, ds) {
+  async [relationType.oneToOne.name] (fromModel, toModels, relation, ds) {
     return this[relationType.manyToOne.name](fromModel, toModels, relation, ds)
   },
 
-  async [relationType.oneToMany.name](fromModel, toModels, relation, ds) {
+  async [relationType.oneToMany.name] (fromModel, toModels, relation, ds) {
     return Promise.all(
       toModels.map(async m => {
         const model = await ds.find(m.id || m.getId())
         return ds.save(m.id, {
           ...model,
-          [relation.foreignKey]: fromModel.getId(),
+          [relation.foreignKey]: fromModel.getId()
         })
       })
     )
   },
 
-  async [relationType.containsMany.name](fromModel, toModels, relation, ds) {
+  async [relationType.containsMany.name] (fromModel, toModels, relation, ds) {
     toModels.map(model =>
       model.update({ [relation.foreignKey]: fromModel.getId() })
     )
   },
 
-  async [relationType.custom.name](fromModel, toModels, relation, ds) {
+  async [relationType.custom.name] (fromModel, toModels, relation, ds) {
     const customFn = fromModel[`${relation}UpdateForeignKeys`]
     if (customFn === 'function') customFn(toModels, relation, ds)
-  },
+  }
 }
 
 /**
@@ -151,7 +151,7 @@ const updateForeignKeys = {
  * @param {import('./datasource').default} ds
  * @returns
  */
-async function createModels(args, fromModel, relation, ds) {
+async function createModels (args, fromModel, relation, ds) {
   if (args.length > 0) {
     const { UseCaseService } = require('.')
     const service = UseCaseService(relation.modelName)
@@ -162,18 +162,18 @@ async function createModels(args, fromModel, relation, ds) {
   }
 }
 
-async function createNewModels(args, rel, datasource) {
+async function createNewModels (args, rel, datasource) {
   if (args.length > 0 && rel.type !== 'custom') {
     // fetch the local ds and create the models
     const ds = datasource.factory.getDataSource(rel.modelName)
     return {
       yes: true,
-      create: async () => await createModels(args, this, rel, ds),
+      create: async () => await createModels(args, this, rel, ds)
     }
   }
   return {
     yes: false,
-    create: () => null,
+    create: () => null
   }
 }
 
@@ -188,7 +188,7 @@ async function createNewModels(args, rel, datasource) {
  * @param {import("./event-broker").EventBroker} broker
  * @returns {Promise<import(".").Event>} source model
  */
-export function requireRemoteObject(model, relation, broker, ...args) {
+export function requireRemoteObject (model, relation, broker, ...args) {
   const request = internalCacheRequest(relation.modelName)
   const response = internalCacheResponse(relation.modelName)
   const name = (model ? model.getName() : relation.modelName).toUpperCase()
@@ -207,7 +207,7 @@ export function requireRemoteObject(model, relation, broker, ...args) {
     modelId: id,
     relation,
     model,
-    args,
+    args
   }
 
   return new Promise(async function (resolve) {
@@ -223,7 +223,7 @@ export function requireRemoteObject(model, relation, broker, ...args) {
  * @param {import('.').relations[x]} relation
  * @returns {boolean}
  */
-function isRelatedModelLocal(relation) {
+function isRelatedModelLocal (relation) {
   return require('.')
     .default.getModelSpecs()
     .filter(spec => !spec.isCached)
@@ -236,7 +236,7 @@ function isRelatedModelLocal(relation) {
  * @param {import("./index").relations} relations
  * @param {import("./datasource").default} datasource
  */
-export default function makeRelations(relations, datasource, broker) {
+export default function makeRelations (relations, datasource, broker) {
   if (Object.getOwnPropertyNames(relations).length < 1) return
 
   return Object.keys(relations)
@@ -246,7 +246,7 @@ export default function makeRelations(relations, datasource, broker) {
       const rel = {
         ...relations[relation],
         modelName: relModelName,
-        name: relation,
+        name: relation
       }
 
       try {
@@ -258,18 +258,24 @@ export default function makeRelations(relations, datasource, broker) {
 
         return {
           // the relation function
-          async [relation](...args) {
+          async [relation] (...args) {
             const local = isRelatedModelLocal(relModelName)
             if (!local) await importModelCache(relModelName)
 
+            console.log({ relModelName })
+            
             if (local) {
               const result = createNewModels(args, rel, datasource)
               if (result.yes) return result.create()
             }
 
+            const importedSpec = require('.').default.getModelSpec(relModelName)
             // If object is remote, we should have its code by now.
             // Recreate its datasource, including any customization
-            const ds = datasource.factory.getDataSource(relModelName)
+            const ds = datasource.factory.getDataSource(
+              relModelName,
+              importedSpec.domain
+            )
 
             const models = await relationType[rel.type](this, ds, rel, args)
 
@@ -289,7 +295,7 @@ export default function makeRelations(relations, datasource, broker) {
             }
 
             return models
-          },
+          }
         }
       } catch (error) {
         console.error({ fn: makeRelations.name, error })

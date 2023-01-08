@@ -440,27 +440,10 @@ export class ThreadPool extends EventEmitter {
 
   incrementJobsQueued () {
     this.jobsQueued++
-    if (
-      this.jobQueueRate() > this.jobQueueThreshold() &&
-      this.jobsRequested > 20
-    ) {
-      console.warn('job queue threshold exceeded')
-      this.emit(this.growPool.name)
-    }
     return this
   }
 
-  async growPool () {
-    if (this.capacityAvailable()) {
-      const thread = await this.startThread()
-      if (this.capacityAvailable())
-        broker.on(this.growPool.name, this.growPool, {
-          singleton: true,
-          once: true
-        })
-      return thread
-    }
-  }
+  async growPool () {}
 
   jobQueueRate () {
     return Math.round((this.jobsQueued / this.jobsRequested) * 100)
@@ -473,13 +456,6 @@ export class ThreadPool extends EventEmitter {
   jobTime (millisec) {
     this.totJobTime += millisec
     this.avgJobTime = Math.round(this.totJobTime / this.jobsRequested)
-    if (
-      this.avgJobTime > this.jobDurationThreshold() &&
-      this.jobsRequested > 20
-    ) {
-      this.emit(this.growPool.name)
-      console.log('job duration threshold exceeded', this)
-    }
     return this
   }
 
@@ -493,10 +469,6 @@ export class ThreadPool extends EventEmitter {
 
   incrementErrorCount () {
     this.errors++
-    if (this.errorRate() > this.errorRateThreshold() && this.errors > 10) {
-      this.emit(this.growPool.name)
-      console.log('job duration threshold exceeded', this)
-    }
     return this
   }
 
@@ -597,10 +569,8 @@ export class ThreadPool extends EventEmitter {
       return thread
     }
     // none free, try to allocate
-    const thread = this.allocate()
-    // pop this one
-    if (thread) this.freeThreads.pop()
-    // dont return tyhread, let queued jobs go
+    this.allocate()
+    // dont return thread, let queued jobs go
   }
 
   checkin (thread) {

@@ -3,7 +3,6 @@
 import { isMainThread } from 'worker_threads'
 import { Writable, Transform } from 'node:stream'
 import { hostConfig } from '../../config'
-import e from 'express'
 
 function nextModelFn (port, mf) {
   mf
