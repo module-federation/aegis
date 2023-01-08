@@ -366,7 +366,7 @@ export class ThreadPool extends EventEmitter {
   async stopThread (thread, reason) {
     const exitCode = await thread.stop()
     this.freeThreads.splice(this.freeThreads.indexOf(thread), 1)
-    this.threads.splice(this.freeThreads.indexOf(thread), 1)
+    this.threads.splice(this.threads.indexOf(thread), 1)
     return { pool: this.name, id: thread.id, exitCode, reason }
   }
 
@@ -450,8 +450,16 @@ export class ThreadPool extends EventEmitter {
     return this
   }
 
-  growPool () {
-    if (this.capacityAvailable()) return this.startThread()
+  async growPool () {
+    if (this.capacityAvailable()) {
+      const thread = await this.startThread()
+      if (this.capacityAvailable())
+        broker.on(this.growPool.name, this.growPool, {
+          singleton: true,
+          once: true
+        })
+      return thread
+    }
   }
 
   jobQueueRate () {
@@ -588,6 +596,11 @@ export class ThreadPool extends EventEmitter {
       )
       return thread
     }
+    // none free, try to allocate
+    const thread = this.allocate()
+    // pop this one
+    if (thread) this.freeThreads.pop()
+    // dont return tyhread, let queued jobs go
   }
 
   checkin (thread) {
