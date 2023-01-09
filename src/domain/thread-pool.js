@@ -552,8 +552,7 @@ export class ThreadPool extends EventEmitter {
   }
 
   canCheckout () {
-    return true
-    // return this.threads.some(t => t.id === this.locks.pop())
+    return this.threads.some(t => t.id === this.locks.pop())
   }
 
   checkout () {
