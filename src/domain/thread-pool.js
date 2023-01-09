@@ -9,6 +9,7 @@ import domainEvents from './domain-events'
 import assert from 'assert'
 import path from 'path'
 import os from 'os'
+import { setServers } from 'dns/promises'
 
 const { poolOpen, poolClose, poolDrain, poolAbort } = domainEvents
 const broker = EventBrokerFactory.getInstance()
@@ -159,6 +160,7 @@ export class ThreadPool extends EventEmitter {
     this.aborting = false
     this.jobsRequested = this.jobsQueued = 0
     this.broadcastChannel = options.broadcast
+    this.updateLocks()
 
     if (options?.preload) {
       console.info('preload enabled for', this.name)
@@ -220,6 +222,7 @@ export class ThreadPool extends EventEmitter {
               console.warn('shutdown timeout')
               resolve(await worker.terminate())
             }, 6000)
+
             worker.once('exit', () => {
               clearTimeout(timerId)
               console.log('orderly shutdown')
@@ -539,33 +542,33 @@ export class ThreadPool extends EventEmitter {
 
   threadsInUse () {
     const diff = this.threads.length - this.freeThreads.length
-    assert.ok(
-      diff >= 0 && diff <= this.maxThreads,
-      'thread mgmt issue: in use: ' +
-        diff +
-        ', total:' +
-        this.threads.length +
-        ', free:' +
-        this.freeThreads.length +
-        ', min:' +
-        this.minThreads +
-        ', max:' +
-        this.maxThreads
-    )
+    assert.ok(diff >= 0 && diff <= this.maxThreads, 'thread mgmt issue')
     return diff
   }
 
+  updateLocks () {
+    this.locks = []
+    this.threads.forEach(t => this.locks.push(t.id))
+  }
+
+  canCheckout () {
+    return true
+    // return this.threads.some(t => t.id === this.locks.pop())
+  }
+
   checkout () {
-    if (this.freeThreads.length > 0) {
-      const thread = this.freeThreads.shift()
-      console.debug(
-        `thread checked out, total in use now ${this.threadsInUse()}`
-      )
-      return thread
-    }
-    // none free, try to allocate
-    this.allocate()
-    // dont return thread, let queued jobs go
+    if (!this.canCheckout()) return
+
+    try {
+      if (this.freeThreads.length > 0) {
+        const thread = this.freeThreads.shift()
+        console.debug(
+          `thread checked out, total in use now ${this.threadsInUse()}`
+        )
+        return thread
+      }
+      this.allocate()
+    } catch (err) {}
   }
 
   checkin (thread) {
@@ -575,7 +578,6 @@ export class ThreadPool extends EventEmitter {
         `thread checked in, total in use now ${this.threadsInUse()}`
       )
     }
-    return this
   }
 
   enqueue (job) {
