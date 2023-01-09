@@ -1,3 +1,4 @@
+export LOADCACHE=false
 cd ../aegis-app
 nohup node repo.js &
 nohup node repo.js 8001 cache &

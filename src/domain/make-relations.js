@@ -12,6 +12,14 @@ const { internalCacheRequest, internalCacheResponse, externalCacheRequest } =
 
 const maxwait = process.env.REMOTE_OBJECT_MAXWAIT || 1000
 
+class RelError extends Error {
+  constructor (error, code, fn) {
+    super(error)
+    this.code = code
+    console.log({ fn, code, error })
+  }
+}
+
 export const relationType = {
   /**
    * Search memory and external storage
@@ -108,7 +116,7 @@ const updateForeignKeys = {
    * @param {import('./index').relations[x]} relation
    * @param {import('./model-factory').Datasource} ds
    */
-  async [relationType.manyToOne.name] (fromModel, toModels, relation, ds) {
+  async [relationType.manyToOne.name] (fromModels, toModels, relation, ds) {
     return fromModel.update(
       { [relation.foreignKey]: toModels[0].getId() },
       false
@@ -228,7 +236,7 @@ function isRelatedModelLocal (relation) {
     .default.getModelSpecs()
     .filter(spec => !spec.isCached)
     .map(spec => spec.modelName)
-    .includes(relation.modelName)
+    .includes(relation.modelName.toUpperCase())
 }
 
 /**
@@ -259,26 +267,25 @@ export default function makeRelations (relations, datasource, broker) {
         return {
           // the relation function
           async [relation] (...args) {
+            const createNew = args?.length > 0 ? true : false
             const local = isRelatedModelLocal(relModelName)
             if (!local) await importModelCache(relModelName)
 
-            console.log({ relModelName })
-            
-            if (local) {
+            if (local && createNew) {
               const result = createNewModels(args, rel, datasource)
               if (result.yes) return result.create()
+              throw new Error('cannot create new models')
             }
 
-            const importedSpec = require('.').default.getModelSpec(relModelName)
             // If object is remote, we should have its code by now.
-            // Recreate its datasource, including any customization
-            const ds = datasource.factory.getDataSource(
-              relModelName,
-              importedSpec.domain
-            )
+            const ds = datasource.factory.getDataSource(relModelName)
 
+            if (!ds) throw new RelError(`missing ds for ${relModelName}`, 500)
+
+            // call the relation's implementation
             const models = await relationType[rel.type](this, ds, rel, args)
 
+            // still failing, try service mesh
             if (!models || models.length < 1) {
               // find remote instance(s)
               const event = await requireRemoteObject(
@@ -288,7 +295,8 @@ export default function makeRelations (relations, datasource, broker) {
                 ...args
               )
 
-              if (args.length > 0)
+              if (createNew)
+                // args mean models were created and need new fk's
                 updateForeignKeys[rel.type](this, event.model, rel, ds)
 
               return await relationType[rel.type](this, ds, rel, args)
