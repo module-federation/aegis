@@ -166,7 +166,6 @@ export class ThreadPool extends EventEmitter {
     this.aborting = false
     this.jobsRequested = this.jobsQueued = 0
     this.broadcastChannel = options.broadcast
-    this.checkoutOpen = true
 
     if (options?.preload) {
       console.info('preload enabled for', this.name)
@@ -458,14 +457,11 @@ export class ThreadPool extends EventEmitter {
 
   incrementJobsQueued () {
     this.jobsQueued++
-    //if (this.jobsQueued % 10 === 0) this.jobQueueRate()
     return this
   }
 
   jobQueueRate () {
-    const rate = Math.round((this.jobsQueued / this.jobsRequested) * 100)
-    //if (rate > this.jobQueueThreshold()) this.updateLocks()
-    return rate
+    return Math.round((this.jobsQueued / this.jobsRequested) * 100)
   }
 
   jobQueueThreshold () {
@@ -557,12 +553,15 @@ export class ThreadPool extends EventEmitter {
   /**
    * Spin up a new thread if needed and available.
    */
-  async allocate (cb) {
-    const yes = this.poolCanGrow()
-    if (yes) {
-      const thread = this.startThread()
-      cb(thread)
-      return this.startThread()
+  async allocate (cb = null) {
+    if (this.poolCanGrow()) {
+      console.debug('allocating thread')
+      const thread = await this.startThread()
+      if (!thread) {
+        throw new Error('cannot allocate thread')
+      }
+      if (cb) cb(thread)
+      return this.freeThreads.shift()
     }
   }
 
@@ -572,35 +571,23 @@ export class ThreadPool extends EventEmitter {
     return diff
   }
 
-  checkout () {
-    try {
-      if (this.checkoutOpen) {
-        const thread = this.freeThreads.shift()
-        if (!thread) {
-          if (this.workers.length > 1) this.checkoutOpen = false
-          ThreadPoolFactory.pauseMonitoring(this)
-          this.allocate(() => {
-            if (this.poolCanGrow())
-              setTimeout(() => {
-                if (this.poolCanGrow()) {
-                  this.checkoutOpen = true
-                  ThreadPoolFactory.resumeMonitoring(this)
-                }
-              }, 1000)
-          })
-        }
-        console.debug(
-          `thread checked out, total in use now ${this.threadsInUse()}`
-        )
-        return thread
-      }
-    } catch (err) {}
+  async checkout () {
+    const thread = this.freeThreads.shift()
+    if (thread) {
+      console.debug(
+        `thread checked out, total in use now ${this.threadsInUse()}`
+      )
+      return thread
+    }
+    if (this.threads.length == this.maxThreads) return
+    if (this.threads.length > this.maxThreads)
+      throw new Error('too many threads')
+    return this.allocate()
   }
 
   checkin (thread) {
     if (thread) {
       this.freeThreads.push(thread)
-      this.checkoutOpen = true
       console.debug(
         `thread checked in, total in use now ${this.threadsInUse()}`
       )
@@ -638,7 +625,7 @@ export class ThreadPool extends EventEmitter {
         ...options
       })
 
-      const thread = this.checkout()
+      const thread = await this.checkout()
 
       if (thread) {
         thread.run(job)
@@ -1030,7 +1017,7 @@ const ThreadPoolFactory = (() => {
     if (monitorIntervalId) return
 
     monitorIntervalId = setInterval(() => {
-      monitorPools.forEach(pool => {
+      monitoredPools.forEach(pool => {
         if (pool.aborting) return
 
         const workRequested = pool.totalJobsRequested()
@@ -1086,8 +1073,8 @@ const ThreadPoolFactory = (() => {
     monitoredPools.delete(pool.name)
   }
 
-  function resumeMonitoring () {
-    monitorPools()
+  function resumeMonitoring (pool = null) {
+    monitorPools(pool)
   }
 
   monitorPools()
