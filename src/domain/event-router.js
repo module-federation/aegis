@@ -5,7 +5,7 @@ import domainEvents from './domain-events'
 const { portEvent } = domainEvents
 
 /**
- * Port events controls event-driven, distributed workflow and
+ * Port events control event-driven, distributed workflow and
  * inter-process communcation between co-located and remote models.
  */
 export class PortEventRouter {
@@ -19,7 +19,7 @@ export class PortEventRouter {
     this.broker = broker
     this._localSpec = this.models.getModelSpec(workerData.poolName)
     if (!this._localSpec)
-      this.models.getModelSpecs().find(i => i.domain === workerData.poolName)
+      this.models.getModelSpecs().find(s => s.domain === workerData.poolName)
     this._threadRemotePorts = this.threadRemotePorts()
     this._threadLocalPorts = this.threadLocalPorts()
   }

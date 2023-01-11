@@ -1,15 +1,21 @@
 'use strict'
 
-import { Worker, BroadcastChannel } from 'worker_threads'
-import { EventEmitter } from 'node:stream'
+import {
+  Worker,
+  BroadcastChannel,
+  captureRejectionSymbol as workerCapture
+} from 'node:worker_threads'
+import {
+  EventEmitter,
+  captureRejectionSymbol as eventCapture
+} from 'node:events'
 import { AsyncResource } from 'node:async_hooks'
+import { strict as assert } from 'node:assert'
 import ModelFactory, { totalServices, requestContext } from '.'
 import EventBrokerFactory from './event-broker'
 import domainEvents from './domain-events'
-import assert from 'assert'
 import path from 'path'
 import os from 'os'
-import { setServers } from 'dns/promises'
 
 const { poolOpen, poolClose, poolDrain, poolAbort } = domainEvents
 const broker = EventBrokerFactory.getInstance()
@@ -160,12 +166,17 @@ export class ThreadPool extends EventEmitter {
     this.aborting = false
     this.jobsRequested = this.jobsQueued = 0
     this.broadcastChannel = options.broadcast
-    this.updateLocks()
 
     if (options?.preload) {
       console.info('preload enabled for', this.name)
       this.startThreads()
     }
+  }
+
+  [eventCapture] (err, event, ...args) {
+    const reason = `rejection happened for ${event} with ${err} ${args}`
+    console.error(reason)
+    this.abort(reason)
   }
 
   /**
@@ -200,6 +211,12 @@ export class ThreadPool extends EventEmitter {
       EventEmitter.captureRejections = true
       const eventChannel = new MessageChannel()
       const worker = new Worker(file, { workerData })
+
+      worker[workerCapture] = function (err, event, ...args) {
+        const reason = `rejection happened for ${event} with ${err} ${args}`
+        console.error(reason)
+        pool.abort(reason)
+      }
 
       /**
        * @type {Thread}
@@ -536,8 +553,16 @@ export class ThreadPool extends EventEmitter {
   /**
    * Spin up a new thread if needed and available.
    */
-  async allocate () {
-    if (this.poolCanGrow()) return this.startThread()
+  async allocate (cb = null) {
+    if (this.poolCanGrow()) {
+      console.debug('allocating thread')
+      const thread = await this.startThread()
+      if (!thread) {
+        throw new Error('cannot allocate thread')
+      }
+      if (cb) cb(thread)
+      return this.freeThreads.shift()
+    }
   }
 
   threadsInUse () {
@@ -546,28 +571,18 @@ export class ThreadPool extends EventEmitter {
     return diff
   }
 
-  updateLocks () {
-    this.locks = []
-    this.threads.forEach(t => this.locks.push(t.id))
-  }
-
-  canCheckout () {
-    return this.threads.some(t => t.id === this.locks.pop())
-  }
-
-  checkout () {
-    if (!this.canCheckout()) return
-
-    try {
-      if (this.freeThreads.length > 0) {
-        const thread = this.freeThreads.shift()
-        console.debug(
-          `thread checked out, total in use now ${this.threadsInUse()}`
-        )
-        return thread
-      }
-      this.allocate()
-    } catch (err) {}
+  async checkout () {
+    const thread = this.freeThreads.shift()
+    if (thread) {
+      console.debug(
+        `thread checked out, total in use now ${this.threadsInUse()}`
+      )
+      return thread
+    }
+    if (this.threads.length == this.maxThreads) return
+    if (this.threads.length > this.maxThreads)
+      throw new Error('too many threads')
+    return this.allocate()
   }
 
   checkin (thread) {
@@ -610,7 +625,7 @@ export class ThreadPool extends EventEmitter {
         ...options
       })
 
-      const thread = this.checkout()
+      const thread = await this.checkout()
 
       if (thread) {
         thread.run(job)
@@ -754,6 +769,7 @@ export class ThreadPool extends EventEmitter {
 const ThreadPoolFactory = (() => {
   /** @type {Map<string, ThreadPool>} */
   const threadPools = new Map()
+  const monitoredPools = new Map()
 
   /** @type {Map<string, BroadcastChannel>} */
   const broadcastChannels = new Map()
@@ -826,6 +842,7 @@ const ThreadPoolFactory = (() => {
       })
 
       threadPools.set(poolName, pool)
+      monitoredPools.set(poolName, pool)
       return pool
     } catch (error) {
       console.error({ fn: createThreadPool.name, error })
@@ -991,9 +1008,16 @@ const ThreadPoolFactory = (() => {
   /**
    * Monitor pools for stuck threads and restart them
    */
-  function monitorPools () {
+  function monitorPools (pool = null) {
+    if (pool && !monitoredPools.has(pool)) {
+      monitoredPools.set(pool.name, pool)
+      return
+    }
+
+    if (monitorIntervalId) return
+
     monitorIntervalId = setInterval(() => {
-      threadPools.forEach(pool => {
+      monitoredPools.forEach(pool => {
         if (pool.aborting) return
 
         const workRequested = pool.totalJobsRequested()
@@ -1040,12 +1064,17 @@ const ThreadPoolFactory = (() => {
     }, poolMaxAbortTime())
   }
 
-  function pauseMonitoring () {
-    clearInterval(monitorIntervalId)
+  function pauseMonitoring (pool = null) {
+    if (!pool) {
+      clearInterval(monitorIntervalId)
+      monitorIntervalId = null
+      return
+    }
+    monitoredPools.delete(pool.name)
   }
 
-  function resumeMonitoring () {
-    monitorPools()
+  function resumeMonitoring (pool = null) {
+    monitorPools(pool)
   }
 
   monitorPools()
