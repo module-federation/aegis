@@ -1,15 +1,21 @@
 'use strict'
 
-import { Worker, BroadcastChannel } from 'worker_threads'
-import { EventEmitter } from 'node:stream'
+import {
+  Worker,
+  BroadcastChannel,
+  captureRejectionSymbol as workerCapture
+} from 'node:worker_threads'
+import {
+  EventEmitter,
+  captureRejectionSymbol as eventCapture
+} from 'node:events'
 import { AsyncResource } from 'node:async_hooks'
+import { strict as assert } from 'node:assert'
 import ModelFactory, { totalServices, requestContext } from '.'
 import EventBrokerFactory from './event-broker'
 import domainEvents from './domain-events'
-import assert from 'assert'
 import path from 'path'
 import os from 'os'
-import { setServers } from 'dns/promises'
 
 const { poolOpen, poolClose, poolDrain, poolAbort } = domainEvents
 const broker = EventBrokerFactory.getInstance()
@@ -160,12 +166,18 @@ export class ThreadPool extends EventEmitter {
     this.aborting = false
     this.jobsRequested = this.jobsQueued = 0
     this.broadcastChannel = options.broadcast
-    this.updateLocks()
+    this.checkoutOpen = true
 
     if (options?.preload) {
       console.info('preload enabled for', this.name)
       this.startThreads()
     }
+  }
+
+  [eventCapture] (err, event, ...args) {
+    const reason = `rejection happened for ${event} with ${err} ${args}`
+    console.error(reason)
+    this.abort(reason)
   }
 
   /**
@@ -200,6 +212,12 @@ export class ThreadPool extends EventEmitter {
       EventEmitter.captureRejections = true
       const eventChannel = new MessageChannel()
       const worker = new Worker(file, { workerData })
+
+      worker[workerCapture] = function (err, event, ...args) {
+        const reason = `rejection happened for ${event} with ${err} ${args}`
+        console.error(reason)
+        pool.abort(reason)
+      }
 
       /**
        * @type {Thread}
@@ -440,11 +458,14 @@ export class ThreadPool extends EventEmitter {
 
   incrementJobsQueued () {
     this.jobsQueued++
+    //if (this.jobsQueued % 10 === 0) this.jobQueueRate()
     return this
   }
 
   jobQueueRate () {
-    return Math.round((this.jobsQueued / this.jobsRequested) * 100)
+    const rate = Math.round((this.jobsQueued / this.jobsRequested) * 100)
+    //if (rate > this.jobQueueThreshold()) this.updateLocks()
+    return rate
   }
 
   jobQueueThreshold () {
@@ -536,8 +557,13 @@ export class ThreadPool extends EventEmitter {
   /**
    * Spin up a new thread if needed and available.
    */
-  async allocate () {
-    if (this.poolCanGrow()) return this.startThread()
+  async allocate (cb) {
+    const yes = this.poolCanGrow()
+    if (yes) {
+      const thread = this.startThread()
+      cb(thread)
+      return this.startThread()
+    }
   }
 
   threadsInUse () {
@@ -546,33 +572,35 @@ export class ThreadPool extends EventEmitter {
     return diff
   }
 
-  updateLocks () {
-    this.locks = []
-    this.threads.forEach(t => this.locks.push(t.id))
-  }
-
-  canCheckout () {
-    return this.threads.some(t => t.id === this.locks.pop())
-  }
-
   checkout () {
-    if (!this.canCheckout()) return
-
     try {
-      if (this.freeThreads.length > 0) {
+      if (this.checkoutOpen) {
         const thread = this.freeThreads.shift()
+        if (!thread) {
+          if (this.workers.length > 1) this.checkoutOpen = false
+          ThreadPoolFactory.pauseMonitoring(this)
+          this.allocate(() => {
+            if (this.poolCanGrow())
+              setTimeout(() => {
+                if (this.poolCanGrow()) {
+                  this.checkoutOpen = true
+                  ThreadPoolFactory.resumeMonitoring(this)
+                }
+              }, 1000)
+          })
+        }
         console.debug(
           `thread checked out, total in use now ${this.threadsInUse()}`
         )
         return thread
       }
-      this.allocate()
     } catch (err) {}
   }
 
   checkin (thread) {
     if (thread) {
       this.freeThreads.push(thread)
+      this.checkoutOpen = true
       console.debug(
         `thread checked in, total in use now ${this.threadsInUse()}`
       )
@@ -754,6 +782,7 @@ export class ThreadPool extends EventEmitter {
 const ThreadPoolFactory = (() => {
   /** @type {Map<string, ThreadPool>} */
   const threadPools = new Map()
+  const monitoredPools = new Map()
 
   /** @type {Map<string, BroadcastChannel>} */
   const broadcastChannels = new Map()
@@ -826,6 +855,7 @@ const ThreadPoolFactory = (() => {
       })
 
       threadPools.set(poolName, pool)
+      monitoredPools.set(poolName, pool)
       return pool
     } catch (error) {
       console.error({ fn: createThreadPool.name, error })
@@ -991,9 +1021,16 @@ const ThreadPoolFactory = (() => {
   /**
    * Monitor pools for stuck threads and restart them
    */
-  function monitorPools () {
+  function monitorPools (pool = null) {
+    if (pool && !monitoredPools.has(pool)) {
+      monitoredPools.set(pool.name, pool)
+      return
+    }
+
+    if (monitorIntervalId) return
+
     monitorIntervalId = setInterval(() => {
-      threadPools.forEach(pool => {
+      monitorPools.forEach(pool => {
         if (pool.aborting) return
 
         const workRequested = pool.totalJobsRequested()
@@ -1040,8 +1077,13 @@ const ThreadPoolFactory = (() => {
     }, poolMaxAbortTime())
   }
 
-  function pauseMonitoring () {
-    clearInterval(monitorIntervalId)
+  function pauseMonitoring (pool = null) {
+    if (!pool) {
+      clearInterval(monitorIntervalId)
+      monitorIntervalId = null
+      return
+    }
+    monitoredPools.delete(pool.name)
   }
 
   function resumeMonitoring () {

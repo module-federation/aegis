@@ -274,7 +274,7 @@ export default function makeRelations (relations, datasource, broker) {
             if (local && createNew) {
               const result = createNewModels(args, rel, datasource)
               if (result.yes) return result.create()
-              throw new Error('cannot create new models')
+              throw new RelError('create models failed', 500)
             }
 
             // If object is remote, we should have its code by now.

@@ -4,6 +4,7 @@ import { nanoid } from 'nanoid'
 import { hostname } from 'os'
 import { Server, WebSocket } from 'ws'
 
+const HOSTNAME = 'webswitch.local'
 const SERVICENAME = 'webswitch'
 const CLIENT_MAX_ERRORS = 3
 const CLIENT_MAX_RETRIES = 10
@@ -16,7 +17,6 @@ const debug = /true/i.test(config.debug) || /true/i.test(process.env.DEBUG)
 const isPrimary =
   /true/i.test(process.env.SWITCH) ||
   (typeof process.env.SWITCH === 'undefined' && config.isSwitch)
-
 const headers = {
   host: 'x-webswitch-host',
   role: 'x-webswitch-role',
@@ -221,11 +221,11 @@ export function attachServer (httpServer, secureCtx = {}) {
     publish.apply(this, message)
   }
 
-  function leastRecentlyUsed (lastUsed, client) {
-    const cli =
-      lastUsed[info].lastUsed > client[info].lastUsed ? client : lastUsed
-    cli[info].lastUsed = Date.now()
-    return cli
+  function leastRecentlyUsed (client1, client2) {
+    const lru =
+      client1[info].lastUsed > client2[info].lastUsed ? client2 : client1
+    lru[info].lastUsed = Date.now()
+    return lru
   }
 
   const noRoute = sender => {
@@ -274,7 +274,7 @@ export function attachServer (httpServer, secureCtx = {}) {
           client =>
             client !== sender && client[info].events.includes(message.eventName)
         )
-        .reduce(leastRecentlyUsed, noRoute)
+        .reduce(leastRecentlyUsed, noRoute(sender))
         .publish(message),
     /**
      * Send to all clients that consume the event in `message.eventName`.
@@ -347,12 +347,14 @@ export function attachServer (httpServer, secureCtx = {}) {
 
   function assignBackup (client) {
     if (
+      // Is this the primaary switch?
       isPrimary &&
       // is there a backup already?
       !backupSwitch &&
-      // can't be a browser
       client[info] &&
+      // can't be a browser
       client[info].role === 'node' &&
+      // dont run backup on same host
       client[info].hostname !== hostname()
     ) {
       backupSwitch = client[info]?.id
