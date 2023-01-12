@@ -553,14 +553,13 @@ export class ThreadPool extends EventEmitter {
   /**
    * Spin up a new thread if needed and available.
    */
-  async allocate (cb = null) {
+  async allocate () {
     if (this.poolCanGrow()) {
       console.debug('allocating thread')
       const thread = await this.startThread()
       if (!thread) {
         throw new Error('cannot allocate thread')
       }
-      if (cb) cb(thread)
       return this.freeThreads.shift()
     }
   }
@@ -572,25 +571,22 @@ export class ThreadPool extends EventEmitter {
   }
 
   async checkout () {
+    if (this.threads.length >= this.maxThreads) {
+      console.warn('no threads available')
+      return
+    }
     const thread = this.freeThreads.shift()
     if (thread) {
-      console.debug(
-        `thread checked out, total in use now ${this.threadsInUse()}`
-      )
+      console.debug(`checkout: threads in use now ${this.threadsInUse()}`)
       return thread
     }
-    if (this.threads.length == this.maxThreads) return
-    if (this.threads.length > this.maxThreads)
-      throw new Error('too many threads')
     return this.allocate()
   }
 
   checkin (thread) {
     if (thread) {
       this.freeThreads.push(thread)
-      console.debug(
-        `thread checked in, total in use now ${this.threadsInUse()}`
-      )
+      console.debug(`checkin: threads in use now ${this.threadsInUse()}`)
     }
   }
 
