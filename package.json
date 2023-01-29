@@ -36,7 +36,7 @@
     "express-fileupload": "^1.4.0",
     "express-jwt": "7.7.7",
     "import-fresh": "3.3.0",
-    "jwks-rsa": "2.1.4",
+    "jwks-rsa": "2.1.5",
     "mesh-link": "0.13.6",
     "mongodb": "^4.12.1",
     "multicast-dns": "7.2.5",
