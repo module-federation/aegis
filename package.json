@@ -47,7 +47,7 @@
     "rimraf": "3.0.2",
     "sharedmap": "^1.2.0",
     "webpack": "^5.66.0",
-    "whois": "2.13.9",
+    "whois": "2.14.0",
     "ws": "^8.8.0"
   },
   "devDependencies": {
