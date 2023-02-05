@@ -114,6 +114,7 @@ yarn demo
 - Run on Arduino
 - Addtional service mesh plugins.
 - Support ROS2/DDS for low-latency IoT networks
+- Web Bluetooth Low Energy adapter
 - Point cloud support for LiDAR integration
 - PyNode - Python on Node - interpreted, not transpiled
 - Support for QUIC, NDI, WebRTC protocols
