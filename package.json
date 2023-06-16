@@ -26,7 +26,7 @@
   "dependencies": {
     "@assemblyscript/loader": "0.25.2",
     "@octokit/core": "4.0.5",
-    "@octokit/rest": "19.0.5",
+    "@octokit/rest": "19.0.13",
     "acme-client": "^5.0.0",
     "as-bind": "0.8.2",
     "assemblyscript": "0.25.2",
