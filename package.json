@@ -43,7 +43,7 @@
     "nanoid": "3.3.2",
     "path-to-regexp": "^6.2.1",
     "query-params-mongo": "^1.1.3",
-    "regenerator-runtime": "0.13.9",
+    "regenerator-runtime": "0.14.1",
     "rimraf": "3.0.2",
     "sharedmap": "^1.2.0",
     "webpack": "^5.66.0",
