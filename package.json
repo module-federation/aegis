@@ -24,7 +24,7 @@
     "express": "4.18.2"
   },
   "dependencies": {
-    "@assemblyscript/loader": "0.25.2",
+    "@assemblyscript/loader": "0.27.25",
     "@octokit/core": "4.0.5",
     "@octokit/rest": "19.0.5",
     "acme-client": "^5.0.0",
